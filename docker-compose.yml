@@ -66,7 +66,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A news_service.tasks.celery_app beat --loglevel=info
+    command: celery -A news_service.tasks.celery_app beat --loglevel=info -s /tmp/celerybeat-schedule
+
+  tgbot:
+    build:
+      context: ../news-tgbot
+    ports:
+      - "8001:8001"
+    env_file: ../news-tgbot/.env
+    depends_on:
+      app:
+        condition: service_started
 
   db-backup:
     image: pgvector/pgvector:pg16

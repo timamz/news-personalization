@@ -20,4 +20,5 @@ celery_app.conf.update(
     },
 )
 
-celery_app.autodiscover_tasks(["news_service.tasks"])
+import news_service.tasks.deliver_digest  # noqa: E402, F401
+import news_service.tasks.poll_feeds  # noqa: E402, F401
