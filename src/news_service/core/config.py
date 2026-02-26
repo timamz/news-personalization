@@ -9,12 +9,6 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://news:news@localhost:5432/news"
     redis_url: str = "redis://localhost:6379/0"
 
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    smtp_from: str = "noreply@example.com"
-
     log_level: str = "DEBUG"
     default_user_api_key: str = "dev-user-key"
 
