@@ -19,11 +19,12 @@ Development guide for humans and AI agents working on this codebase.
 ```
 /
   docker-compose.yml   — orchestrates all services (single entry point)
-  .env.example         — backend environment variables template
   AGENTS.md            — this file
   README.md            — project overview and quick start
   backend/             — FastAPI backend, Celery workers, LLM agents
+    .env.example       — backend environment variables template
   tgbot/               — Telegram bot frontend (aiogram)
+    .env.example       — Telegram bot environment variables template
 ```
 
 Each service has its own `Dockerfile`, `pyproject.toml`, `uv.lock`, source code, and tests. New frontends are added as sibling directories (e.g. `webapp/`, `mobile/`).
@@ -159,7 +160,7 @@ uv run pytest             # run in managed environment
 - Run as a non-root user in the final image.
 - All services defined in the root `docker-compose.yml`. `docker compose up` must bring up the full stack.
 - Use `pgvector/pgvector:pg16` for Postgres (supports ARM64 + AMD64).
-- No secrets in the image. All config via environment variables read from `.env`.
+- No secrets in the image. All config via environment variables read from service-local `.env` files.
 
 ---
 
@@ -168,7 +169,7 @@ uv run pytest             # run in managed environment
 - Backend config lives in `backend/src/news_service/core/config.py` using `pydantic-settings`.
 - Bot config lives in `tgbot/src/tgbot/core/config.py` using `pydantic-settings`.
 - Required secrets raise an error at startup if missing.
-- `.env.example` documents every variable. `.env` files are gitignored.
+- Each service's `.env.example` documents required variables. `.env` files are gitignored.
 
 ---
 

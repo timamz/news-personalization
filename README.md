@@ -12,7 +12,7 @@ tgbot/      — Telegram bot frontend (aiogram)
 ## Quick Start
 
 ```bash
-cp .env.example .env              # configure OpenAI key and other secrets
+cp backend/.env.example backend/.env  # configure OpenAI key and other backend secrets
 cp tgbot/.env.example tgbot/.env  # configure Telegram bot token
 docker compose up --build -d      # start all services
 ```

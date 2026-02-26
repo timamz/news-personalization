@@ -10,6 +10,7 @@ build/
 venv/
 
 .env
+backend/.env
 tgbot/.env
 
 *.db
