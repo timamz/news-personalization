@@ -11,6 +11,7 @@ from news_service.models.subscription import Subscription
 from news_service.models.user import User
 from news_service.schemas.subscription import SubscriptionCreate, SubscriptionResponse
 from news_service.services.coverage import ensure_topic_coverage
+from news_service.tasks.deliver_digest import deliver_digest
 
 logger = logging.getLogger(__name__)
 
@@ -82,3 +83,33 @@ async def deactivate_subscription(
 
     subscription.is_active = False
     await session.commit()
+
+
+@router.post("/{subscription_id}/send-now", status_code=status.HTTP_202_ACCEPTED)
+async def send_subscription_now(
+    subscription_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, str]:
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
+        )
+
+    task = deliver_digest.delay(str(subscription.id))
+    logger.info(
+        "Queued immediate digest for subscription %s",
+        subscription.id,
+        extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
+    )
+    return {"task_id": task.id, "status": "queued"}

@@ -1,6 +1,7 @@
+import asyncio
 from collections.abc import AsyncGenerator
 
-import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
@@ -10,6 +11,15 @@ from news_service.app import create_app
 from news_service.core.config import get_settings
 from news_service.db.session import engine
 from news_service.models import Base
+
+
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+def event_loop() -> AsyncGenerator[asyncio.AbstractEventLoop]:
+    loop = asyncio.new_event_loop()
+    try:
+        yield loop
+    finally:
+        loop.close()
 
 
 async def _ensure_database_exists() -> None:
@@ -40,13 +50,13 @@ async def _ensure_database_exists() -> None:
     )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
 async def enforce_test_database() -> AsyncGenerator[None]:
     await _ensure_database_exists()
     yield
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True, loop_scope="session")
 async def reset_database(enforce_test_database) -> AsyncGenerator[None]:
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -55,7 +65,7 @@ async def reset_database(enforce_test_database) -> AsyncGenerator[None]:
     yield
 
 
-@pytest.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def api_client() -> AsyncGenerator[AsyncClient]:
     app = create_app()
     transport = ASGITransport(app=app)
