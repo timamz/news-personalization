@@ -106,7 +106,7 @@ async def send_subscription_now(
             detail="Subscription is inactive",
         )
 
-    task = deliver_digest.delay(str(subscription.id))
+    task = deliver_digest.delay(str(subscription.id), True)
     logger.info(
         "Queued immediate digest for subscription %s",
         subscription.id,

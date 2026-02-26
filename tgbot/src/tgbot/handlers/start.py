@@ -1,7 +1,7 @@
 import logging
 
 from aiogram import Router, types
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 
 from tgbot.client import BackendClient
 from tgbot.storage import get_api_key, save_api_key
@@ -39,7 +39,6 @@ async def cmd_start(message: types.Message) -> None:
     await message.answer(WELCOME_TEXT)
 
 
-@router.message(types.Message)
+@router.message(Command("help"))
 async def cmd_help(message: types.Message) -> None:
-    if message.text and message.text.strip() == "/help":
-        await message.answer(WELCOME_TEXT)
+    await message.answer(WELCOME_TEXT)

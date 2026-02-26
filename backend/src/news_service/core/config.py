@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
-    llm_model: str = "gpt-4o-mini"
+    llm_model: str = "gpt-5-mini"
 
     rss_poll_interval_minutes: int = 30
     topic_similarity_threshold: float = 0.85

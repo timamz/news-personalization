@@ -59,7 +59,7 @@ async def test_send_now_queues_digest_task(api_client: AsyncClient, mocker) -> N
 
     assert response.status_code == 202
     assert response.json() == {"task_id": "task-123", "status": "queued"}
-    delay_mock.assert_called_once_with(str(subscription_id))
+    delay_mock.assert_called_once_with(str(subscription_id), True)
 
 
 async def test_send_now_rejects_inactive_subscription(api_client: AsyncClient, mocker) -> None:

@@ -4,8 +4,9 @@ from datetime import UTC, datetime
 
 import feedparser
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.db.session import async_session_factory
+from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
 from news_service.models.rss_feed import RssFeed
 from news_service.tasks.celery_app import celery_app
@@ -19,7 +20,7 @@ def poll_all_feeds() -> dict:
 
 
 async def _poll_all_feeds() -> dict:
-    async with async_session_factory() as session:
+    async with get_task_session() as session:
         result = await session.execute(select(RssFeed).where(RssFeed.is_active.is_(True)))
         feeds = list(result.scalars().all())
 
@@ -33,7 +34,7 @@ async def _poll_all_feeds() -> dict:
     return {"feeds_polled": len(feeds), "new_items": total_new}
 
 
-async def _poll_single_feed(session, feed: RssFeed) -> int:  # noqa: ANN001
+async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
     try:
         parsed = feedparser.parse(feed.url)
     except Exception:
@@ -47,7 +48,15 @@ async def _poll_single_feed(session, feed: RssFeed) -> int:  # noqa: ANN001
     headlines = [e.get("title", "") for e in entries]
     bodies = [e.get("summary", e.get("description", "")) for e in entries]
     texts_to_embed = [f"{h} {b}" for h, b in zip(headlines, bodies, strict=True)]
-    embeddings = await embed_texts(texts_to_embed)
+    try:
+        embeddings = await embed_texts(texts_to_embed)
+    except Exception:
+        logger.exception(
+            "Failed to embed entries for feed %s",
+            feed.url,
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
 
     new_count = 0
     for entry, embedding in zip(entries, embeddings, strict=True):

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     webhook_host: str = "0.0.0.0"
     webhook_port: int = 8001
     webhook_public_host: str = "tgbot"
+    bot_storage_path: str = "/home/appuser/bot_storage.db"
 
 
 def get_settings() -> Settings:

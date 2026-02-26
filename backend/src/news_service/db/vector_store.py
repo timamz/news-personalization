@@ -1,6 +1,8 @@
+import logging
 import uuid
 from datetime import datetime
 
+from openai import OpenAIError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,11 +13,20 @@ from news_service.models.rss_feed import RssFeed
 
 settings = get_settings()
 _client = openai_client
+logger = logging.getLogger(__name__)
+
+EMBEDDING_MAX_CHARS = 4000
+EMBEDDING_BATCH_SIZE = 6
+
+
+def _normalize_embedding_text(content: str) -> str:
+    normalized = " ".join(content.split())
+    return normalized[:EMBEDDING_MAX_CHARS]
 
 
 async def embed_text(content: str) -> list[float]:
     response = await _client.embeddings.create(
-        input=content,
+        input=_normalize_embedding_text(content),
         model=settings.embedding_model,
         dimensions=settings.embedding_dimensions,
     )
@@ -25,12 +36,28 @@ async def embed_text(content: str) -> list[float]:
 async def embed_texts(contents: list[str]) -> list[list[float]]:
     if not contents:
         return []
-    response = await _client.embeddings.create(
-        input=contents,
-        model=settings.embedding_model,
-        dimensions=settings.embedding_dimensions,
-    )
-    return [item.embedding for item in response.data]
+
+    normalized_contents = [_normalize_embedding_text(content) for content in contents]
+    embeddings: list[list[float]] = []
+
+    for i in range(0, len(normalized_contents), EMBEDDING_BATCH_SIZE):
+        batch = normalized_contents[i : i + EMBEDDING_BATCH_SIZE]
+        try:
+            response = await _client.embeddings.create(
+                input=batch,
+                model=settings.embedding_model,
+                dimensions=settings.embedding_dimensions,
+            )
+            embeddings.extend(item.embedding for item in response.data)
+        except OpenAIError:
+            logger.exception(
+                "Batch embedding failed; retrying per-item for batch size=%d",
+                len(batch),
+            )
+            for content in batch:
+                embeddings.append(await embed_text(content))
+
+    return embeddings
 
 
 async def find_similar_feeds(

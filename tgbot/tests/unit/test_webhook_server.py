@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
-from tgbot.webhook_server import create_webhook_app, set_bot
+from tgbot.webhook_server import TELEGRAM_MAX_MESSAGE_LENGTH, create_webhook_app, set_bot
 
 
 @pytest.fixture
@@ -53,3 +53,19 @@ async def test_deliver_no_bot(webhook_client: TestClient):
         json={"subject": "Test", "body": "Body"},
     )
     assert response.status == 503
+
+
+@pytest.mark.asyncio
+async def test_deliver_splits_long_message(webhook_client: TestClient):
+    mock_bot = AsyncMock()
+    mock_bot.send_message = AsyncMock()
+    set_bot(mock_bot)
+
+    long_body = "a" * (TELEGRAM_MAX_MESSAGE_LENGTH * 2)
+    response = await webhook_client.post(
+        "/deliver/12345",
+        json={"subject": "Long Digest", "body": long_body},
+    )
+
+    assert response.status == 200
+    assert mock_bot.send_message.await_count >= 2

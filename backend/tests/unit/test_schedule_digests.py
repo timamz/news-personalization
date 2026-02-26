@@ -83,7 +83,7 @@ async def test_schedule_due_digests_queues_only_due_subscriptions(mocker):
     session = _FakeSession([due, not_due, invalid])
     mocker.patch.object(
         schedule_digests,
-        "async_session_factory",
+        "get_task_session",
         return_value=_FakeSessionFactory(session),
     )
 

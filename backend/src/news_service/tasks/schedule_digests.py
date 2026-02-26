@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 
-from news_service.db.session import async_session_factory
+from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
 from news_service.services.scheduler import is_schedule_due
 from news_service.tasks.celery_app import celery_app
@@ -24,12 +24,8 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
     queued = 0
     invalid_cron = 0
 
-    async with async_session_factory() as session:
-        result = await session.execute(
-            select(Subscription)
-            .where(Subscription.is_active.is_(True))
-            .with_for_update(skip_locked=True)
-        )
+    async with get_task_session() as session:
+        result = await session.execute(select(Subscription).where(Subscription.is_active.is_(True)))
         subscriptions = list(result.scalars().all())
 
         for subscription in subscriptions:

@@ -38,6 +38,11 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
     await subscriptions.cmd_list(message)
 
     message.answer.assert_awaited_once()
+    message_text = message.answer.await_args.args[0]
+    assert message_text == "Topics: ai"
+    assert "Schedule:" not in message_text
+    assert "Format:" not in message_text
+
     kwargs = message.answer.await_args.kwargs
     keyboard = kwargs["reply_markup"]
     buttons = keyboard.inline_keyboard[0]

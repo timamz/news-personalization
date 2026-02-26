@@ -32,7 +32,7 @@ async def cmd_subscribe(message: types.Message, state: FSMContext) -> None:
     await state.set_state(SubscribeFlow.waiting_for_prompt)
     await message.answer(
         "Describe what news you want and how often.\n\n"
-        "Example: \"I want AI and tech news every morning as a brief summary\""
+        'Example: "I want AI and tech news every morning as a brief summary"'
     )
 
 
@@ -59,8 +59,7 @@ async def process_prompt(message: types.Message, state: FSMContext) -> None:
         await message.answer(
             f"Subscription created!\n\n"
             f"Topics: {topics_str}\n"
-            f"Schedule: {sub.schedule_cron}\n"
-            f"Format: {sub.format_instructions}\n\n"
+            "\n"
             f"You'll receive digests right here in this chat."
         )
     except Exception:

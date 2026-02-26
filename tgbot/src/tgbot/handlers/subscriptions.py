@@ -38,11 +38,7 @@ async def cmd_list(message: types.Message) -> None:
 
     for sub in subs:
         topics_str = ", ".join(sub.topics)
-        text = (
-            f"Topics: {topics_str}\n"
-            f"Schedule: {sub.schedule_cron}\n"
-            f"Format: {sub.format_instructions}"
-        )
+        text = f"Topics: {topics_str}"
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [

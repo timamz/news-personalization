@@ -73,6 +73,8 @@ services:
     ports:
       - "8001:8001"
     env_file: tgbot/.env
+    volumes:
+      - tgbot_home:/home/appuser
     depends_on:
       app:
         condition: service_started
@@ -99,3 +101,4 @@ services:
 
 volumes:
   pgdata:
+  tgbot_home:

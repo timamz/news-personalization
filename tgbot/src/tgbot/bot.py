@@ -26,10 +26,10 @@ async def main() -> None:
 
     settings = get_settings()
 
-    await init_db()
-
     bot = Bot(token=settings.bot_token)
     dp = Dispatcher()
+
+    await init_db(settings.bot_storage_path)
 
     dp.include_router(start.router)
     dp.include_router(subscribe.router)

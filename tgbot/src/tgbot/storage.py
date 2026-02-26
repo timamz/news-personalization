@@ -1,8 +1,9 @@
+import os
 from pathlib import Path
 
 import aiosqlite
 
-DB_PATH = str(Path.home() / "bot_storage.db")
+DB_PATH = os.getenv("BOT_STORAGE_PATH", str(Path.home() / "bot_storage.db"))
 
 
 async def init_db(db_path: str = DB_PATH) -> None:
@@ -18,9 +19,7 @@ async def init_db(db_path: str = DB_PATH) -> None:
 
 async def get_api_key(telegram_id: int, db_path: str = DB_PATH) -> str | None:
     async with aiosqlite.connect(db_path) as db:
-        cursor = await db.execute(
-            "SELECT api_key FROM users WHERE telegram_id = ?", (telegram_id,)
-        )
+        cursor = await db.execute("SELECT api_key FROM users WHERE telegram_id = ?", (telegram_id,))
         row = await cursor.fetchone()
         return row[0] if row else None
 
