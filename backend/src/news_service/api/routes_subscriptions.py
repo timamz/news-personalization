@@ -11,7 +11,6 @@ from news_service.models.subscription import Subscription
 from news_service.models.user import User
 from news_service.schemas.subscription import SubscriptionCreate, SubscriptionResponse
 from news_service.services.coverage import ensure_topic_coverage
-from news_service.services.scheduler import register_delivery_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +40,6 @@ async def create_subscription(
 
     await session.commit()
     await session.refresh(subscription)
-
-    register_delivery_schedule(subscription)
 
     logger.info(
         "Created subscription %s for user %s",

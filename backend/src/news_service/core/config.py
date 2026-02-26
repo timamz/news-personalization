@@ -10,7 +10,6 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     log_level: str = "DEBUG"
-    default_user_api_key: str = "dev-user-key"
 
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536

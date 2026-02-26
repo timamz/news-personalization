@@ -1,15 +1,13 @@
-import logging
 import uuid
+from datetime import datetime
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
 from news_service.core.openai_client import openai_client
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
-
-logger = logging.getLogger(__name__)
 
 settings = get_settings()
 _client = openai_client
@@ -94,8 +92,8 @@ async def upsert_news_item(
     body: str,
     url: str,
     source: str,
-    published_at: str | None,
-    fetched_at: str,
+    published_at: datetime | None,
+    fetched_at: datetime,
     embedding: list[float] | None = None,
 ) -> NewsItem | None:
     existing = await session.execute(select(NewsItem).where(NewsItem.url == url))
@@ -114,8 +112,3 @@ async def upsert_news_item(
     )
     session.add(item)
     return item
-
-
-async def ensure_pgvector_extension(session: AsyncSession) -> None:
-    await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    await session.commit()

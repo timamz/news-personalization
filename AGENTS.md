@@ -40,9 +40,10 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 | **Parser** | `agents/parser.py` | New subscription | Raw user prompt | `SubscriptionConfig` (topics, cron, format) |
 | **Discovery** | `agents/discovery.py` | Topic gap detected | Uncovered topic strings | Valid RSS feed URLs |
 | **RSS Poller** | `tasks/poll_feeds.py` | Celery Beat (every 30 min) | All active `RssFeed` rows | New `NewsItem` rows + embeddings |
-| **Digest** | `agents/digest.py` | Per-user cron schedule | Subscription + unseen news pool | Formatted digest text |
+| **Digest Dispatcher** | `tasks/schedule_digests.py` | Celery Beat (every 1 min) | Active subscriptions + cron metadata | Queued digest delivery tasks |
+| **Digest** | `agents/digest.py` + `tasks/deliver_digest.py` | Dispatcher task | Subscription + unseen news pool | Formatted digest text, delivery webhook call |
 
-Parser and Discovery use OpenAI structured output. RSS Poller uses `feedparser` (no LLM). Digest uses RAG (pgvector similarity search) then LLM generation.
+Parser and Discovery use OpenAI structured output. RSS Poller uses `feedparser` (no LLM). Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST.
 
 ---
 

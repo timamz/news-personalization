@@ -10,10 +10,10 @@ Configure the bot token in `.env`:
 cp .env.example .env   # set BOT_TOKEN
 ```
 
-Then start everything from the backend directory:
+Then start everything from the repository root:
 
 ```bash
-cd ../news-backend
+cd ..
 docker compose up --build -d
 ```
 

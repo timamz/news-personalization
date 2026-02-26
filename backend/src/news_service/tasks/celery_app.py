@@ -17,8 +17,13 @@ celery_app.conf.update(
             "task": "news_service.tasks.poll_feeds.poll_all_feeds",
             "schedule": settings.rss_poll_interval_minutes * 60,
         },
+        "schedule-due-digests": {
+            "task": "news_service.tasks.schedule_digests.schedule_due_digests",
+            "schedule": 60,
+        },
     },
 )
 
 import news_service.tasks.deliver_digest  # noqa: E402, F401
 import news_service.tasks.poll_feeds  # noqa: E402, F401
+import news_service.tasks.schedule_digests  # noqa: E402, F401

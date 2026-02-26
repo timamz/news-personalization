@@ -1,11 +1,8 @@
-import logging
 from dataclasses import dataclass
 
 import httpx
 
 from tgbot.core.config import get_settings
-
-logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -13,11 +10,9 @@ settings = get_settings()
 @dataclass
 class SubscriptionInfo:
     id: str
-    raw_prompt: str
     topics: list[str]
     schedule_cron: str
     format_instructions: str
-    is_active: bool
 
 
 class BackendClient:
@@ -47,11 +42,9 @@ class BackendClient:
             data = response.json()
             return SubscriptionInfo(
                 id=data["id"],
-                raw_prompt=data["raw_prompt"],
                 topics=data["topics"],
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
-                is_active=data["is_active"],
             )
 
     async def list_subscriptions(self, api_key: str) -> list[SubscriptionInfo]:
@@ -64,11 +57,9 @@ class BackendClient:
             return [
                 SubscriptionInfo(
                     id=s["id"],
-                    raw_prompt=s["raw_prompt"],
                     topics=s["topics"],
                     schedule_cron=s["schedule_cron"],
                     format_instructions=s["format_instructions"],
-                    is_active=s["is_active"],
                 )
                 for s in response.json()
             ]

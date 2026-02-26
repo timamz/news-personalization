@@ -1,6 +1,8 @@
+from datetime import UTC, datetime
+
 import pytest
 
-from news_service.services.scheduler import parse_cron_to_celery
+from news_service.services.scheduler import is_schedule_due, parse_cron_to_celery
 
 
 def test_parse_daily_morning_cron():
@@ -26,3 +28,21 @@ def test_parse_invalid_cron_raises():
 def test_parse_every_15_minutes():
     result = parse_cron_to_celery("*/15 * * * *")
     assert str(result) == "<crontab: */15 * * * * (m/h/dM/MY/d)>"
+
+
+def test_schedule_due_when_next_run_reached():
+    now = datetime(2026, 2, 26, 8, 0, tzinfo=UTC)
+    last_run = datetime(2026, 2, 25, 8, 0, tzinfo=UTC)
+    assert is_schedule_due("0 8 * * *", last_run_at=last_run, now=now) is True
+
+
+def test_schedule_not_due_before_scheduled_time():
+    now = datetime(2026, 2, 26, 7, 59, tzinfo=UTC)
+    last_run = datetime(2026, 2, 25, 8, 0, tzinfo=UTC)
+    assert is_schedule_due("0 8 * * *", last_run_at=last_run, now=now) is False
+
+
+def test_schedule_not_due_when_already_scheduled_this_tick():
+    now = datetime(2026, 2, 26, 8, 0, tzinfo=UTC)
+    last_run = datetime(2026, 2, 26, 8, 0, tzinfo=UTC)
+    assert is_schedule_due("0 8 * * *", last_run_at=last_run, now=now) is False

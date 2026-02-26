@@ -1,11 +1,6 @@
-import logging
+from datetime import UTC, datetime
 
 from celery.schedules import crontab
-
-from news_service.models.subscription import Subscription
-from news_service.tasks.celery_app import celery_app
-
-logger = logging.getLogger(__name__)
 
 
 def parse_cron_to_celery(cron_expr: str) -> crontab:
@@ -24,29 +19,21 @@ def parse_cron_to_celery(cron_expr: str) -> crontab:
     )
 
 
-def register_delivery_schedule(subscription: Subscription) -> None:
-    """Add a Celery Beat schedule entry for a subscription's digest delivery."""
-    schedule_name = f"deliver-digest-{subscription.id}"
-    celery_crontab = parse_cron_to_celery(subscription.schedule_cron)
-
-    celery_app.conf.beat_schedule[schedule_name] = {
-        "task": "news_service.tasks.deliver_digest.deliver_digest",
-        "schedule": celery_crontab,
-        "args": [str(subscription.id)],
-    }
-    logger.info(
-        "Registered delivery schedule '%s' with cron '%s'",
-        schedule_name,
-        subscription.schedule_cron,
-        extra={"subscription_id": str(subscription.id)},
-    )
+def is_schedule_due(
+    cron_expr: str,
+    *,
+    last_run_at: datetime,
+    now: datetime | None = None,
+) -> bool:
+    """Return True when cron expression is due at the provided moment."""
+    current_time = _as_utc(now or datetime.now(UTC))
+    schedule = parse_cron_to_celery(cron_expr)
+    schedule.nowfun = lambda: current_time
+    due, _next_check_seconds = schedule.is_due(_as_utc(last_run_at))
+    return due
 
 
-def remove_delivery_schedule(subscription: Subscription) -> None:
-    schedule_name = f"deliver-digest-{subscription.id}"
-    celery_app.conf.beat_schedule.pop(schedule_name, None)
-    logger.info(
-        "Removed delivery schedule '%s'",
-        schedule_name,
-        extra={"subscription_id": str(subscription.id)},
-    )
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
