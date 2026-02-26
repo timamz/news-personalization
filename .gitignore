@@ -10,6 +10,7 @@ build/
 venv/
 
 .env
+tgbot/.env
 
 *.db
 *.sqlite3
@@ -27,5 +28,5 @@ htmlcov/
 *.swo
 .DS_Store
 
-backups/*
-!backups/.gitkeep
+backend/backups/*
+!backend/backups/.gitkeep

@@ -10,9 +10,29 @@ Development guide for humans and AI agents working on this codebase.
 
 **Scalable and reliable without being over-engineered.** The architecture should handle growth, but not be pre-optimised for problems that don't exist yet.
 
+**The backend is agnostic to any frontend.** The backend exposes a generic REST API and delivers digests via webhooks to arbitrary URLs. It has zero knowledge of Telegram, web, mobile, or any other interface. Frontend services are responsible for registering webhook URLs and translating backend payloads into their native format. This separation is a core architectural principle — never introduce frontend-specific logic into the backend.
+
 ---
 
-## Multi-Agent Architecture
+## Monorepo Structure
+
+```
+/
+  docker-compose.yml   — orchestrates all services (single entry point)
+  .env.example         — backend environment variables template
+  AGENTS.md            — this file
+  README.md            — project overview and quick start
+  backend/             — FastAPI backend, Celery workers, LLM agents
+  tgbot/               — Telegram bot frontend (aiogram)
+```
+
+Each service has its own `Dockerfile`, `pyproject.toml`, `uv.lock`, source code, and tests. New frontends are added as sibling directories (e.g. `webapp/`, `mobile/`).
+
+All services run in Docker. `docker compose up --build -d` starts everything. Individual services can be rebuilt independently: `docker compose up --build -d tgbot`.
+
+---
+
+## Multi-Agent Architecture (backend)
 
 | Agent | File | Trigger | Input | Output |
 |---|---|---|---|---|
@@ -22,6 +42,18 @@ Development guide for humans and AI agents working on this codebase.
 | **Digest** | `agents/digest.py` | Per-user cron schedule | Subscription + unseen news pool | Formatted digest text |
 
 Parser and Discovery use OpenAI structured output. RSS Poller uses `feedparser` (no LLM). Digest uses RAG (pgvector similarity search) then LLM generation.
+
+---
+
+## Multi-Service Architecture
+
+The system is composed of independent services that communicate over HTTP:
+
+- **Backend** (`backend/`) — the core service. Manages users, subscriptions, RSS feeds, news items, embeddings, and digest generation. Delivers digests by POSTing to webhook URLs.
+- **Telegram Bot** (`tgbot/`) — a frontend. Translates Telegram commands into backend API calls and receives digest webhooks to forward to users.
+- **Future frontends** — web app, mobile app, email service, etc. Each is a sibling directory with the same pattern: call the backend API, expose a webhook endpoint for deliveries.
+
+The backend never imports from or depends on any frontend. Frontends depend only on the backend's public REST API.
 
 ---
 
@@ -50,9 +82,12 @@ Parser and Discovery use OpenAI structured output. RSS Poller uses `feedparser` 
 Write the test before or alongside the implementation — never after.
 
 ```
-tests/
+backend/tests/
 ├── unit/         # Pure logic, no I/O. Mock all external calls (LLM, DB, HTTP).
 └── integration/  # Real Postgres + Redis via Docker. Mock OpenAI API only.
+
+tgbot/tests/
+└── unit/         # Mock backend API calls, bot interactions, and storage.
 ```
 
 - Unit tests must be fast (<1s per test) and require no running services.
@@ -68,7 +103,7 @@ tests/
 Ruff is the single tool for both linting and formatting. No other linters or formatters.
 
 ```toml
-# pyproject.toml
+# pyproject.toml (in each service)
 [tool.ruff]
 target-version = "py312"
 line-length = 100
@@ -87,9 +122,9 @@ ignore = ["B008"]  # Depends() in FastAPI defaults is idiomatic
 ## CI/CD — GitHub Actions
 
 Every push to any branch runs:
-1. `ruff check . && ruff format --check .`
-2. `pytest tests/unit`
-3. `docker build` smoke test
+1. `ruff check . && ruff format --check .` (per service)
+2. `pytest tests/unit` (per service)
+3. `docker build` smoke test (per service)
 
 Merging to `main` additionally runs:
 4. `pytest tests/integration` (requires Docker services)
@@ -103,7 +138,10 @@ Branch strategy: `main` is always deployable. Feature work happens on short-live
 
 ## Dependency Management — uv
 
+Each service manages its own dependencies independently.
+
 ```bash
+cd backend  # or cd tgbot
 uv add <package>          # add runtime dependency
 uv add --dev <package>    # add dev/test dependency
 uv sync                   # install from uv.lock
@@ -111,15 +149,15 @@ uv run pytest             # run in managed environment
 ```
 
 - `uv.lock` is committed to the repository. Always run `uv sync` after pulling.
-- Pin the Python version in `.python-version`.
+- Pin the Python version in `.python-version` (per service).
 
 ---
 
 ## Docker
 
-- Multi-stage `Dockerfile`: `builder` stage installs deps, `runtime` stage is minimal.
+- Multi-stage `Dockerfile` per service: `builder` stage installs deps, `runtime` stage is minimal.
 - Run as a non-root user in the final image.
-- All services defined in `docker-compose.yml`. `docker-compose up` must bring up the full stack.
+- All services defined in the root `docker-compose.yml`. `docker compose up` must bring up the full stack.
 - Use `pgvector/pgvector:pg16` for Postgres (supports ARM64 + AMD64).
 - No secrets in the image. All config via environment variables read from `.env`.
 
@@ -127,9 +165,10 @@ uv run pytest             # run in managed environment
 
 ## Configuration
 
-- All config lives in `core/config.py` using `pydantic-settings`.
-- Required secrets (`OPENAI_API_KEY`, `DATABASE_URL`, etc.) raise an error at startup if missing.
-- `.env.example` documents every variable. `.env` is gitignored.
+- Backend config lives in `backend/src/news_service/core/config.py` using `pydantic-settings`.
+- Bot config lives in `tgbot/src/tgbot/core/config.py` using `pydantic-settings`.
+- Required secrets raise an error at startup if missing.
+- `.env.example` documents every variable. `.env` files are gitignored.
 
 ---
 
@@ -148,6 +187,6 @@ uv run pytest             # run in managed environment
 - Always include context: `subscription_id`, `feed_id`, `user_id` where relevant.
 - Never log secrets or PII.
 
-## One more important thing:
+---
 
 When the content of this file becomes outdated (like architecture description), update this file also.
