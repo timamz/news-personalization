@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 
 class SubscriptionCreate(BaseModel):
     prompt: str = Field(..., min_length=5, description="Natural language news preference")
+    delivery_webhook_url: str | None = Field(
+        default=None, description="URL where digest will be POSTed"
+    )
 
 
 class SubscriptionConfig(BaseModel):
@@ -24,6 +27,7 @@ class SubscriptionResponse(BaseModel):
     topics: list[str]
     schedule_cron: str
     format_instructions: str
+    delivery_webhook_url: str | None
     is_active: bool
     created_at: datetime
 

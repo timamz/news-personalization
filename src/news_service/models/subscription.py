@@ -17,6 +17,7 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     topics: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
     schedule_cron: Mapped[str] = mapped_column(String(100), nullable=False)
     format_instructions: Mapped[str] = mapped_column(Text, nullable=False, default="brief summary")
+    delivery_webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="subscriptions")  # noqa: F821

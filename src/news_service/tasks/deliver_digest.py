@@ -7,7 +7,6 @@ from sqlalchemy import select
 from news_service.agents.digest import generate_digest
 from news_service.db.session import async_session_factory
 from news_service.models.subscription import Subscription
-from news_service.models.user import User
 from news_service.services.delivery import get_delivery_channel
 from news_service.tasks.celery_app import celery_app
 
@@ -30,18 +29,15 @@ async def _deliver_digest(subscription_id: uuid.UUID) -> dict:
             logger.warning("Subscription %s not found or inactive", subscription_id)
             return {"status": "skipped", "reason": "not_found_or_inactive"}
 
-        user_result = await session.execute(select(User).where(User.id == subscription.user_id))
-        user = user_result.scalar_one()
-
         digest_text = await generate_digest(session, subscription)
         if digest_text is None:
             return {"status": "skipped", "reason": "no_new_items"}
 
         await session.commit()
 
-    channel = get_delivery_channel()
+    channel = get_delivery_channel(subscription.delivery_webhook_url)
     topic_summary = ", ".join(subscription.topics[:3])
     subject = f"Your News Digest: {topic_summary}"
-    await channel.send(user.email, subject, digest_text)
+    await channel.send(subject, digest_text)
 
     return {"status": "delivered", "subscription_id": str(subscription_id)}

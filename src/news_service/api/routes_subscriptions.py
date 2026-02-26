@@ -32,6 +32,7 @@ async def create_subscription(
         topics=config.topics,
         schedule_cron=config.schedule_cron,
         format_instructions=config.format_instructions,
+        delivery_webhook_url=payload.delivery_webhook_url,
     )
     session.add(subscription)
     await session.flush()

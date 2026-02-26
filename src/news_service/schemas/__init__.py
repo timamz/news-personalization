@@ -4,13 +4,12 @@ from news_service.schemas.subscription import (
     SubscriptionCreate,
     SubscriptionResponse,
 )
-from news_service.schemas.user import UserCreate, UserResponse
+from news_service.schemas.user import UserResponse
 
 __all__ = [
     "DiscoveredFeed",
     "SubscriptionConfig",
     "SubscriptionCreate",
     "SubscriptionResponse",
-    "UserCreate",
     "UserResponse",
 ]
