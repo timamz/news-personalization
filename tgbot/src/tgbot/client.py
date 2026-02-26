@@ -71,3 +71,13 @@ class BackendClient:
                 headers={"X-API-Key": api_key},
             )
             response.raise_for_status()
+
+    async def send_now(self, api_key: str, subscription_id: str) -> dict[str, str]:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/{subscription_id}/send-now",
+                headers={"X-API-Key": api_key},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return {"task_id": data["task_id"], "status": data["status"]}

@@ -13,6 +13,7 @@ router = Router()
 backend = BackendClient()
 
 DELETE_PREFIX = "delete_sub:"
+SEND_NOW_PREFIX = "send_now:"
 
 
 @router.message(Command("list"))
@@ -44,10 +45,34 @@ async def cmd_list(message: types.Message) -> None:
         )
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="Delete", callback_data=f"{DELETE_PREFIX}{sub.id}")]
+                [
+                    InlineKeyboardButton(
+                        text="Send now",
+                        callback_data=f"{SEND_NOW_PREFIX}{sub.id}",
+                    ),
+                    InlineKeyboardButton(text="Delete", callback_data=f"{DELETE_PREFIX}{sub.id}"),
+                ]
             ]
         )
         await message.answer(text, reply_markup=keyboard)
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith(SEND_NOW_PREFIX))
+async def handle_send_now(callback: CallbackQuery) -> None:
+    telegram_id = callback.from_user.id
+    api_key = await get_api_key(telegram_id)
+    subscription_id = callback.data[len(SEND_NOW_PREFIX) :]
+
+    if api_key is None:
+        await callback.answer("Please /start first.")
+        return
+
+    try:
+        await backend.send_now(api_key, subscription_id)
+        await callback.answer("Digest queued.")
+    except Exception:
+        logger.exception("Failed to queue digest for subscription %s", subscription_id)
+        await callback.answer("Failed to queue digest. Try again.")
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(DELETE_PREFIX))

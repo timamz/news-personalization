@@ -89,3 +89,25 @@ async def test_list_subscriptions(client: BackendClient):
 
     assert len(subs) == 1
     assert subs[0].topics == ["sports"]
+
+
+@pytest.mark.asyncio
+async def test_send_now(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 202
+    mock_response.json.return_value = {"task_id": "task-123", "status": "queued"}
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.post = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        result = await client.send_now("my-key", "sub-1")
+
+    assert result == {"task_id": "task-123", "status": "queued"}
+    mock_http.post.assert_called_once_with(
+        "http://test-backend:8000/subscriptions/sub-1/send-now",
+        headers={"X-API-Key": "my-key"},
+    )
