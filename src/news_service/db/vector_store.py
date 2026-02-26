@@ -1,18 +1,18 @@
 import logging
 import uuid
 
-from openai import AsyncOpenAI
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
+from news_service.core.openai_client import openai_client
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client = openai_client
 
 
 async def embed_text(content: str) -> list[float]:

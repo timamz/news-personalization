@@ -1,11 +1,11 @@
 import logging
 import uuid
 
-from openai import AsyncOpenAI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
+from news_service.core.openai_client import openai_client
 from news_service.db.vector_store import embed_text, find_similar_news
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
@@ -14,7 +14,7 @@ from news_service.models.subscription import Subscription
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client = openai_client
 
 
 async def generate_digest(session: AsyncSession, subscription: Subscription) -> str | None:

@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     openai_api_key: str
+    openai_base_url: str = "https://api.vsellm.ru/v1"
     database_url: str = "postgresql+asyncpg://news:news@localhost:5432/news"
     redis_url: str = "redis://localhost:6379/0"
 

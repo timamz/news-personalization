@@ -1,14 +1,13 @@
 import logging
 
-from openai import AsyncOpenAI
-
 from news_service.core.config import get_settings
+from news_service.core.openai_client import openai_client
 from news_service.schemas.subscription import SubscriptionConfig
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client = openai_client
 
 SYSTEM_PROMPT = """\
 You are a news subscription parser. Given a user's natural language description of how they \

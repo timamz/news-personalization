@@ -2,15 +2,15 @@ import logging
 
 import feedparser
 import httpx
-from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
+from news_service.core.openai_client import openai_client
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client = openai_client
 
 SYSTEM_PROMPT = """\
 You are an RSS feed discovery agent. Given a list of news topics, find real, working RSS feed \
