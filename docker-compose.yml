@@ -68,5 +68,26 @@ services:
         condition: service_healthy
     command: celery -A news_service.tasks.celery_app beat --loglevel=info
 
+  db-backup:
+    image: pgvector/pgvector:pg16
+    environment:
+      PGPASSWORD: news
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Dump immediately on start, then overwrite the same file every hour.
+    command: >
+      sh -c "
+        while true; do
+          pg_dump -h postgres -U news -d news -F p -f /backups/checkpoint.sql &&
+          echo \"[db-backup] checkpoint written at $$(date -u)\" ||
+          echo \"[db-backup] pg_dump failed at $$(date -u)\";
+          sleep 3600;
+        done
+      "
+    restart: unless-stopped
+
 volumes:
   pgdata:

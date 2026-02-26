@@ -26,3 +26,5 @@ htmlcov/
 *.swp
 *.swo
 .DS_Store
+
+backups/*.sql
