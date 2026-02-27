@@ -37,11 +37,11 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 
 | Agent | File | Trigger | Input | Output |
 |---|---|---|---|---|
-| **Parser** | `agents/parser.py` | New subscription | Raw user prompt | `SubscriptionConfig` (topics, cron, format) |
+| **Parser** | `agents/parser.py` | New subscription | Raw user prompt | `SubscriptionConfig` (topics, cron, format, digest language) |
 | **Discovery** | `agents/discovery.py` | Topic gap detected | Uncovered topic strings | Valid RSS feed URLs |
 | **Source Poller** | `tasks/poll_feeds.py` | Celery Beat (every 30 min) | All active source rows (`rss_feeds`) | New `NewsItem` rows + embeddings |
 | **Digest Dispatcher** | `tasks/schedule_digests.py` | Celery Beat (every 1 min) | Active subscriptions + cron metadata | Queued digest delivery tasks |
-| **Digest** | `agents/digest.py` + `tasks/deliver_digest.py` | Dispatcher task | Subscription + unseen news pool | Formatted digest text, delivery webhook call |
+| **Digest** | `agents/digest.py` + `tasks/deliver_digest.py` | Dispatcher task | Subscription + unseen news from fixed subscription sources | Formatted digest text, delivery webhook call |
 
 Parser and Discovery use OpenAI structured output. Source Poller ingests RSS feeds (`feedparser`) and public Telegram channels (`t.me/s/<channel>` HTML parsing), without LLM calls. Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST.
 
@@ -179,6 +179,7 @@ uv run pytest             # run in managed environment
 - Async SQLAlchemy with `asyncpg`. No synchronous DB calls in async context.
 - All schema changes via Alembic migrations. Never modify the DB schema manually.
 - `pgvector` for embeddings. Use `text-embedding-3-small` (1536 dimensions).
+- Each subscription stores a fixed set of source links in `subscription_sources`; digest retrieval must use only those sources.
 
 ---
 

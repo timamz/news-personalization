@@ -11,6 +11,7 @@ def mock_config():
         topics=["artificial intelligence", "machine learning"],
         schedule_cron="0 8 */3 * *",
         format_instructions="brief summary",
+        digest_language="en",
     )
 
 
@@ -36,6 +37,7 @@ async def test_parse_subscription_returns_config(mock_config):
     assert result.topics == ["artificial intelligence", "machine learning"]
     assert result.schedule_cron == "0 8 */3 * *"
     assert result.format_instructions == "brief summary"
+    assert result.digest_language == "en"
 
 
 @pytest.mark.asyncio

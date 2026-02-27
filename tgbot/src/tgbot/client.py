@@ -31,14 +31,25 @@ class BackendClient:
         api_key: str,
         prompt: str,
         delivery_webhook_url: str,
+        fixed_telegram_channels: list[str] | None = None,
+        include_discovered_sources: bool | None = None,
     ) -> SubscriptionInfo:
+        payload: dict[str, object] = {
+            "prompt": prompt,
+            "delivery_webhook_url": delivery_webhook_url,
+        }
+        if fixed_telegram_channels is not None:
+            payload["fixed_telegram_channels"] = fixed_telegram_channels
+        if include_discovered_sources is not None:
+            payload["include_discovered_sources"] = include_discovered_sources
+
         async with httpx.AsyncClient(
             timeout=settings.backend_create_subscription_timeout_seconds
         ) as client:
             response = await client.post(
                 f"{self.base_url}/subscriptions",
                 headers={"X-API-Key": api_key},
-                json={"prompt": prompt, "delivery_webhook_url": delivery_webhook_url},
+                json=payload,
             )
             response.raise_for_status()
             data = response.json()

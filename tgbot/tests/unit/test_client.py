@@ -94,6 +94,48 @@ async def test_create_subscription_uses_configured_timeout(client: BackendClient
 
 
 @pytest.mark.asyncio
+async def test_create_subscription_sends_source_preferences(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 201
+    mock_response.json.return_value = {
+        "id": "sub-999",
+        "raw_prompt": "ML news",
+        "topics": ["machine learning"],
+        "schedule_cron": "0 8 * * *",
+        "format_instructions": "brief summary",
+        "delivery_webhook_url": "http://bot:8001/deliver/123",
+        "is_active": True,
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.post = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        await client.create_subscription(
+            "my-key",
+            "ML news",
+            "http://bot:8001/deliver/123",
+            fixed_telegram_channels=["gonzo_ml"],
+            include_discovered_sources=True,
+        )
+
+    mock_http.post.assert_awaited_once_with(
+        "http://test-backend:8000/subscriptions",
+        headers={"X-API-Key": "my-key"},
+        json={
+            "prompt": "ML news",
+            "delivery_webhook_url": "http://bot:8001/deliver/123",
+            "fixed_telegram_channels": ["gonzo_ml"],
+            "include_discovered_sources": True,
+        },
+    )
+
+
+@pytest.mark.asyncio
 async def test_list_subscriptions(client: BackendClient):
     mock_response = MagicMock()
     mock_response.status_code = 200

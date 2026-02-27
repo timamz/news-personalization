@@ -18,6 +18,7 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     topics: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
     schedule_cron: Mapped[str] = mapped_column(String(100), nullable=False)
     format_instructions: Mapped[str] = mapped_column(Text, nullable=False, default="brief summary")
+    digest_language: Mapped[str] = mapped_column(String(16), nullable=False, default="en")
     delivery_webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_digest_scheduled_at: Mapped[datetime | None] = mapped_column(
@@ -28,4 +29,8 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     user: Mapped["User"] = relationship(back_populates="subscriptions")  # noqa: F821
     sent_items: Mapped[list["SentItem"]] = relationship(  # noqa: F821
         back_populates="subscription", cascade="all, delete-orphan"
+    )
+    source_links: Mapped[list["SubscriptionSource"]] = relationship(  # noqa: F821
+        back_populates="subscription",
+        cascade="all, delete-orphan",
     )

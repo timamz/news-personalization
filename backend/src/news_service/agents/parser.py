@@ -30,6 +30,11 @@ Rules for topics:
 Rules for format_instructions:
 - If the user specifies a format, use their wording.
 - If not specified, default to "brief summary".
+
+Rules for digest_language:
+- Detect the language of the user's prompt.
+- Return a short language code like "en", "ru", "es", "de", "fr".
+- The digest must be generated in this same language.
 """
 
 
@@ -48,9 +53,10 @@ async def parse_subscription(prompt: str) -> SubscriptionConfig:
         raise ValueError("LLM returned empty parsed response for subscription prompt")
 
     logger.info(
-        "Parsed subscription: topics=%s, cron=%s, format=%s",
+        "Parsed subscription: topics=%s, cron=%s, format=%s, language=%s",
         result.topics,
         result.schedule_cron,
         result.format_instructions,
+        result.digest_language,
     )
     return result

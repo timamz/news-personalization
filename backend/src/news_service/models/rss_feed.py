@@ -22,3 +22,7 @@ class RssFeed(UUIDPrimaryKey, TimestampMixin, Base):
     news_items: Mapped[list["NewsItem"]] = relationship(  # noqa: F821
         back_populates="feed", cascade="all, delete-orphan"
     )
+    subscription_links: Mapped[list["SubscriptionSource"]] = relationship(  # noqa: F821
+        back_populates="feed",
+        cascade="all, delete-orphan",
+    )

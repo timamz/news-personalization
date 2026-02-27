@@ -19,6 +19,7 @@ def test_subscription_config_valid():
         topics=["AI"],
         schedule_cron="0 8 * * *",
         format_instructions="detailed analysis",
+        digest_language="en",
     )
     assert config.topics == ["AI"]
     assert config.schedule_cron == "0 8 * * *"
@@ -29,6 +30,7 @@ def test_subscription_config_empty_topics():
         SubscriptionConfig(
             topics=[],
             schedule_cron="0 8 * * *",
+            digest_language="en",
         )
 
 
@@ -36,5 +38,6 @@ def test_subscription_config_default_format():
     config = SubscriptionConfig(
         topics=["politics"],
         schedule_cron="0 21 * * *",
+        digest_language="en",
     )
     assert config.format_instructions == "brief summary"

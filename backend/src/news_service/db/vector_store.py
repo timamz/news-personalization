@@ -94,16 +94,23 @@ async def find_similar_news(
     session: AsyncSession,
     query_embedding: list[float],
     exclude_ids: set[uuid.UUID],
+    allowed_feed_ids: set[uuid.UUID] | None = None,
     limit: int = 20,
 ) -> list[NewsItem]:
+    if allowed_feed_ids is not None and not allowed_feed_ids:
+        return []
+
     exclude_list = list(exclude_ids) if exclude_ids else [uuid.uuid4()]
+    where_clauses = [
+        NewsItem.embedding.isnot(None),
+        NewsItem.id.notin_(exclude_list),
+    ]
+    if allowed_feed_ids is not None:
+        where_clauses.append(NewsItem.feed_id.in_(list(allowed_feed_ids)))
 
     stmt = (
         select(NewsItem)
-        .where(
-            NewsItem.embedding.isnot(None),
-            NewsItem.id.notin_(exclude_list),
-        )
+        .where(*where_clauses)
         .order_by(NewsItem.embedding.cosine_distance(query_embedding))
         .limit(limit)
     )

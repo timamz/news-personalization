@@ -10,6 +10,7 @@ from news_service.db.vector_store import embed_text, find_similar_news
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
 from news_service.models.subscription import Subscription
+from news_service.models.subscription_source import SubscriptionSource
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,30 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     )
     sent_ids: set[uuid.UUID] = set(sent_result.scalars().all())
 
+    source_result = await session.execute(
+        select(SubscriptionSource.feed_id).where(
+            SubscriptionSource.subscription_id == subscription.id
+        )
+    )
+    source_feed_ids: set[uuid.UUID] = set(source_result.scalars().all())
+    if not source_feed_ids:
+        logger.warning(
+            "No fixed sources configured for subscription %s",
+            subscription.id,
+            extra={"subscription_id": str(subscription.id)},
+        )
+        return None
+
     topic_query = " ".join(subscription.topics)
     query_embedding = await embed_text(topic_query)
 
-    news_items = await find_similar_news(session, query_embedding, exclude_ids=sent_ids, limit=15)
+    news_items = await find_similar_news(
+        session,
+        query_embedding,
+        exclude_ids=sent_ids,
+        allowed_feed_ids=source_feed_ids,
+        limit=15,
+    )
 
     if not news_items:
         logger.info(
@@ -36,7 +57,11 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
         )
         return None
 
-    digest_text = await _compose_digest(news_items, subscription.format_instructions)
+    digest_text = await _compose_digest(
+        news_items,
+        subscription.format_instructions,
+        subscription.digest_language,
+    )
 
     await _mark_as_sent(session, subscription.id, [item.id for item in news_items])
 
@@ -49,7 +74,11 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     return digest_text
 
 
-async def _compose_digest(items: list[NewsItem], format_instructions: str) -> str:
+async def _compose_digest(
+    items: list[NewsItem],
+    format_instructions: str,
+    digest_language: str,
+) -> str:
     news_block = "\n\n".join(
         f"**{item.headline}**\n{item.body}\nSource: {item.source} | {item.url}" for item in items
     )
@@ -62,6 +91,7 @@ async def _compose_digest(items: list[NewsItem], format_instructions: str) -> st
                 "content": (
                     f"You are a news digest writer. Format the following news items "
                     f"according to these instructions: {format_instructions}\n\n"
+                    f"Write the digest in language '{digest_language}'. "
                     f"Make it well-structured, readable, and engaging."
                 ),
             },

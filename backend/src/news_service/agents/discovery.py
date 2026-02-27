@@ -6,6 +6,11 @@ from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
 from news_service.core.openai_client import openai_client
+from news_service.services.telegram import (
+    build_telegram_channel_url,
+    extract_telegram_channel_from_url,
+    fetch_telegram_posts,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -13,16 +18,17 @@ settings = get_settings()
 _client = openai_client
 
 SYSTEM_PROMPT = """\
-You are an RSS feed discovery agent. Given a list of news topics, find real, working RSS feed \
-URLs that cover those topics.
+You are a source discovery agent. Given a list of news topics, find real, working sources that \
+cover those topics.
 
 Rules:
-- Return only well-known, major news sources with RSS feeds.
-- For each topic, try to find 2-3 relevant RSS feeds.
-- Prefer feeds from sources like Reuters, BBC, TechCrunch, ArsTechnica, MIT Technology Review, \
-The Verge, etc.
-- Return the full URL to the RSS/Atom feed (not the website homepage).
-- Common RSS feed URL patterns: /feed, /rss, /rss.xml, /feed/rss, /feeds/all.atom.xml
+- Return a mix of:
+  1) RSS/Atom feeds from well-known sources.
+  2) Public Telegram channels using URL format https://t.me/s/<channel>.
+- For each topic, try to find 3-6 total sources.
+- Prefer high-signal, active sources.
+- For RSS sources, return full RSS/Atom feed URLs (not homepages).
+- For Telegram sources, return public channel archive URLs only (https://t.me/s/<channel>).
 """
 
 
@@ -33,7 +39,7 @@ class DiscoveredFeedItem(BaseModel):
 
 
 class DiscoveredFeedList(BaseModel):
-    feeds: list[DiscoveredFeedItem] = Field(..., description="List of discovered RSS feeds")
+    feeds: list[DiscoveredFeedItem] = Field(..., description="List of discovered sources")
 
 
 async def discover_feeds(topics: list[str]) -> list[DiscoveredFeedItem]:
@@ -54,13 +60,34 @@ async def discover_feeds(topics: list[str]) -> list[DiscoveredFeedItem]:
 
     validated = []
     for feed in result.feeds:
-        if await validate_feed_url(feed.url):
-            validated.append(feed)
-            logger.info("Validated RSS feed: %s (%s)", feed.url, feed.title)
-        else:
-            logger.warning("Invalid RSS feed URL discarded: %s", feed.url)
+        normalized_url = normalize_source_url(feed.url)
+        if normalized_url is None:
+            logger.warning("Invalid source URL discarded: %s", feed.url)
+            continue
+
+        is_valid = await validate_source_url(normalized_url)
+        if is_valid:
+            validated.append(feed.model_copy(update={"url": normalized_url}))
+            logger.info("Validated source: %s (%s)", normalized_url, feed.title)
+            continue
+
+        logger.warning("Invalid source URL discarded: %s", normalized_url)
 
     return validated
+
+
+def normalize_source_url(url: str) -> str | None:
+    channel = extract_telegram_channel_from_url(url)
+    if channel is not None:
+        return build_telegram_channel_url(channel)
+    return url.strip()
+
+
+async def validate_source_url(url: str) -> bool:
+    channel = extract_telegram_channel_from_url(url)
+    if channel is not None:
+        return await validate_telegram_channel(channel)
+    return await validate_feed_url(url)
 
 
 async def validate_feed_url(url: str) -> bool:
@@ -74,4 +101,13 @@ async def validate_feed_url(url: str) -> bool:
         return len(parsed.entries) > 0
     except (httpx.HTTPError, Exception):
         logger.exception("Feed validation failed for %s", url)
+        return False
+
+
+async def validate_telegram_channel(channel: str) -> bool:
+    try:
+        posts = await fetch_telegram_posts(channel)
+        return len(posts) > 0
+    except Exception:
+        logger.exception("Telegram channel validation failed for @%s", channel)
         return False

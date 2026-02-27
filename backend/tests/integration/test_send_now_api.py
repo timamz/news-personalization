@@ -5,6 +5,7 @@ import pytest
 from httpx import AsyncClient
 
 from news_service.db.session import async_session_factory
+from news_service.models.rss_feed import RssFeed
 from news_service.models.subscription import Subscription
 from news_service.schemas.subscription import SubscriptionConfig
 
@@ -19,14 +20,29 @@ async def _create_user_and_subscription(
         topics=["artificial intelligence"],
         schedule_cron="0 8 * * *",
         format_instructions="brief summary",
+        digest_language="en",
     )
     mocker.patch(
         "news_service.api.routes_subscriptions.parse_subscription",
         new=AsyncMock(return_value=parsed_config),
     )
+
+    async def fake_ensure_topic_coverage(session, topics):  # noqa: ANN001
+        feed = RssFeed(
+            url="https://example.com/rss.xml",
+            title="Example Feed",
+            topic_tags=topics,
+            topic_embedding=[0.0] * 1536,
+            is_active=True,
+            subscriber_count=1,
+        )
+        session.add(feed)
+        await session.flush()
+        return [feed]
+
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=AsyncMock(),
+        new=fake_ensure_topic_coverage,
     )
 
     user_response = await api_client.post("/users")
