@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
 from tgbot.client import BackendClient
-from tgbot.storage import get_api_key
+from tgbot.user_registry import ensure_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,11 @@ SEND_NOW_PREFIX = "send_now:"
 @router.message(Command("list"))
 async def cmd_list(message: types.Message) -> None:
     telegram_id = message.from_user.id
-    api_key = await get_api_key(telegram_id)
-
-    if api_key is None:
-        await message.answer("Please /start first to register.")
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await message.answer("Registration failed. Please try again later.")
         return
 
     try:
@@ -56,11 +57,13 @@ async def cmd_list(message: types.Message) -> None:
 @router.callback_query(lambda c: c.data and c.data.startswith(SEND_NOW_PREFIX))
 async def handle_send_now(callback: CallbackQuery) -> None:
     telegram_id = callback.from_user.id
-    api_key = await get_api_key(telegram_id)
     subscription_id = callback.data[len(SEND_NOW_PREFIX) :]
 
-    if api_key is None:
-        await callback.answer("Please /start first.")
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await callback.answer("Registration failed. Try again.")
         return
 
     try:
@@ -74,11 +77,13 @@ async def handle_send_now(callback: CallbackQuery) -> None:
 @router.callback_query(lambda c: c.data and c.data.startswith(DELETE_PREFIX))
 async def handle_delete(callback: CallbackQuery) -> None:
     telegram_id = callback.from_user.id
-    api_key = await get_api_key(telegram_id)
     subscription_id = callback.data[len(DELETE_PREFIX) :]
 
-    if api_key is None:
-        await callback.answer("Please /start first.")
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await callback.answer("Registration failed. Try again.")
         return
 
     try:

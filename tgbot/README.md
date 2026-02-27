@@ -17,11 +17,24 @@ cd ..
 docker compose up --build -d
 ```
 
-## Development
+## Development Setup
 
 ```bash
-uv sync --all-extras
+uv sync --extra dev
+```
+
+Note: dev tools are configured as the `dev` extra, so use `uv sync --extra dev`
+instead of `uv sync --dev`.
+
+## Lint and Format
+
+```bash
 uv run ruff check .
 uv run ruff format .
-uv run pytest
+```
+
+## Testing
+
+```bash
+uv run python -m pytest tests/unit -q
 ```

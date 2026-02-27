@@ -15,11 +15,25 @@ def _mock_message(telegram_id: int, text: str):
 
 
 @pytest.mark.asyncio
+async def test_cmd_subscribe_prompts_for_description(monkeypatch):
+    message = _mock_message(telegram_id=123, text="")
+    state = SimpleNamespace(set_state=AsyncMock())
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    await subscribe.cmd_subscribe(message, state)
+
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_prompt)
+    message.answer.assert_awaited_once()
+    assert "Describe what news you want" in message.answer.await_args.args[0]
+
+
+@pytest.mark.asyncio
 async def test_process_prompt_hides_technical_details(monkeypatch):
     message = _mock_message(telegram_id=123, text="AI news daily")
     state = SimpleNamespace(clear=AsyncMock())
 
-    monkeypatch.setattr(subscribe, "get_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
     create_subscription = AsyncMock(
         return_value=SimpleNamespace(
             id="sub-1",

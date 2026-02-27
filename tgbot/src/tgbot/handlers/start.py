@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.filters import Command, CommandStart
 
 from tgbot.client import BackendClient
-from tgbot.storage import get_api_key, save_api_key
+from tgbot.user_registry import ensure_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -24,17 +24,12 @@ WELCOME_TEXT = (
 @router.message(CommandStart())
 async def cmd_start(message: types.Message) -> None:
     telegram_id = message.from_user.id
-    api_key = await get_api_key(telegram_id)
-
-    if api_key is None:
-        try:
-            api_key = await backend.register_user()
-            await save_api_key(telegram_id, api_key)
-            logger.info("Registered new user for telegram_id=%d", telegram_id)
-        except Exception:
-            logger.exception("Failed to register user for telegram_id=%d", telegram_id)
-            await message.answer("Registration failed. Please try again later.")
-            return
+    try:
+        await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to register user for telegram_id=%d", telegram_id)
+        await message.answer("Registration failed. Please try again later.")
+        return
 
     await message.answer(WELCOME_TEXT)
 

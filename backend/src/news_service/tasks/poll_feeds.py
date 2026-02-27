@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
 from news_service.models.rss_feed import RssFeed
+from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,10 @@ async def _poll_all_feeds() -> dict:
 
 
 async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
+    channel_handle = extract_telegram_channel_from_url(feed.url)
+    if channel_handle is not None:
+        return await _poll_single_telegram_channel(session, feed, channel_handle)
+
     try:
         parsed = feedparser.parse(feed.url)
     except Exception:
@@ -95,6 +100,65 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
         feed.url,
         new_count,
         len(entries),
+        extra={"feed_id": str(feed.id)},
+    )
+    return new_count
+
+
+async def _poll_single_telegram_channel(
+    session: AsyncSession,
+    feed: RssFeed,
+    channel_handle: str,
+) -> int:
+    try:
+        posts = await fetch_telegram_posts(channel_handle)
+    except Exception:
+        logger.exception(
+            "Failed to parse Telegram channel @%s",
+            channel_handle,
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
+
+    if not posts:
+        return 0
+
+    texts_to_embed = [post.body for post in posts]
+    try:
+        embeddings = await embed_texts(texts_to_embed)
+    except Exception:
+        logger.exception(
+            "Failed to embed Telegram posts for @%s",
+            channel_handle,
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
+
+    source_name = feed.title or f"Telegram @{channel_handle}"
+    now = datetime.now(UTC)
+    new_count = 0
+    for post, embedding in zip(posts, embeddings, strict=True):
+        headline = post.body.splitlines()[0][:200]
+        item = await upsert_news_item(
+            session,
+            feed_id=feed.id,
+            headline=headline or f"Telegram post from @{channel_handle}",
+            body=post.body,
+            url=post.url,
+            source=source_name,
+            published_at=post.published_at,
+            fetched_at=now,
+            embedding=embedding,
+        )
+        if item is not None:
+            new_count += 1
+
+    feed.last_polled_at = now
+    logger.info(
+        "Polled Telegram channel @%s: %d new items from %d posts",
+        channel_handle,
+        new_count,
+        len(posts),
         extra={"feed_id": str(feed.id)},
     )
     return new_count

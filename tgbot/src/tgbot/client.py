@@ -32,7 +32,9 @@ class BackendClient:
         prompt: str,
         delivery_webhook_url: str,
     ) -> SubscriptionInfo:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.backend_create_subscription_timeout_seconds
+        ) as client:
             response = await client.post(
                 f"{self.base_url}/subscriptions",
                 headers={"X-API-Key": api_key},

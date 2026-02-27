@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from tgbot.client import BackendClient
 from tgbot.core.config import get_settings
-from tgbot.storage import get_api_key
+from tgbot.user_registry import ensure_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,11 @@ class SubscribeFlow(StatesGroup):
 @router.message(Command("subscribe"))
 async def cmd_subscribe(message: types.Message, state: FSMContext) -> None:
     telegram_id = message.from_user.id
-    api_key = await get_api_key(telegram_id)
-
-    if api_key is None:
-        await message.answer("Please /start first to register.")
+    try:
+        await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await message.answer("Registration failed. Please try again later.")
         return
 
     await state.set_state(SubscribeFlow.waiting_for_prompt)
@@ -39,11 +40,17 @@ async def cmd_subscribe(message: types.Message, state: FSMContext) -> None:
 @router.message(SubscribeFlow.waiting_for_prompt)
 async def process_prompt(message: types.Message, state: FSMContext) -> None:
     telegram_id = message.from_user.id
-    api_key = await get_api_key(telegram_id)
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await message.answer("Registration failed. Please try again later.")
+        await state.clear()
+        return
     prompt = message.text
 
-    if not api_key or not prompt:
-        await message.answer("Something went wrong. Please /start again.")
+    if not prompt:
+        await message.answer("Something went wrong. Please try /subscribe again.")
         await state.clear()
         return
 

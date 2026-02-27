@@ -32,7 +32,7 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
         format_instructions="brief summary",
     )
 
-    monkeypatch.setattr(subscriptions, "get_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
     monkeypatch.setattr(subscriptions.backend, "list_subscriptions", AsyncMock(return_value=[sub]))
 
     await subscriptions.cmd_list(message)
@@ -56,7 +56,7 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
 async def test_handle_send_now_queues_digest(monkeypatch):
     callback = _mock_callback(telegram_id=222, data="send_now:sub-2")
 
-    monkeypatch.setattr(subscriptions, "get_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
     send_now = AsyncMock(return_value={"task_id": "task-123", "status": "queued"})
     monkeypatch.setattr(subscriptions.backend, "send_now", send_now)
 

@@ -1,10 +1,12 @@
 import logging
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.discovery import DiscoveredFeedItem, discover_feeds
 from news_service.db.vector_store import embed_text, find_similar_feeds
 from news_service.models.rss_feed import RssFeed
+from news_service.services.telegram import build_telegram_channel_url
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,40 @@ async def ensure_topic_coverage(session: AsyncSession, topics: list[str]) -> Non
 
     for feed_info in discovered:
         await _register_feed(session, feed_info)
+
+
+async def ensure_telegram_channel_coverage(
+    session: AsyncSession,
+    channels: list[str],
+    topics: list[str],
+) -> None:
+    if not channels:
+        return
+
+    topic_tags = topics or ["telegram"]
+    topic_str = " ".join(topic_tags)
+    topic_embedding = await embed_text(topic_str)
+
+    for channel in channels:
+        source_url = build_telegram_channel_url(channel)
+        result = await session.execute(select(RssFeed).where(RssFeed.url == source_url))
+        existing_feed = result.scalar_one_or_none()
+        if existing_feed is not None:
+            existing_feed.subscriber_count += 1
+            existing_feed.is_active = True
+            logger.info("Telegram channel source already exists: %s", source_url)
+            continue
+
+        feed = RssFeed(
+            url=source_url,
+            title=f"Telegram @{channel}",
+            topic_tags=topic_tags,
+            topic_embedding=topic_embedding,
+            is_active=True,
+            subscriber_count=1,
+        )
+        session.add(feed)
+        logger.info("Registered Telegram channel source: %s", source_url)
 
 
 async def _register_feed(session: AsyncSession, feed_info: DiscoveredFeedItem) -> RssFeed:

@@ -10,7 +10,8 @@ from news_service.db.session import get_session
 from news_service.models.subscription import Subscription
 from news_service.models.user import User
 from news_service.schemas.subscription import SubscriptionCreate, SubscriptionResponse
-from news_service.services.coverage import ensure_topic_coverage
+from news_service.services.coverage import ensure_telegram_channel_coverage, ensure_topic_coverage
+from news_service.services.telegram import extract_telegram_channels
 from news_service.tasks.deliver_digest import deliver_digest
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ async def create_subscription(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Subscription:
+    telegram_channels = extract_telegram_channels(payload.prompt)
     config = await parse_subscription(payload.prompt)
 
     subscription = Subscription(
@@ -37,7 +39,10 @@ async def create_subscription(
     session.add(subscription)
     await session.flush()
 
-    await ensure_topic_coverage(session, config.topics)
+    if telegram_channels:
+        await ensure_telegram_channel_coverage(session, telegram_channels, config.topics)
+    else:
+        await ensure_topic_coverage(session, config.topics)
 
     await session.commit()
     await session.refresh(subscription)

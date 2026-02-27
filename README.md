@@ -26,12 +26,6 @@ docker compose up --build -d tgbot   # rebuild only the Telegram bot
 docker compose up --build -d app     # rebuild only the backend API
 ```
 
-## Development
-
-```bash
-cd backend
-uv sync --all-extras
-uv run ruff check .
-uv run ruff format .
-uv run pytest
-```
+Service-specific development and testing instructions:
+- [`backend/README.md`](backend/README.md)
+- [`tgbot/README.md`](tgbot/README.md)
