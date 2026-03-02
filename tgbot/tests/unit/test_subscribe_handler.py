@@ -14,49 +14,104 @@ def _mock_message(telegram_id: int, text: str) -> SimpleNamespace:
     )
 
 
-@pytest.mark.asyncio
-async def test_process_prompt_with_channel_asks_for_scope(monkeypatch):
-    message = _mock_message(telegram_id=123, text="Следи за @gonzo_ml каждое утро")
-    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
-
-    await subscribe.process_prompt(message, state)
-
-    state.update_data.assert_awaited_once_with(
-        prompt="Следи за @gonzo_ml каждое утро",
-        telegram_channels=["gonzo_ml"],
-    )
-    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
-    assert message.answer.await_count == 1
-    first_button = message.answer.await_args.kwargs["reply_markup"].inline_keyboard[0][0]
-    assert "Only these channels" in first_button.text
-
-
-@pytest.mark.asyncio
-async def test_process_prompt_without_channels_asks_if_user_has_sources(monkeypatch):
-    message = _mock_message(telegram_id=123, text="ML обзоры каждое утро")
-    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
-
-    await subscribe.process_prompt(message, state)
-
-    state.update_data.assert_awaited_once_with(
-        prompt="ML обзоры каждое утро",
-        telegram_channels=[],
-    )
-    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_source_knowledge)
-    assert message.answer.await_count == 1
-    assert "Do you already have specific Telegram channels" in message.answer.await_args.args[0]
-
-
-@pytest.mark.asyncio
-async def test_handle_scope_choice_creates_subscription_with_preferences(monkeypatch):
-    callback = SimpleNamespace(
-        from_user=SimpleNamespace(id=123),
-        data=subscribe.SCOPE_WITH_DISCOVERY,
+def _mock_callback(telegram_id: int, data: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        from_user=SimpleNamespace(id=telegram_id),
+        data=data,
         message=SimpleNamespace(answer=AsyncMock()),
         answer=AsyncMock(),
     )
+
+
+@pytest.mark.asyncio
+async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkeypatch):
+    message = _mock_message(telegram_id=123, text="Следи за @gonzo_ml каждый день в 9")
+    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe.backend,
+        "parse_subscription_prompt",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                topics=["ml"],
+                schedule_cron="0 9 * * *",
+                schedule_was_explicit=True,
+                format_instructions="brief summary",
+                digest_language="ru",
+            )
+        ),
+    )
+
+    await subscribe.process_prompt(message, state)
+
+    state.update_data.assert_any_await(
+        prompt="Следи за @gonzo_ml каждый день в 9",
+        schedule_cron_override="0 9 * * *",
+        manual_only=False,
+    )
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
+    assert message.answer.await_count == 1
+    assert "Should digest be limited only to these channels?" in message.answer.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_process_prompt_without_schedule_asks_schedule_decision(monkeypatch):
+    message = _mock_message(telegram_id=123, text="Хочу новости по ML")
+    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe.backend,
+        "parse_subscription_prompt",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                topics=["ml"],
+                schedule_cron=None,
+                schedule_was_explicit=False,
+                format_instructions="brief summary",
+                digest_language="ru",
+            )
+        ),
+    )
+
+    await subscribe.process_prompt(message, state)
+
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_schedule_decision)
+    assert message.answer.await_count == 1
+    prompt_text = message.answer.await_args.args[0]
+    assert "Do you want this digest to be delivered automatically" in prompt_text
+
+
+@pytest.mark.asyncio
+async def test_handle_schedule_decision_no_continues_source_flow(monkeypatch):
+    callback = _mock_callback(telegram_id=123, data=subscribe.SCHEDULE_ENABLE_NO)
     state = SimpleNamespace(
-        get_data=AsyncMock(return_value={"prompt": "ML daily", "telegram_channels": ["gonzo_ml"]}),
+        get_data=AsyncMock(return_value={"prompt": "Следи за @gonzo_ml"}),
+        update_data=AsyncMock(),
+        set_state=AsyncMock(),
+        clear=AsyncMock(),
+    )
+
+    await subscribe.handle_schedule_decision(callback, state)
+
+    callback.answer.assert_awaited_once()
+    state.update_data.assert_any_await(schedule_cron_override=None, manual_only=True)
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
+
+
+@pytest.mark.asyncio
+async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch):
+    callback = _mock_callback(telegram_id=123, data=subscribe.SCOPE_WITH_DISCOVERY)
+    state = SimpleNamespace(
+        get_data=AsyncMock(
+            return_value={
+                "prompt": "ML daily",
+                "telegram_channels": ["gonzo_ml"],
+                "schedule_cron_override": None,
+                "manual_only": True,
+            }
+        ),
         clear=AsyncMock(),
     )
 
@@ -65,7 +120,7 @@ async def test_handle_scope_choice_creates_subscription_with_preferences(monkeyp
         return_value=SimpleNamespace(
             id="sub-1",
             topics=["машинное обучение"],
-            schedule_cron="0 8 * * *",
+            schedule_cron=None,
             format_instructions="brief summary",
         )
     )
@@ -80,10 +135,9 @@ async def test_handle_scope_choice_creates_subscription_with_preferences(monkeyp
         "http://tgbot:8001/deliver/123",
         fixed_telegram_channels=["gonzo_ml"],
         include_discovered_sources=True,
+        schedule_cron_override=None,
+        manual_only=True,
     )
     assert callback.message.answer.await_count == 2
-    confirmation_text = callback.message.answer.await_args_list[1].args[0]
-    assert "Subscription created!" in confirmation_text
-    assert "Schedule:" not in confirmation_text
-    assert "Format:" not in confirmation_text
+    assert "Subscription created!" in callback.message.answer.await_args_list[1].args[0]
     state.clear.assert_awaited_once()

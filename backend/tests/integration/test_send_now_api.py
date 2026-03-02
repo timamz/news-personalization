@@ -19,6 +19,7 @@ async def _create_user_and_subscription(
     parsed_config = SubscriptionConfig(
         topics=["artificial intelligence"],
         schedule_cron="0 8 * * *",
+        schedule_was_explicit=True,
         format_instructions="brief summary",
         digest_language="en",
     )

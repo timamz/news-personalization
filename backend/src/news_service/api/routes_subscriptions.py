@@ -5,14 +5,21 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.parser import parse_subscription
+from news_service.agents.parser import parse_schedule_preference, parse_subscription
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
 from news_service.models.rss_feed import RssFeed
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
-from news_service.schemas.subscription import SubscriptionCreate, SubscriptionResponse
+from news_service.schemas.subscription import (
+    ScheduleParseRequest,
+    ScheduleParseResponse,
+    SubscriptionCreate,
+    SubscriptionParseRequest,
+    SubscriptionParseResponse,
+    SubscriptionResponse,
+)
 from news_service.services.coverage import ensure_telegram_channel_coverage, ensure_topic_coverage
 from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
 from news_service.tasks.deliver_digest import deliver_digest
@@ -20,6 +27,32 @@ from news_service.tasks.deliver_digest import deliver_digest
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+
+
+@router.post("/parse", response_model=SubscriptionParseResponse)
+async def parse_subscription_prompt(
+    payload: SubscriptionParseRequest,
+    user: User = Depends(get_current_user),
+) -> SubscriptionParseResponse:
+    del user
+    config = await parse_subscription(payload.prompt)
+    return SubscriptionParseResponse(
+        topics=config.topics,
+        schedule_cron=config.schedule_cron,
+        schedule_was_explicit=config.schedule_was_explicit,
+        format_instructions=config.format_instructions,
+        digest_language=config.digest_language,
+    )
+
+
+@router.post("/parse-schedule", response_model=ScheduleParseResponse)
+async def parse_schedule(
+    payload: ScheduleParseRequest,
+    user: User = Depends(get_current_user),
+) -> ScheduleParseResponse:
+    del user
+    schedule_cron = await parse_schedule_preference(payload.schedule_text)
+    return ScheduleParseResponse(schedule_cron=schedule_cron)
 
 
 @router.post("", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
@@ -47,12 +80,19 @@ async def create_subscription(
         if payload.include_discovered_sources is not None
         else not bool(telegram_channels)
     )
+    schedule_cron = (
+        payload.schedule_cron_override
+        if payload.schedule_cron_override is not None
+        else config.schedule_cron
+    )
+    if payload.manual_only:
+        schedule_cron = None
 
     subscription = Subscription(
         user_id=user.id,
         raw_prompt=payload.prompt,
         topics=config.topics,
-        schedule_cron=config.schedule_cron,
+        schedule_cron=schedule_cron,
         format_instructions=config.format_instructions,
         digest_language=config.digest_language,
         delivery_webhook_url=payload.delivery_webhook_url,

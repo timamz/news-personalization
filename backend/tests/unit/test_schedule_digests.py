@@ -44,7 +44,7 @@ class _FakeSessionFactory:
 
 def _make_subscription(
     *,
-    schedule_cron: str,
+    schedule_cron: str | None,
     created_at: datetime,
     last_digest_scheduled_at: datetime | None = None,
 ) -> Subscription:
@@ -79,8 +79,12 @@ async def test_schedule_due_digests_queues_only_due_subscriptions(mocker):
         schedule_cron="invalid cron",
         created_at=datetime(2026, 2, 20, 8, 0, tzinfo=UTC),
     )
+    manual_only = _make_subscription(
+        schedule_cron=None,
+        created_at=datetime(2026, 2, 20, 8, 0, tzinfo=UTC),
+    )
 
-    session = _FakeSession([due, not_due, invalid])
+    session = _FakeSession([due, not_due, invalid, manual_only])
     mocker.patch.object(
         schedule_digests,
         "get_task_session",
@@ -99,7 +103,7 @@ async def test_schedule_due_digests_queues_only_due_subscriptions(mocker):
     assert due.last_digest_scheduled_at == now
     assert not_due.last_digest_scheduled_at == now
     assert invalid.last_digest_scheduled_at is None
-    assert result == {"checked": 3, "queued": 1, "invalid_cron": 1}
+    assert result == {"checked": 4, "queued": 1, "invalid_cron": 1}
     assert session.committed is True
 
 

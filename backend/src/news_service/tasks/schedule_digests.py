@@ -29,6 +29,9 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
         subscriptions = list(result.scalars().all())
 
         for subscription in subscriptions:
+            if not subscription.schedule_cron:
+                continue
+
             last_run_at = subscription.last_digest_scheduled_at or subscription.created_at
             try:
                 due = is_schedule_due(

@@ -17,13 +17,28 @@ class SubscriptionCreate(BaseModel):
         default=None,
         description="Whether to add discovered RSS/Telegram sources to the fixed list",
     )
+    schedule_cron_override: str | None = Field(
+        default=None,
+        description="Override cron schedule selected in the conversational flow",
+    )
+    manual_only: bool | None = Field(
+        default=None,
+        description="When true, digest is available only via explicit send-now action",
+    )
 
 
 class SubscriptionConfig(BaseModel):
     """Structured output from the Parser Agent."""
 
     topics: list[str] = Field(..., min_length=1, description="List of news topics")
-    schedule_cron: str = Field(..., description="Cron expression for delivery schedule")
+    schedule_cron: str | None = Field(
+        default=None,
+        description="Cron expression for delivery schedule, if explicitly requested",
+    )
+    schedule_was_explicit: bool = Field(
+        ...,
+        description="Whether the user explicitly requested automatic schedule in the prompt",
+    )
     format_instructions: str = Field(
         default="brief summary", description="How the user wants to consume news"
     )
@@ -39,7 +54,7 @@ class SubscriptionResponse(BaseModel):
     id: uuid.UUID
     raw_prompt: str
     topics: list[str]
-    schedule_cron: str
+    schedule_cron: str | None
     format_instructions: str
     digest_language: str
     delivery_webhook_url: str | None
@@ -47,3 +62,27 @@ class SubscriptionResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SubscriptionParseRequest(BaseModel):
+    prompt: str = Field(..., min_length=5, description="Natural language subscription request")
+
+
+class SubscriptionParseResponse(BaseModel):
+    topics: list[str]
+    schedule_cron: str | None
+    schedule_was_explicit: bool
+    format_instructions: str
+    digest_language: str
+
+
+class ScheduleParseRequest(BaseModel):
+    schedule_text: str = Field(
+        ...,
+        min_length=3,
+        description="Natural language schedule preference",
+    )
+
+
+class ScheduleParseResponse(BaseModel):
+    schedule_cron: str = Field(..., description="Parsed 5-field cron expression")

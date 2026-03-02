@@ -10,6 +10,7 @@ def mock_config():
     return SubscriptionConfig(
         topics=["artificial intelligence", "machine learning"],
         schedule_cron="0 8 */3 * *",
+        schedule_was_explicit=True,
         format_instructions="brief summary",
         digest_language="en",
     )
@@ -36,6 +37,7 @@ async def test_parse_subscription_returns_config(mock_config):
 
     assert result.topics == ["artificial intelligence", "machine learning"]
     assert result.schedule_cron == "0 8 */3 * *"
+    assert result.schedule_was_explicit is True
     assert result.format_instructions == "brief summary"
     assert result.digest_language == "en"
 
@@ -61,3 +63,28 @@ async def test_parse_subscription_raises_on_empty():
         from news_service.agents.parser import parse_subscription
 
         await parse_subscription("something")
+
+
+@pytest.mark.asyncio
+async def test_parse_schedule_preference_returns_cron():
+    parsed_schedule = MagicMock()
+    parsed_schedule.schedule_cron = "0 9 * * 1-5"
+
+    mock_message = MagicMock()
+    mock_message.parsed = parsed_schedule
+
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+
+    mock_completion = MagicMock()
+    mock_completion.choices = [mock_choice]
+
+    mock_client = AsyncMock()
+    mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_completion)
+
+    with patch("news_service.agents.parser._client", mock_client):
+        from news_service.agents.parser import parse_schedule_preference
+
+        result = await parse_schedule_preference("every weekday at 9")
+
+    assert result == "0 9 * * 1-5"

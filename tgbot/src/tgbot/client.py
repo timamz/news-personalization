@@ -11,8 +11,17 @@ settings = get_settings()
 class SubscriptionInfo:
     id: str
     topics: list[str]
-    schedule_cron: str
+    schedule_cron: str | None
     format_instructions: str
+
+
+@dataclass
+class SubscriptionParseInfo:
+    topics: list[str]
+    schedule_cron: str | None
+    schedule_was_explicit: bool
+    format_instructions: str
+    digest_language: str
 
 
 class BackendClient:
@@ -33,6 +42,8 @@ class BackendClient:
         delivery_webhook_url: str,
         fixed_telegram_channels: list[str] | None = None,
         include_discovered_sources: bool | None = None,
+        schedule_cron_override: str | None = None,
+        manual_only: bool | None = None,
     ) -> SubscriptionInfo:
         payload: dict[str, object] = {
             "prompt": prompt,
@@ -42,6 +53,10 @@ class BackendClient:
             payload["fixed_telegram_channels"] = fixed_telegram_channels
         if include_discovered_sources is not None:
             payload["include_discovered_sources"] = include_discovered_sources
+        if schedule_cron_override is not None:
+            payload["schedule_cron_override"] = schedule_cron_override
+        if manual_only is not None:
+            payload["manual_only"] = manual_only
 
         async with httpx.AsyncClient(
             timeout=settings.backend_create_subscription_timeout_seconds
@@ -59,6 +74,34 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
             )
+
+    async def parse_subscription_prompt(self, api_key: str, prompt: str) -> SubscriptionParseInfo:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/parse",
+                headers={"X-API-Key": api_key},
+                json={"prompt": prompt},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return SubscriptionParseInfo(
+                topics=data["topics"],
+                schedule_cron=data["schedule_cron"],
+                schedule_was_explicit=data["schedule_was_explicit"],
+                format_instructions=data["format_instructions"],
+                digest_language=data["digest_language"],
+            )
+
+    async def parse_schedule(self, api_key: str, schedule_text: str) -> str:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/parse-schedule",
+                headers={"X-API-Key": api_key},
+                json={"schedule_text": schedule_text},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["schedule_cron"]
 
     async def list_subscriptions(self, api_key: str) -> list[SubscriptionInfo]:
         async with httpx.AsyncClient(timeout=10.0) as client:

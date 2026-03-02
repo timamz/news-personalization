@@ -21,6 +21,7 @@ async def test_deactivate_subscription_removes_fixed_source_links(
     parsed_config = SubscriptionConfig(
         topics=["ai"],
         schedule_cron="0 8 * * *",
+        schedule_was_explicit=True,
         format_instructions="brief summary",
         digest_language="en",
     )

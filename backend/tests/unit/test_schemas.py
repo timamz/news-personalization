@@ -18,6 +18,7 @@ def test_subscription_config_valid():
     config = SubscriptionConfig(
         topics=["AI"],
         schedule_cron="0 8 * * *",
+        schedule_was_explicit=True,
         format_instructions="detailed analysis",
         digest_language="en",
     )
@@ -30,6 +31,7 @@ def test_subscription_config_empty_topics():
         SubscriptionConfig(
             topics=[],
             schedule_cron="0 8 * * *",
+            schedule_was_explicit=True,
             digest_language="en",
         )
 
@@ -38,6 +40,17 @@ def test_subscription_config_default_format():
     config = SubscriptionConfig(
         topics=["politics"],
         schedule_cron="0 21 * * *",
+        schedule_was_explicit=True,
         digest_language="en",
     )
     assert config.format_instructions == "brief summary"
+
+
+def test_subscription_config_supports_manual_mode():
+    config = SubscriptionConfig(
+        topics=["politics"],
+        schedule_cron=None,
+        schedule_was_explicit=False,
+        digest_language="en",
+    )
+    assert config.schedule_cron is None
