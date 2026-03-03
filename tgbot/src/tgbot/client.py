@@ -11,6 +11,7 @@ settings = get_settings()
 class SubscriptionInfo:
     id: str
     topics: list[str]
+    delivery_mode: str
     schedule_cron: str | None
     format_instructions: str
 
@@ -18,6 +19,7 @@ class SubscriptionInfo:
 @dataclass
 class SubscriptionParseInfo:
     topics: list[str]
+    delivery_mode: str
     schedule_cron: str | None
     schedule_was_explicit: bool
     format_instructions: str
@@ -44,6 +46,7 @@ class BackendClient:
         include_discovered_sources: bool | None = None,
         schedule_cron_override: str | None = None,
         manual_only: bool | None = None,
+        delivery_mode: str | None = None,
     ) -> SubscriptionInfo:
         payload: dict[str, object] = {
             "prompt": prompt,
@@ -57,6 +60,8 @@ class BackendClient:
             payload["schedule_cron_override"] = schedule_cron_override
         if manual_only is not None:
             payload["manual_only"] = manual_only
+        if delivery_mode is not None:
+            payload["delivery_mode"] = delivery_mode
 
         async with httpx.AsyncClient(
             timeout=settings.backend_create_subscription_timeout_seconds
@@ -71,6 +76,7 @@ class BackendClient:
             return SubscriptionInfo(
                 id=data["id"],
                 topics=data["topics"],
+                delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
             )
@@ -86,6 +92,7 @@ class BackendClient:
             data = response.json()
             return SubscriptionParseInfo(
                 topics=data["topics"],
+                delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 schedule_was_explicit=data["schedule_was_explicit"],
                 format_instructions=data["format_instructions"],
@@ -114,6 +121,7 @@ class BackendClient:
                 SubscriptionInfo(
                     id=s["id"],
                     topics=s["topics"],
+                    delivery_mode=s.get("delivery_mode", "digest"),
                     schedule_cron=s["schedule_cron"],
                     format_instructions=s["format_instructions"],
                 )

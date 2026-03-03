@@ -37,13 +37,15 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 
 | Agent | File | Trigger | Input | Output |
 |---|---|---|---|---|
-| **Parser** | `agents/parser.py` | New subscription | Raw user prompt | `SubscriptionConfig` (topics, optional cron, explicit-schedule flag, format, digest language) |
+| **Parser** | `agents/parser.py` | New subscription | Raw user prompt | `SubscriptionConfig` (topics, delivery mode, optional cron, explicit-schedule flag, format, digest language) |
 | **Discovery** | `agents/discovery.py` | Topic gap detected | Uncovered topic strings | Valid RSS feed URLs |
 | **Source Poller** | `tasks/poll_feeds.py` | Celery Beat (every 30 min) | All active source rows (`rss_feeds`) | New `NewsItem` rows + embeddings |
+| **Event Detector** | `agents/event.py` | New news item ingested | News item headline/body | Optional upcoming-event metadata on `NewsItem` |
+| **Event Notifier** | `tasks/deliver_events.py` | Event detected during polling | Event-tagged `NewsItem` + matching fixed-source subscriptions | Immediate webhook notifications |
 | **Digest Dispatcher** | `tasks/schedule_digests.py` | Celery Beat (every 1 min) | Active subscriptions with schedule set | Queued digest delivery tasks |
 | **Digest** | `agents/digest.py` + `tasks/deliver_digest.py` | Dispatcher task | Subscription + unseen news from fixed subscription sources | Formatted digest text, delivery webhook call |
 
-Parser and Discovery use OpenAI structured output. Source Poller ingests RSS feeds (`feedparser`) and public Telegram channels (`t.me/s/<channel>` HTML parsing), without LLM calls. Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST.
+Parser, Discovery, and Event Detector use OpenAI structured output. Source Poller ingests RSS feeds (`feedparser`) and public Telegram channels (`t.me/s/<channel>` HTML parsing). Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST.
 
 ---
 
@@ -51,7 +53,7 @@ Parser and Discovery use OpenAI structured output. Source Poller ingests RSS fee
 
 The system is composed of independent services that communicate over HTTP:
 
-- **Backend** (`backend/`) — the core service. Manages users, subscriptions, source ingestion (RSS + public Telegram channels), news items, embeddings, and digest generation. Delivers digests by POSTing to webhook URLs.
+- **Backend** (`backend/`) — the core service. Manages users, subscriptions, source ingestion (RSS + public Telegram channels), news items, embeddings, digest generation, and event notifications. Delivers digests and event alerts by POSTing to webhook URLs.
 - **Telegram Bot** (`tgbot/`) — a frontend. Translates Telegram commands into backend API calls and receives digest webhooks to forward to users.
 - **Future frontends** — web app, mobile app, email service, etc. Each is a sibling directory with the same pattern: call the backend API, expose a webhook endpoint for deliveries.
 

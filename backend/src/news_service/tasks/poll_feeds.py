@@ -6,13 +6,17 @@ import feedparser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from news_service.agents.event import extract_upcoming_event
 from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
+from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
 from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+DELIVER_EVENTS_TASK = "news_service.tasks.deliver_events.deliver_event_notifications"
 
 
 @celery_app.task(name="news_service.tasks.poll_feeds.poll_all_feeds")
@@ -22,6 +26,7 @@ def poll_all_feeds() -> dict:
 
 async def _poll_all_feeds() -> dict:
     async with get_task_session() as session:
+        session.info["event_item_ids"] = []
         result = await session.execute(select(RssFeed).where(RssFeed.is_active.is_(True)))
         feeds = list(result.scalars().all())
 
@@ -32,7 +37,16 @@ async def _poll_all_feeds() -> dict:
 
         await session.commit()
 
-    return {"feeds_polled": len(feeds), "new_items": total_new}
+        event_item_ids = list(dict.fromkeys(session.info.pop("event_item_ids", [])))
+
+    for item_id in event_item_ids:
+        celery_app.send_task(DELIVER_EVENTS_TASK, args=[str(item_id)])
+
+    return {
+        "feeds_polled": len(feeds),
+        "new_items": total_new,
+        "event_notifications_queued": len(event_item_ids),
+    }
 
 
 async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
@@ -93,6 +107,8 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
         )
         if item is not None:
             new_count += 1
+            if isinstance(item, NewsItem):
+                await _maybe_store_upcoming_event(session, item)
 
     feed.last_polled_at = datetime.now(UTC)
     logger.info(
@@ -152,6 +168,8 @@ async def _poll_single_telegram_channel(
         )
         if item is not None:
             new_count += 1
+            if isinstance(item, NewsItem):
+                await _maybe_store_upcoming_event(session, item)
 
     feed.last_polled_at = now
     logger.info(
@@ -162,3 +180,23 @@ async def _poll_single_telegram_channel(
         extra={"feed_id": str(feed.id)},
     )
     return new_count
+
+
+async def _maybe_store_upcoming_event(session: AsyncSession, item: NewsItem) -> None:
+    try:
+        event = await extract_upcoming_event(item.headline, item.body, item.published_at)
+    except Exception:
+        logger.exception(
+            "Failed to extract upcoming event from news item %s",
+            item.id,
+            extra={"news_item_id": str(item.id)},
+        )
+        return
+
+    if event is None:
+        return
+
+    item.event_title = event.title or item.headline
+    item.event_summary = event.summary or item.headline
+    item.event_starts_at = event.starts_at
+    session.info.setdefault("event_item_ids", []).append(item.id)

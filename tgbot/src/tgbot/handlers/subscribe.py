@@ -49,7 +49,9 @@ async def cmd_subscribe(message: types.Message, state: FSMContext) -> None:
     await state.set_state(SubscribeFlow.waiting_for_prompt)
     await message.answer(
         "Describe what news you want.\n\n"
-        'Example: "I want AI and tech news every morning as a brief summary"'
+        'Examples:\n'
+        '- "I want AI and tech news every morning as a brief summary"\n'
+        '- "Notify me when a new episode of Severance is announced"'
     )
 
 
@@ -70,14 +72,21 @@ async def process_prompt(message: types.Message, state: FSMContext) -> None:
         await state.clear()
         return
 
+    delivery_mode = parsed.delivery_mode
+    schedule_cron_override = None if delivery_mode == "event" else parsed.schedule_cron
     await state.update_data(
         prompt=prompt,
-        schedule_cron_override=parsed.schedule_cron,
+        delivery_mode=delivery_mode,
+        schedule_cron_override=schedule_cron_override,
         manual_only=False,
     )
 
+    if delivery_mode == "event":
+        await _continue_with_source_flow(message, state, prompt, delivery_mode)
+        return
+
     if parsed.schedule_was_explicit and parsed.schedule_cron:
-        await _continue_with_source_flow(message, state, prompt)
+        await _continue_with_source_flow(message, state, prompt, delivery_mode)
         return
 
     await state.set_state(SubscribeFlow.waiting_for_schedule_decision)
@@ -110,7 +119,7 @@ async def handle_schedule_decision(callback: CallbackQuery, state: FSMContext) -
         await _answer(callback, "Subscription setup expired. Please run /subscribe again.")
         await state.clear()
         return
-    await _continue_with_source_flow(callback, state, prompt)
+    await _continue_with_source_flow(callback, state, prompt, "digest")
 
 
 @router.message(SubscribeFlow.waiting_for_schedule_input)
@@ -136,7 +145,7 @@ async def process_schedule_input(message: types.Message, state: FSMContext) -> N
         await message.answer("Subscription setup expired. Please run /subscribe again.")
         await state.clear()
         return
-    await _continue_with_source_flow(message, state, prompt)
+    await _continue_with_source_flow(message, state, prompt, "digest")
 
 
 @router.callback_query(
@@ -172,9 +181,10 @@ async def process_channels_input(message: types.Message, state: FSMContext) -> N
 
     await state.update_data(telegram_channels=channels)
     await state.set_state(SubscribeFlow.waiting_for_scope_choice)
+    state_data = await state.get_data()
+    delivery_mode = str(state_data.get("delivery_mode", "digest"))
     await message.answer(
-        "Got it. Should digest be limited only to these channels?\n"
-        f"{_format_channels(channels)}",
+        f"Got it. {_scope_question(delivery_mode)}\n{_format_channels(channels)}",
         reply_markup=_scope_keyboard(),
     )
 
@@ -200,6 +210,7 @@ async def _continue_with_source_flow(
     event: types.Message | CallbackQuery,
     state: FSMContext,
     prompt: str,
+    delivery_mode: str,
 ) -> None:
     telegram_channels = extract_telegram_channels(prompt)
     await state.update_data(telegram_channels=telegram_channels)
@@ -210,7 +221,7 @@ async def _continue_with_source_flow(
             event,
             "I found these Telegram channels in your request:\n"
             f"{_format_channels(telegram_channels)}\n\n"
-            "Should digest be limited only to these channels?",
+            f"{_scope_question(delivery_mode)}",
             _scope_keyboard(),
         )
         return
@@ -218,7 +229,7 @@ async def _continue_with_source_flow(
     await state.set_state(SubscribeFlow.waiting_for_source_knowledge)
     await _answer_with_markup(
         event,
-        "Do you already have specific Telegram channels for this digest?",
+        _source_knowledge_question(delivery_mode),
         _source_knowledge_keyboard(),
     )
 
@@ -240,6 +251,7 @@ async def _create_subscription_from_state(
     schedule_cron_override = state_data.get("schedule_cron_override")
     manual_only_value = state_data.get("manual_only")
     manual_only = bool(manual_only_value) if manual_only_value is not None else None
+    delivery_mode = str(state_data.get("delivery_mode", "digest"))
 
     telegram_id = _telegram_id_from_event(event)
     try:
@@ -262,6 +274,7 @@ async def _create_subscription_from_state(
             include_discovered_sources=include_discovered_sources,
             schedule_cron_override=schedule_cron_override,
             manual_only=manual_only,
+            delivery_mode=delivery_mode,
         )
     except Exception:
         logger.exception("Failed to create subscription for telegram_id=%d", telegram_id)
@@ -270,11 +283,15 @@ async def _create_subscription_from_state(
         return
 
     topics_str = ", ".join(subscription.topics)
+    if delivery_mode == "event":
+        completion_text = "You'll receive event notifications right here in this chat."
+    else:
+        completion_text = "You'll receive digests right here in this chat."
     await _answer(
         event,
         "Subscription created!\n\n"
         f"Topics: {topics_str}\n\n"
-        "You'll receive digests right here in this chat.",
+        f"{completion_text}",
     )
     await state.clear()
 
@@ -319,6 +336,18 @@ def _schedule_choice_keyboard() -> InlineKeyboardMarkup:
             ]
         ]
     )
+
+
+def _scope_question(delivery_mode: str) -> str:
+    if delivery_mode == "event":
+        return "Should these notifications be limited only to these channels?"
+    return "Should this digest be limited only to these channels?"
+
+
+def _source_knowledge_question(delivery_mode: str) -> str:
+    if delivery_mode == "event":
+        return "Do you already have specific Telegram channels for these notifications?"
+    return "Do you already have specific Telegram channels for this digest?"
 
 
 def _format_channels(channels: list[str]) -> str:

@@ -42,6 +42,7 @@ async def test_create_subscription(client: BackendClient):
         "id": "sub-456",
         "raw_prompt": "AI news every morning",
         "topics": ["artificial intelligence"],
+        "delivery_mode": "digest",
         "schedule_cron": "0 8 * * *",
         "format_instructions": "brief summary",
         "delivery_webhook_url": "http://bot:8001/deliver/123",
@@ -62,6 +63,7 @@ async def test_create_subscription(client: BackendClient):
 
     assert sub.id == "sub-456"
     assert sub.topics == ["artificial intelligence"]
+    assert sub.delivery_mode == "digest"
 
 
 @pytest.mark.asyncio
@@ -72,6 +74,7 @@ async def test_create_subscription_uses_configured_timeout(client: BackendClient
         "id": "sub-789",
         "raw_prompt": "AI news every morning",
         "topics": ["artificial intelligence"],
+        "delivery_mode": "digest",
         "schedule_cron": "0 8 * * *",
         "format_instructions": "brief summary",
         "delivery_webhook_url": "http://bot:8001/deliver/123",
@@ -101,6 +104,7 @@ async def test_create_subscription_sends_source_preferences(client: BackendClien
         "id": "sub-999",
         "raw_prompt": "ML news",
         "topics": ["machine learning"],
+        "delivery_mode": "digest",
         "schedule_cron": "0 8 * * *",
         "format_instructions": "brief summary",
         "delivery_webhook_url": "http://bot:8001/deliver/123",
@@ -123,6 +127,7 @@ async def test_create_subscription_sends_source_preferences(client: BackendClien
             include_discovered_sources=True,
             schedule_cron_override="0 9 * * *",
             manual_only=False,
+            delivery_mode="digest",
         )
 
     mock_http.post.assert_awaited_once_with(
@@ -135,6 +140,7 @@ async def test_create_subscription_sends_source_preferences(client: BackendClien
             "include_discovered_sources": True,
             "schedule_cron_override": "0 9 * * *",
             "manual_only": False,
+            "delivery_mode": "digest",
         },
     )
 
@@ -145,6 +151,7 @@ async def test_parse_subscription_prompt(client: BackendClient):
     mock_response.status_code = 200
     mock_response.json.return_value = {
         "topics": ["machine learning"],
+        "delivery_mode": "event",
         "schedule_cron": None,
         "schedule_was_explicit": False,
         "format_instructions": "brief summary",
@@ -160,6 +167,7 @@ async def test_parse_subscription_prompt(client: BackendClient):
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
         parsed = await client.parse_subscription_prompt("my-key", "ML новости")
 
+    assert parsed.delivery_mode == "event"
     assert parsed.schedule_was_explicit is False
     assert parsed.schedule_cron is None
     mock_http.post.assert_awaited_once_with(
@@ -201,6 +209,7 @@ async def test_list_subscriptions(client: BackendClient):
             "id": "sub-1",
             "raw_prompt": "sports news",
             "topics": ["sports"],
+            "delivery_mode": "event",
             "schedule_cron": "0 8 * * *",
             "format_instructions": "brief summary",
             "is_active": True,
@@ -218,6 +227,7 @@ async def test_list_subscriptions(client: BackendClient):
 
     assert len(subs) == 1
     assert subs[0].topics == ["sports"]
+    assert subs[0].delivery_mode == "event"
 
 
 @pytest.mark.asyncio

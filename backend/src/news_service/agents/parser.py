@@ -35,6 +35,12 @@ Rules for topics:
 - "AI news" → ["artificial intelligence", "machine learning"]
 - "politics" → ["politics", "government"]
 
+Rules for delivery_mode:
+- Use "event" when the user wants notifications about upcoming releases, premieres, concerts,
+  tours, launches, or asks to be notified when something will happen.
+- Use "digest" for general news summaries and recurring news monitoring.
+- If unclear, default to "digest".
+
 Rules for format_instructions:
 - If the user specifies a format, use their wording.
 - If not specified, default to "brief summary".
@@ -78,8 +84,9 @@ async def parse_subscription(prompt: str) -> SubscriptionConfig:
         raise ValueError("LLM returned empty parsed response for subscription prompt")
 
     logger.info(
-        "Parsed subscription: topics=%s, cron=%s, explicit=%s, format=%s, language=%s",
+        "Parsed subscription: topics=%s, mode=%s, cron=%s, explicit=%s, format=%s, language=%s",
         result.topics,
+        result.delivery_mode,
         result.schedule_cron,
         result.schedule_was_explicit,
         result.format_instructions,

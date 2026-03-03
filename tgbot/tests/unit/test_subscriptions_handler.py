@@ -28,6 +28,7 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
     sub = SimpleNamespace(
         id="sub-1",
         topics=["ai"],
+        delivery_mode="digest",
         schedule_cron="0 8 * * *",
         format_instructions="brief summary",
     )
@@ -39,9 +40,7 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
 
     message.answer.assert_awaited_once()
     message_text = message.answer.await_args.args[0]
-    assert message_text == "Topics: ai"
-    assert "Schedule:" not in message_text
-    assert "Format:" not in message_text
+    assert message_text == "Topics: ai\nType: Digest"
 
     kwargs = message.answer.await_args.kwargs
     keyboard = kwargs["reply_markup"]
@@ -50,6 +49,32 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
     assert buttons[0].callback_data == "send_now:sub-1"
     assert buttons[1].text == "Delete"
     assert buttons[1].callback_data == "delete_sub:sub-1"
+
+
+@pytest.mark.asyncio
+async def test_cmd_list_hides_send_now_for_event_subscription(monkeypatch):
+    message = _mock_message(telegram_id=111)
+    sub = SimpleNamespace(
+        id="sub-9",
+        topics=["concerts"],
+        delivery_mode="event",
+        schedule_cron=None,
+        format_instructions="brief summary",
+    )
+
+    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(subscriptions.backend, "list_subscriptions", AsyncMock(return_value=[sub]))
+
+    await subscriptions.cmd_list(message)
+
+    message.answer.assert_awaited_once()
+    assert message.answer.await_args.args[0] == "Topics: concerts\nType: Event notifications"
+
+    keyboard = message.answer.await_args.kwargs["reply_markup"]
+    buttons = keyboard.inline_keyboard[0]
+    assert len(buttons) == 1
+    assert buttons[0].text == "Delete"
+    assert buttons[0].callback_data == "delete_sub:sub-9"
 
 
 @pytest.mark.asyncio

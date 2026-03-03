@@ -7,6 +7,7 @@ from news_service.schemas.subscription import SubscriptionConfig, SubscriptionCr
 def test_subscription_create_valid():
     payload = SubscriptionCreate(prompt="I want AI news every morning")
     assert payload.prompt == "I want AI news every morning"
+    assert payload.delivery_mode is None
 
 
 def test_subscription_create_too_short():
@@ -17,12 +18,14 @@ def test_subscription_create_too_short():
 def test_subscription_config_valid():
     config = SubscriptionConfig(
         topics=["AI"],
+        delivery_mode="digest",
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="detailed analysis",
         digest_language="en",
     )
     assert config.topics == ["AI"]
+    assert config.delivery_mode == "digest"
     assert config.schedule_cron == "0 8 * * *"
 
 
@@ -30,6 +33,7 @@ def test_subscription_config_empty_topics():
     with pytest.raises(ValidationError):
         SubscriptionConfig(
             topics=[],
+            delivery_mode="digest",
             schedule_cron="0 8 * * *",
             schedule_was_explicit=True,
             digest_language="en",
@@ -39,6 +43,7 @@ def test_subscription_config_empty_topics():
 def test_subscription_config_default_format():
     config = SubscriptionConfig(
         topics=["politics"],
+        delivery_mode="digest",
         schedule_cron="0 21 * * *",
         schedule_was_explicit=True,
         digest_language="en",
@@ -53,4 +58,5 @@ def test_subscription_config_supports_manual_mode():
         schedule_was_explicit=False,
         digest_language="en",
     )
+    assert config.delivery_mode == "digest"
     assert config.schedule_cron is None

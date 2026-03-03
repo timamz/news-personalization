@@ -44,6 +44,7 @@ class _FakeSessionFactory:
 
 def _make_subscription(
     *,
+    delivery_mode: str = "digest",
     schedule_cron: str | None,
     created_at: datetime,
     last_digest_scheduled_at: datetime | None = None,
@@ -53,6 +54,7 @@ def _make_subscription(
         user_id=uuid.uuid4(),
         raw_prompt="AI news",
         topics=["ai"],
+        delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         format_instructions="brief summary",
         delivery_webhook_url="http://example.com/hook",
@@ -83,8 +85,13 @@ async def test_schedule_due_digests_queues_only_due_subscriptions(mocker):
         schedule_cron=None,
         created_at=datetime(2026, 2, 20, 8, 0, tzinfo=UTC),
     )
+    event_subscription = _make_subscription(
+        delivery_mode="event",
+        schedule_cron="0 8 * * *",
+        created_at=datetime(2026, 2, 20, 8, 0, tzinfo=UTC),
+    )
 
-    session = _FakeSession([due, not_due, invalid, manual_only])
+    session = _FakeSession([due, not_due, invalid, manual_only, event_subscription])
     mocker.patch.object(
         schedule_digests,
         "get_task_session",
@@ -103,7 +110,8 @@ async def test_schedule_due_digests_queues_only_due_subscriptions(mocker):
     assert due.last_digest_scheduled_at == now
     assert not_due.last_digest_scheduled_at == now
     assert invalid.last_digest_scheduled_at is None
-    assert result == {"checked": 4, "queued": 1, "invalid_cron": 1}
+    assert event_subscription.last_digest_scheduled_at is None
+    assert result == {"checked": 5, "queued": 1, "invalid_cron": 1}
     assert session.committed is True
 
 

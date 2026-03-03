@@ -39,18 +39,23 @@ async def cmd_list(message: types.Message) -> None:
 
     for sub in subs:
         topics_str = ", ".join(sub.topics)
-        text = f"Topics: {topics_str}"
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="Send now",
-                        callback_data=f"{SEND_NOW_PREFIX}{sub.id}",
-                    ),
-                    InlineKeyboardButton(text="Delete", callback_data=f"{DELETE_PREFIX}{sub.id}"),
-                ]
-            ]
+        mode_label = "Event notifications" if sub.delivery_mode == "event" else "Digest"
+        text = f"Topics: {topics_str}\nType: {mode_label}"
+        buttons = []
+        if sub.delivery_mode == "digest":
+            buttons.append(
+                InlineKeyboardButton(
+                    text="Send now",
+                    callback_data=f"{SEND_NOW_PREFIX}{sub.id}",
+                )
+            )
+        buttons.append(
+            InlineKeyboardButton(
+                text="Delete",
+                callback_data=f"{DELETE_PREFIX}{sub.id}",
+            )
         )
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[buttons])
         await message.answer(text, reply_markup=keyboard)
 
 

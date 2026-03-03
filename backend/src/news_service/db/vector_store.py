@@ -145,4 +145,5 @@ async def upsert_news_item(
         embedding=embedding,
     )
     session.add(item)
+    await session.flush()
     return item

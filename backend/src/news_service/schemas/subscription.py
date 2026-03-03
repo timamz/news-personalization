@@ -1,7 +1,10 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+type DeliveryMode = Literal["digest", "event"]
 
 
 class SubscriptionCreate(BaseModel):
@@ -25,12 +28,20 @@ class SubscriptionCreate(BaseModel):
         default=None,
         description="When true, digest is available only via explicit send-now action",
     )
+    delivery_mode: DeliveryMode | None = Field(
+        default=None,
+        description="Override parsed delivery mode: digest or event notification",
+    )
 
 
 class SubscriptionConfig(BaseModel):
     """Structured output from the Parser Agent."""
 
     topics: list[str] = Field(..., min_length=1, description="List of news topics")
+    delivery_mode: DeliveryMode = Field(
+        default="digest",
+        description="Whether the user wants a periodic digest or event notifications",
+    )
     schedule_cron: str | None = Field(
         default=None,
         description="Cron expression for delivery schedule, if explicitly requested",
@@ -54,6 +65,7 @@ class SubscriptionResponse(BaseModel):
     id: uuid.UUID
     raw_prompt: str
     topics: list[str]
+    delivery_mode: DeliveryMode
     schedule_cron: str | None
     format_instructions: str
     digest_language: str
@@ -70,6 +82,7 @@ class SubscriptionParseRequest(BaseModel):
 
 class SubscriptionParseResponse(BaseModel):
     topics: list[str]
+    delivery_mode: DeliveryMode
     schedule_cron: str | None
     schedule_was_explicit: bool
     format_instructions: str

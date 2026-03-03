@@ -96,3 +96,64 @@ async def test_deactivate_subscription_removes_fixed_source_links(
         assert feed is not None
         assert feed.subscriber_count == 0
         assert feed.is_active is False
+
+
+async def test_create_event_subscription_forces_schedule_off(
+    api_client: AsyncClient,
+    mocker,
+) -> None:
+    parsed_config = SubscriptionConfig(
+        topics=["tv"],
+        delivery_mode="digest",
+        schedule_cron="0 8 * * *",
+        schedule_was_explicit=True,
+        format_instructions="brief summary",
+        digest_language="en",
+    )
+    mocker.patch(
+        "news_service.api.routes_subscriptions.parse_subscription",
+        new=AsyncMock(return_value=parsed_config),
+    )
+
+    async def fake_ensure_topic_coverage(session, topics):  # noqa: ANN001
+        feed = RssFeed(
+            url="https://example.com/shows.xml",
+            title="Shows Feed",
+            topic_tags=topics,
+            topic_embedding=[0.0] * 1536,
+            is_active=True,
+            subscriber_count=1,
+        )
+        session.add(feed)
+        await session.flush()
+        return [feed]
+
+    mocker.patch(
+        "news_service.api.routes_subscriptions.ensure_topic_coverage",
+        new=fake_ensure_topic_coverage,
+    )
+
+    user_response = await api_client.post("/users")
+    assert user_response.status_code == 201
+    api_key = user_response.json()["api_key"]
+
+    create_response = await api_client.post(
+        "/subscriptions",
+        headers={"X-API-Key": api_key},
+        json={
+            "prompt": "Notify me when the next episode is announced",
+            "delivery_webhook_url": "http://frontend.example.test/deliver/1",
+            "delivery_mode": "event",
+        },
+    )
+
+    assert create_response.status_code == 201
+    assert create_response.json()["delivery_mode"] == "event"
+    assert create_response.json()["schedule_cron"] is None
+
+    subscription_id = uuid.UUID(create_response.json()["id"])
+    async with async_session_factory() as session:
+        subscription = await session.get(Subscription, subscription_id)
+        assert subscription is not None
+        assert subscription.delivery_mode == "event"
+        assert subscription.schedule_cron is None

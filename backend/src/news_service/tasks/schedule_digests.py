@@ -25,10 +25,17 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
     invalid_cron = 0
 
     async with get_task_session() as session:
-        result = await session.execute(select(Subscription).where(Subscription.is_active.is_(True)))
+        result = await session.execute(
+            select(Subscription).where(
+                Subscription.is_active.is_(True),
+                Subscription.delivery_mode == "digest",
+            )
+        )
         subscriptions = list(result.scalars().all())
 
         for subscription in subscriptions:
+            if subscription.delivery_mode != "digest":
+                continue
             if not subscription.schedule_cron:
                 continue
 

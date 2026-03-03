@@ -38,6 +38,7 @@ async def parse_subscription_prompt(
     config = await parse_subscription(payload.prompt)
     return SubscriptionParseResponse(
         topics=config.topics,
+        delivery_mode=config.delivery_mode,
         schedule_cron=config.schedule_cron,
         schedule_was_explicit=config.schedule_was_explicit,
         format_instructions=config.format_instructions,
@@ -80,18 +81,20 @@ async def create_subscription(
         if payload.include_discovered_sources is not None
         else not bool(telegram_channels)
     )
+    delivery_mode = payload.delivery_mode or config.delivery_mode
     schedule_cron = (
         payload.schedule_cron_override
         if payload.schedule_cron_override is not None
         else config.schedule_cron
     )
-    if payload.manual_only:
+    if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
 
     subscription = Subscription(
         user_id=user.id,
         raw_prompt=payload.prompt,
         topics=config.topics,
+        delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         format_instructions=config.format_instructions,
         digest_language=config.digest_language,
@@ -204,6 +207,11 @@ async def send_subscription_now(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Subscription is inactive",
+        )
+    if subscription.delivery_mode != "digest":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Send now is available only for digest subscriptions",
         )
 
     task = deliver_digest.delay(str(subscription.id), True)

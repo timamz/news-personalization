@@ -39,12 +39,13 @@ class _FakeSessionFactory:
         return False
 
 
-def _make_subscription() -> Subscription:
+def _make_subscription(*, delivery_mode: str = "digest") -> Subscription:
     return Subscription(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         raw_prompt="AI updates",
         topics=["artificial intelligence"],
+        delivery_mode=delivery_mode,
         schedule_cron="0 8 * * *",
         format_instructions="brief summary",
         delivery_webhook_url="http://frontend.example.test/deliver/1",
@@ -144,4 +145,22 @@ async def test_deliver_digest_does_not_commit_on_delivery_failure(mocker) -> Non
     with pytest.raises(RuntimeError, match="delivery failed"):
         await deliver_digest._deliver_digest(subscription.id, notify_if_empty=False)
 
+    assert session.committed is False
+
+
+@pytest.mark.asyncio
+async def test_deliver_digest_skips_event_subscription(mocker) -> None:
+    subscription = _make_subscription(delivery_mode="event")
+    session = _FakeSession(subscription)
+    mocker.patch.object(
+        deliver_digest,
+        "get_task_session",
+        return_value=_FakeSessionFactory(session),
+    )
+    generate_digest = mocker.patch.object(deliver_digest, "generate_digest", new=AsyncMock())
+
+    result = await deliver_digest._deliver_digest(subscription.id, notify_if_empty=False)
+
+    assert result == {"status": "skipped", "reason": "wrong_delivery_mode"}
+    generate_digest.assert_not_awaited()
     assert session.committed is False

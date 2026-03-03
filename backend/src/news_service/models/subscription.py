@@ -16,6 +16,7 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     )
     raw_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     topics: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="digest")
     schedule_cron: Mapped[str | None] = mapped_column(String(100), nullable=True)
     format_instructions: Mapped[str] = mapped_column(Text, nullable=False, default="brief summary")
     digest_language: Mapped[str] = mapped_column(String(16), nullable=False, default="en")

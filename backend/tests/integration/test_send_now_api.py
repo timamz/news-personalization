@@ -15,9 +15,12 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 async def _create_user_and_subscription(
     api_client: AsyncClient,
     mocker,
+    *,
+    delivery_mode: str | None = None,
 ) -> tuple[str, uuid.UUID]:
     parsed_config = SubscriptionConfig(
         topics=["artificial intelligence"],
+        delivery_mode="digest",
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -56,6 +59,7 @@ async def _create_user_and_subscription(
         json={
             "prompt": "AI updates every morning in a brief summary",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
+            "delivery_mode": delivery_mode,
         },
     )
     assert create_response.status_code == 201
@@ -94,3 +98,19 @@ async def test_send_now_rejects_inactive_subscription(api_client: AsyncClient, m
     )
     assert response.status_code == 409
     assert response.json()["detail"] == "Subscription is inactive"
+
+
+async def test_send_now_rejects_event_subscription(api_client: AsyncClient, mocker) -> None:
+    api_key, subscription_id = await _create_user_and_subscription(
+        api_client,
+        mocker,
+        delivery_mode="event",
+    )
+
+    response = await api_client.post(
+        f"/subscriptions/{subscription_id}/send-now",
+        headers={"X-API-Key": api_key},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Send now is available only for digest subscriptions"
