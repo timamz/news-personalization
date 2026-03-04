@@ -41,6 +41,26 @@ Rules for delivery_mode:
 - Use "digest" for general news summaries and recurring news monitoring.
 - If unclear, default to "digest".
 
+Rules for event_matching_mode:
+- Use "basic" for broad event requests where any relevant event from the chosen source
+  is acceptable.
+- Use "strict_with_prefilter" when the user includes exclusions, exact-person requirements,
+  "only", "not", "except", or other wording that requires strict compliance with the prompt.
+- For non-event subscriptions, use "basic".
+
+Rules for event_constraints:
+- Only create these when event_matching_mode is "strict_with_prefilter".
+- Create a compact per-subscription schema with arbitrary snake_case keys.
+- Each constraint must include:
+  - key
+  - description
+  - value_type ("string", "boolean", or "list")
+  - match_mode ("exact", "contains", "equals", or "intersects")
+  - the correct required_* field for that value_type
+  - prefilter_terms: cheap substrings that can screen obviously irrelevant posts
+- The constraints should capture the user's exact requirements and exclusions.
+- For "basic", return an empty list.
+
 Rules for format_instructions:
 - If the user specifies a format, use their wording.
 - If not specified, default to "brief summary".
@@ -84,9 +104,14 @@ async def parse_subscription(prompt: str) -> SubscriptionConfig:
         raise ValueError("LLM returned empty parsed response for subscription prompt")
 
     logger.info(
-        "Parsed subscription: topics=%s, mode=%s, cron=%s, explicit=%s, format=%s, language=%s",
+        (
+            "Parsed subscription: topics=%s, mode=%s, event_matching=%s, "
+            "constraints=%d, cron=%s, explicit=%s, format=%s, language=%s"
+        ),
         result.topics,
         result.delivery_mode,
+        result.event_matching_mode,
+        len(result.event_constraints),
         result.schedule_cron,
         result.schedule_was_explicit,
         result.format_instructions,

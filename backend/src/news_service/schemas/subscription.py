@@ -2,9 +2,55 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 type DeliveryMode = Literal["digest", "event"]
+type EventMatchingMode = Literal["basic", "strict_with_prefilter"]
+
+
+class EventConstraint(BaseModel):
+    key: str = Field(..., min_length=3, description="LLM-generated constraint key in snake_case")
+    description: str = Field(..., min_length=5, description="What this constraint represents")
+    value_type: Literal["string", "boolean", "list"] = Field(
+        ...,
+        description="How the event value should be represented",
+    )
+    match_mode: Literal["exact", "contains", "equals", "intersects"] = Field(
+        ...,
+        description="How the event value must be compared to the required value",
+    )
+    required_string: str | None = Field(
+        default=None,
+        description="Expected value when value_type=string",
+    )
+    required_boolean: bool | None = Field(
+        default=None,
+        description="Expected value when value_type=boolean",
+    )
+    required_list: list[str] = Field(
+        default_factory=list,
+        description="Expected values when value_type=list",
+    )
+    prefilter_terms: list[str] = Field(
+        default_factory=list,
+        description="Cheap substring checks used before the expensive strict validation",
+    )
+
+    @model_validator(mode="after")
+    def validate_required_value(self) -> "EventConstraint":
+        if self.value_type == "string" and not self.required_string:
+            raise ValueError("string constraints must define required_string")
+        if self.value_type == "boolean" and self.required_boolean is None:
+            raise ValueError("boolean constraints must define required_boolean")
+        if self.value_type == "list" and not self.required_list:
+            raise ValueError("list constraints must define required_list")
+        if self.value_type == "string" and self.match_mode not in {"exact", "contains"}:
+            raise ValueError("string constraints support only exact or contains match_mode")
+        if self.value_type == "boolean" and self.match_mode != "equals":
+            raise ValueError("boolean constraints support only equals match_mode")
+        if self.value_type == "list" and self.match_mode not in {"intersects", "exact"}:
+            raise ValueError("list constraints support only intersects or exact match_mode")
+        return self
 
 
 class SubscriptionCreate(BaseModel):
@@ -42,6 +88,14 @@ class SubscriptionConfig(BaseModel):
         default="digest",
         description="Whether the user wants a periodic digest or event notifications",
     )
+    event_matching_mode: EventMatchingMode = Field(
+        default="basic",
+        description="How event subscriptions should be matched against candidate events",
+    )
+    event_constraints: list[EventConstraint] = Field(
+        default_factory=list,
+        description="Dynamic per-subscription event constraint schema used for strict matching",
+    )
     schedule_cron: str | None = Field(
         default=None,
         description="Cron expression for delivery schedule, if explicitly requested",
@@ -59,6 +113,16 @@ class SubscriptionConfig(BaseModel):
         max_length=16,
         description="Language code for digest output (for example: en, ru, es)",
     )
+
+    @model_validator(mode="after")
+    def validate_event_matching(self) -> "SubscriptionConfig":
+        if self.event_matching_mode == "strict_with_prefilter" and self.delivery_mode != "event":
+            raise ValueError("strict_with_prefilter is supported only for event subscriptions")
+        if self.event_matching_mode == "strict_with_prefilter" and not self.event_constraints:
+            raise ValueError("strict_with_prefilter subscriptions must define event_constraints")
+        if self.event_matching_mode == "basic":
+            self.event_constraints = []
+        return self
 
 
 class SubscriptionResponse(BaseModel):

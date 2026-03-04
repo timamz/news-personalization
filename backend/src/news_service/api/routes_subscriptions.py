@@ -66,8 +66,7 @@ async def create_subscription(
     prompt_channels = extract_telegram_channels(payload.prompt)
     try:
         explicit_channels = [
-            normalize_telegram_channel(channel)
-            for channel in payload.fixed_telegram_channels
+            normalize_telegram_channel(channel) for channel in payload.fixed_telegram_channels
         ]
     except ValueError as exc:
         raise HTTPException(
@@ -83,6 +82,12 @@ async def create_subscription(
         else not bool(telegram_channels)
     )
     delivery_mode = payload.delivery_mode or config.delivery_mode
+    event_matching_mode = config.event_matching_mode if delivery_mode == "event" else "basic"
+    event_constraints = (
+        [constraint.model_dump() for constraint in config.event_constraints]
+        if event_matching_mode == "strict_with_prefilter"
+        else []
+    )
     schedule_cron = (
         payload.schedule_cron_override
         if payload.schedule_cron_override is not None
@@ -96,6 +101,8 @@ async def create_subscription(
         raw_prompt=payload.prompt,
         topics=config.topics,
         delivery_mode=delivery_mode,
+        event_matching_mode=event_matching_mode,
+        event_constraints=event_constraints,
         schedule_cron=schedule_cron,
         format_instructions=config.format_instructions,
         digest_language=config.digest_language,
