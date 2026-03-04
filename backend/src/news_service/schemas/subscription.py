@@ -76,6 +76,23 @@ class SubscriptionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SubscriptionUpdate(BaseModel):
+    schedule_cron: str | None = Field(
+        default=None,
+        min_length=1,
+        description="New cron schedule for digest subscriptions; null disables scheduling",
+    )
+    format_instructions: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Updated presentation format instructions",
+    )
+    delivery_webhook_url: str | None = Field(
+        default=None,
+        description="Updated delivery webhook URL; null disables webhook delivery",
+    )
+
+
 class SubscriptionParseRequest(BaseModel):
     prompt: str = Field(..., min_length=5, description="Natural language subscription request")
 

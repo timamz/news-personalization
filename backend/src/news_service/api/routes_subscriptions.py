@@ -19,6 +19,7 @@ from news_service.schemas.subscription import (
     SubscriptionParseRequest,
     SubscriptionParseResponse,
     SubscriptionResponse,
+    SubscriptionUpdate,
 )
 from news_service.services.coverage import ensure_telegram_channel_coverage, ensure_topic_coverage
 from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
@@ -151,6 +152,59 @@ async def list_subscriptions(
         )
     )
     return list(result.scalars().all())
+
+
+@router.patch("/{subscription_id}", response_model=SubscriptionResponse)
+async def update_subscription(
+    subscription_id: str,
+    payload: SubscriptionUpdate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Subscription:
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
+        )
+
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="No editable fields were provided",
+        )
+
+    if "schedule_cron" in updates:
+        if subscription.delivery_mode != "digest" and updates["schedule_cron"] is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Automatic schedule is available only for digest subscriptions",
+            )
+        subscription.schedule_cron = updates["schedule_cron"]
+    if "format_instructions" in updates:
+        subscription.format_instructions = updates["format_instructions"]
+    if "delivery_webhook_url" in updates:
+        subscription.delivery_webhook_url = updates["delivery_webhook_url"]
+
+    await session.commit()
+    await session.refresh(subscription)
+
+    logger.info(
+        "Updated subscription %s for user %s",
+        subscription.id,
+        user.id,
+        extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
+    )
+    return subscription
 
 
 @router.delete("/{subscription_id}", status_code=status.HTTP_204_NO_CONTENT)

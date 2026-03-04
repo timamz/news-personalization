@@ -5,6 +5,7 @@ import httpx
 from tgbot.core.config import get_settings
 
 settings = get_settings()
+_UNSET = object()
 
 
 @dataclass
@@ -135,6 +136,39 @@ class BackendClient:
                 headers={"X-API-Key": api_key},
             )
             response.raise_for_status()
+
+    async def update_subscription(
+        self,
+        api_key: str,
+        subscription_id: str,
+        *,
+        schedule_cron: str | None | object = _UNSET,
+        format_instructions: str | object = _UNSET,
+        delivery_webhook_url: str | None | object = _UNSET,
+    ) -> SubscriptionInfo:
+        payload: dict[str, object | None] = {}
+        if schedule_cron is not _UNSET:
+            payload["schedule_cron"] = schedule_cron
+        if format_instructions is not _UNSET:
+            payload["format_instructions"] = format_instructions
+        if delivery_webhook_url is not _UNSET:
+            payload["delivery_webhook_url"] = delivery_webhook_url
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.patch(
+                f"{self.base_url}/subscriptions/{subscription_id}",
+                headers={"X-API-Key": api_key},
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return SubscriptionInfo(
+                id=data["id"],
+                topics=data["topics"],
+                delivery_mode=data["delivery_mode"],
+                schedule_cron=data["schedule_cron"],
+                format_instructions=data["format_instructions"],
+            )
 
     async def send_now(self, api_key: str, subscription_id: str) -> dict[str, str]:
         async with httpx.AsyncClient(timeout=10.0) as client:

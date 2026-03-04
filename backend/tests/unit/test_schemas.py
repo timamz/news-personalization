@@ -1,7 +1,11 @@
 import pytest
 from pydantic import ValidationError
 
-from news_service.schemas.subscription import SubscriptionConfig, SubscriptionCreate
+from news_service.schemas.subscription import (
+    SubscriptionConfig,
+    SubscriptionCreate,
+    SubscriptionUpdate,
+)
 
 
 def test_subscription_create_valid():
@@ -60,3 +64,17 @@ def test_subscription_config_supports_manual_mode():
     )
     assert config.delivery_mode == "digest"
     assert config.schedule_cron is None
+
+
+def test_subscription_update_accepts_partial_fields():
+    payload = SubscriptionUpdate(
+        schedule_cron="0 9 * * 1-5",
+        format_instructions="detailed analysis",
+    )
+    assert payload.schedule_cron == "0 9 * * 1-5"
+    assert payload.format_instructions == "detailed analysis"
+
+
+def test_subscription_update_rejects_empty_format_string():
+    with pytest.raises(ValidationError):
+        SubscriptionUpdate(format_instructions="")

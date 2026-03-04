@@ -250,3 +250,46 @@ async def test_send_now(client: BackendClient):
         "http://test-backend:8000/subscriptions/sub-1/send-now",
         headers={"X-API-Key": "my-key"},
     )
+
+
+@pytest.mark.asyncio
+async def test_update_subscription(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "sub-1",
+        "raw_prompt": "AI news every morning",
+        "topics": ["artificial intelligence"],
+        "delivery_mode": "digest",
+        "schedule_cron": None,
+        "format_instructions": "concise alerts",
+        "delivery_webhook_url": "http://bot:8001/deliver/123",
+        "is_active": True,
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.patch = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        sub = await client.update_subscription(
+            "my-key",
+            "sub-1",
+            schedule_cron=None,
+            format_instructions="concise alerts",
+        )
+
+    assert sub.id == "sub-1"
+    assert sub.schedule_cron is None
+    assert sub.format_instructions == "concise alerts"
+    mock_http.patch.assert_awaited_once_with(
+        "http://test-backend:8000/subscriptions/sub-1",
+        headers={"X-API-Key": "my-key"},
+        json={
+            "schedule_cron": None,
+            "format_instructions": "concise alerts",
+        },
+    )
