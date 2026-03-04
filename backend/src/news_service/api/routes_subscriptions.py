@@ -3,16 +3,21 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.parser import parse_schedule_preference, parse_subscription
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
+from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
+from news_service.models.sent_item import SentItem
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
 from news_service.schemas.subscription import (
+    RecentEventAcknowledgeRequest,
+    RecentEventNotificationResponse,
     ScheduleParseRequest,
     ScheduleParseResponse,
     SubscriptionCreate,
@@ -22,6 +27,10 @@ from news_service.schemas.subscription import (
     SubscriptionUpdate,
 )
 from news_service.services.coverage import ensure_telegram_channel_coverage, ensure_topic_coverage
+from news_service.services.event_notifications import (
+    build_event_notification,
+    list_recent_subscription_events,
+)
 from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
 from news_service.tasks.deliver_digest import deliver_digest
 
@@ -83,11 +92,6 @@ async def create_subscription(
     )
     delivery_mode = payload.delivery_mode or config.delivery_mode
     event_matching_mode = config.event_matching_mode if delivery_mode == "event" else "basic"
-    event_constraints = (
-        [constraint.model_dump() for constraint in config.event_constraints]
-        if event_matching_mode == "strict_with_prefilter"
-        else []
-    )
     schedule_cron = (
         payload.schedule_cron_override
         if payload.schedule_cron_override is not None
@@ -102,7 +106,7 @@ async def create_subscription(
         topics=config.topics,
         delivery_mode=delivery_mode,
         event_matching_mode=event_matching_mode,
-        event_constraints=event_constraints,
+        event_constraints=[],
         schedule_cron=schedule_cron,
         format_instructions=config.format_instructions,
         digest_language=config.digest_language,
@@ -159,6 +163,120 @@ async def list_subscriptions(
         )
     )
     return list(result.scalars().all())
+
+
+@router.get(
+    "/{subscription_id}/recent-events",
+    response_model=list[RecentEventNotificationResponse],
+)
+async def list_recent_events(
+    subscription_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[RecentEventNotificationResponse]:
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
+        )
+    if subscription.delivery_mode != "event":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Recent events preview is available only for event subscriptions",
+        )
+
+    items = await list_recent_subscription_events(session, subscription, lookback_days=7)
+    response: list[RecentEventNotificationResponse] = []
+    for item in items:
+        subject, body = build_event_notification(subscription.digest_language, item)
+        response.append(
+            RecentEventNotificationResponse(
+                news_item_id=item.id,
+                subject=subject,
+                body=body,
+            )
+        )
+    return response
+
+
+@router.post("/{subscription_id}/recent-events/acknowledge", status_code=status.HTTP_204_NO_CONTENT)
+async def acknowledge_recent_events(
+    subscription_id: str,
+    payload: RecentEventAcknowledgeRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
+        )
+    if subscription.delivery_mode != "event":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Recent events preview is available only for event subscriptions",
+        )
+    requested_item_ids = list(dict.fromkeys(payload.news_item_ids))
+
+    link_result = await session.execute(
+        select(SubscriptionSource.feed_id).where(
+            SubscriptionSource.subscription_id == subscription.id
+        )
+    )
+    allowed_feed_ids = set(link_result.scalars().all())
+    if not allowed_feed_ids:
+        return
+
+    items_result = await session.execute(
+        select(NewsItem).where(
+            NewsItem.id.in_(requested_item_ids),
+            NewsItem.feed_id.in_(allowed_feed_ids),
+            NewsItem.event_title.is_not(None),
+        )
+    )
+    items = list(items_result.scalars().all())
+    valid_item_ids = {item.id for item in items}
+    if valid_item_ids != set(requested_item_ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="One or more recent event items are invalid for this subscription",
+        )
+
+    await session.execute(
+        insert(SentItem)
+        .values(
+            [
+                {
+                    "subscription_id": subscription.id,
+                    "news_item_id": item_id,
+                }
+                for item_id in requested_item_ids
+            ]
+        )
+        .on_conflict_do_nothing(
+            index_elements=["subscription_id", "news_item_id"],
+        )
+    )
+
+    await session.commit()
 
 
 @router.patch("/{subscription_id}", response_model=SubscriptionResponse)

@@ -89,7 +89,9 @@ async def test_create_subscription_uses_configured_timeout(client: BackendClient
     mock_http.__aexit__ = AsyncMock(return_value=False)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http) as patched_client:
-        await client.create_subscription("my-key", "AI news every morning", "http://bot:8001/deliver/123")
+        await client.create_subscription(
+            "my-key", "AI news every morning", "http://bot:8001/deliver/123"
+        )
 
     patched_client.assert_called_once_with(
         timeout=get_settings().backend_create_subscription_timeout_seconds
@@ -228,6 +230,58 @@ async def test_list_subscriptions(client: BackendClient):
     assert len(subs) == 1
     assert subs[0].topics == ["sports"]
     assert subs[0].delivery_mode == "event"
+
+
+@pytest.mark.asyncio
+async def test_list_recent_events(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {
+            "news_item_id": "news-1",
+            "subject": "Upcoming event: Demo concert",
+            "body": "Event: Demo concert\n\nSource: Demo Feed",
+        }
+    ]
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.get = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http) as patched_client:
+        events = await client.list_recent_events("my-key", "sub-1")
+
+    assert len(events) == 1
+    assert events[0].news_item_id == "news-1"
+    assert events[0].subject == "Upcoming event: Demo concert"
+    patched_client.assert_called_once_with(timeout=90.0)
+    mock_http.get.assert_awaited_once_with(
+        "http://test-backend:8000/subscriptions/sub-1/recent-events",
+        headers={"X-API-Key": "my-key"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_acknowledge_recent_events(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 204
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.post = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        await client.acknowledge_recent_events("my-key", "sub-1", ["news-1", "news-2"])
+
+    mock_http.post.assert_awaited_once_with(
+        "http://test-backend:8000/subscriptions/sub-1/recent-events/acknowledge",
+        headers={"X-API-Key": "my-key"},
+        json={"news_item_ids": ["news-1", "news-2"]},
+    )
 
 
 @pytest.mark.asyncio

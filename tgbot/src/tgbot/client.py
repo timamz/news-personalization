@@ -27,6 +27,13 @@ class SubscriptionParseInfo:
     digest_language: str
 
 
+@dataclass
+class RecentEventInfo:
+    news_item_id: str
+    subject: str
+    body: str
+
+
 class BackendClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.backend_url).rstrip("/")
@@ -169,6 +176,36 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
             )
+
+    async def list_recent_events(self, api_key: str, subscription_id: str) -> list[RecentEventInfo]:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            response = await client.get(
+                f"{self.base_url}/subscriptions/{subscription_id}/recent-events",
+                headers={"X-API-Key": api_key},
+            )
+            response.raise_for_status()
+            return [
+                RecentEventInfo(
+                    news_item_id=item["news_item_id"],
+                    subject=item["subject"],
+                    body=item["body"],
+                )
+                for item in response.json()
+            ]
+
+    async def acknowledge_recent_events(
+        self,
+        api_key: str,
+        subscription_id: str,
+        news_item_ids: list[str],
+    ) -> None:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/{subscription_id}/recent-events/acknowledge",
+                headers={"X-API-Key": api_key},
+                json={"news_item_ids": news_item_ids},
+            )
+            response.raise_for_status()
 
     async def send_now(self, api_key: str, subscription_id: str) -> dict[str, str]:
         async with httpx.AsyncClient(timeout=10.0) as client:

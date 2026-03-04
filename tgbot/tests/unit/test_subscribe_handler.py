@@ -55,8 +55,7 @@ async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkey
     state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
     assert message.answer.await_count == 1
     assert (
-        "Should this digest be limited only to these channels?"
-        in message.answer.await_args.args[0]
+        "Should this digest be limited only to these channels?" in message.answer.await_args.args[0]
     )
 
 
@@ -87,6 +86,8 @@ async def test_process_prompt_without_schedule_asks_schedule_decision(monkeypatc
     assert message.answer.await_count == 1
     prompt_text = message.answer.await_args.args[0]
     assert "Do you want this digest to be delivered automatically" in prompt_text
+    keyboard = message.answer.await_args.kwargs["reply_markup"]
+    assert keyboard.inline_keyboard[1][0].text == "Back"
 
 
 @pytest.mark.asyncio
@@ -141,6 +142,43 @@ async def test_handle_schedule_decision_no_continues_source_flow(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_handle_back_from_schedule_input_returns_to_schedule_decision() -> None:
+    callback = _mock_callback(telegram_id=123, data=subscribe.BACK)
+    state = SimpleNamespace(
+        get_state=AsyncMock(return_value=subscribe.SubscribeFlow.waiting_for_schedule_input.state),
+        set_state=AsyncMock(),
+    )
+
+    await subscribe.handle_back(callback, state)
+
+    callback.answer.assert_awaited_once()
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_schedule_decision)
+    assert (
+        "Do you want this digest to be delivered automatically"
+        in callback.message.answer.await_args.args[0]
+    )
+
+
+@pytest.mark.asyncio
+async def test_handle_back_from_channels_input_returns_to_source_knowledge() -> None:
+    callback = _mock_callback(telegram_id=123, data=subscribe.BACK)
+    state = SimpleNamespace(
+        get_state=AsyncMock(return_value=subscribe.SubscribeFlow.waiting_for_channels_input.state),
+        get_data=AsyncMock(return_value={"delivery_mode": "event"}),
+        set_state=AsyncMock(),
+    )
+
+    await subscribe.handle_back(callback, state)
+
+    callback.answer.assert_awaited_once()
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_source_knowledge)
+    assert (
+        callback.message.answer.await_args.args[0]
+        == "Do you already have specific Telegram channels for these notifications?"
+    )
+
+
+@pytest.mark.asyncio
 async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch):
     callback = _mock_callback(telegram_id=123, data=subscribe.SCOPE_WITH_DISCOVERY)
     state = SimpleNamespace(
@@ -153,6 +191,7 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
                 "manual_only": True,
             }
         ),
+        update_data=AsyncMock(),
         clear=AsyncMock(),
     )
 
@@ -183,3 +222,143 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
     assert callback.message.answer.await_count == 2
     assert "Subscription created!" in callback.message.answer.await_args_list[1].args[0]
     state.clear.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_scope_choice_for_event_subscription_offers_recent_events(monkeypatch):
+    callback = _mock_callback(telegram_id=123, data=subscribe.SCOPE_ONLY_PROVIDED)
+    state = SimpleNamespace(
+        get_data=AsyncMock(
+            return_value={
+                "prompt": "Notify me when concerts are announced",
+                "telegram_channels": ["music_channel"],
+                "delivery_mode": "event",
+                "schedule_cron_override": None,
+                "manual_only": False,
+            }
+        ),
+        update_data=AsyncMock(),
+        set_state=AsyncMock(),
+        clear=AsyncMock(),
+    )
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe.backend,
+        "create_subscription",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                id="sub-evt",
+                topics=["concerts"],
+                schedule_cron=None,
+                format_instructions="brief summary",
+            )
+        ),
+    )
+
+    await subscribe.handle_scope_choice(callback, state)
+
+    assert callback.message.answer.await_count == 3
+    assert "Subscription created!" in callback.message.answer.await_args_list[1].args[0]
+    assert (
+        callback.message.answer.await_args_list[2].args[0]
+        == "Would you like to see what you might have missed in the last 7 days?"
+    )
+    state.update_data.assert_any_await(created_subscription_id="sub-evt")
+    state.set_state.assert_awaited_once_with(
+        subscribe.SubscribeFlow.waiting_for_recent_events_decision
+    )
+    state.clear.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
+    callback = _mock_callback(telegram_id=123, data=subscribe.RECENT_EVENTS_YES)
+    state = SimpleNamespace(
+        get_data=AsyncMock(return_value={"created_subscription_id": "sub-evt"}),
+        clear=AsyncMock(),
+    )
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe.backend,
+        "list_recent_events",
+        AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    news_item_id="news-1",
+                    subject="Upcoming event: Demo concert",
+                    body="Event: Demo concert\n\nSource: Demo Feed",
+                ),
+                SimpleNamespace(
+                    news_item_id="news-2",
+                    subject="Upcoming event: Another concert",
+                    body="Event: Another concert\n\nSource: Demo Feed",
+                ),
+            ]
+        ),
+    )
+    acknowledge_recent_events = AsyncMock()
+    monkeypatch.setattr(
+        subscribe.backend,
+        "acknowledge_recent_events",
+        acknowledge_recent_events,
+    )
+
+    await subscribe.handle_recent_events_decision(callback, state)
+
+    callback.answer.assert_awaited_once()
+    assert callback.message.answer.await_count == 4
+    assert (
+        callback.message.answer.await_args_list[0].args[0]
+        == "Checking what you might have missed in the last 7 days..."
+    )
+    assert (
+        callback.message.answer.await_args_list[1].args[0]
+        == "Here's what you might have missed in the last 7 days:"
+    )
+    assert "Upcoming event: Demo concert" in callback.message.answer.await_args_list[2].args[0]
+    assert "Upcoming event: Another concert" in callback.message.answer.await_args_list[3].args[0]
+    acknowledge_recent_events.assert_awaited_once_with(
+        "api-key",
+        "sub-evt",
+        ["news-1", "news-2"],
+    )
+    state.clear.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_back_from_recent_events_deletes_created_subscription(monkeypatch):
+    callback = _mock_callback(telegram_id=123, data=subscribe.BACK)
+    state = SimpleNamespace(
+        get_state=AsyncMock(
+            return_value=subscribe.SubscribeFlow.waiting_for_recent_events_decision.state
+        ),
+        get_data=AsyncMock(
+            return_value={
+                "created_subscription_id": "sub-evt",
+                "creation_back_target": "scope_choice",
+                "delivery_mode": "event",
+                "telegram_channels": ["music_channel"],
+                "scope_channels_origin": "manual",
+            }
+        ),
+        update_data=AsyncMock(),
+        set_state=AsyncMock(),
+        clear=AsyncMock(),
+    )
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    delete_subscription = AsyncMock()
+    monkeypatch.setattr(subscribe.backend, "delete_subscription", delete_subscription)
+
+    await subscribe.handle_back(callback, state)
+
+    callback.answer.assert_awaited_once()
+    delete_subscription.assert_awaited_once_with("api-key", "sub-evt")
+    state.update_data.assert_awaited_once_with(created_subscription_id=None)
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
+    assert (
+        "Should these notifications be limited only to these channels?"
+        in callback.message.answer.await_args.args[0]
+    )

@@ -77,9 +77,9 @@ def _make_item(*, event_title: str | None = "World tour announced") -> SimpleNam
 def _make_subscription() -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
         raw_prompt="Notify me when Drobyshevsky lectures are announced",
         event_matching_mode="basic",
-        event_constraints=[],
         delivery_webhook_url="http://frontend.example.test/deliver/1",
         digest_language="en",
     )
@@ -98,6 +98,16 @@ async def test_deliver_event_notifications_sends_and_marks_sent(mocker) -> None:
 
     channel = AsyncMock()
     mocker.patch.object(deliver_events, "get_delivery_channel", return_value=channel)
+    history_loader = mocker.patch.object(
+        deliver_events,
+        "load_recent_notification_history",
+        new=AsyncMock(return_value=[]),
+    )
+    mocker.patch.object(
+        deliver_events,
+        "notification_was_already_shown",
+        new=AsyncMock(return_value=False),
+    )
 
     result = await deliver_events._deliver_event_notifications(item.id)
 
@@ -108,6 +118,7 @@ async def test_deliver_event_notifications_sends_and_marks_sent(mocker) -> None:
         "news_item_id": str(item.id),
     }
     channel.send.assert_awaited_once()
+    history_loader.assert_awaited_once_with(session, subscription.id)
     assert session.commits == 1
     assert len(session.added) == 1
 
@@ -130,74 +141,44 @@ async def test_deliver_event_notifications_skips_non_event_item(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_deliver_event_notifications_skips_strict_subscription_when_prefilter_fails(
+async def test_deliver_event_notifications_skips_when_subscription_does_not_match(
     mocker,
 ) -> None:
     item = _make_item()
-    subscription_data = _make_subscription().__dict__.copy()
-    subscription_data["event_matching_mode"] = "strict_with_prefilter"
-    subscription_data["event_constraints"] = [
-        {
-            "key": "speaker_must_be_drobyshevsky",
-            "description": "Primary speaker identity",
-            "value_type": "string",
-            "match_mode": "exact",
-            "required_string": "станислав владимирович дробышевский",
-            "prefilter_terms": ["станислав владимирович дробышевский"],
-        }
-    ]
-    subscription = SimpleNamespace(**subscription_data)
-    item.headline = "Artist announces tour"
-    item.body = "No relevant name is present here."
-    item.event_title = "World tour announced"
-    item.event_summary = "This is unrelated to the requested lecturer."
+    subscription = _make_subscription()
     session = _FakeSession(item=item, subscriptions=[subscription])
     mocker.patch.object(
         deliver_events,
         "get_task_session",
         return_value=_FakeSessionFactory(session),
     )
-    parse_values = mocker.patch.object(
+    matches_event = mocker.patch.object(
         deliver_events,
-        "parse_event_constraint_values",
-        new=AsyncMock(),
+        "subscription_matches_event",
+        new=AsyncMock(return_value=False),
+    )
+    duplicate_check = mocker.patch.object(
+        deliver_events,
+        "notification_was_already_shown",
+        new=AsyncMock(return_value=False),
     )
     get_channel = mocker.patch.object(deliver_events, "get_delivery_channel")
 
     result = await deliver_events._deliver_event_notifications(item.id)
 
     assert result == {"status": "skipped", "reason": "already_sent"}
-    parse_values.assert_not_awaited()
+    matches_event.assert_awaited_once_with(subscription, item)
+    duplicate_check.assert_not_awaited()
     get_channel.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_deliver_event_notifications_applies_strict_constraint_match(mocker) -> None:
+async def test_deliver_event_notifications_sends_when_subscription_matches(mocker) -> None:
     item = _make_item(event_title="Новая лекция Дробышевского")
     item.headline = "Станислав Дробышевский выступит с лекцией"
     item.body = "Лекция Станислава Владимировича Дробышевского пройдет в Москве."
     item.event_summary = "Анонс лекции Станислава Дробышевского."
-    subscription_data = _make_subscription().__dict__.copy()
-    subscription_data["event_matching_mode"] = "strict_with_prefilter"
-    subscription_data["event_constraints"] = [
-        {
-            "key": "speaker_must_be_drobyshevsky",
-            "description": "Primary speaker identity",
-            "value_type": "string",
-            "match_mode": "exact",
-            "required_string": "станислав владимирович дробышевский",
-            "prefilter_terms": ["станислав владимирович дробышевский", "дробышевский"],
-        },
-        {
-            "key": "is_other_person_speaking_under_brand",
-            "description": "Whether another person is speaking under the same brand",
-            "value_type": "boolean",
-            "match_mode": "equals",
-            "required_boolean": False,
-            "prefilter_terms": ["лекция"],
-        },
-    ]
-    subscription = SimpleNamespace(**subscription_data)
+    subscription = _make_subscription()
     session = _FakeSession(item=item, subscriptions=[subscription])
     mocker.patch.object(
         deliver_events,
@@ -206,13 +187,18 @@ async def test_deliver_event_notifications_applies_strict_constraint_match(mocke
     )
     mocker.patch.object(
         deliver_events,
-        "parse_event_constraint_values",
-        new=AsyncMock(
-            return_value={
-                "speaker_must_be_drobyshevsky": "станислав владимирович дробышевский",
-                "is_other_person_speaking_under_brand": False,
-            }
-        ),
+        "subscription_matches_event",
+        new=AsyncMock(return_value=True),
+    )
+    mocker.patch.object(
+        deliver_events,
+        "load_recent_notification_history",
+        new=AsyncMock(return_value=[]),
+    )
+    mocker.patch.object(
+        deliver_events,
+        "notification_was_already_shown",
+        new=AsyncMock(return_value=False),
     )
 
     channel = AsyncMock()
@@ -227,3 +213,33 @@ async def test_deliver_event_notifications_applies_strict_constraint_match(mocke
         "news_item_id": str(item.id),
     }
     channel.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_deliver_event_notifications_skips_when_subscription_already_notified(mocker) -> None:
+    item = _make_item()
+    subscription = _make_subscription()
+    session = _FakeSession(item=item, subscriptions=[subscription])
+    mocker.patch.object(
+        deliver_events,
+        "get_task_session",
+        return_value=_FakeSessionFactory(session),
+    )
+    history_loader = mocker.patch.object(
+        deliver_events,
+        "load_recent_notification_history",
+        new=AsyncMock(return_value=["history"]),
+    )
+    duplicate_check = mocker.patch.object(
+        deliver_events,
+        "notification_was_already_shown",
+        new=AsyncMock(return_value=True),
+    )
+    get_channel = mocker.patch.object(deliver_events, "get_delivery_channel")
+
+    result = await deliver_events._deliver_event_notifications(item.id)
+
+    assert result == {"status": "skipped", "reason": "already_sent"}
+    history_loader.assert_awaited_once_with(session, subscription.id)
+    duplicate_check.assert_awaited_once()
+    get_channel.assert_not_called()

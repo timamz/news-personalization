@@ -40,7 +40,6 @@ async def test_parse_subscription_returns_config(mock_config):
     assert result.topics == ["artificial intelligence", "machine learning"]
     assert result.delivery_mode == "digest"
     assert result.event_matching_mode == "basic"
-    assert result.event_constraints == []
     assert result.schedule_cron == "0 8 */3 * *"
     assert result.schedule_was_explicit is True
     assert result.format_instructions == "brief summary"

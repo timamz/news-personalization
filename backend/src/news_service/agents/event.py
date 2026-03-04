@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
 from news_service.core.openai_client import openai_client
-from news_service.schemas.subscription import EventConstraint
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +32,31 @@ Rules:
   against the provided reference timestamp when possible.
 """
 
-CONSTRAINT_MATCH_PROMPT = """\
-You fill a per-subscription event validation schema for a candidate event.
+EVENT_MATCH_PROMPT = """\
+You decide whether a candidate upcoming event should trigger a user's event notification.
 
 Rules:
-- Use exactly the provided keys.
-- Respect each constraint's description and value_type.
-- For string constraints, fill only string_value.
-- For boolean constraints, fill only boolean_value.
-- For list constraints, fill only list_value.
-- Leave the other value fields empty.
-- If the event does not provide enough information for a constraint, return the closest honest
-  value you can infer from the text; do not guess beyond the text.
+- The original subscription request is the source of truth.
+- Return matches=true only when the post clearly satisfies what the user asked for.
+- Respect exclusions like "only", "not", "except", and exact-person requirements.
+- Match by meaning, not by exact wording. Do not require literal words like "announcement"
+  when the text is clearly announcing an event.
+- If key details are missing or the post is ambiguous, return matches=false.
+- Keep the reason short, concrete, and based on the text.
+"""
+
+NOTIFICATION_DUPLICATE_PROMPT = """\
+You decide whether a user has already been notified about substantially the same event.
+
+Rules:
+- Compare the new candidate event against the recent notification history.
+- Treat reposts, reminders, and differently worded announcements of the same underlying event
+  as already notified.
+- The same event announced by a different source can still count as already notified.
+- If the new event is a different occurrence, date, speaker, episode, release, or otherwise
+  materially new, return already_notified=false.
+- If the history does not contain a substantially same notification, return already_notified=false.
+- Keep the reason short, concrete, and based on the provided text.
 """
 
 
@@ -58,18 +70,17 @@ class UpcomingEventCandidate(BaseModel):
     )
 
 
-class ParsedEventConstraintValue(BaseModel):
-    key: str = Field(..., description="Constraint key being filled")
-    string_value: str | None = Field(default=None, description="Used for string constraints")
-    boolean_value: bool | None = Field(default=None, description="Used for boolean constraints")
-    list_value: list[str] = Field(default_factory=list, description="Used for list constraints")
+class EventMatchDecision(BaseModel):
+    matches: bool = Field(..., description="Whether this event should notify the user")
+    reason: str = Field(..., min_length=3, description="Short explanation for the decision")
 
 
-class ParsedEventConstraintValues(BaseModel):
-    values: list[ParsedEventConstraintValue] = Field(
-        default_factory=list,
-        description="Constraint values extracted from the event",
+class NotificationDuplicateDecision(BaseModel):
+    already_notified: bool = Field(
+        ...,
+        description="Whether the user has already received a notification about the same event",
     )
+    reason: str = Field(..., min_length=3, description="Short explanation for the decision")
 
 
 def _trim_text(value: str) -> str:
@@ -116,60 +127,124 @@ async def extract_upcoming_event(
     return result
 
 
-async def parse_event_constraint_values(
+async def judge_event_match(
     *,
     headline: str,
     body: str,
     published_at: datetime | None,
     raw_prompt: str,
-    constraints: list[EventConstraint],
-) -> dict[str, str | bool | list[str] | None]:
-    if not constraints:
-        return {}
+    event_title: str | None = None,
+    event_summary: str | None = None,
+    event_starts_at: datetime | None = None,
+) -> EventMatchDecision:
+    event_lines = [
+        "Reference timestamp: "
+        f"{published_at.isoformat() if published_at else 'unknown'}",
+    ]
+    if event_title:
+        event_lines.extend(["", f"Detected event title:\n{_trim_text(event_title)}"])
+    if event_summary:
+        event_lines.extend(["", f"Detected event summary:\n{_trim_text(event_summary)}"])
+    if event_starts_at is not None:
+        event_lines.extend(["", f"Detected event start:\n{event_starts_at.isoformat()}"])
+    event_lines.extend(
+        [
+            "",
+            f"Headline:\n{_trim_text(headline)}",
+            "",
+            f"Body:\n{_trim_text(body)}",
+        ]
+    )
+    event_block = "\n".join(event_lines)
 
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,
         messages=[
-            {"role": "system", "content": CONSTRAINT_MATCH_PROMPT},
+            {"role": "system", "content": EVENT_MATCH_PROMPT},
             {
                 "role": "user",
                 "content": (
                     f"Original subscription request:\n{_trim_text(raw_prompt)}\n\n"
-                    f"Constraint schema:\n{_constraint_schema_block(constraints)}\n\n"
-                    "Reference timestamp: "
-                    f"{published_at.isoformat() if published_at else 'unknown'}\n\n"
-                    f"Headline:\n{_trim_text(headline)}\n\n"
-                    f"Body:\n{_trim_text(body)}"
+                    "Candidate event:\n"
+                    f"{event_block}"
                 ),
             },
         ],
-        response_format=ParsedEventConstraintValues,
+        response_format=EventMatchDecision,
         temperature=0.1,
     )
     result = completion.choices[0].message.parsed
     if result is None:
-        raise ValueError("LLM returned empty parsed response for event constraint values")
+        raise ValueError("LLM returned empty parsed response for event match")
 
-    values_by_key = {value.key: _extract_constraint_value(value) for value in result.values}
-    logger.info("Parsed %d constraint value(s) for event matching", len(values_by_key))
-    return values_by_key
-
-
-def _constraint_schema_block(constraints: list[EventConstraint]) -> str:
-    lines: list[str] = []
-    for constraint in constraints:
-        lines.append(f"- key: {constraint.key}")
-        lines.append(f"  description: {constraint.description}")
-        lines.append(f"  value_type: {constraint.value_type}")
-        lines.append(f"  match_mode: {constraint.match_mode}")
-    return "\n".join(lines)
+    logger.info("Judged event match: matches=%s reason=%s", result.matches, result.reason)
+    return result
 
 
-def _extract_constraint_value(
-    parsed_value: ParsedEventConstraintValue,
-) -> str | bool | list[str] | None:
-    if parsed_value.boolean_value is not None:
-        return parsed_value.boolean_value
-    if parsed_value.list_value:
-        return parsed_value.list_value
-    return parsed_value.string_value
+async def judge_notification_duplicate(
+    *,
+    headline: str,
+    body: str,
+    published_at: datetime | None,
+    recent_notifications: list[str],
+    event_title: str | None = None,
+    event_summary: str | None = None,
+    event_starts_at: datetime | None = None,
+) -> NotificationDuplicateDecision:
+    if not recent_notifications:
+        return NotificationDuplicateDecision(
+            already_notified=False,
+            reason="No recent notification history to compare.",
+        )
+
+    event_lines = [
+        "Reference timestamp: "
+        f"{published_at.isoformat() if published_at else 'unknown'}",
+    ]
+    if event_title:
+        event_lines.extend(["", f"Detected event title:\n{_trim_text(event_title)}"])
+    if event_summary:
+        event_lines.extend(["", f"Detected event summary:\n{_trim_text(event_summary)}"])
+    if event_starts_at is not None:
+        event_lines.extend(["", f"Detected event start:\n{event_starts_at.isoformat()}"])
+    event_lines.extend(
+        [
+            "",
+            f"Headline:\n{_trim_text(headline)}",
+            "",
+            f"Body:\n{_trim_text(body)}",
+        ]
+    )
+    event_block = "\n".join(event_lines)
+    history_block = "\n\n".join(
+        f"Notification {index}:\n{_trim_text(entry)}"
+        for index, entry in enumerate(recent_notifications, start=1)
+    )
+
+    completion = await _client.beta.chat.completions.parse(
+        model=settings.llm_model,
+        messages=[
+            {"role": "system", "content": NOTIFICATION_DUPLICATE_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    "Recent notifications already shown to the user:\n"
+                    f"{history_block}\n\n"
+                    "New candidate event:\n"
+                    f"{event_block}"
+                ),
+            },
+        ],
+        response_format=NotificationDuplicateDecision,
+        temperature=0.1,
+    )
+    result = completion.choices[0].message.parsed
+    if result is None:
+        raise ValueError("LLM returned empty parsed response for notification duplicate check")
+
+    logger.info(
+        "Judged notification duplicate: already_notified=%s reason=%s",
+        result.already_notified,
+        result.reason,
+    )
+    return result

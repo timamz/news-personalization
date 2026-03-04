@@ -108,16 +108,6 @@ async def test_create_event_subscription_forces_schedule_off(
         topics=["tv"],
         delivery_mode="event",
         event_matching_mode="strict_with_prefilter",
-        event_constraints=[
-            {
-                "key": "speaker_must_be_drobyshevsky",
-                "description": "Primary speaker identity",
-                "value_type": "string",
-                "match_mode": "exact",
-                "required_string": "станислав владимирович дробышевский",
-                "prefilter_terms": ["станислав", "дробышевский"],
-            }
-        ],
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -170,5 +160,5 @@ async def test_create_event_subscription_forces_schedule_off(
         assert subscription is not None
         assert subscription.delivery_mode == "event"
         assert subscription.event_matching_mode == "strict_with_prefilter"
-        assert len(subscription.event_constraints) == 1
+        assert subscription.event_constraints == []
         assert subscription.schedule_cron is None

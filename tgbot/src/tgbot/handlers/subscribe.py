@@ -24,6 +24,9 @@ SCOPE_ONLY_PROVIDED = "subscribe:scope:only_provided"
 SCOPE_WITH_DISCOVERY = "subscribe:scope:with_discovery"
 SCHEDULE_ENABLE_YES = "subscribe:schedule:yes"
 SCHEDULE_ENABLE_NO = "subscribe:schedule:no"
+RECENT_EVENTS_YES = "subscribe:recent_events:yes"
+RECENT_EVENTS_NO = "subscribe:recent_events:no"
+BACK = "subscribe:back"
 
 
 class SubscribeFlow(StatesGroup):
@@ -33,6 +36,7 @@ class SubscribeFlow(StatesGroup):
     waiting_for_source_knowledge = State()
     waiting_for_channels_input = State()
     waiting_for_scope_choice = State()
+    waiting_for_recent_events_decision = State()
 
 
 @router.message(Command("subscribe"))
@@ -45,14 +49,7 @@ async def cmd_subscribe(message: types.Message, state: FSMContext) -> None:
         await message.answer("Registration failed. Please try again later.")
         return
 
-    await state.clear()
-    await state.set_state(SubscribeFlow.waiting_for_prompt)
-    await message.answer(
-        "Describe what news you want.\n\n"
-        'Examples:\n'
-        '- "I want AI and tech news every morning as a brief summary"\n'
-        '- "Notify me when a new episode of Severance is announced"'
-    )
+    await _show_prompt_step(message, state, reset_data=True)
 
 
 @router.message(SubscribeFlow.waiting_for_prompt)
@@ -82,19 +79,26 @@ async def process_prompt(message: types.Message, state: FSMContext) -> None:
     )
 
     if delivery_mode == "event":
-        await _continue_with_source_flow(message, state, prompt, delivery_mode)
+        await _continue_with_source_flow(
+            message,
+            state,
+            prompt,
+            delivery_mode,
+            source_back_target="prompt",
+        )
         return
 
     if parsed.schedule_was_explicit and parsed.schedule_cron:
-        await _continue_with_source_flow(message, state, prompt, delivery_mode)
+        await _continue_with_source_flow(
+            message,
+            state,
+            prompt,
+            delivery_mode,
+            source_back_target="prompt",
+        )
         return
 
-    await state.set_state(SubscribeFlow.waiting_for_schedule_decision)
-    await message.answer(
-        "Do you want this digest to be delivered automatically on a schedule?\n"
-        "You can always use the Send now button.",
-        reply_markup=_schedule_choice_keyboard(),
-    )
+    await _show_schedule_decision_step(message, state)
 
 
 @router.callback_query(
@@ -104,12 +108,7 @@ async def process_prompt(message: types.Message, state: FSMContext) -> None:
 async def handle_schedule_decision(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     if callback.data == SCHEDULE_ENABLE_YES:
-        await state.set_state(SubscribeFlow.waiting_for_schedule_input)
-        if callback.message:
-            await callback.message.answer(
-                "Describe the schedule in natural language.\n"
-                'Example: "every weekday at 9:00"'
-            )
+        await _show_schedule_input_step(callback, state)
         return
 
     state_data = await state.get_data()
@@ -119,7 +118,13 @@ async def handle_schedule_decision(callback: CallbackQuery, state: FSMContext) -
         await _answer(callback, "Subscription setup expired. Please run /subscribe again.")
         await state.clear()
         return
-    await _continue_with_source_flow(callback, state, prompt, "digest")
+    await _continue_with_source_flow(
+        callback,
+        state,
+        prompt,
+        "digest",
+        source_back_target="schedule_decision",
+    )
 
 
 @router.message(SubscribeFlow.waiting_for_schedule_input)
@@ -145,7 +150,13 @@ async def process_schedule_input(message: types.Message, state: FSMContext) -> N
         await message.answer("Subscription setup expired. Please run /subscribe again.")
         await state.clear()
         return
-    await _continue_with_source_flow(message, state, prompt, "digest")
+    await _continue_with_source_flow(
+        message,
+        state,
+        prompt,
+        "digest",
+        source_back_target="schedule_input",
+    )
 
 
 @router.callback_query(
@@ -155,6 +166,7 @@ async def process_schedule_input(message: types.Message, state: FSMContext) -> N
 async def handle_source_knowledge_choice(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     if callback.data == KNOW_SOURCES_NO:
+        await state.update_data(creation_back_target="source_knowledge")
         await _create_subscription_from_state(
             callback,
             state,
@@ -163,11 +175,7 @@ async def handle_source_knowledge_choice(callback: CallbackQuery, state: FSMCont
         )
         return
 
-    await state.set_state(SubscribeFlow.waiting_for_channels_input)
-    if callback.message:
-        await callback.message.answer(
-            "Send Telegram channels you want to include (for example: @channel_one @channel_two)."
-        )
+    await _show_channels_input_step(callback, state)
 
 
 @router.message(SubscribeFlow.waiting_for_channels_input)
@@ -179,14 +187,12 @@ async def process_channels_input(message: types.Message, state: FSMContext) -> N
         )
         return
 
-    await state.update_data(telegram_channels=channels)
-    await state.set_state(SubscribeFlow.waiting_for_scope_choice)
-    state_data = await state.get_data()
-    delivery_mode = str(state_data.get("delivery_mode", "digest"))
-    await message.answer(
-        f"Got it. {_scope_question(delivery_mode)}\n{_format_channels(channels)}",
-        reply_markup=_scope_keyboard(),
+    await state.update_data(
+        telegram_channels=channels,
+        scope_back_target="channels_input",
+        scope_channels_origin="manual",
     )
+    await _show_scope_choice_step(message, state)
 
 
 @router.callback_query(
@@ -198,6 +204,7 @@ async def handle_scope_choice(callback: CallbackQuery, state: FSMContext) -> Non
     include_discovered_sources = callback.data == SCOPE_WITH_DISCOVERY
     state_data = await state.get_data()
     channels = list(state_data.get("telegram_channels", []))
+    await state.update_data(creation_back_target="scope_choice")
     await _create_subscription_from_state(
         callback,
         state,
@@ -206,32 +213,127 @@ async def handle_scope_choice(callback: CallbackQuery, state: FSMContext) -> Non
     )
 
 
+@router.callback_query(
+    lambda c: c.data in {RECENT_EVENTS_YES, RECENT_EVENTS_NO},
+    SubscribeFlow.waiting_for_recent_events_decision,
+)
+async def handle_recent_events_decision(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    if callback.data == RECENT_EVENTS_NO:
+        await _answer(callback, "Okay. I will only send new event notifications from now on.")
+        await state.clear()
+        return
+
+    state_data = await state.get_data()
+    subscription_id = state_data.get("created_subscription_id")
+    if not isinstance(subscription_id, str) or not subscription_id:
+        await _answer(callback, "This preview expired. Please create a new subscription if needed.")
+        await state.clear()
+        return
+
+    telegram_id = _telegram_id_from_event(callback)
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await _answer(callback, "Registration failed. Please try again later.")
+        await state.clear()
+        return
+
+    await _answer(callback, "Checking what you might have missed in the last 7 days...")
+    try:
+        recent_events = await backend.list_recent_events(api_key, subscription_id)
+    except Exception:
+        logger.exception(
+            "Failed to load recent events for telegram_id=%d subscription=%s",
+            telegram_id,
+            subscription_id,
+        )
+        await _answer(callback, "Couldn't load recent events right now.")
+        await state.clear()
+        return
+
+    if not recent_events:
+        await _answer(callback, "No matching events were found in the last 7 days.")
+        await state.clear()
+        return
+
+    await _answer(callback, "Here's what you might have missed in the last 7 days:")
+    for recent_event in recent_events:
+        await _answer(callback, f"{recent_event.subject}\n\n{recent_event.body}")
+
+    try:
+        await backend.acknowledge_recent_events(
+            api_key,
+            subscription_id,
+            [recent_event.news_item_id for recent_event in recent_events],
+        )
+    except Exception:
+        logger.exception(
+            "Failed to acknowledge recent events for telegram_id=%d subscription=%s",
+            telegram_id,
+            subscription_id,
+        )
+
+    await state.clear()
+
+
+@router.callback_query(lambda c: c.data == BACK)
+async def handle_back(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    current_state = await state.get_state()
+
+    if current_state == SubscribeFlow.waiting_for_schedule_decision.state:
+        await _show_prompt_step(callback, state, reset_data=True)
+        return
+    if current_state == SubscribeFlow.waiting_for_schedule_input.state:
+        await _show_schedule_decision_step(callback, state)
+        return
+    if current_state == SubscribeFlow.waiting_for_source_knowledge.state:
+        await _show_source_previous_step(callback, state)
+        return
+    if current_state == SubscribeFlow.waiting_for_channels_input.state:
+        await _show_source_knowledge_step(callback, state)
+        return
+    if current_state == SubscribeFlow.waiting_for_scope_choice.state:
+        await _show_scope_previous_step(callback, state)
+        return
+    if current_state == SubscribeFlow.waiting_for_recent_events_decision.state:
+        await _undo_recent_event_step(callback, state)
+        return
+
+    await _answer(callback, "Back is not available here.")
+
+
 async def _continue_with_source_flow(
     event: types.Message | CallbackQuery,
     state: FSMContext,
     prompt: str,
     delivery_mode: str,
+    *,
+    source_back_target: str,
 ) -> None:
     telegram_channels = extract_telegram_channels(prompt)
-    await state.update_data(telegram_channels=telegram_channels)
+    await state.update_data(
+        telegram_channels=telegram_channels,
+        source_back_target=source_back_target,
+    )
 
     if telegram_channels:
-        await state.set_state(SubscribeFlow.waiting_for_scope_choice)
-        await _answer_with_markup(
+        await state.update_data(
+            scope_back_target=source_back_target,
+            scope_channels_origin="prompt",
+        )
+        await _show_scope_choice_step(
             event,
-            "I found these Telegram channels in your request:\n"
-            f"{_format_channels(telegram_channels)}\n\n"
-            f"{_scope_question(delivery_mode)}",
-            _scope_keyboard(),
+            state,
+            delivery_mode=delivery_mode,
+            channels=telegram_channels,
+            origin="prompt",
         )
         return
 
-    await state.set_state(SubscribeFlow.waiting_for_source_knowledge)
-    await _answer_with_markup(
-        event,
-        _source_knowledge_question(delivery_mode),
-        _source_knowledge_keyboard(),
-    )
+    await _show_source_knowledge_step(event, state, delivery_mode=delivery_mode)
 
 
 async def _create_subscription_from_state(
@@ -262,7 +364,9 @@ async def _create_subscription_from_state(
         await state.clear()
         return
 
-    webhook_url = f"http://{settings.webhook_public_host}:{settings.webhook_port}/deliver/{telegram_id}"
+    webhook_url = (
+        f"http://{settings.webhook_public_host}:{settings.webhook_port}/deliver/{telegram_id}"
+    )
     await _answer(event, "Processing your request...")
 
     try:
@@ -289,11 +393,185 @@ async def _create_subscription_from_state(
         completion_text = "You'll receive digests right here in this chat."
     await _answer(
         event,
-        "Subscription created!\n\n"
-        f"Topics: {topics_str}\n\n"
-        f"{completion_text}",
+        f"Subscription created!\n\nTopics: {topics_str}\n\n{completion_text}",
     )
+    if delivery_mode == "event":
+        await state.update_data(created_subscription_id=subscription.id)
+        await state.set_state(SubscribeFlow.waiting_for_recent_events_decision)
+        await _answer_with_markup(
+            event,
+            "Would you like to see what you might have missed in the last 7 days?",
+            _recent_events_choice_keyboard(),
+        )
+        return
+
     await state.clear()
+
+
+async def _show_prompt_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+    *,
+    reset_data: bool,
+) -> None:
+    if reset_data:
+        await state.clear()
+    await state.set_state(SubscribeFlow.waiting_for_prompt)
+    await _answer(event, _subscription_prompt_text())
+
+
+async def _show_schedule_decision_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+) -> None:
+    await state.set_state(SubscribeFlow.waiting_for_schedule_decision)
+    await _answer_with_markup(
+        event,
+        "Do you want this digest to be delivered automatically on a schedule?\n"
+        "You can always use the Send now button.",
+        _schedule_choice_keyboard(),
+    )
+
+
+async def _show_schedule_input_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+) -> None:
+    await state.set_state(SubscribeFlow.waiting_for_schedule_input)
+    await _answer_with_markup(
+        event,
+        'Describe the schedule in natural language.\nExample: "every weekday at 9:00"',
+        _back_only_keyboard(),
+    )
+
+
+async def _show_source_knowledge_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+    *,
+    delivery_mode: str | None = None,
+) -> None:
+    if delivery_mode is None:
+        state_data = await state.get_data()
+        delivery_mode = str(state_data.get("delivery_mode", "digest"))
+    await state.set_state(SubscribeFlow.waiting_for_source_knowledge)
+    await _answer_with_markup(
+        event,
+        _source_knowledge_question(delivery_mode),
+        _source_knowledge_keyboard(),
+    )
+
+
+async def _show_channels_input_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+) -> None:
+    await state.set_state(SubscribeFlow.waiting_for_channels_input)
+    await _answer_with_markup(
+        event,
+        "Send Telegram channels you want to include (for example: @channel_one @channel_two).",
+        _back_only_keyboard(),
+    )
+
+
+async def _show_scope_choice_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+    *,
+    delivery_mode: str | None = None,
+    channels: list[str] | None = None,
+    origin: str | None = None,
+) -> None:
+    if delivery_mode is None or channels is None or origin is None:
+        state_data = await state.get_data()
+        if delivery_mode is None:
+            delivery_mode = str(state_data.get("delivery_mode", "digest"))
+        if channels is None:
+            channels = list(state_data.get("telegram_channels", []))
+        if origin is None:
+            origin = str(state_data.get("scope_channels_origin", "manual"))
+    await state.set_state(SubscribeFlow.waiting_for_scope_choice)
+
+    if origin == "prompt":
+        text = (
+            "I found these Telegram channels in your request:\n"
+            f"{_format_channels(channels)}\n\n"
+            f"{_scope_question(delivery_mode)}"
+        )
+    else:
+        text = f"Got it. {_scope_question(delivery_mode)}\n{_format_channels(channels)}"
+
+    await _answer_with_markup(event, text, _scope_keyboard())
+
+
+async def _show_source_previous_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+) -> None:
+    state_data = await state.get_data()
+    target = str(state_data.get("source_back_target", "prompt"))
+
+    if target == "schedule_decision":
+        await _show_schedule_decision_step(event, state)
+        return
+    if target == "schedule_input":
+        await _show_schedule_input_step(event, state)
+        return
+
+    await _show_prompt_step(event, state, reset_data=True)
+
+
+async def _show_scope_previous_step(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+) -> None:
+    state_data = await state.get_data()
+    target = str(state_data.get("scope_back_target", "prompt"))
+
+    if target == "channels_input":
+        await _show_channels_input_step(event, state)
+        return
+    if target == "schedule_decision":
+        await _show_schedule_decision_step(event, state)
+        return
+    if target == "schedule_input":
+        await _show_schedule_input_step(event, state)
+        return
+
+    await _show_prompt_step(event, state, reset_data=True)
+
+
+async def _undo_recent_event_step(
+    callback: CallbackQuery,
+    state: FSMContext,
+) -> None:
+    state_data = await state.get_data()
+    subscription_id = state_data.get("created_subscription_id")
+    if not isinstance(subscription_id, str) or not subscription_id:
+        await _answer(callback, "This step can no longer be undone.")
+        await state.clear()
+        return
+
+    telegram_id = _telegram_id_from_event(callback)
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+        await backend.delete_subscription(api_key, subscription_id)
+    except Exception:
+        logger.exception(
+            "Failed to undo created subscription for telegram_id=%d subscription=%s",
+            telegram_id,
+            subscription_id,
+        )
+        await _answer(callback, "Couldn't go back right now. Please try again.")
+        return
+
+    await state.update_data(created_subscription_id=None)
+    target = str(state_data.get("creation_back_target", "source_knowledge"))
+    if target == "scope_choice":
+        await _show_scope_choice_step(callback, state)
+        return
+
+    await _show_source_knowledge_step(callback, state)
 
 
 def _source_knowledge_keyboard() -> InlineKeyboardMarkup:
@@ -302,7 +580,8 @@ def _source_knowledge_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="Yes, I have channels", callback_data=KNOW_SOURCES_YES),
                 InlineKeyboardButton(text="No, find sources for me", callback_data=KNOW_SOURCES_NO),
-            ]
+            ],
+            [InlineKeyboardButton(text="Back", callback_data=BACK)],
         ]
     )
 
@@ -319,7 +598,8 @@ def _scope_keyboard() -> InlineKeyboardMarkup:
                     text="Add more relevant sources",
                     callback_data=SCOPE_WITH_DISCOVERY,
                 ),
-            ]
+            ],
+            [InlineKeyboardButton(text="Back", callback_data=BACK)],
         ]
     )
 
@@ -333,8 +613,44 @@ def _schedule_choice_keyboard() -> InlineKeyboardMarkup:
                     text="No, send only by button",
                     callback_data=SCHEDULE_ENABLE_NO,
                 ),
-            ]
+            ],
+            [InlineKeyboardButton(text="Back", callback_data=BACK)],
         ]
+    )
+
+
+def _recent_events_choice_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Yes, show missed events",
+                    callback_data=RECENT_EVENTS_YES,
+                ),
+                InlineKeyboardButton(
+                    text="No, only future ones",
+                    callback_data=RECENT_EVENTS_NO,
+                ),
+            ],
+            [InlineKeyboardButton(text="Back", callback_data=BACK)],
+        ]
+    )
+
+
+def _back_only_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Back", callback_data=BACK)],
+        ]
+    )
+
+
+def _subscription_prompt_text() -> str:
+    return (
+        "Describe what news you want.\n\n"
+        "Examples:\n"
+        '- "I want AI and tech news every morning as a brief summary"\n'
+        '- "Notify me when a new episode of Severance is announced"'
     )
 
 

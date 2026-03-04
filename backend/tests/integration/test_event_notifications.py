@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy import select
 
+from news_service.agents.event import EventMatchDecision, NotificationDuplicateDecision
 from news_service.db.session import async_session_factory
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
@@ -12,6 +13,7 @@ from news_service.models.sent_item import SentItem
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
+from news_service.services import event_notifications
 from news_service.tasks import deliver_events
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -124,24 +126,7 @@ async def test_strict_event_notification_skips_non_matching_event(mocker) -> Non
             topics=["Drobyshevsky"],
             delivery_mode="event",
             event_matching_mode="strict_with_prefilter",
-            event_constraints=[
-                {
-                    "key": "speaker_must_be_drobyshevsky",
-                    "description": "Primary speaker identity",
-                    "value_type": "string",
-                    "match_mode": "exact",
-                    "required_string": "станислав владимирович дробышевский",
-                    "prefilter_terms": ["дробышевский"],
-                },
-                {
-                    "key": "is_other_person_speaking_under_brand",
-                    "description": "Whether another person is speaking under the brand",
-                    "value_type": "boolean",
-                    "match_mode": "equals",
-                    "required_boolean": False,
-                    "prefilter_terms": ["лекция"],
-                },
-            ],
+            event_constraints=[],
             schedule_cron=None,
             format_instructions="brief summary",
             digest_language="en",
@@ -173,13 +158,13 @@ async def test_strict_event_notification_skips_non_matching_event(mocker) -> Non
     channel = AsyncMock()
     mocker.patch.object(deliver_events, "get_delivery_channel", return_value=channel)
     mocker.patch.object(
-        deliver_events,
-        "parse_event_constraint_values",
+        event_notifications,
+        "judge_event_match",
         new=AsyncMock(
-            return_value={
-                "speaker_must_be_drobyshevsky": "александр очередной",
-                "is_other_person_speaking_under_brand": True,
-            }
+            return_value=EventMatchDecision(
+                matches=False,
+                reason="The post is about another speaker.",
+            )
         ),
     )
 
@@ -196,3 +181,117 @@ async def test_strict_event_notification_skips_non_matching_event(mocker) -> Non
             )
         )
         assert sent_result.scalar_one_or_none() is None
+
+
+async def test_event_notification_does_not_skip_when_only_another_subscription_has_recent_history(
+    mocker,
+) -> None:
+    current_news_item_id = uuid.uuid4()
+
+    async with async_session_factory() as session:
+        user = User(api_key="duplicate-history-test-api-key")
+        old_feed = RssFeed(
+            url="https://example.com/old-events.xml",
+            title="Old Events Feed",
+            topic_tags=["science"],
+            is_active=True,
+            subscriber_count=0,
+        )
+        current_feed = RssFeed(
+            url="https://example.com/current-events.xml",
+            title="Current Events Feed",
+            topic_tags=["science"],
+            is_active=True,
+            subscriber_count=1,
+        )
+        session.add_all([user, old_feed, current_feed])
+        await session.flush()
+
+        old_subscription = Subscription(
+            user_id=user.id,
+            raw_prompt="Notify me about Drobyshevsky lectures",
+            topics=["Drobyshevsky"],
+            delivery_mode="event",
+            event_matching_mode="basic",
+            event_constraints=[],
+            schedule_cron=None,
+            format_instructions="brief summary",
+            digest_language="en",
+            delivery_webhook_url="http://frontend.example.test/deliver/1",
+            is_active=False,
+        )
+        current_subscription = Subscription(
+            user_id=user.id,
+            raw_prompt="Notify me about Drobyshevsky lectures",
+            topics=["Drobyshevsky"],
+            delivery_mode="event",
+            event_matching_mode="basic",
+            event_constraints=[],
+            schedule_cron=None,
+            format_instructions="brief summary",
+            digest_language="en",
+            delivery_webhook_url="http://frontend.example.test/deliver/1",
+            is_active=True,
+        )
+        session.add_all([old_subscription, current_subscription])
+        await session.flush()
+
+        old_news_item = NewsItem(
+            feed_id=old_feed.id,
+            headline="Lecture announced",
+            body="Stanislav Drobyshevsky will lecture next week.",
+            url="https://example.com/old-events/1",
+            source="Old Events Feed",
+            published_at=datetime(2026, 3, 1, 12, 0, tzinfo=UTC),
+            event_title="Stanislav Drobyshevsky lecture",
+            event_summary="Stanislav Drobyshevsky will lecture next week.",
+            event_starts_at=datetime(2026, 3, 10, 19, 0, tzinfo=UTC),
+            fetched_at=datetime(2026, 3, 1, 12, 1, tzinfo=UTC),
+        )
+        current_news_item = NewsItem(
+            id=current_news_item_id,
+            feed_id=current_feed.id,
+            headline="Reminder about the lecture",
+            body="Reminder: Stanislav Drobyshevsky will lecture next week.",
+            url="https://example.com/current-events/1",
+            source="Current Events Feed",
+            published_at=datetime(2026, 3, 3, 12, 0, tzinfo=UTC),
+            event_title="Stanislav Drobyshevsky lecture reminder",
+            event_summary="Reminder: Stanislav Drobyshevsky will lecture next week.",
+            event_starts_at=datetime(2026, 3, 10, 19, 0, tzinfo=UTC),
+            fetched_at=datetime(2026, 3, 3, 12, 1, tzinfo=UTC),
+        )
+        session.add_all([old_news_item, current_news_item])
+        session.add(
+            SubscriptionSource(
+                subscription_id=current_subscription.id,
+                feed_id=current_feed.id,
+            )
+        )
+        await session.flush()
+        session.add(SentItem(subscription_id=old_subscription.id, news_item_id=old_news_item.id))
+        await session.commit()
+
+    channel = AsyncMock()
+    mocker.patch.object(deliver_events, "get_delivery_channel", return_value=channel)
+    duplicate_judge = mocker.patch.object(
+        event_notifications,
+        "judge_notification_duplicate",
+        new=AsyncMock(
+            return_value=NotificationDuplicateDecision(
+                already_notified=True,
+                reason="The user already got the same event from another subscription.",
+            )
+        ),
+    )
+
+    result = await deliver_events._deliver_event_notifications(current_news_item_id)
+
+    assert result == {
+        "status": "delivered",
+        "delivered": 1,
+        "failed": 0,
+        "news_item_id": str(current_news_item_id),
+    }
+    duplicate_judge.assert_not_awaited()
+    channel.send.assert_awaited_once()
