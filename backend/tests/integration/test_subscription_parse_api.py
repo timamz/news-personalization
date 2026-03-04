@@ -67,3 +67,26 @@ async def test_parse_schedule_endpoint_returns_cron(
 
     assert response.status_code == 200
     assert response.json() == {"schedule_cron": "0 9 * * 1-5"}
+
+
+async def test_parse_schedule_endpoint_rejects_invalid_cron(
+    api_client: AsyncClient,
+    mocker,
+) -> None:
+    mocker.patch(
+        "news_service.api.routes_subscriptions.parse_schedule_preference",
+        new=AsyncMock(return_value="not a cron"),
+    )
+
+    user_response = await api_client.post("/users")
+    assert user_response.status_code == 201
+    api_key = user_response.json()["api_key"]
+
+    response = await api_client.post(
+        "/subscriptions/parse-schedule",
+        headers={"X-API-Key": api_key},
+        json={"schedule_text": "something invalid"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Invalid cron expression: not a cron"

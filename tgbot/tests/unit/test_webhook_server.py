@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
-from tgbot.webhook_server import TELEGRAM_MAX_MESSAGE_LENGTH, create_webhook_app, set_bot
+from tgbot.webhook_server import (
+    TELEGRAM_MAX_MESSAGE_LENGTH,
+    create_webhook_app,
+    delivery_webhook_path,
+    set_bot,
+)
 
 
 @pytest.fixture
@@ -20,7 +25,7 @@ async def test_deliver_success(webhook_client: TestClient):
     set_bot(mock_bot)
 
     response = await webhook_client.post(
-        "/deliver/12345",
+        delivery_webhook_path(12345),
         json={"subject": "Test Digest", "body": "Here is your news."},
     )
     assert response.status == 200
@@ -37,7 +42,7 @@ async def test_deliver_invalid_json(webhook_client: TestClient):
     set_bot(AsyncMock())
 
     response = await webhook_client.post(
-        "/deliver/12345",
+        delivery_webhook_path(12345),
         data=b"not json",
         headers={"Content-Type": "application/json"},
     )
@@ -49,7 +54,7 @@ async def test_deliver_no_bot(webhook_client: TestClient):
     set_bot(None)
 
     response = await webhook_client.post(
-        "/deliver/12345",
+        delivery_webhook_path(12345),
         json={"subject": "Test", "body": "Body"},
     )
     assert response.status == 503
@@ -63,9 +68,33 @@ async def test_deliver_splits_long_message(webhook_client: TestClient):
 
     long_body = "a" * (TELEGRAM_MAX_MESSAGE_LENGTH * 2)
     response = await webhook_client.post(
-        "/deliver/12345",
+        delivery_webhook_path(12345),
         json={"subject": "Long Digest", "body": long_body},
     )
 
     assert response.status == 200
     assert mock_bot.send_message.await_count >= 2
+
+
+@pytest.mark.asyncio
+async def test_deliver_rejects_legacy_unauthenticated_path(webhook_client: TestClient):
+    set_bot(AsyncMock())
+
+    response = await webhook_client.post(
+        "/deliver/12345",
+        json={"subject": "Test Digest", "body": "Here is your news."},
+    )
+
+    assert response.status == 403
+
+
+@pytest.mark.asyncio
+async def test_deliver_rejects_invalid_token(webhook_client: TestClient):
+    set_bot(AsyncMock())
+
+    response = await webhook_client.post(
+        "/deliver/not-the-right-token/12345",
+        json={"subject": "Test Digest", "body": "Here is your news."},
+    )
+
+    assert response.status == 403

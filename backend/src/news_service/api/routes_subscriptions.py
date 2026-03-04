@@ -31,12 +31,28 @@ from news_service.services.event_notifications import (
     build_event_notification,
     list_recent_subscription_events,
 )
+from news_service.services.scheduler import parse_cron_to_celery
 from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
 from news_service.tasks.deliver_digest import deliver_digest
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+
+
+def _validated_schedule_or_422(schedule_cron: str | None) -> str | None:
+    if schedule_cron is None:
+        return None
+
+    normalized = " ".join(schedule_cron.split())
+    try:
+        parse_cron_to_celery(normalized)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Invalid cron expression: {normalized}",
+        ) from exc
+    return normalized
 
 
 @router.post("/parse", response_model=SubscriptionParseResponse)
@@ -46,10 +62,11 @@ async def parse_subscription_prompt(
 ) -> SubscriptionParseResponse:
     del user
     config = await parse_subscription(payload.prompt)
+    schedule_cron = _validated_schedule_or_422(config.schedule_cron)
     return SubscriptionParseResponse(
         topics=config.topics,
         delivery_mode=config.delivery_mode,
-        schedule_cron=config.schedule_cron,
+        schedule_cron=schedule_cron,
         schedule_was_explicit=config.schedule_was_explicit,
         format_instructions=config.format_instructions,
         digest_language=config.digest_language,
@@ -63,7 +80,10 @@ async def parse_schedule(
 ) -> ScheduleParseResponse:
     del user
     schedule_cron = await parse_schedule_preference(payload.schedule_text)
-    return ScheduleParseResponse(schedule_cron=schedule_cron)
+    validated_schedule = _validated_schedule_or_422(schedule_cron)
+    if validated_schedule is None:
+        raise RuntimeError("Schedule parser returned an empty cron expression")
+    return ScheduleParseResponse(schedule_cron=validated_schedule)
 
 
 @router.post("", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
@@ -99,6 +119,7 @@ async def create_subscription(
     )
     if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
+    schedule_cron = _validated_schedule_or_422(schedule_cron)
 
     subscription = Subscription(
         user_id=user.id,
@@ -314,7 +335,7 @@ async def update_subscription(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Automatic schedule is available only for digest subscriptions",
             )
-        subscription.schedule_cron = updates["schedule_cron"]
+        subscription.schedule_cron = _validated_schedule_or_422(updates["schedule_cron"])
     if "format_instructions" in updates:
         subscription.format_instructions = updates["format_instructions"]
     if "delivery_webhook_url" in updates:

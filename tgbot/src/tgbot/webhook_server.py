@@ -1,11 +1,16 @@
 import logging
+from hashlib import sha256
+from secrets import compare_digest
 
 from aiohttp import web
+
+from tgbot.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 _bot_instance = None
 TELEGRAM_MAX_MESSAGE_LENGTH = 4000
+settings = get_settings()
 
 
 def set_bot(bot) -> None:  # noqa: ANN001
@@ -14,7 +19,11 @@ def set_bot(bot) -> None:  # noqa: ANN001
 
 
 async def handle_deliver(request: web.Request) -> web.Response:
+    token = request.match_info["token"]
     chat_id = request.match_info["chat_id"]
+    if not compare_digest(token, _delivery_token()):
+        logger.warning("Rejected unauthorized webhook delivery for chat_id=%s", chat_id)
+        return web.json_response({"error": "forbidden"}, status=403)
 
     try:
         data = await request.json()
@@ -39,10 +48,25 @@ async def handle_deliver(request: web.Request) -> web.Response:
         return web.json_response({"error": "delivery failed"}, status=500)
 
 
+async def handle_legacy_deliver(request: web.Request) -> web.Response:
+    chat_id = request.match_info["chat_id"]
+    logger.warning("Rejected legacy unauthenticated delivery for chat_id=%s", chat_id)
+    return web.json_response({"error": "forbidden"}, status=403)
+
+
 def create_webhook_app() -> web.Application:
     app = web.Application()
-    app.router.add_post("/deliver/{chat_id}", handle_deliver)
+    app.router.add_post("/deliver/{chat_id}", handle_legacy_deliver)
+    app.router.add_post("/deliver/{token}/{chat_id}", handle_deliver)
     return app
+
+
+def delivery_webhook_path(chat_id: int) -> str:
+    return f"/deliver/{_delivery_token()}/{chat_id}"
+
+
+def delivery_webhook_url(chat_id: int) -> str:
+    return f"http://{settings.webhook_public_host}:{settings.webhook_port}{delivery_webhook_path(chat_id)}"
 
 
 def _split_text(text: str, max_length: int) -> list[str]:
@@ -56,3 +80,8 @@ def _split_text(text: str, max_length: int) -> list[str]:
         chunks.append(text[start:end])
         start = end
     return chunks
+
+
+def _delivery_token() -> str:
+    payload = f"deliver:{settings.bot_token}".encode()
+    return sha256(payload).hexdigest()[:32]

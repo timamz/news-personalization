@@ -34,8 +34,15 @@ async def ensure_topic_coverage(session: AsyncSession, topics: list[str]) -> lis
     if uncovered:
         logger.info("Discovering feeds for uncovered topics: %s", uncovered)
         discovered = await discover_feeds(uncovered)
+        selected_urls = {feed.url for feed in selected.values()}
+        deduplicated_discovered: dict[str, DiscoveredFeedItem] = {}
 
         for feed_info in discovered:
+            if feed_info.url in selected_urls or feed_info.url in deduplicated_discovered:
+                continue
+            deduplicated_discovered[feed_info.url] = feed_info
+
+        for feed_info in deduplicated_discovered.values():
             feed = await _register_feed(session, feed_info)
             selected[feed.id] = feed
 

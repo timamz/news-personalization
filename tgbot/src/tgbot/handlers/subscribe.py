@@ -8,15 +8,14 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
 from tgbot.client import BackendClient
-from tgbot.core.config import get_settings
 from tgbot.source_parser import extract_telegram_channels, parse_telegram_channel_tokens
 from tgbot.user_registry import ensure_api_key
+from tgbot.webhook_server import delivery_webhook_url
 
 logger = logging.getLogger(__name__)
 
 router = Router()
 backend = BackendClient()
-settings = get_settings()
 
 KNOW_SOURCES_YES = "subscribe:know_sources:yes"
 KNOW_SOURCES_NO = "subscribe:know_sources:no"
@@ -364,9 +363,7 @@ async def _create_subscription_from_state(
         await state.clear()
         return
 
-    webhook_url = (
-        f"http://{settings.webhook_public_host}:{settings.webhook_port}/deliver/{telegram_id}"
-    )
+    webhook_url = delivery_webhook_url(telegram_id)
     await _answer(event, "Processing your request...")
 
     try:

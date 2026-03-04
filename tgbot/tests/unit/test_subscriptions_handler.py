@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from tgbot.handlers import subscriptions
+from tgbot.webhook_server import delivery_webhook_url
 
 
 def _mock_message(telegram_id: int):
@@ -165,6 +166,6 @@ async def test_handle_deliver_here_updates_webhook(monkeypatch):
     update_subscription.assert_awaited_once_with(
         "api-key",
         "sub-2",
-        delivery_webhook_url="http://tgbot:8001/deliver/222",
+        delivery_webhook_url=delivery_webhook_url(222),
     )
     callback.answer.assert_awaited_once_with("Delivery updated to this chat.")

@@ -3,6 +3,7 @@ import logging
 from datetime import UTC, datetime
 
 import feedparser
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,8 @@ from news_service.tasks.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 DELIVER_EVENTS_TASK = "news_service.tasks.deliver_events.deliver_event_notifications"
+RSS_FETCH_TIMEOUT_SECONDS = 10.0
+RSS_FETCH_ATTEMPTS = 2
 
 
 @celery_app.task(name="news_service.tasks.poll_feeds.poll_all_feeds")
@@ -55,7 +58,8 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
         return await _poll_single_telegram_channel(session, feed, channel_handle)
 
     try:
-        parsed = feedparser.parse(feed.url)
+        content = await _fetch_rss_feed_content(feed.url)
+        parsed = feedparser.parse(content)
     except Exception:
         logger.exception("Failed to parse feed %s", feed.url, extra={"feed_id": str(feed.id)})
         return 0
@@ -200,3 +204,30 @@ async def _maybe_store_upcoming_event(session: AsyncSession, item: NewsItem) -> 
     item.event_summary = event.summary or item.headline
     item.event_starts_at = event.starts_at
     session.info.setdefault("event_item_ids", []).append(item.id)
+
+
+async def _fetch_rss_feed_content(url: str) -> bytes:
+    async with httpx.AsyncClient(
+        timeout=RSS_FETCH_TIMEOUT_SECONDS,
+        follow_redirects=True,
+    ) as client:
+        last_error: httpx.HTTPError | None = None
+        for attempt in range(1, RSS_FETCH_ATTEMPTS + 1):
+            try:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.content
+            except httpx.HTTPError as exc:
+                last_error = exc
+                if attempt == RSS_FETCH_ATTEMPTS:
+                    break
+                logger.warning(
+                    "RSS fetch attempt %d/%d failed for %s; retrying",
+                    attempt,
+                    RSS_FETCH_ATTEMPTS,
+                    url,
+                )
+
+    if last_error is None:
+        raise RuntimeError(f"RSS fetch failed without HTTP error for {url}")
+    raise last_error

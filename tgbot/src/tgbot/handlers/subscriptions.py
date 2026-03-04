@@ -7,14 +7,13 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
 from tgbot.client import BackendClient
-from tgbot.core.config import get_settings
 from tgbot.user_registry import ensure_api_key
+from tgbot.webhook_server import delivery_webhook_url
 
 logger = logging.getLogger(__name__)
 
 router = Router()
 backend = BackendClient()
-settings = get_settings()
 
 DELETE_PREFIX = "delete_sub:"
 SEND_NOW_PREFIX = "send_now:"
@@ -302,4 +301,4 @@ def _subscription_id_from_callback(callback_data: str | None, prefix: str) -> st
 
 
 def _webhook_url_for_chat(chat_id: int) -> str:
-    return f"http://{settings.webhook_public_host}:{settings.webhook_port}/deliver/{chat_id}"
+    return delivery_webhook_url(chat_id)

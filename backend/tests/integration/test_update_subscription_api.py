@@ -132,3 +132,72 @@ async def test_update_subscription_rejects_empty_patch(
 
     assert response.status_code == 422
     assert response.json()["detail"] == "No editable fields were provided"
+
+
+async def test_update_subscription_rejects_invalid_schedule(
+    api_client: AsyncClient,
+    mocker,
+) -> None:
+    api_key, subscription_id = await _create_user_and_subscription(api_client, mocker)
+
+    response = await api_client.patch(
+        f"/subscriptions/{subscription_id}",
+        headers={"X-API-Key": api_key},
+        json={"schedule_cron": "not a cron"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Invalid cron expression: not a cron"
+
+
+async def test_create_subscription_rejects_invalid_schedule_override(
+    api_client: AsyncClient,
+    mocker,
+) -> None:
+    parsed_config = SubscriptionConfig(
+        topics=["artificial intelligence"],
+        delivery_mode="digest",
+        schedule_cron=None,
+        schedule_was_explicit=False,
+        format_instructions="brief summary",
+        digest_language="en",
+    )
+    mocker.patch(
+        "news_service.api.routes_subscriptions.parse_subscription",
+        new=AsyncMock(return_value=parsed_config),
+    )
+
+    async def fake_ensure_topic_coverage(session, topics):  # noqa: ANN001
+        feed = RssFeed(
+            url="https://example.com/rss.xml",
+            title="Example Feed",
+            topic_tags=topics,
+            topic_embedding=[0.0] * 1536,
+            is_active=True,
+            subscriber_count=1,
+        )
+        session.add(feed)
+        await session.flush()
+        return [feed]
+
+    mocker.patch(
+        "news_service.api.routes_subscriptions.ensure_topic_coverage",
+        new=fake_ensure_topic_coverage,
+    )
+
+    user_response = await api_client.post("/users")
+    assert user_response.status_code == 201
+    api_key = user_response.json()["api_key"]
+
+    create_response = await api_client.post(
+        "/subscriptions",
+        headers={"X-API-Key": api_key},
+        json={
+            "prompt": "AI updates",
+            "delivery_webhook_url": "http://frontend.example.test/deliver/1",
+            "schedule_cron_override": "not a cron",
+        },
+    )
+
+    assert create_response.status_code == 422
+    assert create_response.json()["detail"] == "Invalid cron expression: not a cron"

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from tgbot.handlers import subscribe
+from tgbot.webhook_server import delivery_webhook_url
 
 
 def _mock_message(telegram_id: int, text: str) -> SimpleNamespace:
@@ -212,7 +213,7 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
     create_subscription.assert_awaited_once_with(
         "api-key",
         "ML daily",
-        "http://tgbot:8001/deliver/123",
+        delivery_webhook_url(123),
         fixed_telegram_channels=["gonzo_ml"],
         include_discovered_sources=True,
         schedule_cron_override=None,
