@@ -95,7 +95,9 @@ async def _compose_digest(
                     f"You are a news digest writer. Format the following news items "
                     f"according to these instructions: {format_instructions}\n\n"
                     f"Write the digest in language '{digest_language}'. "
-                    f"Make it well-structured, readable, and engaging."
+                    f"Make it well-structured, readable, and engaging. "
+                    f"Return only the digest itself. Do not add assistant-style "
+                    f"introductions, closings, commentary, or offers to help."
                 ),
             },
             {"role": "user", "content": news_block},
