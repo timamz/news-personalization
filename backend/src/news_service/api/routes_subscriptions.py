@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.parser import parse_schedule_preference, parse_subscription
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
+from news_service.db.vector_store import embed_texts
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
 from news_service.models.sent_item import SentItem
@@ -38,6 +39,15 @@ from news_service.tasks.deliver_digest import deliver_digest
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+
+
+async def _build_subscription_embeddings(
+    raw_prompt: str,
+    topics: list[str],
+) -> tuple[list[float], list[float]]:
+    topic_query = " ".join(topics)
+    raw_prompt_embedding, topics_embedding = await embed_texts([raw_prompt, topic_query])
+    return raw_prompt_embedding, topics_embedding
 
 
 def _validated_schedule_or_422(schedule_cron: str | None) -> str | None:
@@ -120,11 +130,17 @@ async def create_subscription(
     if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
     schedule_cron = _validated_schedule_or_422(schedule_cron)
+    raw_prompt_embedding, topics_embedding = await _build_subscription_embeddings(
+        payload.prompt,
+        config.topics,
+    )
 
     subscription = Subscription(
         user_id=user.id,
         raw_prompt=payload.prompt,
+        raw_prompt_embedding=raw_prompt_embedding,
         topics=config.topics,
+        topics_embedding=topics_embedding,
         delivery_mode=delivery_mode,
         event_matching_mode=event_matching_mode,
         event_constraints=[],
@@ -142,12 +158,13 @@ async def create_subscription(
             session,
             telegram_channels,
             config.topics,
+            topics_embedding,
         )
         for source in telegram_sources:
             selected_sources[source.id] = source
 
     if include_discovered_sources:
-        discovered_sources = await ensure_topic_coverage(session, config.topics)
+        discovered_sources = await ensure_topic_coverage(session, config.topics, topics_embedding)
         for source in discovered_sources:
             selected_sources[source.id] = source
 

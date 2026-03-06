@@ -33,10 +33,6 @@ async def test_subscription_with_telegram_channel_registers_source(
         "news_service.api.routes_subscriptions.ensure_topic_coverage",
         new=ensure_topic_coverage,
     )
-    mocker.patch(
-        "news_service.services.coverage.embed_text",
-        new=AsyncMock(return_value=[0.0] * 1536),
-    )
 
     user_response = await api_client.post("/users")
     assert user_response.status_code == 201
@@ -71,5 +67,6 @@ async def test_subscription_with_telegram_channel_registers_source(
     assert feed is not None
     assert feed.title == "Telegram @fondnauk"
     assert feed.subscriber_count == 1
+    assert list(feed.topic_embedding) == [2.0] * 1536
     assert source_link is not None
     ensure_topic_coverage.assert_not_awaited()

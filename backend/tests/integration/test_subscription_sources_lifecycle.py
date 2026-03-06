@@ -30,7 +30,8 @@ async def test_deactivate_subscription_removes_fixed_source_links(
         new=AsyncMock(return_value=parsed_config),
     )
 
-    async def fake_ensure_topic_coverage(session, topics):  # noqa: ANN001
+    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
+        assert topics_embedding == [2.0] * 1536
         feed = RssFeed(
             url="https://example.com/rss.xml",
             title="Example Feed",
@@ -118,7 +119,8 @@ async def test_create_event_subscription_forces_schedule_off(
         new=AsyncMock(return_value=parsed_config),
     )
 
-    async def fake_ensure_topic_coverage(session, topics):  # noqa: ANN001
+    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
+        assert topics_embedding == [2.0] * 1536
         feed = RssFeed(
             url="https://example.com/shows.xml",
             title="Shows Feed",

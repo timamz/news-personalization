@@ -38,8 +38,11 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
         )
         return None
 
-    topic_query = " ".join(subscription.topics)
-    query_embedding = await embed_text(topic_query)
+    query_embedding = getattr(subscription, "raw_prompt_embedding", None)
+    if query_embedding is None:
+        query_text = subscription.raw_prompt.strip() or " ".join(subscription.topics)
+        query_embedding = await embed_text(query_text)
+        subscription.raw_prompt_embedding = query_embedding
 
     news_items = await find_similar_news(
         session,

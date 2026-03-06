@@ -1,6 +1,8 @@
 import asyncio
 from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -71,3 +73,14 @@ async def api_client() -> AsyncGenerator[AsyncClient]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         yield client
+
+
+@pytest.fixture(autouse=True)
+def mock_subscription_embedding_creation(mocker) -> None:
+    async def _embed(contents: list[str]) -> list[list[float]]:
+        return [[float(index)] * 1536 for index, _ in enumerate(contents, start=1)]
+
+    mocker.patch(
+        "news_service.api.routes_subscriptions.embed_texts",
+        new=AsyncMock(side_effect=_embed),
+    )

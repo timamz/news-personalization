@@ -10,8 +10,12 @@ from news_service.services import coverage
 
 @pytest.mark.asyncio
 async def test_ensure_topic_coverage_deduplicates_discovered_urls(mocker) -> None:
-    mocker.patch.object(coverage, "embed_text", new=AsyncMock(return_value=[0.1]))
-    mocker.patch.object(coverage, "find_similar_feeds", new=AsyncMock(return_value=[]))
+    session = AsyncMock()
+    find_similar_feeds = mocker.patch.object(
+        coverage,
+        "find_similar_feeds",
+        new=AsyncMock(return_value=[]),
+    )
     mocker.patch.object(
         coverage,
         "discover_feeds",
@@ -37,28 +41,25 @@ async def test_ensure_topic_coverage_deduplicates_discovered_urls(mocker) -> Non
         new=AsyncMock(return_value=registered_feed),
     )
 
-    result = await coverage.ensure_topic_coverage(AsyncMock(), ["ai"])
+    result = await coverage.ensure_topic_coverage(session, ["ai"], [0.1])
 
     assert result == [registered_feed]
+    find_similar_feeds.assert_awaited_once_with(session, [0.1], limit=3)
     register_feed.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_ensure_topic_coverage_skips_discovered_url_already_selected(mocker) -> None:
+    session = AsyncMock()
     existing_feed = SimpleNamespace(
         id=uuid.uuid4(),
         url="https://example.com/rss.xml",
         subscriber_count=0,
     )
-    mocker.patch.object(
-        coverage,
-        "embed_text",
-        new=AsyncMock(side_effect=[[0.1], [0.2]]),
-    )
-    mocker.patch.object(
+    find_similar_feeds = mocker.patch.object(
         coverage,
         "find_similar_feeds",
-        new=AsyncMock(side_effect=[[existing_feed], []]),
+        new=AsyncMock(return_value=[existing_feed]),
     )
     mocker.patch.object(
         coverage,
@@ -75,8 +76,9 @@ async def test_ensure_topic_coverage_skips_discovered_url_already_selected(mocke
     )
     register_feed = mocker.patch.object(coverage, "_register_feed", new=AsyncMock())
 
-    result = await coverage.ensure_topic_coverage(AsyncMock(), ["ai", "science"])
+    result = await coverage.ensure_topic_coverage(session, ["ai", "science"], [0.1])
 
     assert result == [existing_feed]
     assert existing_feed.subscriber_count == 1
+    find_similar_feeds.assert_awaited_once_with(session, [0.1], limit=3)
     register_feed.assert_not_awaited()

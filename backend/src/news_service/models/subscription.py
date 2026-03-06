@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -15,7 +16,9 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     raw_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    raw_prompt_embedding = mapped_column(Vector(1536), nullable=True)
     topics: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    topics_embedding = mapped_column(Vector(1536), nullable=True)
     delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="digest")
     event_matching_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="basic")
     event_constraints: Mapped[list[dict[str, object]]] = mapped_column(

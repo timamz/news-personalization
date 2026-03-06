@@ -31,7 +31,8 @@ async def _create_user_and_subscription(
         new=AsyncMock(return_value=parsed_config),
     )
 
-    async def fake_ensure_topic_coverage(session, topics):  # noqa: ANN001
+    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
+        assert topics_embedding == [2.0] * 1536
         feed = RssFeed(
             url="https://example.com/rss.xml",
             title="Example Feed",

@@ -45,6 +45,8 @@ async def test_generate_digest_passes_language_to_composer(mocker) -> None:
     subscription_id = uuid.uuid4()
     subscription = SimpleNamespace(
         id=subscription_id,
+        raw_prompt="AI lectures every morning",
+        raw_prompt_embedding=[0.0] * 1536,
         topics=["lectures"],
         format_instructions="brief summary",
         digest_language="ru",
@@ -62,6 +64,7 @@ async def test_generate_digest_passes_language_to_composer(mocker) -> None:
     result = await digest.generate_digest(session, subscription)
 
     assert result == "digest"
+    digest.embed_text.assert_not_awaited()
     find_similar_news.assert_awaited_once_with(
         session,
         [0.0] * 1536,
@@ -81,6 +84,7 @@ async def test_generate_digest_returns_none_without_fixed_sources(mocker) -> Non
 
     subscription = SimpleNamespace(
         id=uuid.uuid4(),
+        raw_prompt="AI lectures every morning",
         topics=["lectures"],
         format_instructions="brief summary",
         digest_language="ru",
@@ -96,3 +100,34 @@ async def test_generate_digest_returns_none_without_fixed_sources(mocker) -> Non
     assert result is None
     embed_text.assert_not_awaited()
     find_similar_news.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_generate_digest_falls_back_to_raw_prompt_embedding_when_missing(mocker) -> None:
+    sent_result = SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: []))
+    source_feed_id = uuid.uuid4()
+    source_result = SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [source_feed_id]))
+    session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
+
+    subscription = SimpleNamespace(
+        id=uuid.uuid4(),
+        raw_prompt="AI lectures every morning",
+        raw_prompt_embedding=None,
+        topics=["lectures"],
+        format_instructions="brief summary",
+        digest_language="ru",
+    )
+    item = SimpleNamespace(id=uuid.uuid4())
+
+    embed_text = AsyncMock(return_value=[0.0] * 1536)
+    find_similar_news = AsyncMock(return_value=[item])
+    mocker.patch.object(digest, "embed_text", new=embed_text)
+    mocker.patch.object(digest, "find_similar_news", new=find_similar_news)
+    mocker.patch.object(digest, "_compose_digest", new=AsyncMock(return_value="digest"))
+    mocker.patch.object(digest, "_mark_as_sent", new=AsyncMock())
+
+    result = await digest.generate_digest(session, subscription)
+
+    assert result == "digest"
+    embed_text.assert_awaited_once_with("AI lectures every morning")
+    assert subscription.raw_prompt_embedding == [0.0] * 1536

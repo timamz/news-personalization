@@ -12,28 +12,30 @@ from news_service.services.telegram import build_telegram_channel_url
 logger = logging.getLogger(__name__)
 
 
-async def ensure_topic_coverage(session: AsyncSession, topics: list[str]) -> list[RssFeed]:
+async def ensure_topic_coverage(
+    session: AsyncSession,
+    topics: list[str],
+    topics_embedding: list[float],
+) -> list[RssFeed]:
     """Resolve and return fixed sources for the provided topics."""
-    uncovered: list[str] = []
     selected: dict[uuid.UUID, RssFeed] = {}
+    matching_feeds = await find_similar_feeds(session, topics_embedding, limit=3)
 
-    for topic in topics:
-        topic_embedding = await embed_text(topic)
-        matching_feeds = await find_similar_feeds(session, topic_embedding, limit=3)
-
-        if matching_feeds:
-            logger.info("Topic '%s' already covered by %d feed(s)", topic, len(matching_feeds))
-            for feed in matching_feeds:
-                selected[feed.id] = feed
-        else:
-            uncovered.append(topic)
+    if matching_feeds:
+        logger.info(
+            "Topics '%s' already covered by %d feed(s)",
+            ", ".join(topics),
+            len(matching_feeds),
+        )
+        for feed in matching_feeds:
+            selected[feed.id] = feed
 
     for feed in selected.values():
         feed.subscriber_count += 1
 
-    if uncovered:
-        logger.info("Discovering feeds for uncovered topics: %s", uncovered)
-        discovered = await discover_feeds(uncovered)
+    if not selected:
+        logger.info("Discovering feeds for uncovered topics: %s", topics)
+        discovered = await discover_feeds(topics)
         selected_urls = {feed.url for feed in selected.values()}
         deduplicated_discovered: dict[str, DiscoveredFeedItem] = {}
 
@@ -52,13 +54,12 @@ async def ensure_telegram_channel_coverage(
     session: AsyncSession,
     channels: list[str],
     topics: list[str],
+    topics_embedding: list[float],
 ) -> list[RssFeed]:
     if not channels:
         return []
 
     topic_tags = topics or ["telegram"]
-    topic_str = " ".join(topic_tags)
-    topic_embedding = await embed_text(topic_str)
     resolved: dict[uuid.UUID, RssFeed] = {}
 
     for channel in channels:
@@ -76,7 +77,7 @@ async def ensure_telegram_channel_coverage(
             url=source_url,
             title=f"Telegram @{channel}",
             topic_tags=topic_tags,
-            topic_embedding=topic_embedding,
+            topic_embedding=topics_embedding,
             is_active=True,
             subscriber_count=1,
         )
