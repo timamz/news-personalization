@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from aiogram.enums import ParseMode
 from aiohttp.test_utils import TestClient, TestServer
 
 from tgbot.webhook_server import (
@@ -35,6 +36,8 @@ async def test_deliver_success(webhook_client: TestClient):
     mock_bot.send_message.assert_called_once()
     call_kwargs = mock_bot.send_message.call_args
     assert call_kwargs.kwargs["chat_id"] == 12345
+    assert call_kwargs.kwargs["parse_mode"] == ParseMode.HTML
+    assert call_kwargs.kwargs["disable_web_page_preview"] is True
 
 
 @pytest.mark.asyncio

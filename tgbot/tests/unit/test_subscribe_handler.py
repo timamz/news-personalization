@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from aiogram.enums import ParseMode
 
 from tgbot.handlers import subscribe
 from tgbot.language import LanguagePreference
@@ -407,8 +408,12 @@ async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
     )
     assert (
         callback.message.answer.await_args_list[1].args[0]
-        == "Recent events you may have missed\n\n- Demo concert\n- Another concert"
+        == "Recent events you may have missed\n\n• Demo concert\n• Another concert"
     )
+    assert callback.message.answer.await_args_list[0].kwargs["parse_mode"] == ParseMode.HTML
+    assert callback.message.answer.await_args_list[0].kwargs["disable_web_page_preview"] is True
+    assert callback.message.answer.await_args_list[1].kwargs["parse_mode"] == ParseMode.HTML
+    assert callback.message.answer.await_args_list[1].kwargs["disable_web_page_preview"] is True
     acknowledge_recent_events.assert_awaited_once_with(
         "api-key",
         "sub-evt",

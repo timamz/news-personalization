@@ -2,6 +2,7 @@ import logging
 from collections.abc import Awaitable, Callable
 
 from aiogram import Router, types
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -12,6 +13,7 @@ from tgbot.handlers import start as start_handler
 from tgbot.language import UILanguage
 from tgbot.source_parser import extract_telegram_channels, parse_telegram_channel_tokens
 from tgbot.storage import get_language_preference, get_ui_language
+from tgbot.telegram_format import render_html_message
 from tgbot.ui_text import t
 from tgbot.user_registry import ensure_api_key
 from tgbot.webhook_server import delivery_webhook_url
@@ -776,7 +778,12 @@ async def _answer(event: types.Message | CallbackQuery, text: str) -> None:
     if hasattr(event, "message"):
         if event.message is None:
             return
-        sender = event.message.answer
+        await event.message.answer(
+            render_html_message(text),
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
+        return
     else:
         sender = event.answer
     await sender(text)
@@ -790,7 +797,12 @@ async def _answer_with_markup(
     if hasattr(event, "message"):
         if event.message is None:
             return
-        await event.message.answer(text, reply_markup=reply_markup)
+        await event.message.answer(
+            render_html_message(text),
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
         return
     await event.answer(text, reply_markup=reply_markup)
 

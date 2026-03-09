@@ -30,8 +30,12 @@ async def test_compose_digest_uses_subscription_language(mocker) -> None:
 
     assert result == "готово"
     system_prompt = create_completion.await_args.kwargs["messages"][0]["content"]
+    user_prompt = create_completion.await_args.kwargs["messages"][1]["content"]
     assert "language 'ru'" in system_prompt
     assert "Return only the digest itself" in system_prompt
+    assert "Do not mention source labels" in system_prompt
+    assert "Link: https://example.com/1" in user_prompt
+    assert "Source: Telegram" not in user_prompt
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,7 @@
 import logging
 
 from aiogram import Router, types
+from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
@@ -13,6 +14,7 @@ from tgbot.storage import (
     save_language_preference,
     save_ui_language,
 )
+from tgbot.telegram_format import render_html_message
 from tgbot.ui_text import interface_language_name, subscription_preference_summary, t
 from tgbot.user_registry import ensure_api_key
 
@@ -480,7 +482,11 @@ async def _answer(event: types.Message | CallbackQuery, text: str) -> None:
     if hasattr(event, "message"):
         if event.message is None:
             return
-        await event.message.answer(text)
+        await event.message.answer(
+            render_html_message(text),
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
         return
     await event.answer(text)
 
@@ -493,6 +499,11 @@ async def _answer_with_markup(
     if hasattr(event, "message"):
         if event.message is None:
             return
-        await event.message.answer(text, reply_markup=reply_markup)
+        await event.message.answer(
+            render_html_message(text),
+            reply_markup=reply_markup,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
         return
     await event.answer(text, reply_markup=reply_markup)

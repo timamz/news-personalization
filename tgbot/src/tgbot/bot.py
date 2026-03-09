@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 
 from tgbot.core.config import get_settings
@@ -26,7 +27,12 @@ async def main() -> None:
 
     settings = get_settings()
 
-    bot = Bot(token=settings.bot_token)
+    bot = Bot(
+        token=settings.bot_token,
+        default=DefaultBotProperties(
+            link_preview_is_disabled=True,
+        ),
+    )
     dp = Dispatcher()
 
     await init_db(settings.bot_storage_path)

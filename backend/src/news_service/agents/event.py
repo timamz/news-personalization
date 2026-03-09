@@ -85,8 +85,9 @@ Rules:
 - Keep the subject short and useful.
 - Make the body suitable for a chat message: one short intro sentence, then a compact bullet list.
 - For each selected event, keep only the most relevant details:
-  title, timing if known, why it matters, source, and URL.
+  title, timing if known, why it matters, and URL.
 - Keep URLs exactly as provided.
+- Do not mention Telegram channel names or source labels before the link.
 - Do not add facts that are not present in the input.
 - Do not repeat the subject as the first line of the body.
 - If no candidate events should be shown, return an empty selected_item_ids list

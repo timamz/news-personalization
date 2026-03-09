@@ -316,7 +316,8 @@ async def test_build_event_notification_uses_cyrillic_russian_labels() -> None:
     assert subject == "Предстоящее событие: Новая лекция"
     assert "Событие: Новая лекция" in body
     assert "Когда: 2026-03-04 16:00 UTC" in body
-    assert "Источник: Telegram @fondnauk" in body
+    assert "Источник: https://example.com/news-1" in body
+    assert "Telegram @fondnauk" not in body
 
 
 @pytest.mark.asyncio
@@ -334,3 +335,5 @@ async def test_build_recent_events_preview_returns_single_preview(mocker) -> Non
     assert preview.news_item_ids == ["news-1", "news-2"]
     assert preview.subject == "Что вы могли пропустить"
     assert "Вторая лекция" in preview.body
+    assert "Telegram @fondnauk" not in preview.body
+    assert "https://example.com/news-2" in preview.body

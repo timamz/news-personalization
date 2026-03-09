@@ -2,9 +2,11 @@ import logging
 from hashlib import sha256
 from secrets import compare_digest
 
+from aiogram.enums import ParseMode
 from aiohttp import web
 
 from tgbot.core.config import get_settings
+from tgbot.telegram_format import render_html_message
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +42,12 @@ async def handle_deliver(request: web.Request) -> web.Response:
 
     try:
         for chunk in _split_text(text, TELEGRAM_MAX_MESSAGE_LENGTH):
-            await _bot_instance.send_message(chat_id=int(chat_id), text=chunk)
+            await _bot_instance.send_message(
+                chat_id=int(chat_id),
+                text=render_html_message(chunk),
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+            )
         logger.info("Digest delivered to chat_id=%s", chat_id)
         return web.json_response({"status": "delivered"})
     except Exception:

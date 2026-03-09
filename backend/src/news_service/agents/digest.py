@@ -83,7 +83,7 @@ async def _compose_digest(
     digest_language: str,
 ) -> str:
     news_block = "\n\n".join(
-        f"**{item.headline}**\n{item.body}\nSource: {item.source} | {item.url}" for item in items
+        f"**{item.headline}**\n{item.body}\nLink: {item.url}" for item in items
     )
 
     completion = await _client.chat.completions.create(
@@ -96,6 +96,11 @@ async def _compose_digest(
                     f"according to these instructions: {format_instructions}\n\n"
                     f"Write the digest in language '{digest_language}'. "
                     f"Make it well-structured, readable, and engaging. "
+                    f"When referencing a source, keep only the hyperlink. "
+                    f"Do not mention source labels, feed names, channel names, site names, "
+                    f"or words like 'source', 'channel', 'website', 'post', "
+                    f"'Источник', 'канал', or 'сайт'. "
+                    f"Keep the link exactly as provided. "
                     f"Return only the digest itself. Do not add assistant-style "
                     f"introductions, closings, commentary, or offers to help."
                 ),

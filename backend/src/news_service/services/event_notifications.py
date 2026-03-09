@@ -264,7 +264,7 @@ async def build_event_notification(digest_language: str, item: NewsItem) -> tupl
     if summary:
         lines.extend(["", summary])
 
-    lines.extend(["", f"{labels['source']}: {item.source}", item.url])
+    lines.extend(["", f"{labels['source']}: {item.url}"])
     return subject, "\n".join(lines)
 
 
@@ -402,7 +402,6 @@ def _format_preview_candidate(item: NewsItem) -> str:
         lines.append(f"When: {_format_event_time(item.event_starts_at)}")
     if item.event_summary:
         lines.append(f"Summary: {item.event_summary}")
-    lines.append(f"Source: {item.source}")
     lines.append(f"URL: {item.url}")
     return "\n".join(lines)
 
@@ -430,7 +429,6 @@ def _fallback_recent_events_preview(
         if when is not None:
             bullet_parts.append(when)
         bullet_parts.append(summary)
-        bullet_parts.append(item.source)
         bullets.append(f"- {' | '.join(bullet_parts)}\n{item.url}")
     return subject, f"{intro}\n\n" + "\n\n".join(bullets)
 
