@@ -15,6 +15,7 @@ class SubscriptionInfo:
     delivery_mode: str
     schedule_cron: str | None
     format_instructions: str
+    digest_language: str
 
 
 @dataclass
@@ -28,8 +29,8 @@ class SubscriptionParseInfo:
 
 
 @dataclass
-class RecentEventInfo:
-    news_item_id: str
+class RecentEventsPreviewInfo:
+    news_item_ids: list[str]
     subject: str
     body: str
 
@@ -38,8 +39,14 @@ class BackendClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.backend_url).rstrip("/")
 
+    def _request_timeout(self) -> float:
+        return settings.backend_request_timeout_seconds
+
+    def _slow_request_timeout(self) -> float:
+        return settings.backend_slow_request_timeout_seconds
+
     async def register_user(self) -> str:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
             response = await client.post(f"{self.base_url}/users")
             response.raise_for_status()
             data = response.json()
@@ -55,6 +62,7 @@ class BackendClient:
         schedule_cron_override: str | None = None,
         manual_only: bool | None = None,
         delivery_mode: str | None = None,
+        digest_language: str | None = None,
     ) -> SubscriptionInfo:
         payload: dict[str, object] = {
             "prompt": prompt,
@@ -70,6 +78,8 @@ class BackendClient:
             payload["manual_only"] = manual_only
         if delivery_mode is not None:
             payload["delivery_mode"] = delivery_mode
+        if digest_language is not None:
+            payload["digest_language_override"] = digest_language
 
         async with httpx.AsyncClient(
             timeout=settings.backend_create_subscription_timeout_seconds
@@ -87,10 +97,11 @@ class BackendClient:
                 delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
+                digest_language=data["digest_language"],
             )
 
     async def parse_subscription_prompt(self, api_key: str, prompt: str) -> SubscriptionParseInfo:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
             response = await client.post(
                 f"{self.base_url}/subscriptions/parse",
                 headers={"X-API-Key": api_key},
@@ -108,7 +119,7 @@ class BackendClient:
             )
 
     async def parse_schedule(self, api_key: str, schedule_text: str) -> str:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
             response = await client.post(
                 f"{self.base_url}/subscriptions/parse-schedule",
                 headers={"X-API-Key": api_key},
@@ -119,7 +130,7 @@ class BackendClient:
             return data["schedule_cron"]
 
     async def list_subscriptions(self, api_key: str) -> list[SubscriptionInfo]:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
             response = await client.get(
                 f"{self.base_url}/subscriptions",
                 headers={"X-API-Key": api_key},
@@ -132,12 +143,13 @@ class BackendClient:
                     delivery_mode=s.get("delivery_mode", "digest"),
                     schedule_cron=s["schedule_cron"],
                     format_instructions=s["format_instructions"],
+                    digest_language=s["digest_language"],
                 )
                 for s in response.json()
             ]
 
     async def delete_subscription(self, api_key: str, subscription_id: str) -> None:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
             response = await client.delete(
                 f"{self.base_url}/subscriptions/{subscription_id}",
                 headers={"X-API-Key": api_key},
@@ -152,6 +164,7 @@ class BackendClient:
         schedule_cron: str | None | object = _UNSET,
         format_instructions: str | object = _UNSET,
         delivery_webhook_url: str | None | object = _UNSET,
+        digest_language: str | object = _UNSET,
     ) -> SubscriptionInfo:
         payload: dict[str, object | None] = {}
         if schedule_cron is not _UNSET:
@@ -160,8 +173,10 @@ class BackendClient:
             payload["format_instructions"] = format_instructions
         if delivery_webhook_url is not _UNSET:
             payload["delivery_webhook_url"] = delivery_webhook_url
+        if digest_language is not _UNSET:
+            payload["digest_language"] = digest_language
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
             response = await client.patch(
                 f"{self.base_url}/subscriptions/{subscription_id}",
                 headers={"X-API-Key": api_key},
@@ -175,23 +190,28 @@ class BackendClient:
                 delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
+                digest_language=data["digest_language"],
             )
 
-    async def list_recent_events(self, api_key: str, subscription_id: str) -> list[RecentEventInfo]:
-        async with httpx.AsyncClient(timeout=90.0) as client:
+    async def list_recent_events(
+        self,
+        api_key: str,
+        subscription_id: str,
+    ) -> RecentEventsPreviewInfo | None:
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
             response = await client.get(
                 f"{self.base_url}/subscriptions/{subscription_id}/recent-events",
                 headers={"X-API-Key": api_key},
             )
             response.raise_for_status()
-            return [
-                RecentEventInfo(
-                    news_item_id=item["news_item_id"],
-                    subject=item["subject"],
-                    body=item["body"],
-                )
-                for item in response.json()
-            ]
+            payload = response.json()
+            if payload is None:
+                return None
+            return RecentEventsPreviewInfo(
+                news_item_ids=payload["news_item_ids"],
+                subject=payload["subject"],
+                body=payload["body"],
+            )
 
     async def acknowledge_recent_events(
         self,
@@ -199,7 +219,7 @@ class BackendClient:
         subscription_id: str,
         news_item_ids: list[str],
     ) -> None:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
             response = await client.post(
                 f"{self.base_url}/subscriptions/{subscription_id}/recent-events/acknowledge",
                 headers={"X-API-Key": api_key},
@@ -208,7 +228,7 @@ class BackendClient:
             response.raise_for_status()
 
     async def send_now(self, api_key: str, subscription_id: str) -> dict[str, str]:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
             response = await client.post(
                 f"{self.base_url}/subscriptions/{subscription_id}/send-now",
                 headers={"X-API-Key": api_key},

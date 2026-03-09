@@ -50,6 +50,7 @@ async def ensure_topic_coverage(
 
     return list(selected.values())
 
+
 async def ensure_telegram_channel_coverage(
     session: AsyncSession,
     channels: list[str],

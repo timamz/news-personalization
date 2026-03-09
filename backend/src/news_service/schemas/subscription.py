@@ -33,6 +33,12 @@ class SubscriptionCreate(BaseModel):
         default=None,
         description="Override parsed delivery mode: digest or event notification",
     )
+    digest_language_override: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=16,
+        description="Override output language for digests and event notifications",
+    )
 
 
 class SubscriptionConfig(BaseModel):
@@ -87,8 +93,8 @@ class SubscriptionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class RecentEventNotificationResponse(BaseModel):
-    news_item_id: uuid.UUID
+class RecentEventsPreviewResponse(BaseModel):
+    news_item_ids: list[uuid.UUID]
     subject: str
     body: str
 
@@ -115,6 +121,12 @@ class SubscriptionUpdate(BaseModel):
     delivery_webhook_url: str | None = Field(
         default=None,
         description="Updated delivery webhook URL; null disables webhook delivery",
+    )
+    digest_language: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=16,
+        description="Updated output language for digests and event notifications",
     )
 
 

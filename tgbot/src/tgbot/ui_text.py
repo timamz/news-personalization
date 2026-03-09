@@ -1,0 +1,348 @@
+from tgbot.language import LanguagePreference, UILanguage, normalize_language_code
+
+_TEXTS: dict[UILanguage, dict[str, str]] = {
+    "en": {
+        "welcome": (
+            "Welcome to News Bot!\n\n"
+            "I deliver personalized news digests and event notifications "
+            "right here in Telegram.\n\n"
+            "Commands:\n"
+            "/subscribe - set up a news subscription\n"
+            "/list - view your active subscriptions\n"
+            "/language - change bot interface language\n"
+            "/subscription_language - change default subscription language behavior\n"
+            "/help - show this message"
+        ),
+        "registration_failed": "Registration failed. Please try again later.",
+        "ui_language_initial": "Choose bot interface language.",
+        "ui_language_current": (
+            "Current bot interface language: {current_language}.\n\n"
+            "Choose a new interface language."
+        ),
+        "ui_language_updated": "Bot interface language updated to {language}.",
+        "subscription_language_initial": (
+            "Now choose how subscription output language should work.\n\n"
+            "You can keep one language for all subscriptions or ask every time."
+        ),
+        "subscription_language_current": (
+            "Current subscription language setting: {summary}.\n\n"
+            "Choose a new default for digests and event notifications."
+        ),
+        "subscription_language_saved_ask": (
+            "Saved. I will ask for the subscription language during each new subscription flow.\n"
+            "Existing subscriptions keep their current language."
+        ),
+        "subscription_language_saved_fixed": (
+            "Saved. New subscriptions will use {language}.\n"
+            "Updated {updated} existing subscriptions."
+        ),
+        "subscription_language_saved_fixed_partial": (
+            "Saved. New subscriptions will use {language}.\n"
+            "Updated {updated} existing subscriptions, but {failed} updates failed."
+        ),
+        "subscription_language_saved_fixed_failed": (
+            "Saved. New subscriptions will use {language}.\n"
+            "I couldn't update existing subscriptions right now. "
+            "Run /subscription_language again later."
+        ),
+        "choose_subscription_request": "Please describe your subscription request.",
+        "failed_process_request": "Failed to process your request. Please try again.",
+        "subscription_setup_expired": "Subscription setup expired. Please run /subscribe again.",
+        "describe_schedule": "Please describe the schedule.",
+        "schedule_parse_failed": "Couldn't parse this schedule. Please try another wording.",
+        "channels_parse_failed": (
+            "I couldn't parse channels. Send handles like @channel_one or links like https://t.me/channel."
+        ),
+        "recent_events_future_only": "Okay. I will only send new event notifications from now on.",
+        "recent_events_expired": (
+            "This preview expired. Please create a new subscription if needed."
+        ),
+        "recent_events_loading": "Checking what you might have missed in the last 7 days...",
+        "recent_events_failed": "Couldn't load recent events right now.",
+        "recent_events_empty": "No matching events were found in the last 7 days.",
+        "recent_events_header": "Here's what you might have missed in the last 7 days:",
+        "back_not_available": "Back is not available here.",
+        "processing_request": "Processing your request...",
+        "create_subscription_failed": "Failed to create subscription. Please try again.",
+        "subscription_created_digest": (
+            "Subscription created!\n\nTopics: {topics}\n\n"
+            "You'll receive digests right here in this chat."
+        ),
+        "subscription_created_event": (
+            "Subscription created!\n\nTopics: {topics}\n\n"
+            "You'll receive event notifications right here in this chat."
+        ),
+        "show_recent_events_prompt": (
+            "Would you like to see what you might have missed in the last 7 days?"
+        ),
+        "subscription_prompt": (
+            "Describe what news you want.\n\n"
+            "Examples:\n"
+            '- "I want AI and tech news every morning as a brief summary"\n'
+            '- "Notify me when a new episode of Severance is announced"'
+        ),
+        "subscription_language_choose": (
+            "Choose the language for this subscription's digests and event notifications."
+        ),
+        "schedule_choice": (
+            "Do you want this digest to be delivered automatically on a schedule?\n"
+            "You can always use the Send now button."
+        ),
+        "schedule_input_prompt": (
+            'Describe the schedule in natural language.\nExample: "every weekday at 9:00"'
+        ),
+        "source_question_digest": "Do you already have specific Telegram channels for this digest?",
+        "source_question_event": (
+            "Do you already have specific Telegram channels for these notifications?"
+        ),
+        "channels_input_prompt": (
+            "Send Telegram channels you want to include (for example: @channel_one @channel_two)."
+        ),
+        "scope_prompt_found": (
+            "I found these Telegram channels in your request:\n{channels}\n\n{question}"
+        ),
+        "scope_prompt_manual": "Got it. {question}\n{channels}",
+        "scope_question_digest": "Should this digest be limited only to these channels?",
+        "scope_question_event": ("Should these notifications be limited only to these channels?"),
+        "undo_recent_events_failed": "Couldn't go back right now. Please try again.",
+        "undo_recent_events_expired": "This step can no longer be undone.",
+        "edit_menu_prompt": "What do you want to change?",
+        "no_subscriptions": "You have no active subscriptions. Use /subscribe to create one.",
+        "failed_load_subscriptions": "Failed to load subscriptions. Please try again.",
+        "subscription_card": "Topics: {topics}\nType: {type}\nLanguage: {language}",
+        "type_digest": "Digest",
+        "type_event": "Event notifications",
+        "edit_subscription_language_prompt": "Choose the language for this subscription.",
+        "subscription_language_updated": "Language updated to {language}.",
+        "subscription_language_update_failed": "Failed to update language. Try again.",
+        "digest_queued": "Digest queued.",
+        "digest_queue_failed": "Failed to queue digest. Try again.",
+        "edit_schedule_prompt": (
+            'Describe the new schedule in natural language.\nExample: "every weekday at 9:00"'
+        ),
+        "edit_session_expired": "Edit session expired. Open /list and try again.",
+        "schedule_updated": "Schedule updated.",
+        "schedule_update_failed": "Failed to update schedule. Please try again.",
+        "schedule_disabled": "Automatic schedule disabled.",
+        "schedule_disable_failed": "Failed to update schedule. Try again.",
+        "edit_format_prompt": "Send new format instructions.",
+        "edit_format_empty": "Please send the new format instructions.",
+        "format_updated": "Format updated.",
+        "format_update_failed": "Failed to update format. Please try again.",
+        "delivery_updated_here": "Delivery updated to this chat.",
+        "delivery_update_failed": "Failed to update delivery. Try again.",
+        "subscription_deleted": "Subscription deleted.",
+        "subscription_delete_failed": "Failed to delete. Try again.",
+        "button_english": "English",
+        "button_russian": "Russian",
+        "button_ask_every_time": "Ask every time",
+        "button_send_now": "Send now",
+        "button_edit": "Edit",
+        "button_delete": "Delete",
+        "button_change_schedule": "Change schedule",
+        "button_disable_schedule": "Disable schedule",
+        "button_change_format": "Change format",
+        "button_change_language": "Change language",
+        "button_deliver_here": "Deliver here",
+        "button_yes_set_schedule": "Yes, set schedule",
+        "button_no_button_only": "No, send only by button",
+        "button_yes_have_channels": "Yes, I have channels",
+        "button_no_find_sources": "No, find sources for me",
+        "button_only_channels": "Only these channels",
+        "button_add_sources": "Add more relevant sources",
+        "button_yes_show_recent": "Yes, show missed events",
+        "button_no_future_only": "No, only future ones",
+        "button_back": "Back",
+        "summary_not_set": "Not set yet",
+        "summary_ask": "Ask for each new subscription",
+        "summary_fixed": "{language} for all subscriptions",
+    },
+    "ru": {
+        "welcome": (
+            "Добро пожаловать в News Bot!\n\n"
+            "Я отправляю персональные дайджесты новостей и уведомления "
+            "о событиях прямо в Telegram.\n\n"
+            "Команды:\n"
+            "/subscribe - создать подписку\n"
+            "/list - посмотреть активные подписки\n"
+            "/language - изменить язык интерфейса бота\n"
+            "/subscription_language - изменить язык подписок по умолчанию\n"
+            "/help - показать это сообщение"
+        ),
+        "registration_failed": "Не удалось зарегистрировать пользователя. Попробуйте позже.",
+        "ui_language_initial": "Выберите язык интерфейса бота.",
+        "ui_language_current": (
+            "Текущий язык интерфейса бота: {current_language}.\n\nВыберите новый язык интерфейса."
+        ),
+        "ui_language_updated": "Язык интерфейса бота изменён на {language}.",
+        "subscription_language_initial": (
+            "Теперь выберите, как должен работать язык подписок.\n\n"
+            "Можно использовать один язык для всех подписок или выбирать его каждый раз."
+        ),
+        "subscription_language_current": (
+            "Текущая настройка языка подписок: {summary}.\n\n"
+            "Выберите новый язык по умолчанию для дайджестов и уведомлений о событиях."
+        ),
+        "subscription_language_saved_ask": (
+            "Сохранено. В каждом новом сценарии подписки я буду спрашивать язык отдельно.\n"
+            "У существующих подписок текущий язык сохранится."
+        ),
+        "subscription_language_saved_fixed": (
+            "Сохранено. Новые подписки будут использовать язык {language}.\n"
+            "Обновлено существующих подписок: {updated}."
+        ),
+        "subscription_language_saved_fixed_partial": (
+            "Сохранено. Новые подписки будут использовать язык {language}.\n"
+            "Обновлено существующих подписок: {updated}, "
+            "но {failed} обновлений завершились ошибкой."
+        ),
+        "subscription_language_saved_fixed_failed": (
+            "Сохранено. Новые подписки будут использовать язык {language}.\n"
+            "Сейчас не удалось обновить существующие подписки. "
+            "Повторите /subscription_language позже."
+        ),
+        "choose_subscription_request": "Опишите, какую подписку вы хотите.",
+        "failed_process_request": "Не удалось обработать запрос. Попробуйте ещё раз.",
+        "subscription_setup_expired": (
+            "Сценарий создания подписки истёк. Запустите /subscribe ещё раз."
+        ),
+        "describe_schedule": "Опишите расписание.",
+        "schedule_parse_failed": (
+            "Не удалось распознать это расписание. Попробуйте другую формулировку."
+        ),
+        "channels_parse_failed": (
+            "Не удалось распознать каналы. Отправьте хэндлы вроде @channel_one или ссылки вроде https://t.me/channel."
+        ),
+        "recent_events_future_only": (
+            "Хорошо. Я буду отправлять только новые уведомления о событиях."
+        ),
+        "recent_events_expired": "Предпросмотр устарел. При необходимости создайте новую подписку.",
+        "recent_events_loading": "Проверяю, что вы могли пропустить за последние 7 дней...",
+        "recent_events_failed": "Сейчас не удалось загрузить недавние события.",
+        "recent_events_empty": "За последние 7 дней подходящих событий не найдено.",
+        "recent_events_header": "Вот что вы могли пропустить за последние 7 дней:",
+        "back_not_available": "Здесь нельзя вернуться назад.",
+        "processing_request": "Обрабатываю ваш запрос...",
+        "create_subscription_failed": "Не удалось создать подписку. Попробуйте ещё раз.",
+        "subscription_created_digest": (
+            "Подписка создана!\n\nТемы: {topics}\n\nЯ буду присылать дайджесты прямо в этот чат."
+        ),
+        "subscription_created_event": (
+            "Подписка создана!\n\nТемы: {topics}\n\n"
+            "Я буду присылать уведомления о событиях прямо в этот чат."
+        ),
+        "show_recent_events_prompt": "Показать, что вы могли пропустить за последние 7 дней?",
+        "subscription_prompt": (
+            "Опишите, какие новости вам нужны.\n\n"
+            "Примеры:\n"
+            '- "Хочу новости про AI и технологии каждое утро в виде краткой сводки"\n'
+            '- "Сообщай, когда анонсируют новый эпизод Severance"'
+        ),
+        "subscription_language_choose": (
+            "Выберите язык дайджестов и уведомлений для этой подписки."
+        ),
+        "schedule_choice": (
+            "Хотите получать этот дайджест автоматически по расписанию?\n"
+            "Кнопка отправки вручную всегда останется доступной."
+        ),
+        "schedule_input_prompt": (
+            'Опишите расписание естественным языком.\nПример: "каждый будний день в 9:00"'
+        ),
+        "source_question_digest": "У вас уже есть конкретные Telegram-каналы для этого дайджеста?",
+        "source_question_event": (
+            "У вас уже есть конкретные Telegram-каналы для этих уведомлений?"
+        ),
+        "channels_input_prompt": (
+            "Отправьте Telegram-каналы, которые хотите включить "
+            "(например: @channel_one @channel_two)."
+        ),
+        "scope_prompt_found": (
+            "Я нашёл в вашем запросе такие Telegram-каналы:\n{channels}\n\n{question}"
+        ),
+        "scope_prompt_manual": "Понял. {question}\n{channels}",
+        "scope_question_digest": "Ограничить этот дайджест только этими каналами?",
+        "scope_question_event": "Ограничить эти уведомления только этими каналами?",
+        "undo_recent_events_failed": "Сейчас не удалось вернуться назад. Попробуйте ещё раз.",
+        "undo_recent_events_expired": "На этот шаг уже нельзя вернуться.",
+        "edit_menu_prompt": "Что вы хотите изменить?",
+        "no_subscriptions": (
+            "У вас нет активных подписок. Используйте /subscribe, чтобы создать новую."
+        ),
+        "failed_load_subscriptions": "Не удалось загрузить подписки. Попробуйте ещё раз.",
+        "subscription_card": "Темы: {topics}\nТип: {type}\nЯзык: {language}",
+        "type_digest": "Дайджест",
+        "type_event": "Уведомления о событиях",
+        "edit_subscription_language_prompt": "Выберите язык для этой подписки.",
+        "subscription_language_updated": "Язык подписки изменён на {language}.",
+        "subscription_language_update_failed": (
+            "Не удалось обновить язык подписки. Попробуйте ещё раз."
+        ),
+        "digest_queued": "Дайджест поставлен в очередь.",
+        "digest_queue_failed": "Не удалось поставить дайджест в очередь. Попробуйте ещё раз.",
+        "edit_schedule_prompt": (
+            'Опишите новое расписание естественным языком.\nПример: "каждый будний день в 9:00"'
+        ),
+        "edit_session_expired": "Сессия редактирования истекла. Откройте /list и попробуйте снова.",
+        "schedule_updated": "Расписание обновлено.",
+        "schedule_update_failed": "Не удалось обновить расписание. Попробуйте ещё раз.",
+        "schedule_disabled": "Автоматическое расписание отключено.",
+        "schedule_disable_failed": "Не удалось обновить расписание. Попробуйте ещё раз.",
+        "edit_format_prompt": "Отправьте новые инструкции по формату.",
+        "edit_format_empty": "Пожалуйста, отправьте новые инструкции по формату.",
+        "format_updated": "Формат обновлён.",
+        "format_update_failed": "Не удалось обновить формат. Попробуйте ещё раз.",
+        "delivery_updated_here": "Доставка обновлена на этот чат.",
+        "delivery_update_failed": "Не удалось обновить доставку. Попробуйте ещё раз.",
+        "subscription_deleted": "Подписка удалена.",
+        "subscription_delete_failed": "Не удалось удалить подписку. Попробуйте ещё раз.",
+        "button_english": "English",
+        "button_russian": "Русский",
+        "button_ask_every_time": "Спрашивать каждый раз",
+        "button_send_now": "Отправить сейчас",
+        "button_edit": "Изменить",
+        "button_delete": "Удалить",
+        "button_change_schedule": "Изменить расписание",
+        "button_disable_schedule": "Отключить расписание",
+        "button_change_format": "Изменить формат",
+        "button_change_language": "Изменить язык",
+        "button_deliver_here": "Доставлять сюда",
+        "button_yes_set_schedule": "Да, настроить расписание",
+        "button_no_button_only": "Нет, только по кнопке",
+        "button_yes_have_channels": "Да, у меня есть каналы",
+        "button_no_find_sources": "Нет, пусть бот найдёт источники",
+        "button_only_channels": "Только эти каналы",
+        "button_add_sources": "Добавить релевантные источники",
+        "button_yes_show_recent": "Да, показать пропущенное",
+        "button_no_future_only": "Нет, только будущие",
+        "button_back": "Назад",
+        "summary_not_set": "Ещё не настроено",
+        "summary_ask": "Спрашивать для каждой новой подписки",
+        "summary_fixed": "{language} для всех подписок",
+    },
+}
+
+
+def t(ui_language: UILanguage, key: str, **kwargs: object) -> str:
+    return _TEXTS[ui_language][key].format(**kwargs)
+
+
+def interface_language_name(ui_language: UILanguage, target_language: str) -> str:
+    normalized = normalize_language_code(target_language) or "en"
+    if ui_language == "ru":
+        return "Русский" if normalized == "ru" else "Английский"
+    return "Russian" if normalized == "ru" else "English"
+
+
+def subscription_preference_summary(
+    ui_language: UILanguage,
+    preference: LanguagePreference | None,
+) -> str:
+    if preference is None:
+        return t(ui_language, "summary_not_set")
+    if preference.mode == "ask":
+        return t(ui_language, "summary_ask")
+    return t(
+        ui_language,
+        "summary_fixed",
+        language=interface_language_name(ui_language, preference.code or "en"),
+    )

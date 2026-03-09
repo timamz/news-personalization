@@ -305,3 +305,32 @@ async def test_list_recent_subscription_events_loads_history_for_current_subscri
     assert [matched.id for matched in result] == ["news-1"]
     history_loader.assert_awaited_once_with(session, subscription.id)
     duplicate_judge.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_build_event_notification_uses_cyrillic_russian_labels() -> None:
+    item = _make_item()
+
+    subject, body = await event_notifications.build_event_notification("ru", item)
+
+    assert subject == "Предстоящее событие: Новая лекция"
+    assert "Событие: Новая лекция" in body
+    assert "Когда: 2026-03-04 16:00 UTC" in body
+    assert "Источник: Telegram @fondnauk" in body
+
+
+@pytest.mark.asyncio
+async def test_build_recent_events_preview_returns_single_preview(mocker) -> None:
+    item_one = _make_item(item_id="news-1", event_title="Первая лекция")
+    item_two = _make_item(item_id="news-2", event_title="Вторая лекция")
+    item_two.url = "https://example.com/news-2"
+
+    preview = await event_notifications.build_recent_events_preview(
+        "ru",
+        [item_one, item_two],
+        lookback_days=7,
+    )
+
+    assert preview.news_item_ids == ["news-1", "news-2"]
+    assert preview.subject == "Что вы могли пропустить"
+    assert "Вторая лекция" in preview.body

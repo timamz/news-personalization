@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from news_service.agents.event import EventMatchDecision, NotificationDuplicateDecision
+from news_service.agents.event import NotificationDuplicateDecision, RecentEventsPreviewDecision
 from news_service.db.session import async_session_factory
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
@@ -120,9 +120,10 @@ async def test_recent_events_returns_last_week_previews(
 
     assert response.status_code == 200
     payload = response.json()
-    assert len(payload) == 1
-    assert payload[0]["subject"] == "Upcoming event: New concert"
-    assert "A new concert was announced for next month." in payload[0]["body"]
+    assert payload["news_item_ids"]
+    assert payload["subject"] == "Recent events you may have missed"
+    assert "Title: New concert" in payload["body"]
+    assert "A new concert was announced for next month." in payload["body"]
 
 
 async def test_recent_events_deduplicates_same_event_posts(
@@ -180,9 +181,8 @@ async def test_recent_events_deduplicates_same_event_posts(
 
     assert response.status_code == 200
     payload = response.json()
-    assert len(payload) == 1
-    assert payload[0]["news_item_id"] is not None
-    assert duplicate_judge.await_count == 1
+    assert len(payload["news_item_ids"]) == 1
+    duplicate_judge.assert_not_awaited()
 
 
 async def test_recent_events_filters_strict_subscription_with_prompt_judge(
@@ -196,14 +196,35 @@ async def test_recent_events_filters_strict_subscription_with_prompt_judge(
     )
     now = datetime.now(UTC)
 
-    judge = mocker.patch(
-        "news_service.services.event_notifications.judge_event_match",
-        new=AsyncMock(
-            side_effect=[
-                EventMatchDecision(matches=False, reason="Wrong speaker"),
-                EventMatchDecision(matches=True, reason="Correct speaker"),
-            ]
-        ),
+    async def _preview_renderer(  # noqa: ANN001
+        *,
+        raw_prompt,
+        target_language,
+        event_matching_mode,
+        lookback_days,
+        candidate_events,
+        recent_notifications,
+    ):
+        del raw_prompt, target_language, event_matching_mode, lookback_days, recent_notifications
+        selected_item_id = ""
+        selected_entry = ""
+        for entry in candidate_events:
+            if "Stanislav Drobyshevsky" not in entry:
+                continue
+            selected_entry = entry
+            for line in entry.splitlines():
+                if line.startswith("ID: "):
+                    selected_item_id = line.removeprefix("ID: ").strip()
+                    break
+        return RecentEventsPreviewDecision(
+            selected_item_ids=[selected_item_id],
+            subject="Recent events you may have missed",
+            body=selected_entry,
+        )
+
+    preview_renderer = mocker.patch(
+        "news_service.services.event_notifications.render_recent_events_preview",
+        new=AsyncMock(side_effect=_preview_renderer),
     )
 
     async with async_session_factory() as session:
@@ -246,9 +267,10 @@ async def test_recent_events_filters_strict_subscription_with_prompt_judge(
 
     assert response.status_code == 200
     payload = response.json()
-    assert len(payload) == 1
-    assert payload[0]["subject"] == "Upcoming event: Stanislav Drobyshevsky lecture"
-    assert judge.await_count == 2
+    assert len(payload["news_item_ids"]) == 1
+    assert payload["subject"] == "Recent events you may have missed"
+    assert "Stanislav Drobyshevsky lecture" in payload["body"]
+    preview_renderer.assert_awaited_once()
 
 
 async def test_recent_events_rejects_digest_subscription(
@@ -333,9 +355,7 @@ async def test_acknowledge_recent_events_marks_items_as_sent(
 
     async with async_session_factory() as session:
         sent_result = await session.execute(
-            select(SentItem).where(
-                SentItem.news_item_id.in_([first_item_id, second_item_id])
-            )
+            select(SentItem).where(SentItem.news_item_id.in_([first_item_id, second_item_id]))
         )
         sent_rows = list(sent_result.scalars().all())
         assert len(sent_rows) == 2

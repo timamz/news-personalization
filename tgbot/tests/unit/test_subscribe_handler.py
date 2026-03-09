@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from tgbot.handlers import subscribe
+from tgbot.language import LanguagePreference
 from tgbot.webhook_server import delivery_webhook_url
 
 
@@ -24,12 +25,35 @@ def _mock_callback(telegram_id: int, data: str) -> SimpleNamespace:
     )
 
 
+@pytest.fixture(autouse=True)
+def _mock_ui_language(monkeypatch) -> None:
+    monkeypatch.setattr(subscribe, "get_ui_language", AsyncMock(return_value="en"))
+
+
 @pytest.mark.asyncio
 async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkeypatch):
     message = _mock_message(telegram_id=123, text="Следи за @gonzo_ml каждый день в 9")
-    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
+    state = SimpleNamespace(
+        update_data=AsyncMock(),
+        get_data=AsyncMock(
+            return_value={
+                "prompt": "Следи за @gonzo_ml каждый день в 9",
+                "delivery_mode": "digest",
+                "schedule_cron_override": "0 9 * * *",
+                "manual_only": False,
+                "schedule_was_explicit": True,
+                "digest_language_override": "ru",
+            }
+        ),
+        set_state=AsyncMock(),
+    )
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe,
+        "get_language_preference",
+        AsyncMock(return_value=LanguagePreference(mode="fixed", code="ru")),
+    )
     monkeypatch.setattr(
         subscribe.backend,
         "parse_subscription_prompt",
@@ -52,6 +76,7 @@ async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkey
         delivery_mode="digest",
         schedule_cron_override="0 9 * * *",
         manual_only=False,
+        schedule_was_explicit=True,
     )
     state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
     assert message.answer.await_count == 1
@@ -63,9 +88,27 @@ async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkey
 @pytest.mark.asyncio
 async def test_process_prompt_without_schedule_asks_schedule_decision(monkeypatch):
     message = _mock_message(telegram_id=123, text="Хочу новости по ML")
-    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
+    state = SimpleNamespace(
+        update_data=AsyncMock(),
+        get_data=AsyncMock(
+            return_value={
+                "prompt": "Хочу новости по ML",
+                "delivery_mode": "digest",
+                "schedule_cron_override": None,
+                "manual_only": False,
+                "schedule_was_explicit": False,
+                "digest_language_override": "ru",
+            }
+        ),
+        set_state=AsyncMock(),
+    )
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe,
+        "get_language_preference",
+        AsyncMock(return_value=LanguagePreference(mode="fixed", code="ru")),
+    )
     monkeypatch.setattr(
         subscribe.backend,
         "parse_subscription_prompt",
@@ -94,9 +137,27 @@ async def test_process_prompt_without_schedule_asks_schedule_decision(monkeypatc
 @pytest.mark.asyncio
 async def test_process_prompt_with_event_mode_skips_schedule(monkeypatch):
     message = _mock_message(telegram_id=123, text="Notify me when a new episode is announced")
-    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
+    state = SimpleNamespace(
+        update_data=AsyncMock(),
+        get_data=AsyncMock(
+            return_value={
+                "prompt": "Notify me when a new episode is announced",
+                "delivery_mode": "event",
+                "schedule_cron_override": None,
+                "manual_only": False,
+                "schedule_was_explicit": False,
+                "digest_language_override": "en",
+            }
+        ),
+        set_state=AsyncMock(),
+    )
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe,
+        "get_language_preference",
+        AsyncMock(return_value=LanguagePreference(mode="fixed", code="en")),
+    )
     monkeypatch.setattr(
         subscribe.backend,
         "parse_subscription_prompt",
@@ -119,6 +180,7 @@ async def test_process_prompt_with_event_mode_skips_schedule(monkeypatch):
         delivery_mode="event",
         schedule_cron_override=None,
         manual_only=False,
+        schedule_was_explicit=False,
     )
     state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_source_knowledge)
     assert message.answer.await_count == 1
@@ -143,10 +205,43 @@ async def test_handle_schedule_decision_no_continues_source_flow(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_process_prompt_with_ask_mode_prompts_for_subscription_language(monkeypatch):
+    message = _mock_message(telegram_id=123, text="Хочу новости по ML")
+    state = SimpleNamespace(update_data=AsyncMock(), set_state=AsyncMock())
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe,
+        "get_language_preference",
+        AsyncMock(return_value=LanguagePreference(mode="ask", code=None)),
+    )
+    monkeypatch.setattr(
+        subscribe.backend,
+        "parse_subscription_prompt",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                topics=["ml"],
+                delivery_mode="digest",
+                schedule_cron=None,
+                schedule_was_explicit=False,
+                format_instructions="brief summary",
+                digest_language="ru",
+            )
+        ),
+    )
+
+    await subscribe.process_prompt(message, state)
+
+    state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_language_choice)
+    assert "Choose the language for this subscription" in message.answer.await_args.args[0]
+
+
+@pytest.mark.asyncio
 async def test_handle_back_from_schedule_input_returns_to_schedule_decision() -> None:
     callback = _mock_callback(telegram_id=123, data=subscribe.BACK)
     state = SimpleNamespace(
         get_state=AsyncMock(return_value=subscribe.SubscribeFlow.waiting_for_schedule_input.state),
+        update_data=AsyncMock(),
         set_state=AsyncMock(),
     )
 
@@ -190,6 +285,7 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
                 "delivery_mode": "digest",
                 "schedule_cron_override": None,
                 "manual_only": True,
+                "digest_language_override": "ru",
             }
         ),
         update_data=AsyncMock(),
@@ -219,6 +315,7 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
         schedule_cron_override=None,
         manual_only=True,
         delivery_mode="digest",
+        digest_language="ru",
     )
     assert callback.message.answer.await_count == 2
     assert "Subscription created!" in callback.message.answer.await_args_list[1].args[0]
@@ -236,6 +333,7 @@ async def test_handle_scope_choice_for_event_subscription_offers_recent_events(m
                 "delivery_mode": "event",
                 "schedule_cron_override": None,
                 "manual_only": False,
+                "digest_language_override": "en",
             }
         ),
         update_data=AsyncMock(),
@@ -285,18 +383,11 @@ async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
         subscribe.backend,
         "list_recent_events",
         AsyncMock(
-            return_value=[
-                SimpleNamespace(
-                    news_item_id="news-1",
-                    subject="Upcoming event: Demo concert",
-                    body="Event: Demo concert\n\nSource: Demo Feed",
-                ),
-                SimpleNamespace(
-                    news_item_id="news-2",
-                    subject="Upcoming event: Another concert",
-                    body="Event: Another concert\n\nSource: Demo Feed",
-                ),
-            ]
+            return_value=SimpleNamespace(
+                news_item_ids=["news-1", "news-2"],
+                subject="Recent events you may have missed",
+                body="- Demo concert\n- Another concert",
+            )
         ),
     )
     acknowledge_recent_events = AsyncMock()
@@ -309,17 +400,15 @@ async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
     await subscribe.handle_recent_events_decision(callback, state)
 
     callback.answer.assert_awaited_once()
-    assert callback.message.answer.await_count == 4
+    assert callback.message.answer.await_count == 2
     assert (
         callback.message.answer.await_args_list[0].args[0]
         == "Checking what you might have missed in the last 7 days..."
     )
     assert (
         callback.message.answer.await_args_list[1].args[0]
-        == "Here's what you might have missed in the last 7 days:"
+        == "Recent events you may have missed\n\n- Demo concert\n- Another concert"
     )
-    assert "Upcoming event: Demo concert" in callback.message.answer.await_args_list[2].args[0]
-    assert "Upcoming event: Another concert" in callback.message.answer.await_args_list[3].args[0]
     acknowledge_recent_events.assert_awaited_once_with(
         "api-key",
         "sub-evt",

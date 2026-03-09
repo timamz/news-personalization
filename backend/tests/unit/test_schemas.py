@@ -9,9 +9,13 @@ from news_service.schemas.subscription import (
 
 
 def test_subscription_create_valid():
-    payload = SubscriptionCreate(prompt="I want AI news every morning")
+    payload = SubscriptionCreate(
+        prompt="I want AI news every morning",
+        digest_language_override="ru",
+    )
     assert payload.prompt == "I want AI news every morning"
     assert payload.delivery_mode is None
+    assert payload.digest_language_override == "ru"
 
 
 def test_subscription_create_too_short():
@@ -74,9 +78,11 @@ def test_subscription_update_accepts_partial_fields():
     payload = SubscriptionUpdate(
         schedule_cron="0 9 * * 1-5",
         format_instructions="detailed analysis",
+        digest_language="ru",
     )
     assert payload.schedule_cron == "0 9 * * 1-5"
     assert payload.format_instructions == "detailed analysis"
+    assert payload.digest_language == "ru"
 
 
 def test_subscription_update_rejects_empty_format_string():

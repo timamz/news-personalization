@@ -92,7 +92,7 @@ async def validate_source_url(url: str) -> bool:
 
 async def validate_feed_url(url: str) -> bool:
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
             response = await client.get(url, follow_redirects=True)
             if response.status_code != 200:
                 return False

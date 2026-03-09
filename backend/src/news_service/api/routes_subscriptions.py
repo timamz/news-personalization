@@ -18,7 +18,7 @@ from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
 from news_service.schemas.subscription import (
     RecentEventAcknowledgeRequest,
-    RecentEventNotificationResponse,
+    RecentEventsPreviewResponse,
     ScheduleParseRequest,
     ScheduleParseResponse,
     SubscriptionCreate,
@@ -29,8 +29,7 @@ from news_service.schemas.subscription import (
 )
 from news_service.services.coverage import ensure_telegram_channel_coverage, ensure_topic_coverage
 from news_service.services.event_notifications import (
-    build_event_notification,
-    list_recent_subscription_events,
+    build_recent_events_preview_for_subscription,
 )
 from news_service.services.scheduler import parse_cron_to_celery
 from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
@@ -48,6 +47,19 @@ async def _build_subscription_embeddings(
     topic_query = " ".join(topics)
     raw_prompt_embedding, topics_embedding = await embed_texts([raw_prompt, topic_query])
     return raw_prompt_embedding, topics_embedding
+
+
+def _normalized_digest_language(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    normalized = value.strip().lower().split("-", maxsplit=1)[0]
+    if len(normalized) < 2 or len(normalized) > 16:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid digest language code",
+        )
+    return normalized
 
 
 def _validated_schedule_or_422(schedule_cron: str | None) -> str | None:
@@ -130,6 +142,9 @@ async def create_subscription(
     if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
     schedule_cron = _validated_schedule_or_422(schedule_cron)
+    digest_language = (
+        _normalized_digest_language(payload.digest_language_override) or config.digest_language
+    )
     raw_prompt_embedding, topics_embedding = await _build_subscription_embeddings(
         payload.prompt,
         config.topics,
@@ -146,7 +161,7 @@ async def create_subscription(
         event_constraints=[],
         schedule_cron=schedule_cron,
         format_instructions=config.format_instructions,
-        digest_language=config.digest_language,
+        digest_language=digest_language,
         delivery_webhook_url=payload.delivery_webhook_url,
     )
     session.add(subscription)
@@ -205,13 +220,13 @@ async def list_subscriptions(
 
 @router.get(
     "/{subscription_id}/recent-events",
-    response_model=list[RecentEventNotificationResponse],
+    response_model=RecentEventsPreviewResponse | None,
 )
 async def list_recent_events(
     subscription_id: str,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
-) -> list[RecentEventNotificationResponse]:
+) -> RecentEventsPreviewResponse | None:
     result = await session.execute(
         select(Subscription).where(
             Subscription.id == subscription_id,
@@ -232,18 +247,18 @@ async def list_recent_events(
             detail="Recent events preview is available only for event subscriptions",
         )
 
-    items = await list_recent_subscription_events(session, subscription, lookback_days=7)
-    response: list[RecentEventNotificationResponse] = []
-    for item in items:
-        subject, body = build_event_notification(subscription.digest_language, item)
-        response.append(
-            RecentEventNotificationResponse(
-                news_item_id=item.id,
-                subject=subject,
-                body=body,
-            )
-        )
-    return response
+    preview = await build_recent_events_preview_for_subscription(
+        session,
+        subscription,
+        lookback_days=7,
+    )
+    if preview is None:
+        return None
+    return RecentEventsPreviewResponse(
+        news_item_ids=preview.news_item_ids,
+        subject=preview.subject,
+        body=preview.body,
+    )
 
 
 @router.post("/{subscription_id}/recent-events/acknowledge", status_code=status.HTTP_204_NO_CONTENT)
@@ -357,6 +372,13 @@ async def update_subscription(
         subscription.format_instructions = updates["format_instructions"]
     if "delivery_webhook_url" in updates:
         subscription.delivery_webhook_url = updates["delivery_webhook_url"]
+    if "digest_language" in updates:
+        if updates["digest_language"] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="digest_language cannot be null",
+            )
+        subscription.digest_language = _normalized_digest_language(updates["digest_language"])
 
     await session.commit()
     await session.refresh(subscription)

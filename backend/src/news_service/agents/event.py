@@ -28,6 +28,7 @@ Rules:
 - If the text says the event is upcoming but does not provide an exact date, keep starts_at null.
 - Keep title concise and specific.
 - Keep summary to 1-2 short sentences.
+- Write title and summary in the requested target language.
 - Resolve relative dates (for example "tomorrow")
   against the provided reference timestamp when possible.
 """
@@ -59,6 +60,39 @@ Rules:
 - Keep the reason short, concrete, and based on the provided text.
 """
 
+LOCALIZE_EVENT_PROMPT = """\
+You rewrite a detected upcoming event into a requested output language.
+
+Rules:
+- Keep the meaning faithful to the provided event details.
+- Translate both title and summary fully into the target language.
+- Keep title concise and specific.
+- Keep summary to 1-2 short sentences.
+- Do not add facts that are not present in the provided text.
+"""
+
+RECENT_EVENTS_PREVIEW_PROMPT = """\
+You select the relevant missed events for a user and write a single preview message.
+
+Rules:
+- The original subscription request is the source of truth.
+- Candidate events may include duplicates, reminders, or irrelevant events.
+- Select only events that genuinely match the request.
+- Exclude events that are already covered by recent notification history.
+- If multiple candidate events describe the same underlying event, keep only one.
+- Return selected_item_ids in the same order the events should appear in the message.
+- Write both subject and body fully in the target language.
+- Keep the subject short and useful.
+- Make the body suitable for a chat message: one short intro sentence, then a compact bullet list.
+- For each selected event, keep only the most relevant details:
+  title, timing if known, why it matters, source, and URL.
+- Keep URLs exactly as provided.
+- Do not add facts that are not present in the input.
+- Do not repeat the subject as the first line of the body.
+- If no candidate events should be shown, return an empty selected_item_ids list
+  and empty subject/body.
+"""
+
 
 class UpcomingEventCandidate(BaseModel):
     is_upcoming_event: bool = Field(..., description="Whether the item announces a future event")
@@ -83,6 +117,20 @@ class NotificationDuplicateDecision(BaseModel):
     reason: str = Field(..., min_length=3, description="Short explanation for the decision")
 
 
+class LocalizedEventText(BaseModel):
+    title: str = Field(..., min_length=1, description="Localized event title")
+    summary: str = Field(..., min_length=1, description="Localized event summary")
+
+
+class RecentEventsPreviewDecision(BaseModel):
+    selected_item_ids: list[str] = Field(
+        default_factory=list,
+        description="IDs of the candidate events that should be shown",
+    )
+    subject: str = Field(default="", description="Short preview subject")
+    body: str = Field(default="", description="Single body covering all missed events")
+
+
 def _trim_text(value: str) -> str:
     normalized = " ".join(value.split())
     return normalized[:MAX_EVENT_TEXT_CHARS]
@@ -92,6 +140,8 @@ async def extract_upcoming_event(
     headline: str,
     body: str,
     published_at: datetime | None,
+    *,
+    target_language: str | None = None,
 ) -> UpcomingEventCandidate | None:
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,
@@ -100,6 +150,7 @@ async def extract_upcoming_event(
             {
                 "role": "user",
                 "content": (
+                    f"Target language: {target_language or 'same as the source text'}\n\n"
                     "Reference timestamp: "
                     f"{published_at.isoformat() if published_at else 'unknown'}\n\n"
                     f"Headline:\n{_trim_text(headline)}\n\n"
@@ -127,6 +178,107 @@ async def extract_upcoming_event(
     return result
 
 
+async def localize_event_text(
+    *,
+    headline: str,
+    body: str,
+    event_title: str | None,
+    event_summary: str | None,
+    event_starts_at: datetime | None,
+    target_language: str,
+) -> LocalizedEventText:
+    fallback_title = event_title or headline
+    fallback_summary = event_summary or headline
+    normalized_language = target_language.strip().lower().split("-", maxsplit=1)[0]
+    if normalized_language not in {"en", "ru"}:
+        return LocalizedEventText(title=fallback_title, summary=fallback_summary)
+
+    event_lines = [f"Target language: {normalized_language}"]
+    if event_title:
+        event_lines.extend(["", f"Detected event title:\n{_trim_text(event_title)}"])
+    if event_summary:
+        event_lines.extend(["", f"Detected event summary:\n{_trim_text(event_summary)}"])
+    if event_starts_at is not None:
+        event_lines.extend(["", f"Detected event start:\n{event_starts_at.isoformat()}"])
+    event_lines.extend(
+        [
+            "",
+            f"Headline:\n{_trim_text(headline)}",
+            "",
+            f"Body:\n{_trim_text(body)}",
+        ]
+    )
+
+    completion = await _client.beta.chat.completions.parse(
+        model=settings.llm_model,
+        messages=[
+            {"role": "system", "content": LOCALIZE_EVENT_PROMPT},
+            {"role": "user", "content": "\n".join(event_lines)},
+        ],
+        response_format=LocalizedEventText,
+        temperature=0.1,
+    )
+    result = completion.choices[0].message.parsed
+    if result is None:
+        raise ValueError("LLM returned empty parsed response for event localization")
+
+    result.title = result.title or fallback_title
+    result.summary = result.summary or fallback_summary
+    return result
+
+
+async def render_recent_events_preview(
+    *,
+    raw_prompt: str,
+    target_language: str,
+    event_matching_mode: str,
+    lookback_days: int,
+    candidate_events: list[str],
+    recent_notifications: list[str],
+) -> RecentEventsPreviewDecision:
+    normalized_language = target_language.strip().lower().split("-", maxsplit=1)[0]
+    if normalized_language not in {"en", "ru"}:
+        normalized_language = "en"
+
+    history_block = (
+        "\n\n".join(
+            f"Notification {index}:\n{_trim_text(entry)}"
+            for index, entry in enumerate(recent_notifications, start=1)
+        )
+        if recent_notifications
+        else "No recent notification history."
+    )
+    candidates_block = "\n\n".join(
+        f"Candidate event {index}:\n{_trim_text(summary)}"
+        for index, summary in enumerate(candidate_events, start=1)
+    )
+    completion = await _client.beta.chat.completions.parse(
+        model=settings.llm_model,
+        messages=[
+            {"role": "system", "content": RECENT_EVENTS_PREVIEW_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"Target language: {normalized_language}\n"
+                    f"Event matching mode: {event_matching_mode}\n"
+                    f"Lookback window: last {lookback_days} days\n\n"
+                    f"Original subscription request:\n{_trim_text(raw_prompt)}\n\n"
+                    "Recent notification history:\n"
+                    f"{history_block}\n\n"
+                    "Candidate events:\n"
+                    f"{candidates_block}"
+                ),
+            },
+        ],
+        response_format=RecentEventsPreviewDecision,
+        temperature=0.1,
+    )
+    result = completion.choices[0].message.parsed
+    if result is None:
+        raise ValueError("LLM returned empty parsed response for recent events preview")
+    return result
+
+
 async def judge_event_match(
     *,
     headline: str,
@@ -138,8 +290,7 @@ async def judge_event_match(
     event_starts_at: datetime | None = None,
 ) -> EventMatchDecision:
     event_lines = [
-        "Reference timestamp: "
-        f"{published_at.isoformat() if published_at else 'unknown'}",
+        f"Reference timestamp: {published_at.isoformat() if published_at else 'unknown'}",
     ]
     if event_title:
         event_lines.extend(["", f"Detected event title:\n{_trim_text(event_title)}"])
@@ -198,8 +349,7 @@ async def judge_notification_duplicate(
         )
 
     event_lines = [
-        "Reference timestamp: "
-        f"{published_at.isoformat() if published_at else 'unknown'}",
+        f"Reference timestamp: {published_at.isoformat() if published_at else 'unknown'}",
     ]
     if event_title:
         event_lines.extend(["", f"Detected event title:\n{_trim_text(event_title)}"])

@@ -23,25 +23,37 @@ def _mock_callback(telegram_id: int, data: str):
     )
 
 
+@pytest.fixture(autouse=True)
+def _mock_ui_language(monkeypatch) -> None:
+    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="en"))
+
+
 @pytest.mark.asyncio
 async def test_cmd_list_adds_send_now_button(monkeypatch):
     message = _mock_message(telegram_id=111)
+    state = SimpleNamespace()
     sub = SimpleNamespace(
         id="sub-1",
         topics=["ai"],
         delivery_mode="digest",
         schedule_cron="0 8 * * *",
         format_instructions="brief summary",
+        digest_language="ru",
     )
 
     monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscriptions.start_handler,
+        "ensure_user_setup",
+        AsyncMock(return_value=True),
+    )
     monkeypatch.setattr(subscriptions.backend, "list_subscriptions", AsyncMock(return_value=[sub]))
 
-    await subscriptions.cmd_list(message)
+    await subscriptions.cmd_list(message, state)
 
     message.answer.assert_awaited_once()
     message_text = message.answer.await_args.args[0]
-    assert message_text == "Topics: ai\nType: Digest"
+    assert message_text == "Topics: ai\nType: Digest\nLanguage: Russian"
 
     kwargs = message.answer.await_args.kwargs
     keyboard = kwargs["reply_markup"]
@@ -57,21 +69,31 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
 @pytest.mark.asyncio
 async def test_cmd_list_hides_send_now_for_event_subscription(monkeypatch):
     message = _mock_message(telegram_id=111)
+    state = SimpleNamespace()
     sub = SimpleNamespace(
         id="sub-9",
         topics=["concerts"],
         delivery_mode="event",
         schedule_cron=None,
         format_instructions="brief summary",
+        digest_language="en",
     )
 
     monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscriptions.start_handler,
+        "ensure_user_setup",
+        AsyncMock(return_value=True),
+    )
     monkeypatch.setattr(subscriptions.backend, "list_subscriptions", AsyncMock(return_value=[sub]))
 
-    await subscriptions.cmd_list(message)
+    await subscriptions.cmd_list(message, state)
 
     message.answer.assert_awaited_once()
-    assert message.answer.await_args.args[0] == "Topics: concerts\nType: Event notifications"
+    assert (
+        message.answer.await_args.args[0]
+        == "Topics: concerts\nType: Event notifications\nLanguage: English"
+    )
 
     keyboard = message.answer.await_args.kwargs["reply_markup"]
     buttons = keyboard.inline_keyboard[0]
@@ -107,12 +129,32 @@ async def test_handle_edit_menu_shows_digest_edit_actions():
     keyboard = callback.message.answer.await_args.kwargs["reply_markup"]
     first_row = keyboard.inline_keyboard[0]
     second_row = keyboard.inline_keyboard[1]
+    third_row = keyboard.inline_keyboard[2]
     assert first_row[0].text == "Change schedule"
     assert first_row[0].callback_data == "edit_sched:sub-2"
     assert first_row[1].text == "Disable schedule"
     assert first_row[1].callback_data == "disable_sched:sub-2"
-    assert second_row[0].text == "Change format"
-    assert second_row[1].text == "Deliver here"
+    assert second_row[0].text == "Change language"
+    assert second_row[1].text == "Change format"
+    assert third_row[0].text == "Deliver here"
+
+
+@pytest.mark.asyncio
+async def test_handle_set_language_updates_subscription(monkeypatch):
+    callback = _mock_callback(telegram_id=222, data="set_lang:sub-2:ru")
+
+    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
+    update_subscription = AsyncMock()
+    monkeypatch.setattr(subscriptions.backend, "update_subscription", update_subscription)
+
+    await subscriptions.handle_set_language(callback)
+
+    update_subscription.assert_awaited_once_with(
+        "api-key",
+        "sub-2",
+        digest_language="ru",
+    )
+    callback.answer.assert_awaited_once_with("Language updated to Russian.")
 
 
 @pytest.mark.asyncio

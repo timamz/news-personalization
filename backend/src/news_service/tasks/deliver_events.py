@@ -66,6 +66,7 @@ async def _deliver_event_notifications(news_item_id: uuid.UUID) -> dict:
         delivered = 0
         failed = 0
         history_cache: dict[uuid.UUID, list[RecentNotificationEntry]] = {}
+        notification_cache: dict[str, tuple[str, str]] = {}
         for subscription in subscriptions:
             if subscription.id in sent_subscription_ids:
                 continue
@@ -114,7 +115,11 @@ async def _deliver_event_notifications(news_item_id: uuid.UUID) -> dict:
                 )
 
             channel = get_delivery_channel(subscription.delivery_webhook_url)
-            subject, body = build_event_notification(subscription.digest_language, item)
+            notification = notification_cache.get(subscription.digest_language)
+            if notification is None:
+                notification = await build_event_notification(subscription.digest_language, item)
+                notification_cache[subscription.digest_language] = notification
+            subject, body = notification
             try:
                 await channel.send(subject, body)
             except Exception:

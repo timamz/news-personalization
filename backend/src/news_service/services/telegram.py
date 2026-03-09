@@ -8,8 +8,11 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from news_service.core.config import get_settings
+
 CHANNEL_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_]{4,31}$")
 CHANNEL_MENTION_PATTERN = re.compile(r"(?<![\w@])@([A-Za-z][A-Za-z0-9_]{4,31})\b")
+settings = get_settings()
 
 
 @dataclass(slots=True)
@@ -63,9 +66,13 @@ def extract_telegram_channel_from_url(url: str) -> str | None:
         return None
 
 
-async def fetch_telegram_posts(channel: str, timeout_seconds: float = 10.0) -> list[TelegramPost]:
+async def fetch_telegram_posts(
+    channel: str,
+    timeout_seconds: float | None = None,
+) -> list[TelegramPost]:
     channel_url = build_telegram_channel_url(channel)
-    async with httpx.AsyncClient(timeout=timeout_seconds, follow_redirects=True) as client:
+    request_timeout = timeout_seconds or settings.http_timeout_seconds
+    async with httpx.AsyncClient(timeout=request_timeout, follow_redirects=True) as client:
         response = await client.get(channel_url)
         response.raise_for_status()
     return parse_telegram_posts(response.text)
@@ -84,10 +91,9 @@ def parse_telegram_posts(html_text: str) -> list[TelegramPost]:
         date_link = message_node.select_one(
             "div.tgme_widget_message_info a.tgme_widget_message_date"
         )
-        body_node = (
-            message_node.select_one("div.tgme_widget_message_bubble > div.tgme_widget_message_text")
-            or message_node.select_one("div.tgme_widget_message_text")
-        )
+        body_node = message_node.select_one(
+            "div.tgme_widget_message_bubble > div.tgme_widget_message_text"
+        ) or message_node.select_one("div.tgme_widget_message_text")
         if date_link is None or body_node is None:
             continue
 

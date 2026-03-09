@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.event import extract_upcoming_event
+from news_service.core.config import get_settings
 from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
 from news_service.models.news_item import NewsItem
@@ -16,9 +17,10 @@ from news_service.services.telegram import extract_telegram_channel_from_url, fe
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 DELIVER_EVENTS_TASK = "news_service.tasks.deliver_events.deliver_event_notifications"
-RSS_FETCH_TIMEOUT_SECONDS = 10.0
+RSS_FETCH_TIMEOUT_SECONDS = settings.http_timeout_seconds
 RSS_FETCH_ATTEMPTS = 2
 
 

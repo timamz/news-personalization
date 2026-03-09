@@ -8,9 +8,7 @@ from news_service.agents import digest
 
 
 def _mock_completion(content: str) -> SimpleNamespace:
-    return SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
-    )
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
 
 
 @pytest.mark.asyncio

@@ -114,8 +114,7 @@ async def test_update_subscription_rejects_schedule_for_event_mode(
 
     assert response.status_code == 409
     assert (
-        response.json()["detail"]
-        == "Automatic schedule is available only for digest subscriptions"
+        response.json()["detail"] == "Automatic schedule is available only for digest subscriptions"
     )
 
 
@@ -203,3 +202,78 @@ async def test_create_subscription_rejects_invalid_schedule_override(
 
     assert create_response.status_code == 422
     assert create_response.json()["detail"] == "Invalid cron expression: not a cron"
+
+
+async def test_create_subscription_applies_digest_language_override(
+    api_client: AsyncClient,
+    mocker,
+) -> None:
+    parsed_config = SubscriptionConfig(
+        topics=["artificial intelligence"],
+        delivery_mode="digest",
+        schedule_cron="0 8 * * *",
+        schedule_was_explicit=True,
+        format_instructions="brief summary",
+        digest_language="en",
+    )
+    mocker.patch(
+        "news_service.api.routes_subscriptions.parse_subscription",
+        new=AsyncMock(return_value=parsed_config),
+    )
+
+    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
+        assert topics_embedding == [2.0] * 1536
+        feed = RssFeed(
+            url="https://example.com/rss.xml",
+            title="Example Feed",
+            topic_tags=topics,
+            topic_embedding=[0.0] * 1536,
+            is_active=True,
+            subscriber_count=1,
+        )
+        session.add(feed)
+        await session.flush()
+        return [feed]
+
+    mocker.patch(
+        "news_service.api.routes_subscriptions.ensure_topic_coverage",
+        new=fake_ensure_topic_coverage,
+    )
+
+    user_response = await api_client.post("/users")
+    assert user_response.status_code == 201
+    api_key = user_response.json()["api_key"]
+
+    create_response = await api_client.post(
+        "/subscriptions",
+        headers={"X-API-Key": api_key},
+        json={
+            "prompt": "AI updates every morning in a brief summary",
+            "delivery_webhook_url": "http://frontend.example.test/deliver/1",
+            "digest_language_override": "ru",
+        },
+    )
+
+    assert create_response.status_code == 201
+    assert create_response.json()["digest_language"] == "ru"
+
+
+async def test_update_subscription_updates_digest_language(
+    api_client: AsyncClient,
+    mocker,
+) -> None:
+    api_key, subscription_id = await _create_user_and_subscription(api_client, mocker)
+
+    response = await api_client.patch(
+        f"/subscriptions/{subscription_id}",
+        headers={"X-API-Key": api_key},
+        json={"digest_language": "ru"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["digest_language"] == "ru"
+
+    async with async_session_factory() as session:
+        subscription = await session.get(Subscription, subscription_id)
+        assert subscription is not None
+        assert subscription.digest_language == "ru"
