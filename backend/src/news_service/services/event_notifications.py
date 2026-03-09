@@ -1,8 +1,10 @@
 import asyncio
 import logging
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from difflib import SequenceMatcher
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +19,12 @@ logger = logging.getLogger(__name__)
 
 _RECENT_MATCH_CONCURRENCY = 3
 _NOTIFICATION_HISTORY_LOOKBACK_DAYS = 30
+_DETERMINISTIC_DUPLICATE_STARTS_AT_WINDOW = timedelta(hours=6)
+_DETERMINISTIC_DUPLICATE_TOKEN_OVERLAP = 0.4
+_DETERMINISTIC_DUPLICATE_TEXT_SIMILARITY = 0.82
+_TITLE_EQUIVALENCE_TOKEN_OVERLAP = 0.85
+_TITLE_EQUIVALENCE_TEXT_SIMILARITY = 0.96
+_NORMALIZED_TOKEN_PATTERN = re.compile(r"\w+", re.UNICODE)
 
 _LABELS = {
     "en": {
@@ -110,6 +118,15 @@ async def notification_was_already_shown(
 ) -> bool:
     if not history:
         return False
+
+    duplicate_entry = _deterministic_duplicate_entry(item, history)
+    if duplicate_entry is not None:
+        logger.info(
+            "Event %s treated as already notified by deterministic duplicate match",
+            item.id,
+            extra={"news_item_id": str(item.id)},
+        )
+        return True
 
     decision = await judge_notification_duplicate(
         headline=item.headline,
@@ -236,6 +253,80 @@ def _format_history_entry(entry: RecentNotificationEntry) -> str:
     lines.append(f"Source: {entry.source}")
     lines.append(f"Summary: {entry.summary}")
     return "\n".join(lines)
+
+
+def _deterministic_duplicate_entry(
+    item: NewsItem,
+    history: list[RecentNotificationEntry],
+) -> RecentNotificationEntry | None:
+    for entry in history:
+        if _events_are_equivalent(item, entry):
+            return entry
+    return None
+
+
+def _events_are_equivalent(item: NewsItem, entry: RecentNotificationEntry) -> bool:
+    if _titles_are_equivalent(item, entry):
+        return True
+    return _same_occurrence_by_time_and_text(item, entry)
+
+
+def _titles_are_equivalent(item: NewsItem, entry: RecentNotificationEntry) -> bool:
+    candidate_title = _normalize_event_text(item.event_title or item.headline)
+    history_title = _normalize_event_text(entry.title)
+    if not candidate_title or not history_title:
+        return False
+    if candidate_title == history_title:
+        return True
+    return (
+        _token_overlap(candidate_title, history_title) >= _TITLE_EQUIVALENCE_TOKEN_OVERLAP
+        or _text_similarity(candidate_title, history_title) >= _TITLE_EQUIVALENCE_TEXT_SIMILARITY
+    )
+
+
+def _same_occurrence_by_time_and_text(item: NewsItem, entry: RecentNotificationEntry) -> bool:
+    if item.event_starts_at is None or entry.starts_at is None:
+        return False
+    if not _starts_at_close(item.event_starts_at, entry.starts_at):
+        return False
+
+    candidate_text = _normalize_event_text(item.event_title, item.event_summary, item.headline)
+    history_text = _normalize_event_text(entry.title, entry.summary)
+    if not candidate_text or not history_text:
+        return False
+
+    return (
+        _token_overlap(candidate_text, history_text) >= _DETERMINISTIC_DUPLICATE_TOKEN_OVERLAP
+        or _text_similarity(candidate_text, history_text)
+        >= _DETERMINISTIC_DUPLICATE_TEXT_SIMILARITY
+    )
+
+
+def _normalize_event_text(*parts: str | None) -> str:
+    values = [part for part in parts if part]
+    if not values:
+        return ""
+    normalized = " ".join(values).casefold().replace("ё", "е")
+    tokens = _NORMALIZED_TOKEN_PATTERN.findall(normalized)
+    return " ".join(tokens)
+
+
+def _token_overlap(left: str, right: str) -> float:
+    left_tokens = {token for token in left.split() if len(token) >= 4}
+    right_tokens = {token for token in right.split() if len(token) >= 4}
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
+
+
+def _text_similarity(left: str, right: str) -> float:
+    return SequenceMatcher(a=left, b=right).ratio()
+
+
+def _starts_at_close(left: datetime, right: datetime) -> bool:
+    left = left.replace(tzinfo=UTC) if left.tzinfo is None else left.astimezone(UTC)
+    right = right.replace(tzinfo=UTC) if right.tzinfo is None else right.astimezone(UTC)
+    return abs(left - right) <= _DETERMINISTIC_DUPLICATE_STARTS_AT_WINDOW
 
 
 def _labels_for(digest_language: str) -> dict[str, str]:

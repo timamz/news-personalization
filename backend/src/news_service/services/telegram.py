@@ -77,12 +77,21 @@ def parse_telegram_posts(html_text: str) -> list[TelegramPost]:
 
     posts: list[TelegramPost] = []
     for wrapper in wrappers:
-        date_link = wrapper.select_one("div.tgme_widget_message_info a.tgme_widget_message_date")
-        body_node = wrapper.select_one("div.tgme_widget_message_text")
+        message_node = wrapper.select_one("div.tgme_widget_message")
+        if message_node is None:
+            continue
+
+        date_link = message_node.select_one(
+            "div.tgme_widget_message_info a.tgme_widget_message_date"
+        )
+        body_node = (
+            message_node.select_one("div.tgme_widget_message_bubble > div.tgme_widget_message_text")
+            or message_node.select_one("div.tgme_widget_message_text")
+        )
         if date_link is None or body_node is None:
             continue
 
-        post_url = date_link.get("href")
+        post_url = _extract_canonical_post_url(message_node, fallback_url=date_link.get("href"))
         if post_url is None:
             continue
 
@@ -105,3 +114,17 @@ def parse_telegram_posts(html_text: str) -> list[TelegramPost]:
         posts.append(TelegramPost(url=post_url, body=body, published_at=published_at))
 
     return posts
+
+
+def _extract_canonical_post_url(message_node: object, *, fallback_url: str | None) -> str | None:
+    if hasattr(message_node, "get"):
+        data_post = message_node.get("data-post")
+        if isinstance(data_post, str):
+            parts = [part for part in data_post.split("/") if part]
+            if len(parts) == 2 and parts[1].isdigit():
+                try:
+                    channel = normalize_telegram_channel(parts[0])
+                except ValueError:
+                    channel = parts[0].lstrip("@").lower()
+                return f"https://t.me/{channel}/{parts[1]}"
+    return fallback_url

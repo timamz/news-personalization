@@ -107,6 +107,88 @@ async def test_notification_was_already_shown_skips_when_history_is_empty(mocker
 
 
 @pytest.mark.asyncio
+async def test_notification_was_already_shown_deduplicates_same_occurrence_without_llm(
+    mocker,
+) -> None:
+    history_item = _make_item(
+        item_id="history-1",
+        event_title="Интеллектуальный клуб С. Дробышевского — встреча и презентация книги",
+    )
+    history_item.event_summary = (
+        "6 марта в 19:00 в Москве пройдёт интеллектуальный клуб с лекцией и презентацией книги."
+    )
+    candidate = _make_item(
+        item_id="candidate-1",
+        event_title="Интеллектуальный клуб Станислава Дробышевского — лекция и презентация книги",
+    )
+    candidate.event_summary = (
+        "6 марта 2026 в 19:00 в Москве пройдёт интеллектуальный клуб с лекцией и презентацией "
+        "новой книги."
+    )
+    history = [
+        event_notifications.notification_history_entry_from_item(
+            history_item,
+            sent_at=datetime(2026, 3, 4, 12, 0, tzinfo=UTC),
+        )
+    ]
+
+    judge = mocker.patch.object(
+        event_notifications,
+        "judge_notification_duplicate",
+        new=AsyncMock(),
+    )
+
+    result = await event_notifications.notification_was_already_shown(candidate, history)
+
+    assert result is True
+    judge.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_notification_was_already_shown_uses_llm_for_different_event(mocker) -> None:
+    history_item = _make_item(
+        item_id="history-1",
+        event_title="Интеллектуальный клуб С. Дробышевского — лекция и презентация книги",
+    )
+    candidate = _make_item(
+        item_id="candidate-1",
+        event_title="Лекции С. В. Дробышевского и М. А. Лебедева",
+    )
+    candidate.headline = "Ваня Дмитриенко"
+    candidate.body = (
+        "Центр популяризации науки приглашает на лекции Станислава Владимировича "
+        "Дробышевского и Максима Лебедева."
+    )
+    candidate.event_summary = (
+        "Центр популяризации науки приглашает на лекции Станислава Владимировича "
+        "Дробышевского и Максима Лебедева."
+    )
+    candidate.event_starts_at = None
+    history = [
+        event_notifications.notification_history_entry_from_item(
+            history_item,
+            sent_at=datetime(2026, 3, 4, 12, 0, tzinfo=UTC),
+        )
+    ]
+
+    judge = mocker.patch.object(
+        event_notifications,
+        "judge_notification_duplicate",
+        new=AsyncMock(
+            return_value=NotificationDuplicateDecision(
+                already_notified=False,
+                reason="The candidate describes a different event.",
+            )
+        ),
+    )
+
+    result = await event_notifications.notification_was_already_shown(candidate, history)
+
+    assert result is False
+    judge.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_list_recent_subscription_events_uses_shared_duplicate_judge(mocker) -> None:
     items = [
         _make_item(item_id="news-1", event_title="Лекция Дробышевского"),
