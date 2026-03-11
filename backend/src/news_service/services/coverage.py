@@ -1,10 +1,15 @@
+import asyncio
 import logging
 import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.discovery import DiscoveredFeedItem, discover_feeds
+from news_service.agents.discovery import (
+    DiscoveredSourceItem,
+    discover_rss_feeds,
+    discover_telegram_channels,
+)
 from news_service.db.vector_store import embed_text, find_similar_feeds
 from news_service.models.rss_feed import RssFeed
 from news_service.services.telegram import build_telegram_channel_url
@@ -35,9 +40,13 @@ async def ensure_topic_coverage(
 
     if not selected:
         logger.info("Discovering feeds for uncovered topics: %s", topics)
-        discovered = await discover_feeds(topics)
+        rss_sources, telegram_sources = await asyncio.gather(
+            discover_rss_feeds(topics),
+            discover_telegram_channels(topics),
+        )
+        discovered = [*rss_sources, *telegram_sources]
         selected_urls = {feed.url for feed in selected.values()}
-        deduplicated_discovered: dict[str, DiscoveredFeedItem] = {}
+        deduplicated_discovered: dict[str, DiscoveredSourceItem] = {}
 
         for feed_info in discovered:
             if feed_info.url in selected_urls or feed_info.url in deduplicated_discovered:
@@ -90,7 +99,7 @@ async def ensure_telegram_channel_coverage(
     return list(resolved.values())
 
 
-async def _register_feed(session: AsyncSession, feed_info: DiscoveredFeedItem) -> RssFeed:
+async def _register_feed(session: AsyncSession, feed_info: DiscoveredSourceItem) -> RssFeed:
     existing_result = await session.execute(select(RssFeed).where(RssFeed.url == feed_info.url))
     existing_feed = existing_result.scalar_one_or_none()
     if existing_feed is not None:
