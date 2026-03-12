@@ -31,6 +31,7 @@ from news_service.services.coverage import (
     ensure_reddit_subreddit_coverage,
     ensure_telegram_channel_coverage,
     ensure_topic_coverage,
+    ensure_twitter_account_coverage,
 )
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
@@ -38,6 +39,7 @@ from news_service.services.event_notifications import (
 from news_service.services.reddit import extract_reddit_subreddits, normalize_reddit_subreddit
 from news_service.services.scheduler import parse_cron_to_celery
 from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
+from news_service.services.twitter import extract_twitter_accounts, normalize_twitter_account
 from news_service.tasks.deliver_digest import deliver_digest
 
 logger = logging.getLogger(__name__)
@@ -121,12 +123,16 @@ async def create_subscription(
 ) -> Subscription:
     prompt_channels = extract_telegram_channels(payload.prompt)
     prompt_subreddits = extract_reddit_subreddits(payload.prompt)
+    prompt_twitter_accounts = extract_twitter_accounts(payload.prompt)
     try:
         explicit_channels = [
             normalize_telegram_channel(channel) for channel in payload.fixed_telegram_channels
         ]
         explicit_subreddits = [
             normalize_reddit_subreddit(subreddit) for subreddit in payload.fixed_reddit_subreddits
+        ]
+        explicit_twitter_accounts = [
+            normalize_twitter_account(account) for account in payload.fixed_twitter_accounts
         ]
     except ValueError as exc:
         raise HTTPException(
@@ -136,11 +142,12 @@ async def create_subscription(
     # For backward compatibility with older clients that only send a prompt.
     telegram_channels = explicit_channels or prompt_channels
     reddit_subreddits = explicit_subreddits or prompt_subreddits
+    twitter_accounts = explicit_twitter_accounts or prompt_twitter_accounts
     config = await parse_subscription(payload.prompt)
     include_discovered_sources = (
         payload.include_discovered_sources
         if payload.include_discovered_sources is not None
-        else not bool(telegram_channels or reddit_subreddits)
+        else not bool(telegram_channels or reddit_subreddits or twitter_accounts)
     )
     delivery_mode = payload.delivery_mode or config.delivery_mode
     event_matching_mode = config.event_matching_mode if delivery_mode == "event" else "basic"
@@ -196,6 +203,16 @@ async def create_subscription(
             topics_embedding,
         )
         for source in reddit_sources:
+            selected_sources[source.id] = source
+
+    if twitter_accounts:
+        twitter_sources = await ensure_twitter_account_coverage(
+            session,
+            twitter_accounts,
+            config.topics,
+            topics_embedding,
+        )
+        for source in twitter_sources:
             selected_sources[source.id] = source
 
     if include_discovered_sources:

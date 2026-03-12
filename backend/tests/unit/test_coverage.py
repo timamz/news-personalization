@@ -38,6 +38,7 @@ async def test_ensure_topic_coverage_deduplicates_discovered_urls(mocker) -> Non
     )
     mocker.patch.object(coverage, "discover_telegram_channels", new=AsyncMock(return_value=[]))
     mocker.patch.object(coverage, "discover_reddit_subreddits", new=AsyncMock(return_value=[]))
+    mocker.patch.object(coverage, "discover_twitter_accounts", new=AsyncMock(return_value=[]))
     registered_feed = SimpleNamespace(id=uuid.uuid4(), url="https://example.com/rss.xml")
     register_feed = mocker.patch.object(
         coverage,
@@ -81,6 +82,7 @@ async def test_ensure_topic_coverage_skips_discovered_url_already_selected(mocke
     )
     mocker.patch.object(coverage, "discover_telegram_channels", new=AsyncMock(return_value=[]))
     mocker.patch.object(coverage, "discover_reddit_subreddits", new=AsyncMock(return_value=[]))
+    mocker.patch.object(coverage, "discover_twitter_accounts", new=AsyncMock(return_value=[]))
     register_feed = mocker.patch.object(coverage, "_register_feed", new=AsyncMock())
 
     result = await coverage.ensure_topic_coverage(session, ["ai", "science"], [0.1])
@@ -141,16 +143,31 @@ async def test_ensure_topic_coverage_merges_rss_telegram_and_reddit_discovery(mo
             ]
         ),
     )
+    mocker.patch.object(
+        coverage,
+        "discover_twitter_accounts",
+        new=AsyncMock(
+            return_value=[
+                DiscoveredSourceItem(
+                    url="https://x.com/openai",
+                    topic_tags=["badminton"],
+                    title="X @openai",
+                    source_kind="twitter_account",
+                )
+            ]
+        ),
+    )
     rss_feed = SimpleNamespace(id=uuid.uuid4(), url="https://example.com/rss.xml")
     telegram_feed = SimpleNamespace(id=uuid.uuid4(), url="https://t.me/s/badmintonnews")
     reddit_feed = SimpleNamespace(id=uuid.uuid4(), url="https://www.reddit.com/r/badminton/new/")
+    twitter_feed = SimpleNamespace(id=uuid.uuid4(), url="https://x.com/openai")
     register_feed = mocker.patch.object(
         coverage,
         "_register_feed",
-        new=AsyncMock(side_effect=[rss_feed, telegram_feed, reddit_feed]),
+        new=AsyncMock(side_effect=[rss_feed, telegram_feed, reddit_feed, twitter_feed]),
     )
 
     result = await coverage.ensure_topic_coverage(session, ["badminton"], [0.1])
 
-    assert result == [rss_feed, telegram_feed, reddit_feed]
-    assert register_feed.await_count == 3
+    assert result == [rss_feed, telegram_feed, reddit_feed, twitter_feed]
+    assert register_feed.await_count == 4

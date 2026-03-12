@@ -54,6 +54,20 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
             ]
         ),
     )
+    twitter_discovery = mocker.patch.object(
+        discovery,
+        "discover_twitter_accounts",
+        new=AsyncMock(
+            return_value=[
+                DiscoveredSourceItem(
+                    url="https://x.com/openai",
+                    topic_tags=["ai"],
+                    title="X @openai",
+                    source_kind="twitter_account",
+                )
+            ]
+        ),
+    )
 
     result = await discovery.discover_sources(["ai"])
 
@@ -61,10 +75,12 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
         "https://example.com/rss.xml",
         "https://t.me/s/ainews",
         "https://www.reddit.com/r/ainews/new/",
+        "https://x.com/openai",
     ]
     rss_discovery.assert_awaited_once_with(["ai"])
     telegram_discovery.assert_awaited_once_with(["ai"])
     reddit_discovery.assert_awaited_once_with(["ai"])
+    twitter_discovery.assert_awaited_once_with(["ai"])
 
 
 @pytest.mark.asyncio
@@ -215,3 +231,53 @@ async def test_discover_reddit_subreddits_normalizes_and_validates_subreddits(mo
         )
     ]
     validate_subreddit.assert_awaited_once_with("ainews")
+
+
+@pytest.mark.asyncio
+async def test_discover_twitter_accounts_normalizes_and_validates_accounts(mocker) -> None:
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    parsed=DiscoveredSourceList(
+                        sources=[
+                            DiscoveredSourceItem(
+                                url="https://twitter.com/OpenAI",
+                                topic_tags=["ai"],
+                                title="OpenAI",
+                                source_kind="twitter_account",
+                            ),
+                            DiscoveredSourceItem(
+                                url="https://example.com/rss.xml",
+                                topic_tags=["ai"],
+                                title="Wrong kind",
+                                source_kind="rss",
+                            ),
+                        ]
+                    )
+                )
+            )
+        ]
+    )
+    mocker.patch.object(
+        discovery._client.beta.chat.completions,
+        "parse",
+        new=AsyncMock(return_value=completion),
+    )
+    validate_account = mocker.patch.object(
+        discovery,
+        "validate_twitter_account",
+        new=AsyncMock(return_value=True),
+    )
+
+    result = await discovery.discover_twitter_accounts(["ai"])
+
+    assert result == [
+        DiscoveredSourceItem(
+            url="https://x.com/openai",
+            topic_tags=["ai"],
+            title="OpenAI",
+            source_kind="twitter_account",
+        )
+    ]
+    validate_account.assert_awaited_once_with("openai")

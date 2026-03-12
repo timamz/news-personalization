@@ -15,6 +15,7 @@ from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
 from news_service.services.reddit import extract_reddit_subreddit_from_url, fetch_reddit_posts
 from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
+from news_service.services.twitter import extract_twitter_account_from_url, fetch_twitter_posts
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,10 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
     subreddit = extract_reddit_subreddit_from_url(feed.url)
     if subreddit is not None:
         return await _poll_single_reddit_subreddit(session, feed, subreddit)
+
+    twitter_account = extract_twitter_account_from_url(feed.url)
+    if twitter_account is not None:
+        return await _poll_single_twitter_account(session, feed, twitter_account)
 
     try:
         content = await _fetch_rss_feed_content(feed.url)
@@ -248,6 +253,67 @@ async def _poll_single_reddit_subreddit(
     logger.info(
         "Polled Reddit subreddit r/%s: %d new items from %d posts",
         subreddit,
+        new_count,
+        len(posts),
+        extra={"feed_id": str(feed.id)},
+    )
+    return new_count
+
+
+async def _poll_single_twitter_account(
+    session: AsyncSession,
+    feed: RssFeed,
+    account: str,
+) -> int:
+    try:
+        posts = await fetch_twitter_posts(account)
+    except Exception:
+        logger.exception(
+            "Failed to parse Twitter/X account @%s",
+            account,
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
+
+    if not posts:
+        return 0
+
+    texts_to_embed = [post.body for post in posts]
+    try:
+        embeddings = await embed_texts(texts_to_embed)
+    except Exception:
+        logger.exception(
+            "Failed to embed Twitter/X posts for @%s",
+            account,
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
+
+    source_name = feed.title or f"X @{account}"
+    now = datetime.now(UTC)
+    new_count = 0
+    for post, embedding in zip(posts, embeddings, strict=True):
+        headline = post.body.splitlines()[0][:200]
+        item = await upsert_news_item(
+            session,
+            feed_id=feed.id,
+            headline=headline or f"Post from @{account}",
+            body=post.body,
+            url=post.url,
+            source=source_name,
+            published_at=post.published_at,
+            fetched_at=now,
+            embedding=embedding,
+        )
+        if item is not None:
+            new_count += 1
+            if isinstance(item, NewsItem):
+                await _maybe_store_upcoming_event(session, item)
+
+    feed.last_polled_at = now
+    logger.info(
+        "Polled Twitter/X account @%s: %d new items from %d posts",
+        account,
         new_count,
         len(posts),
         extra={"feed_id": str(feed.id)},

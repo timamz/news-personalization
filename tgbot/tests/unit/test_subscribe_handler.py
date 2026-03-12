@@ -280,6 +280,7 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
             return_value={
                 "prompt": "ML daily",
                 "telegram_channels": ["gonzo_ml"],
+                "twitter_accounts": ["openai"],
                 "delivery_mode": "digest",
                 "schedule_cron_override": None,
                 "manual_only": True,
@@ -309,6 +310,7 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
         "ML daily",
         delivery_webhook_url(123),
         fixed_telegram_channels=["gonzo_ml"],
+        fixed_twitter_accounts=["openai"],
         include_discovered_sources=True,
         schedule_cron_override=None,
         manual_only=True,

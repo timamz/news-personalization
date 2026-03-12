@@ -52,7 +52,8 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_parse_failed": "Couldn't parse this schedule. Please try another wording.",
         "sources_parse_failed": (
             "I couldn't parse sources. Send Telegram handles like @channel_one, "
-            "links like https://t.me/channel, or Reddit names like r/python."
+            "links like https://t.me/channel or https://x.com/OpenAI, "
+            "or Reddit names like r/python."
         ),
         "recent_events_future_only": "Okay. I will only send new event notifications from now on.",
         "recent_events_expired": (
@@ -94,15 +95,15 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "source_question_digest": (
             "Do you already have specific sources for this digest "
-            "(Telegram channels or Reddit subreddits)?"
+            "(Telegram channels, Reddit subreddits, or X accounts)?"
         ),
         "source_question_event": (
             "Do you already have specific sources for these notifications "
-            "(Telegram channels or Reddit subreddits)?"
+            "(Telegram channels, Reddit subreddits, or X accounts)?"
         ),
         "channels_input_prompt": (
             "Send sources you want to include "
-            "(for example: @channel_one r/python https://t.me/channel)."
+            "(for example: @channel_one r/python https://t.me/channel https://x.com/OpenAI)."
         ),
         "scope_prompt_found": (
             "I found these sources in your request:\n{channels}\n\n{question}"
@@ -218,7 +219,8 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "sources_parse_failed": (
             "Не удалось распознать источники. Отправьте Telegram-хэндлы вроде @channel_one, "
-            "ссылки вроде https://t.me/channel или сабреддиты вроде r/python."
+            "ссылки вроде https://t.me/channel или https://x.com/OpenAI, "
+            "или сабреддиты вроде r/python."
         ),
         "recent_events_future_only": (
             "Хорошо. Я буду отправлять только новые уведомления о событиях."
@@ -257,15 +259,15 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "source_question_digest": (
             "У вас уже есть конкретные источники для этого дайджеста "
-            "(Telegram-каналы или Reddit-сабреддиты)?"
+            "(Telegram-каналы, Reddit-сабреддиты или аккаунты X)?"
         ),
         "source_question_event": (
             "У вас уже есть конкретные источники для этих уведомлений "
-            "(Telegram-каналы или Reddit-сабреддиты)?"
+            "(Telegram-каналы, Reddit-сабреддиты или аккаунты X)?"
         ),
         "channels_input_prompt": (
             "Отправьте источники, которые хотите включить "
-            "(например: @channel_one r/python https://t.me/channel)."
+            "(например: @channel_one r/python https://t.me/channel https://x.com/OpenAI)."
         ),
         "scope_prompt_found": (
             "Я нашёл в вашем запросе такие источники:\n{channels}\n\n{question}"

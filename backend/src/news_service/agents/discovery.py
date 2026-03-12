@@ -20,13 +20,19 @@ from news_service.services.telegram import (
     fetch_telegram_posts,
     normalize_telegram_channel,
 )
+from news_service.services.twitter import (
+    build_twitter_account_url,
+    extract_twitter_account_from_url,
+    fetch_twitter_posts,
+    normalize_twitter_account,
+)
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
 _client = openai_client
 
-type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit"]
+type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
 
 RSS_SYSTEM_PROMPT = """\
 You are an RSS source discovery agent. Given a list of news topics, find real, working RSS or \
@@ -61,6 +67,17 @@ Rules:
 - Do not return Reddit post URLs, users, or non-Reddit websites.
 """
 
+TWITTER_SYSTEM_PROMPT = """\
+You are a Twitter/X source discovery agent. Given a list of news topics, find real, active \
+public Twitter/X accounts that cover those topics.
+
+Rules:
+- Return only profile URLs in the format https://x.com/<account>.
+- Prefer active accounts that post original news, announcements, or analysis.
+- Find 2-4 good accounts per topic when possible.
+- Do not return tweet URLs, lists, hashtags, or non-X websites.
+"""
+
 
 class DiscoveredSourceItem(BaseModel):
     url: str = Field(..., description="Canonical source URL")
@@ -79,13 +96,14 @@ DiscoveredFeedList = DiscoveredSourceList
 
 
 async def discover_sources(topics: list[str]) -> list[DiscoveredSourceItem]:
-    rss_sources, telegram_sources, reddit_sources = await asyncio.gather(
+    rss_sources, telegram_sources, reddit_sources, twitter_sources = await asyncio.gather(
         discover_rss_feeds(topics),
         discover_telegram_channels(topics),
         discover_reddit_subreddits(topics),
+        discover_twitter_accounts(topics),
     )
     merged: dict[str, DiscoveredSourceItem] = {}
-    for source in [*rss_sources, *telegram_sources, *reddit_sources]:
+    for source in [*rss_sources, *telegram_sources, *reddit_sources, *twitter_sources]:
         merged.setdefault(source.url, source)
     return list(merged.values())
 
@@ -118,6 +136,15 @@ async def discover_reddit_subreddits(topics: list[str]) -> list[DiscoveredSource
         source_kind="reddit_subreddit",
         system_prompt=REDDIT_SYSTEM_PROMPT,
         user_prompt_prefix="Find Reddit subreddits for these topics:",
+    )
+
+
+async def discover_twitter_accounts(topics: list[str]) -> list[DiscoveredSourceItem]:
+    return await _discover_sources_for_kind(
+        topics,
+        source_kind="twitter_account",
+        system_prompt=TWITTER_SYSTEM_PROMPT,
+        user_prompt_prefix="Find Twitter/X accounts for these topics:",
     )
 
 
@@ -194,11 +221,22 @@ def normalize_source_url(url: str, *, source_kind: SourceKind) -> str | None:
                 return None
         return build_reddit_subreddit_url(subreddit)
 
+    if source_kind == "twitter_account":
+        candidate = url.strip()
+        account = extract_twitter_account_from_url(candidate)
+        if account is None:
+            try:
+                account = normalize_twitter_account(candidate)
+            except ValueError:
+                return None
+        return build_twitter_account_url(account)
+
     normalized = url.strip()
     if (
         not normalized
         or extract_telegram_channel_from_url(normalized) is not None
         or extract_reddit_subreddit_from_url(normalized) is not None
+        or extract_twitter_account_from_url(normalized) is not None
     ):
         return None
     return normalized
@@ -215,6 +253,11 @@ async def validate_source_url(url: str, *, source_kind: SourceKind) -> bool:
         if subreddit is None:
             return False
         return await validate_reddit_subreddit(subreddit)
+    if source_kind == "twitter_account":
+        account = extract_twitter_account_from_url(url)
+        if account is None:
+            return False
+        return await validate_twitter_account(account)
     return await validate_feed_url(url)
 
 
@@ -247,4 +290,13 @@ async def validate_reddit_subreddit(subreddit: str) -> bool:
         return len(posts) > 0
     except Exception:
         logger.exception("Reddit subreddit validation failed for r/%s", subreddit)
+        return False
+
+
+async def validate_twitter_account(account: str) -> bool:
+    try:
+        posts = await fetch_twitter_posts(account, limit=1)
+        return len(posts) > 0
+    except Exception:
+        logger.exception("Twitter/X account validation failed for @%s", account)
         return False

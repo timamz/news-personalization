@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     reddit_fetch_timeout_seconds: float = 45.0
     reddit_fetch_attempts: int = 2
     reddit_listing_limit: int = 25
+    twitter_fetch_timeout_seconds: float = 20.0
+    twitter_fetch_attempts: int = 3
+    twitter_listing_limit: int = 20
+    twitter_fetch_retry_backoff_seconds: float = 1.0
+    twitter_fetch_max_rate_limit_wait_seconds: float = 30.0
 
     log_level: str = "DEBUG"
 

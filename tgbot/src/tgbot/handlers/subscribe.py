@@ -14,6 +14,7 @@ from tgbot.language import UILanguage
 from tgbot.source_parser import (
     extract_reddit_subreddits,
     extract_telegram_channels,
+    extract_twitter_accounts,
     parse_source_tokens,
 )
 from tgbot.storage import get_language_preference, get_ui_language
@@ -207,6 +208,7 @@ async def handle_source_knowledge_choice(callback: CallbackQuery, state: FSMCont
             state,
             telegram_channels=[],
             reddit_subreddits=[],
+            twitter_accounts=[],
             include_discovered_sources=True,
         )
         return
@@ -216,15 +218,16 @@ async def handle_source_knowledge_choice(callback: CallbackQuery, state: FSMCont
 
 @router.message(SubscribeFlow.waiting_for_channels_input)
 async def process_channels_input(message: types.Message, state: FSMContext) -> None:
-    channels, subreddits = parse_source_tokens(message.text or "")
+    channels, subreddits, twitter_accounts = parse_source_tokens(message.text or "")
     ui_language = await _ui_language_or_default(message.from_user.id)
-    if not channels and not subreddits:
+    if not channels and not subreddits and not twitter_accounts:
         await message.answer(t(ui_language, "sources_parse_failed"))
         return
 
     await state.update_data(
         telegram_channels=channels,
         reddit_subreddits=subreddits,
+        twitter_accounts=twitter_accounts,
         scope_back_target="channels_input",
         scope_channels_origin="manual",
     )
@@ -241,12 +244,14 @@ async def handle_scope_choice(callback: CallbackQuery, state: FSMContext) -> Non
     state_data = await state.get_data()
     channels = list(state_data.get("telegram_channels", []))
     subreddits = list(state_data.get("reddit_subreddits", []))
+    twitter_accounts = list(state_data.get("twitter_accounts", []))
     await state.update_data(creation_back_target="scope_choice")
     await _create_subscription_from_state(
         callback,
         state,
         telegram_channels=channels,
         reddit_subreddits=subreddits,
+        twitter_accounts=twitter_accounts,
         include_discovered_sources=include_discovered_sources,
     )
 
@@ -362,13 +367,15 @@ async def _continue_with_source_flow(
 ) -> None:
     telegram_channels = extract_telegram_channels(prompt)
     reddit_subreddits = extract_reddit_subreddits(prompt)
+    twitter_accounts = extract_twitter_accounts(prompt)
     await state.update_data(
         telegram_channels=telegram_channels,
         reddit_subreddits=reddit_subreddits,
+        twitter_accounts=twitter_accounts,
         source_back_target=source_back_target,
     )
 
-    if telegram_channels or reddit_subreddits:
+    if telegram_channels or reddit_subreddits or twitter_accounts:
         await state.update_data(
             scope_back_target=source_back_target,
             scope_channels_origin="prompt",
@@ -379,6 +386,7 @@ async def _continue_with_source_flow(
             delivery_mode=delivery_mode,
             channels=telegram_channels,
             subreddits=reddit_subreddits,
+            twitter_accounts=twitter_accounts,
             origin="prompt",
         )
         return
@@ -392,6 +400,7 @@ async def _create_subscription_from_state(
     *,
     telegram_channels: list[str],
     reddit_subreddits: list[str],
+    twitter_accounts: list[str],
     include_discovered_sources: bool,
 ) -> None:
     state_data = await state.get_data()
@@ -431,6 +440,8 @@ async def _create_subscription_from_state(
         create_kwargs["fixed_telegram_channels"] = telegram_channels
     if reddit_subreddits:
         create_kwargs["fixed_reddit_subreddits"] = reddit_subreddits
+    if twitter_accounts:
+        create_kwargs["fixed_twitter_accounts"] = twitter_accounts
 
     try:
         subscription = await backend.create_subscription(
@@ -555,10 +566,17 @@ async def _show_scope_choice_step(
     delivery_mode: str | None = None,
     channels: list[str] | None = None,
     subreddits: list[str] | None = None,
+    twitter_accounts: list[str] | None = None,
     origin: str | None = None,
 ) -> None:
     ui_language = await _ui_language_for_event(event)
-    if delivery_mode is None or channels is None or subreddits is None or origin is None:
+    if (
+        delivery_mode is None
+        or channels is None
+        or subreddits is None
+        or twitter_accounts is None
+        or origin is None
+    ):
         state_data = await state.get_data()
         if delivery_mode is None:
             delivery_mode = str(state_data.get("delivery_mode", "digest"))
@@ -566,10 +584,12 @@ async def _show_scope_choice_step(
             channels = list(state_data.get("telegram_channels", []))
         if subreddits is None:
             subreddits = list(state_data.get("reddit_subreddits", []))
+        if twitter_accounts is None:
+            twitter_accounts = list(state_data.get("twitter_accounts", []))
         if origin is None:
             origin = str(state_data.get("scope_channels_origin", "manual"))
     await state.set_state(SubscribeFlow.waiting_for_scope_choice)
-    formatted_sources = _format_sources(channels, subreddits)
+    formatted_sources = _format_sources(channels, subreddits, twitter_accounts)
 
     if origin == "prompt":
         text = t(
@@ -780,9 +800,14 @@ def _source_knowledge_question(ui_language: UILanguage, delivery_mode: str) -> s
     return t(ui_language, "source_question_digest")
 
 
-def _format_sources(channels: list[str], subreddits: list[str]) -> str:
+def _format_sources(
+    channels: list[str],
+    subreddits: list[str],
+    twitter_accounts: list[str],
+) -> str:
     lines = [f"- @{channel}" for channel in channels]
     lines.extend(f"- r/{subreddit}" for subreddit in subreddits)
+    lines.extend(f"- https://x.com/{account}" for account in twitter_accounts)
     return "\n".join(lines)
 
 
