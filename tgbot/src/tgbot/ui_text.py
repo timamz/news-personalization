@@ -52,7 +52,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_parse_failed": "Couldn't parse this schedule. Please try another wording.",
         "sources_parse_failed": (
             "I couldn't parse sources. Send Telegram handles like @channel_one, "
-            "links like https://t.me/channel or https://x.com/OpenAI, "
+            "links like t.me/channel or x.com/OpenAI, "
             "or Reddit names like r/python."
         ),
         "recent_events_future_only": "Okay. I will only send new event notifications from now on.",
@@ -103,7 +103,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "channels_input_prompt": (
             "Send sources you want to include "
-            "(for example: @channel_one r/python https://t.me/channel https://x.com/OpenAI)."
+            "(for example: @channel_one r/python t.me/channel x.com/OpenAI)."
         ),
         "scope_prompt_found": (
             "I found these sources in your request:\n{channels}\n\n{question}"
@@ -156,7 +156,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_yes_have_channels": "Yes, I have sources",
         "button_no_find_sources": "No, find sources for me",
         "button_only_channels": "Only these sources",
-        "button_add_sources": "Add more relevant sources",
+        "button_add_sources": "Add more sources",
         "button_yes_show_recent": "Yes, show missed events",
         "button_no_future_only": "No, only future ones",
         "button_back": "Back",
@@ -219,7 +219,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "sources_parse_failed": (
             "Не удалось распознать источники. Отправьте Telegram-хэндлы вроде @channel_one, "
-            "ссылки вроде https://t.me/channel или https://x.com/OpenAI, "
+            "ссылки вроде t.me/channel или x.com/OpenAI, "
             "или сабреддиты вроде r/python."
         ),
         "recent_events_future_only": (
@@ -267,7 +267,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "channels_input_prompt": (
             "Отправьте источники, которые хотите включить "
-            "(например: @channel_one r/python https://t.me/channel https://x.com/OpenAI)."
+            "(например: @channel_one r/python t.me/channel x.com/OpenAI)."
         ),
         "scope_prompt_found": (
             "Я нашёл в вашем запросе такие источники:\n{channels}\n\n{question}"
@@ -324,7 +324,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_yes_have_channels": "Да, у меня есть источники",
         "button_no_find_sources": "Нет, пусть бот найдёт источники",
         "button_only_channels": "Только эти источники",
-        "button_add_sources": "Добавить релевантные источники",
+        "button_add_sources": "Добавить ещё",
         "button_yes_show_recent": "Да, показать пропущенное",
         "button_no_future_only": "Нет, только будущие",
         "button_back": "Назад",

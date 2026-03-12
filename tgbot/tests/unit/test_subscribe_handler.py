@@ -323,6 +323,29 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_show_scope_choice_formats_x_accounts_without_https(monkeypatch):
+    callback = _mock_callback(telegram_id=123, data=subscribe.BACK)
+    state = SimpleNamespace(
+        get_data=AsyncMock(
+            return_value={
+                "delivery_mode": "digest",
+                "telegram_channels": ["gonzo_ml"],
+                "reddit_subreddits": ["python"],
+                "twitter_accounts": ["openai"],
+                "scope_channels_origin": "prompt",
+            }
+        ),
+        set_state=AsyncMock(),
+    )
+
+    await subscribe._show_scope_choice_step(callback, state)
+
+    text = callback.message.answer.await_args.args[0]
+    assert "x.com/openai" in text
+    assert "https://x.com/openai" not in text
+
+
+@pytest.mark.asyncio
 async def test_handle_scope_choice_for_event_subscription_offers_recent_events(monkeypatch):
     callback = _mock_callback(telegram_id=123, data=subscribe.SCOPE_ONLY_PROVIDED)
     state = SimpleNamespace(

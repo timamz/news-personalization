@@ -15,9 +15,9 @@ def test_extract_telegram_channels_from_mentions_and_urls() -> None:
 
 
 def test_parse_telegram_channel_tokens_supports_mixed_input() -> None:
-    text = "@gonzo_ml, https://t.me/fondnauk invalid-token"
+    text = "@gonzo_ml, t.me/fondnauk https://t.me/s/sciencefocus invalid-token"
     result = parse_telegram_channel_tokens(text)
-    assert result == ["gonzo_ml", "fondnauk"]
+    assert result == ["gonzo_ml", "fondnauk", "sciencefocus"]
 
 
 def test_extract_reddit_subreddits_from_mentions_and_urls() -> None:
@@ -41,6 +41,6 @@ def test_extract_twitter_accounts_from_urls() -> None:
 
 
 def test_parse_twitter_account_tokens_supports_mixed_input() -> None:
-    text = "https://x.com/OpenAI NASA invalid-token-too-long-123456"
+    text = "x.com/OpenAI https://twitter.com/NASA NASA invalid-token-too-long-123456"
     result = parse_twitter_account_tokens(text)
-    assert result == ["openai"]
+    assert result == ["openai", "nasa"]

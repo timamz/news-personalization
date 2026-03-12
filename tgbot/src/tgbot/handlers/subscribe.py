@@ -807,7 +807,7 @@ def _format_sources(
 ) -> str:
     lines = [f"- @{channel}" for channel in channels]
     lines.extend(f"- r/{subreddit}" for subreddit in subreddits)
-    lines.extend(f"- https://x.com/{account}" for account in twitter_accounts)
+    lines.extend(f"- x.com/{account}" for account in twitter_accounts)
     return "\n".join(lines)
 
 

@@ -59,6 +59,14 @@ def parse_telegram_channel_tokens(text: str) -> list[str]:
             if not parts:
                 continue
             candidate = parts[1] if parts[0] == "s" and len(parts) >= 2 else parts[0]
+        else:
+            lowered = candidate.lower()
+            if lowered.startswith("t.me/") or lowered.startswith("www.t.me/"):
+                path = candidate.split("/", maxsplit=1)[1]
+                parts = [part for part in path.split("/") if part]
+                if not parts:
+                    continue
+                candidate = parts[1] if parts[0] == "s" and len(parts) >= 2 else parts[0]
 
         if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{4,31}", candidate) is None:
             continue
@@ -134,14 +142,21 @@ def parse_twitter_account_tokens(text: str) -> list[str]:
             candidate = parts[0]
         else:
             lowered = candidate.lower()
-            prefix = None
-            for possible_prefix in ("x:", "x/", "twitter:", "twitter/"):
-                if lowered.startswith(possible_prefix):
-                    prefix = possible_prefix
-                    break
-            if prefix is None:
-                continue
-            candidate = candidate[len(prefix) :]
+            if lowered.startswith(("x.com/", "www.x.com/", "twitter.com/", "www.twitter.com/")):
+                path = candidate.split("/", maxsplit=1)[1]
+                parts = [part for part in path.split("/") if part]
+                if not parts:
+                    continue
+                candidate = parts[0]
+            else:
+                prefix = None
+                for possible_prefix in ("x:", "x/", "twitter:", "twitter/"):
+                    if lowered.startswith(possible_prefix):
+                        prefix = possible_prefix
+                        break
+                if prefix is None:
+                    continue
+                candidate = candidate[len(prefix) :]
 
         if re.fullmatch(r"[A-Za-z0-9_]{1,15}", candidate) is None:
             continue
