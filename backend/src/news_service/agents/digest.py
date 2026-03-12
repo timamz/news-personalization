@@ -82,6 +82,7 @@ async def _compose_digest(
     format_instructions: str,
     digest_language: str,
 ) -> str:
+    source_label = "Источник" if _is_russian_language(digest_language) else "Source"
     news_block = "\n\n".join(
         f"**{item.headline}**\n{item.body}\nLink: {item.url}" for item in items
     )
@@ -96,11 +97,12 @@ async def _compose_digest(
                     f"according to these instructions: {format_instructions}\n\n"
                     f"Write the digest in language '{digest_language}'. "
                     f"Make it well-structured, readable, and engaging. "
-                    f"When referencing a source, keep only the hyperlink. "
-                    f"Do not mention source labels, feed names, channel names, site names, "
-                    f"or words like 'source', 'channel', 'website', 'post', "
-                    f"'Источник', 'канал', or 'сайт'. "
-                    f"Keep the link exactly as provided. "
+                    f"For every item, end with the exact line "
+                    f"'{source_label}: <original link>' using the digest language label. "
+                    f"Use exactly '{source_label}:' and never switch to a different language. "
+                    f"Keep the link exactly as provided and include no extra text on that line. "
+                    f"Do not mention feed names, channel names, site names, or labels other than "
+                    f"the required '{source_label}:' line. "
                     f"Return only the digest itself. Do not add assistant-style "
                     f"introductions, closings, commentary, or offers to help."
                 ),
@@ -110,6 +112,10 @@ async def _compose_digest(
         temperature=0.3,
     )
     return completion.choices[0].message.content or ""
+
+
+def _is_russian_language(digest_language: str) -> bool:
+    return digest_language.strip().lower().split("-", maxsplit=1)[0] == "ru"
 
 
 async def _mark_as_sent(

@@ -51,6 +51,11 @@ def render_html_line(line: str, default_label: str) -> str:
 
 
 def _default_link_label(text: str) -> str:
+    lowered = text.lower()
+    if "source:" in lowered:
+        return "Source"
+    if "источник:" in lowered:
+        return "Источник"
     return "Источник" if _CYRILLIC_PATTERN.search(text) else "Source"
 
 

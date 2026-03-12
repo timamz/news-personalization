@@ -33,9 +33,31 @@ async def test_compose_digest_uses_subscription_language(mocker) -> None:
     user_prompt = create_completion.await_args.kwargs["messages"][1]["content"]
     assert "language 'ru'" in system_prompt
     assert "Return only the digest itself" in system_prompt
-    assert "Do not mention source labels" in system_prompt
+    assert "Use exactly 'Источник:'" in system_prompt
     assert "Link: https://example.com/1" in user_prompt
     assert "Source: Telegram" not in user_prompt
+
+
+@pytest.mark.asyncio
+async def test_compose_digest_requires_english_source_label_for_english_digest(mocker) -> None:
+    create_completion = AsyncMock(return_value=_mock_completion("done"))
+    fake_client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create_completion))
+    )
+    mocker.patch.object(digest, "_client", fake_client)
+
+    item = SimpleNamespace(
+        headline="Paper roundup",
+        body="Top picks from the week",
+        source="Telegram",
+        url="https://example.com/2",
+    )
+
+    await digest._compose_digest([item], "brief summary", "en")
+
+    system_prompt = create_completion.await_args.kwargs["messages"][0]["content"]
+    assert "Use exactly 'Source:'" in system_prompt
+    assert "never switch to a different language" in system_prompt
 
 
 @pytest.mark.asyncio
