@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.discovery import (
     DiscoveredSourceItem,
+    discover_reddit_subreddits,
     discover_rss_feeds,
     discover_telegram_channels,
 )
 from news_service.db.vector_store import embed_text, find_similar_feeds
 from news_service.models.rss_feed import RssFeed
+from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.telegram import build_telegram_channel_url
 
 logger = logging.getLogger(__name__)
@@ -40,11 +42,12 @@ async def ensure_topic_coverage(
 
     if not selected:
         logger.info("Discovering feeds for uncovered topics: %s", topics)
-        rss_sources, telegram_sources = await asyncio.gather(
+        rss_sources, telegram_sources, reddit_sources = await asyncio.gather(
             discover_rss_feeds(topics),
             discover_telegram_channels(topics),
+            discover_reddit_subreddits(topics),
         )
-        discovered = [*rss_sources, *telegram_sources]
+        discovered = [*rss_sources, *telegram_sources, *reddit_sources]
         selected_urls = {feed.url for feed in selected.values()}
         deduplicated_discovered: dict[str, DiscoveredSourceItem] = {}
 
@@ -95,6 +98,45 @@ async def ensure_telegram_channel_coverage(
         await session.flush()
         resolved[feed.id] = feed
         logger.info("Registered Telegram channel source: %s", source_url)
+
+    return list(resolved.values())
+
+
+async def ensure_reddit_subreddit_coverage(
+    session: AsyncSession,
+    subreddits: list[str],
+    topics: list[str],
+    topics_embedding: list[float],
+) -> list[RssFeed]:
+    if not subreddits:
+        return []
+
+    topic_tags = topics or ["reddit"]
+    resolved: dict[uuid.UUID, RssFeed] = {}
+
+    for subreddit in subreddits:
+        source_url = build_reddit_subreddit_url(subreddit)
+        result = await session.execute(select(RssFeed).where(RssFeed.url == source_url))
+        existing_feed = result.scalar_one_or_none()
+        if existing_feed is not None:
+            existing_feed.subscriber_count += 1
+            existing_feed.is_active = True
+            resolved[existing_feed.id] = existing_feed
+            logger.info("Reddit subreddit source already exists: %s", source_url)
+            continue
+
+        feed = RssFeed(
+            url=source_url,
+            title=f"Reddit r/{subreddit}",
+            topic_tags=topic_tags,
+            topic_embedding=topics_embedding,
+            is_active=True,
+            subscriber_count=1,
+        )
+        session.add(feed)
+        await session.flush()
+        resolved[feed.id] = feed
+        logger.info("Registered Reddit subreddit source: %s", source_url)
 
     return list(resolved.values())
 

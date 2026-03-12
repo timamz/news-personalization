@@ -27,10 +27,15 @@ from news_service.schemas.subscription import (
     SubscriptionResponse,
     SubscriptionUpdate,
 )
-from news_service.services.coverage import ensure_telegram_channel_coverage, ensure_topic_coverage
+from news_service.services.coverage import (
+    ensure_reddit_subreddit_coverage,
+    ensure_telegram_channel_coverage,
+    ensure_topic_coverage,
+)
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
 )
+from news_service.services.reddit import extract_reddit_subreddits, normalize_reddit_subreddit
 from news_service.services.scheduler import parse_cron_to_celery
 from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
 from news_service.tasks.deliver_digest import deliver_digest
@@ -115,9 +120,13 @@ async def create_subscription(
     session: AsyncSession = Depends(get_session),
 ) -> Subscription:
     prompt_channels = extract_telegram_channels(payload.prompt)
+    prompt_subreddits = extract_reddit_subreddits(payload.prompt)
     try:
         explicit_channels = [
             normalize_telegram_channel(channel) for channel in payload.fixed_telegram_channels
+        ]
+        explicit_subreddits = [
+            normalize_reddit_subreddit(subreddit) for subreddit in payload.fixed_reddit_subreddits
         ]
     except ValueError as exc:
         raise HTTPException(
@@ -126,11 +135,12 @@ async def create_subscription(
         ) from exc
     # For backward compatibility with older clients that only send a prompt.
     telegram_channels = explicit_channels or prompt_channels
+    reddit_subreddits = explicit_subreddits or prompt_subreddits
     config = await parse_subscription(payload.prompt)
     include_discovered_sources = (
         payload.include_discovered_sources
         if payload.include_discovered_sources is not None
-        else not bool(telegram_channels)
+        else not bool(telegram_channels or reddit_subreddits)
     )
     delivery_mode = payload.delivery_mode or config.delivery_mode
     event_matching_mode = config.event_matching_mode if delivery_mode == "event" else "basic"
@@ -176,6 +186,16 @@ async def create_subscription(
             topics_embedding,
         )
         for source in telegram_sources:
+            selected_sources[source.id] = source
+
+    if reddit_subreddits:
+        reddit_sources = await ensure_reddit_subreddit_coverage(
+            session,
+            reddit_subreddits,
+            config.topics,
+            topics_embedding,
+        )
+        for source in reddit_sources:
             selected_sources[source.id] = source
 
     if include_discovered_sources:

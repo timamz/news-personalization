@@ -1,7 +1,8 @@
 # News Backend
 
 FastAPI backend for the news personalization service. It exposes the API, runs Celery tasks,
-and owns PostgreSQL/pgvector data.
+and owns PostgreSQL/pgvector data. Source ingestion supports RSS feeds, public Telegram
+channels, and Reddit subreddits.
 
 ## Quick Start
 

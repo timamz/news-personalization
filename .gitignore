@@ -28,6 +28,8 @@ htmlcov/
 *.swp
 *.swo
 .DS_Store
+node_modules/
+slides/dist/
 
 backend/backups/*
 !backend/backups/.gitkeep

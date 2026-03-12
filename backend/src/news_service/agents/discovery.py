@@ -8,6 +8,12 @@ from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
 from news_service.core.openai_client import openai_client
+from news_service.services.reddit import (
+    build_reddit_subreddit_url,
+    extract_reddit_subreddit_from_url,
+    fetch_reddit_posts,
+    normalize_reddit_subreddit,
+)
 from news_service.services.telegram import (
     build_telegram_channel_url,
     extract_telegram_channel_from_url,
@@ -20,7 +26,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 _client = openai_client
 
-type SourceKind = Literal["rss", "telegram_channel"]
+type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit"]
 
 RSS_SYSTEM_PROMPT = """\
 You are an RSS source discovery agent. Given a list of news topics, find real, working RSS or \
@@ -44,6 +50,17 @@ Rules:
 - Do not return RSS feeds, websites, invite links, group chats, or private channels.
 """
 
+REDDIT_SYSTEM_PROMPT = """\
+You are a Reddit source discovery agent. Given a list of news topics, find real, active \
+public Reddit subreddits that cover those topics.
+
+Rules:
+- Return only subreddit URLs in the format https://www.reddit.com/r/<subreddit>/new/.
+- Prefer active communities where new topical posts appear regularly.
+- Find 2-4 good subreddits per topic when possible.
+- Do not return Reddit post URLs, users, or non-Reddit websites.
+"""
+
 
 class DiscoveredSourceItem(BaseModel):
     url: str = Field(..., description="Canonical source URL")
@@ -62,12 +79,13 @@ DiscoveredFeedList = DiscoveredSourceList
 
 
 async def discover_sources(topics: list[str]) -> list[DiscoveredSourceItem]:
-    rss_sources, telegram_sources = await asyncio.gather(
+    rss_sources, telegram_sources, reddit_sources = await asyncio.gather(
         discover_rss_feeds(topics),
         discover_telegram_channels(topics),
+        discover_reddit_subreddits(topics),
     )
     merged: dict[str, DiscoveredSourceItem] = {}
-    for source in [*rss_sources, *telegram_sources]:
+    for source in [*rss_sources, *telegram_sources, *reddit_sources]:
         merged.setdefault(source.url, source)
     return list(merged.values())
 
@@ -91,6 +109,15 @@ async def discover_telegram_channels(topics: list[str]) -> list[DiscoveredSource
         source_kind="telegram_channel",
         system_prompt=TELEGRAM_SYSTEM_PROMPT,
         user_prompt_prefix="Find public Telegram channels for these topics:",
+    )
+
+
+async def discover_reddit_subreddits(topics: list[str]) -> list[DiscoveredSourceItem]:
+    return await _discover_sources_for_kind(
+        topics,
+        source_kind="reddit_subreddit",
+        system_prompt=REDDIT_SYSTEM_PROMPT,
+        user_prompt_prefix="Find Reddit subreddits for these topics:",
     )
 
 
@@ -157,8 +184,22 @@ def normalize_source_url(url: str, *, source_kind: SourceKind) -> str | None:
             return None
         return build_telegram_channel_url(channel)
 
+    if source_kind == "reddit_subreddit":
+        candidate = url.strip()
+        subreddit = extract_reddit_subreddit_from_url(candidate)
+        if subreddit is None:
+            try:
+                subreddit = normalize_reddit_subreddit(candidate)
+            except ValueError:
+                return None
+        return build_reddit_subreddit_url(subreddit)
+
     normalized = url.strip()
-    if not normalized or extract_telegram_channel_from_url(normalized) is not None:
+    if (
+        not normalized
+        or extract_telegram_channel_from_url(normalized) is not None
+        or extract_reddit_subreddit_from_url(normalized) is not None
+    ):
         return None
     return normalized
 
@@ -169,6 +210,11 @@ async def validate_source_url(url: str, *, source_kind: SourceKind) -> bool:
         if channel is None:
             return False
         return await validate_telegram_channel(channel)
+    if source_kind == "reddit_subreddit":
+        subreddit = extract_reddit_subreddit_from_url(url)
+        if subreddit is None:
+            return False
+        return await validate_reddit_subreddit(subreddit)
     return await validate_feed_url(url)
 
 
@@ -192,4 +238,13 @@ async def validate_telegram_channel(channel: str) -> bool:
         return len(posts) > 0
     except Exception:
         logger.exception("Telegram channel validation failed for @%s", channel)
+        return False
+
+
+async def validate_reddit_subreddit(subreddit: str) -> bool:
+    try:
+        posts = await fetch_reddit_posts(subreddit)
+        return len(posts) > 0
+    except Exception:
+        logger.exception("Reddit subreddit validation failed for r/%s", subreddit)
         return False

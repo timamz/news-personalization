@@ -13,12 +13,12 @@ from news_service.schemas.subscription import SubscriptionConfig
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
-async def test_subscription_with_telegram_channel_registers_source(
+async def test_subscription_with_reddit_subreddit_registers_source(
     api_client: AsyncClient,
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["science"],
+        topics=["badminton"],
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -42,9 +42,9 @@ async def test_subscription_with_telegram_channel_registers_source(
         "/subscriptions",
         headers={"X-API-Key": api_key},
         json={
-            "prompt": "Track @fondnauk every morning",
+            "prompt": "Track r/badminton every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
-            "fixed_telegram_channels": ["fondnauk"],
+            "fixed_reddit_subreddits": ["badminton"],
             "include_discovered_sources": False,
         },
     )
@@ -53,7 +53,7 @@ async def test_subscription_with_telegram_channel_registers_source(
 
     async with async_session_factory() as session:
         result = await session.execute(
-            select(RssFeed).where(RssFeed.url == "https://t.me/s/fondnauk")
+            select(RssFeed).where(RssFeed.url == "https://www.reddit.com/r/badminton/new/")
         )
         feed = result.scalar_one_or_none()
         source_link_result = await session.execute(
@@ -65,19 +65,19 @@ async def test_subscription_with_telegram_channel_registers_source(
         source_link = source_link_result.scalar_one_or_none()
 
     assert feed is not None
-    assert feed.title == "Telegram @fondnauk"
+    assert feed.title == "Reddit r/badminton"
     assert feed.subscriber_count == 1
     assert list(feed.topic_embedding) == [2.0] * 1536
     assert source_link is not None
     ensure_topic_coverage.assert_not_awaited()
 
 
-async def test_subscription_prompt_extracts_telegram_channel_source(
+async def test_subscription_prompt_extracts_reddit_subreddit_source(
     api_client: AsyncClient,
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["science"],
+        topics=["badminton"],
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -101,7 +101,7 @@ async def test_subscription_prompt_extracts_telegram_channel_source(
         "/subscriptions",
         headers={"X-API-Key": api_key},
         json={
-            "prompt": "Track @fondnauk every morning",
+            "prompt": "Track r/badminton every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "include_discovered_sources": False,
         },
@@ -111,7 +111,7 @@ async def test_subscription_prompt_extracts_telegram_channel_source(
 
     async with async_session_factory() as session:
         result = await session.execute(
-            select(RssFeed).where(RssFeed.url == "https://t.me/s/fondnauk")
+            select(RssFeed).where(RssFeed.url == "https://www.reddit.com/r/badminton/new/")
         )
         feed = result.scalar_one_or_none()
         source_link_result = await session.execute(

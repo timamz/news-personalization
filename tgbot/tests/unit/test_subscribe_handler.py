@@ -81,8 +81,8 @@ async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkey
     )
     state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
     assert message.answer.await_count == 1
-    assert (
-        "Should this digest be limited only to these channels?" in message.answer.await_args.args[0]
+    assert "Should this digest be limited only to these sources?" in (
+        message.answer.await_args.args[0]
     )
 
 
@@ -185,7 +185,7 @@ async def test_process_prompt_with_event_mode_skips_schedule(monkeypatch):
     )
     state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_source_knowledge)
     assert message.answer.await_count == 1
-    assert "specific Telegram channels for these notifications" in message.answer.await_args.args[0]
+    assert "specific sources for these notifications" in message.answer.await_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -269,10 +269,7 @@ async def test_handle_back_from_channels_input_returns_to_source_knowledge() -> 
 
     callback.answer.assert_awaited_once()
     state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_source_knowledge)
-    assert (
-        callback.message.answer.await_args.args[0]
-        == "Do you already have specific Telegram channels for these notifications?"
-    )
+    assert "specific sources for these notifications" in callback.message.answer.await_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -453,7 +450,6 @@ async def test_handle_back_from_recent_events_deletes_created_subscription(monke
     delete_subscription.assert_awaited_once_with("api-key", "sub-evt")
     state.update_data.assert_awaited_once_with(created_subscription_id=None)
     state.set_state.assert_awaited_once_with(subscribe.SubscribeFlow.waiting_for_scope_choice)
-    assert (
-        "Should these notifications be limited only to these channels?"
-        in callback.message.answer.await_args.args[0]
+    assert "Should these notifications be limited only to these sources?" in (
+        callback.message.answer.await_args.args[0]
     )

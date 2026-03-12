@@ -11,7 +11,7 @@ from news_service.agents.discovery import (
 
 
 @pytest.mark.asyncio
-async def test_discover_sources_merges_rss_and_telegram_results(mocker) -> None:
+async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -> None:
     rss_discovery = mocker.patch.object(
         discovery,
         "discover_rss_feeds",
@@ -40,15 +40,31 @@ async def test_discover_sources_merges_rss_and_telegram_results(mocker) -> None:
             ]
         ),
     )
+    reddit_discovery = mocker.patch.object(
+        discovery,
+        "discover_reddit_subreddits",
+        new=AsyncMock(
+            return_value=[
+                DiscoveredSourceItem(
+                    url="https://www.reddit.com/r/ainews/new/",
+                    topic_tags=["ai"],
+                    title="Reddit r/ainews",
+                    source_kind="reddit_subreddit",
+                )
+            ]
+        ),
+    )
 
     result = await discovery.discover_sources(["ai"])
 
     assert [item.url for item in result] == [
         "https://example.com/rss.xml",
         "https://t.me/s/ainews",
+        "https://www.reddit.com/r/ainews/new/",
     ]
     rss_discovery.assert_awaited_once_with(["ai"])
     telegram_discovery.assert_awaited_once_with(["ai"])
+    reddit_discovery.assert_awaited_once_with(["ai"])
 
 
 @pytest.mark.asyncio
@@ -149,3 +165,53 @@ async def test_discover_telegram_channels_normalizes_and_validates_channels(mock
         )
     ]
     validate_channel.assert_awaited_once_with("ainews")
+
+
+@pytest.mark.asyncio
+async def test_discover_reddit_subreddits_normalizes_and_validates_subreddits(mocker) -> None:
+    completion = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    parsed=DiscoveredSourceList(
+                        sources=[
+                            DiscoveredSourceItem(
+                                url="r/AINews",
+                                topic_tags=["ai"],
+                                title="AI News",
+                                source_kind="reddit_subreddit",
+                            ),
+                            DiscoveredSourceItem(
+                                url="https://example.com/rss.xml",
+                                topic_tags=["ai"],
+                                title="Wrong kind",
+                                source_kind="rss",
+                            ),
+                        ]
+                    )
+                )
+            )
+        ]
+    )
+    mocker.patch.object(
+        discovery._client.beta.chat.completions,
+        "parse",
+        new=AsyncMock(return_value=completion),
+    )
+    validate_subreddit = mocker.patch.object(
+        discovery,
+        "validate_reddit_subreddit",
+        new=AsyncMock(return_value=True),
+    )
+
+    result = await discovery.discover_reddit_subreddits(["ai"])
+
+    assert result == [
+        DiscoveredSourceItem(
+            url="https://www.reddit.com/r/ainews/new/",
+            topic_tags=["ai"],
+            title="AI News",
+            source_kind="reddit_subreddit",
+        )
+    ]
+    validate_subreddit.assert_awaited_once_with("ainews")

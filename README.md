@@ -1,6 +1,6 @@
 # News Personalization Service
 
-Personalized news digest service powered by LLM agents, RSS feeds, and public Telegram channels.
+Personalized news digest service powered by LLM agents, RSS feeds, public Telegram channels, and Reddit subreddits.
 
 ## Repository Structure
 

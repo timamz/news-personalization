@@ -11,7 +11,11 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from tgbot.client import BackendClient
 from tgbot.handlers import start as start_handler
 from tgbot.language import UILanguage
-from tgbot.source_parser import extract_telegram_channels, parse_telegram_channel_tokens
+from tgbot.source_parser import (
+    extract_reddit_subreddits,
+    extract_telegram_channels,
+    parse_source_tokens,
+)
 from tgbot.storage import get_language_preference, get_ui_language
 from tgbot.telegram_format import render_html_message
 from tgbot.ui_text import t
@@ -202,6 +206,7 @@ async def handle_source_knowledge_choice(callback: CallbackQuery, state: FSMCont
             callback,
             state,
             telegram_channels=[],
+            reddit_subreddits=[],
             include_discovered_sources=True,
         )
         return
@@ -211,14 +216,15 @@ async def handle_source_knowledge_choice(callback: CallbackQuery, state: FSMCont
 
 @router.message(SubscribeFlow.waiting_for_channels_input)
 async def process_channels_input(message: types.Message, state: FSMContext) -> None:
-    channels = parse_telegram_channel_tokens(message.text or "")
+    channels, subreddits = parse_source_tokens(message.text or "")
     ui_language = await _ui_language_or_default(message.from_user.id)
-    if not channels:
-        await message.answer(t(ui_language, "channels_parse_failed"))
+    if not channels and not subreddits:
+        await message.answer(t(ui_language, "sources_parse_failed"))
         return
 
     await state.update_data(
         telegram_channels=channels,
+        reddit_subreddits=subreddits,
         scope_back_target="channels_input",
         scope_channels_origin="manual",
     )
@@ -234,11 +240,13 @@ async def handle_scope_choice(callback: CallbackQuery, state: FSMContext) -> Non
     include_discovered_sources = callback.data == SCOPE_WITH_DISCOVERY
     state_data = await state.get_data()
     channels = list(state_data.get("telegram_channels", []))
+    subreddits = list(state_data.get("reddit_subreddits", []))
     await state.update_data(creation_back_target="scope_choice")
     await _create_subscription_from_state(
         callback,
         state,
         telegram_channels=channels,
+        reddit_subreddits=subreddits,
         include_discovered_sources=include_discovered_sources,
     )
 
@@ -353,12 +361,14 @@ async def _continue_with_source_flow(
     source_back_target: str,
 ) -> None:
     telegram_channels = extract_telegram_channels(prompt)
+    reddit_subreddits = extract_reddit_subreddits(prompt)
     await state.update_data(
         telegram_channels=telegram_channels,
+        reddit_subreddits=reddit_subreddits,
         source_back_target=source_back_target,
     )
 
-    if telegram_channels:
+    if telegram_channels or reddit_subreddits:
         await state.update_data(
             scope_back_target=source_back_target,
             scope_channels_origin="prompt",
@@ -368,6 +378,7 @@ async def _continue_with_source_flow(
             state,
             delivery_mode=delivery_mode,
             channels=telegram_channels,
+            subreddits=reddit_subreddits,
             origin="prompt",
         )
         return
@@ -380,6 +391,7 @@ async def _create_subscription_from_state(
     state: FSMContext,
     *,
     telegram_channels: list[str],
+    reddit_subreddits: list[str],
     include_discovered_sources: bool,
 ) -> None:
     state_data = await state.get_data()
@@ -408,17 +420,24 @@ async def _create_subscription_from_state(
     webhook_url = delivery_webhook_url(telegram_id)
     await _answer(event, t(ui_language, "processing_request"))
 
+    create_kwargs: dict[str, object | None] = {
+        "include_discovered_sources": include_discovered_sources,
+        "schedule_cron_override": schedule_cron_override,
+        "manual_only": manual_only,
+        "delivery_mode": delivery_mode,
+        "digest_language": digest_language if isinstance(digest_language, str) else None,
+    }
+    if telegram_channels:
+        create_kwargs["fixed_telegram_channels"] = telegram_channels
+    if reddit_subreddits:
+        create_kwargs["fixed_reddit_subreddits"] = reddit_subreddits
+
     try:
         subscription = await backend.create_subscription(
             api_key,
             prompt,
             webhook_url,
-            fixed_telegram_channels=telegram_channels,
-            include_discovered_sources=include_discovered_sources,
-            schedule_cron_override=schedule_cron_override,
-            manual_only=manual_only,
-            delivery_mode=delivery_mode,
-            digest_language=digest_language if isinstance(digest_language, str) else None,
+            **create_kwargs,
         )
     except Exception:
         logger.exception("Failed to create subscription for telegram_id=%d", telegram_id)
@@ -535,24 +554,28 @@ async def _show_scope_choice_step(
     *,
     delivery_mode: str | None = None,
     channels: list[str] | None = None,
+    subreddits: list[str] | None = None,
     origin: str | None = None,
 ) -> None:
     ui_language = await _ui_language_for_event(event)
-    if delivery_mode is None or channels is None or origin is None:
+    if delivery_mode is None or channels is None or subreddits is None or origin is None:
         state_data = await state.get_data()
         if delivery_mode is None:
             delivery_mode = str(state_data.get("delivery_mode", "digest"))
         if channels is None:
             channels = list(state_data.get("telegram_channels", []))
+        if subreddits is None:
+            subreddits = list(state_data.get("reddit_subreddits", []))
         if origin is None:
             origin = str(state_data.get("scope_channels_origin", "manual"))
     await state.set_state(SubscribeFlow.waiting_for_scope_choice)
+    formatted_sources = _format_sources(channels, subreddits)
 
     if origin == "prompt":
         text = t(
             ui_language,
             "scope_prompt_found",
-            channels=_format_channels(channels),
+            channels=formatted_sources,
             question=_scope_question(ui_language, delivery_mode),
         )
     else:
@@ -560,7 +583,7 @@ async def _show_scope_choice_step(
             ui_language,
             "scope_prompt_manual",
             question=_scope_question(ui_language, delivery_mode),
-            channels=_format_channels(channels),
+            channels=formatted_sources,
         )
 
     await _answer_with_markup(event, text, _scope_keyboard(ui_language))
@@ -757,8 +780,10 @@ def _source_knowledge_question(ui_language: UILanguage, delivery_mode: str) -> s
     return t(ui_language, "source_question_digest")
 
 
-def _format_channels(channels: list[str]) -> str:
-    return "\n".join(f"- @{channel}" for channel in channels)
+def _format_sources(channels: list[str], subreddits: list[str]) -> str:
+    lines = [f"- @{channel}" for channel in channels]
+    lines.extend(f"- r/{subreddit}" for subreddit in subreddits)
+    return "\n".join(lines)
 
 
 def _telegram_id_from_event(event: types.Message | CallbackQuery) -> int:

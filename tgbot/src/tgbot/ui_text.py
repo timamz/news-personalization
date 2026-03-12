@@ -50,8 +50,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "subscription_setup_expired": "Subscription setup expired. Please run /subscribe again.",
         "describe_schedule": "Please describe the schedule.",
         "schedule_parse_failed": "Couldn't parse this schedule. Please try another wording.",
-        "channels_parse_failed": (
-            "I couldn't parse channels. Send handles like @channel_one or links like https://t.me/channel."
+        "sources_parse_failed": (
+            "I couldn't parse sources. Send Telegram handles like @channel_one, "
+            "links like https://t.me/channel, or Reddit names like r/python."
         ),
         "recent_events_future_only": "Okay. I will only send new event notifications from now on.",
         "recent_events_expired": (
@@ -91,19 +92,24 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_input_prompt": (
             'Describe the schedule in natural language.\nExample: "every weekday at 9:00"'
         ),
-        "source_question_digest": "Do you already have specific Telegram channels for this digest?",
+        "source_question_digest": (
+            "Do you already have specific sources for this digest "
+            "(Telegram channels or Reddit subreddits)?"
+        ),
         "source_question_event": (
-            "Do you already have specific Telegram channels for these notifications?"
+            "Do you already have specific sources for these notifications "
+            "(Telegram channels or Reddit subreddits)?"
         ),
         "channels_input_prompt": (
-            "Send Telegram channels you want to include (for example: @channel_one @channel_two)."
+            "Send sources you want to include "
+            "(for example: @channel_one r/python https://t.me/channel)."
         ),
         "scope_prompt_found": (
-            "I found these Telegram channels in your request:\n{channels}\n\n{question}"
+            "I found these sources in your request:\n{channels}\n\n{question}"
         ),
         "scope_prompt_manual": "Got it. {question}\n{channels}",
-        "scope_question_digest": "Should this digest be limited only to these channels?",
-        "scope_question_event": ("Should these notifications be limited only to these channels?"),
+        "scope_question_digest": "Should this digest be limited only to these sources?",
+        "scope_question_event": "Should these notifications be limited only to these sources?",
         "undo_recent_events_failed": "Couldn't go back right now. Please try again.",
         "undo_recent_events_expired": "This step can no longer be undone.",
         "edit_menu_prompt": "What do you want to change?",
@@ -146,9 +152,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_deliver_here": "Deliver here",
         "button_yes_set_schedule": "Yes, set schedule",
         "button_no_button_only": "No, send only by button",
-        "button_yes_have_channels": "Yes, I have channels",
+        "button_yes_have_channels": "Yes, I have sources",
         "button_no_find_sources": "No, find sources for me",
-        "button_only_channels": "Only these channels",
+        "button_only_channels": "Only these sources",
         "button_add_sources": "Add more relevant sources",
         "button_yes_show_recent": "Yes, show missed events",
         "button_no_future_only": "No, only future ones",
@@ -210,8 +216,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_parse_failed": (
             "Не удалось распознать это расписание. Попробуйте другую формулировку."
         ),
-        "channels_parse_failed": (
-            "Не удалось распознать каналы. Отправьте хэндлы вроде @channel_one или ссылки вроде https://t.me/channel."
+        "sources_parse_failed": (
+            "Не удалось распознать источники. Отправьте Telegram-хэндлы вроде @channel_one, "
+            "ссылки вроде https://t.me/channel или сабреддиты вроде r/python."
         ),
         "recent_events_future_only": (
             "Хорошо. Я буду отправлять только новые уведомления о событиях."
@@ -248,20 +255,24 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_input_prompt": (
             'Опишите расписание естественным языком.\nПример: "каждый будний день в 9:00"'
         ),
-        "source_question_digest": "У вас уже есть конкретные Telegram-каналы для этого дайджеста?",
+        "source_question_digest": (
+            "У вас уже есть конкретные источники для этого дайджеста "
+            "(Telegram-каналы или Reddit-сабреддиты)?"
+        ),
         "source_question_event": (
-            "У вас уже есть конкретные Telegram-каналы для этих уведомлений?"
+            "У вас уже есть конкретные источники для этих уведомлений "
+            "(Telegram-каналы или Reddit-сабреддиты)?"
         ),
         "channels_input_prompt": (
-            "Отправьте Telegram-каналы, которые хотите включить "
-            "(например: @channel_one @channel_two)."
+            "Отправьте источники, которые хотите включить "
+            "(например: @channel_one r/python https://t.me/channel)."
         ),
         "scope_prompt_found": (
-            "Я нашёл в вашем запросе такие Telegram-каналы:\n{channels}\n\n{question}"
+            "Я нашёл в вашем запросе такие источники:\n{channels}\n\n{question}"
         ),
         "scope_prompt_manual": "Понял. {question}\n{channels}",
-        "scope_question_digest": "Ограничить этот дайджест только этими каналами?",
-        "scope_question_event": "Ограничить эти уведомления только этими каналами?",
+        "scope_question_digest": "Ограничить этот дайджест только этими источниками?",
+        "scope_question_event": "Ограничить эти уведомления только этими источниками?",
         "undo_recent_events_failed": "Сейчас не удалось вернуться назад. Попробуйте ещё раз.",
         "undo_recent_events_expired": "На этот шаг уже нельзя вернуться.",
         "edit_menu_prompt": "Что вы хотите изменить?",
@@ -308,9 +319,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_deliver_here": "Доставлять сюда",
         "button_yes_set_schedule": "Да, настроить расписание",
         "button_no_button_only": "Нет, только по кнопке",
-        "button_yes_have_channels": "Да, у меня есть каналы",
+        "button_yes_have_channels": "Да, у меня есть источники",
         "button_no_find_sources": "Нет, пусть бот найдёт источники",
-        "button_only_channels": "Только эти каналы",
+        "button_only_channels": "Только эти источники",
         "button_add_sources": "Добавить релевантные источники",
         "button_yes_show_recent": "Да, показать пропущенное",
         "button_no_future_only": "Нет, только будущие",

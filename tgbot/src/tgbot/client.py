@@ -58,6 +58,7 @@ class BackendClient:
         prompt: str,
         delivery_webhook_url: str,
         fixed_telegram_channels: list[str] | None = None,
+        fixed_reddit_subreddits: list[str] | None = None,
         include_discovered_sources: bool | None = None,
         schedule_cron_override: str | None = None,
         manual_only: bool | None = None,
@@ -70,6 +71,8 @@ class BackendClient:
         }
         if fixed_telegram_channels is not None:
             payload["fixed_telegram_channels"] = fixed_telegram_channels
+        if fixed_reddit_subreddits is not None:
+            payload["fixed_reddit_subreddits"] = fixed_reddit_subreddits
         if include_discovered_sources is not None:
             payload["include_discovered_sources"] = include_discovered_sources
         if schedule_cron_override is not None:

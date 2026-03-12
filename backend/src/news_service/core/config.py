@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://news:news@localhost:5432/news"
     redis_url: str = "redis://localhost:6379/0"
     http_timeout_seconds: float = 120.0
+    reddit_fetch_timeout_seconds: float = 45.0
+    reddit_fetch_attempts: int = 2
+    reddit_listing_limit: int = 25
 
     log_level: str = "DEBUG"
 

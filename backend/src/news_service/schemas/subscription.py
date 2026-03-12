@@ -17,9 +17,13 @@ class SubscriptionCreate(BaseModel):
         default_factory=list,
         description="Telegram channels explicitly chosen by the user",
     )
+    fixed_reddit_subreddits: list[str] = Field(
+        default_factory=list,
+        description="Reddit subreddits explicitly chosen by the user",
+    )
     include_discovered_sources: bool | None = Field(
         default=None,
-        description="Whether to add discovered RSS/Telegram sources to the fixed list",
+        description="Whether to add discovered RSS, Telegram, and Reddit sources to the fixed list",
     )
     schedule_cron_override: str | None = Field(
         default=None,

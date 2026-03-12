@@ -13,6 +13,7 @@ from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
+from news_service.services.reddit import extract_reddit_subreddit_from_url, fetch_reddit_posts
 from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
 from news_service.tasks.celery_app import celery_app
 
@@ -58,6 +59,10 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
     channel_handle = extract_telegram_channel_from_url(feed.url)
     if channel_handle is not None:
         return await _poll_single_telegram_channel(session, feed, channel_handle)
+
+    subreddit = extract_reddit_subreddit_from_url(feed.url)
+    if subreddit is not None:
+        return await _poll_single_reddit_subreddit(session, feed, subreddit)
 
     try:
         content = await _fetch_rss_feed_content(feed.url)
@@ -181,6 +186,68 @@ async def _poll_single_telegram_channel(
     logger.info(
         "Polled Telegram channel @%s: %d new items from %d posts",
         channel_handle,
+        new_count,
+        len(posts),
+        extra={"feed_id": str(feed.id)},
+    )
+    return new_count
+
+
+async def _poll_single_reddit_subreddit(
+    session: AsyncSession,
+    feed: RssFeed,
+    subreddit: str,
+) -> int:
+    try:
+        posts = await fetch_reddit_posts(subreddit)
+    except Exception:
+        logger.exception(
+            "Failed to parse Reddit subreddit r/%s",
+            subreddit,
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
+
+    if not posts:
+        return 0
+
+    texts_to_embed = [
+        "\n\n".join(part for part in [post.title, post.body] if part).strip() for post in posts
+    ]
+    try:
+        embeddings = await embed_texts(texts_to_embed)
+    except Exception:
+        logger.exception(
+            "Failed to embed Reddit posts for r/%s",
+            subreddit,
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
+
+    source_name = feed.title or f"Reddit r/{subreddit}"
+    now = datetime.now(UTC)
+    new_count = 0
+    for post, embedding in zip(posts, embeddings, strict=True):
+        item = await upsert_news_item(
+            session,
+            feed_id=feed.id,
+            headline=post.title[:200] or f"Reddit post from r/{subreddit}",
+            body=post.body,
+            url=post.url,
+            source=source_name,
+            published_at=post.published_at,
+            fetched_at=now,
+            embedding=embedding,
+        )
+        if item is not None:
+            new_count += 1
+            if isinstance(item, NewsItem):
+                await _maybe_store_upcoming_event(session, item)
+
+    feed.last_polled_at = now
+    logger.info(
+        "Polled Reddit subreddit r/%s: %d new items from %d posts",
+        subreddit,
         new_count,
         len(posts),
         extra={"feed_id": str(feed.id)},
