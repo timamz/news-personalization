@@ -13,7 +13,7 @@ async def test_parse_subscription_endpoint_returns_llm_structure(
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["machine learning"],
+        prompt_summary="машинное обучение",
         delivery_mode="digest",
         schedule_cron=None,
         schedule_was_explicit=False,
@@ -37,7 +37,7 @@ async def test_parse_subscription_endpoint_returns_llm_structure(
 
     assert response.status_code == 200
     assert response.json() == {
-        "topics": ["machine learning"],
+        "prompt_summary": "машинное обучение",
         "delivery_mode": "digest",
         "schedule_cron": None,
         "schedule_was_explicit": False,

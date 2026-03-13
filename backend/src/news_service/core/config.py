@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     twitter_listing_limit: int = 20
     twitter_fetch_retry_backoff_seconds: float = 1.0
     twitter_fetch_max_rate_limit_wait_seconds: float = 30.0
+    news_item_max_age_days: int = 7
 
     log_level: str = "DEBUG"
 

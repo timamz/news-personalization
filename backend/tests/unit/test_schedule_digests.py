@@ -50,7 +50,7 @@ def _make_subscription(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         raw_prompt="AI news",
-        topics=["ai"],
+        prompt_summary="AI news",
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         format_instructions="brief summary",

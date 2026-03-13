@@ -30,10 +30,11 @@ Rules for schedule_was_explicit:
 - true if user explicitly asked for automatic schedule/timing in this prompt.
 - false if schedule was not explicitly specified.
 
-Rules for topics:
-- Extract specific, searchable topic keywords.
-- "AI news" → ["artificial intelligence", "machine learning"]
-- "politics" → ["politics", "government"]
+Rules for prompt_summary:
+- Return a short human-readable summary of the user's request.
+- Keep it concise, usually 3-8 words.
+- Preserve the language of the user's prompt.
+- It should be suitable for a subscription card and digest subject line.
 
 Rules for delivery_mode:
 - Use "event" when the user wants notifications about upcoming releases, premieres, concerts,
@@ -94,10 +95,10 @@ async def parse_subscription(prompt: str) -> SubscriptionConfig:
 
     logger.info(
         (
-            "Parsed subscription: topics=%s, mode=%s, event_matching=%s, "
-            "cron=%s, explicit=%s, format=%s, language=%s"
+            "Parsed subscription: prompt_summary=%s, mode=%s, event_matching=%s, cron=%s, "
+            "explicit=%s, format=%s, language=%s"
         ),
-        result.topics,
+        result.prompt_summary,
         result.delivery_mode,
         result.event_matching_mode,
         result.schedule_cron,

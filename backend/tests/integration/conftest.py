@@ -77,10 +77,27 @@ async def api_client() -> AsyncGenerator[AsyncClient]:
 
 @pytest.fixture(autouse=True)
 def mock_subscription_embedding_creation(mocker) -> None:
-    async def _embed(contents: list[str]) -> list[list[float]]:
-        return [[float(index)] * 1536 for index, _ in enumerate(contents, start=1)]
+    async def _embed(content: str) -> list[float]:
+        del content
+        return [2.0] * 1536
 
     mocker.patch(
-        "news_service.api.routes_subscriptions.embed_texts",
+        "news_service.api.routes_subscriptions.embed_text",
         new=AsyncMock(side_effect=_embed),
+    )
+
+    mocker.patch(
+        "news_service.services.coverage.embed_text",
+        new=AsyncMock(side_effect=_embed),
+    )
+
+    async def _describe_source(*, source_kind: str, title: str, url: str) -> str:
+        del source_kind
+        if title:
+            return f"{title} ({url})"
+        return url
+
+    mocker.patch(
+        "news_service.services.coverage.describe_source",
+        new=AsyncMock(side_effect=_describe_source),
     )

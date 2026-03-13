@@ -108,11 +108,11 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "processing_request": "Processing your request...",
         "create_subscription_failed": "Failed to create subscription. Please try again.",
         "subscription_created_digest": (
-            "Subscription created!\n\nTopics: {topics}\n\n"
+            "Subscription created!\n\nRequest: {prompt_summary}\n\n"
             "You'll receive digests right here in this chat."
         ),
         "subscription_created_event": (
-            "Subscription created!\n\nTopics: {topics}\n\n"
+            "Subscription created!\n\nRequest: {prompt_summary}\n\n"
             "You'll receive event notifications right here in this chat."
         ),
         "show_recent_events_prompt": (
@@ -157,7 +157,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "edit_menu_prompt": "What do you want to change?",
         "no_subscriptions": "You have no active subscriptions. Use /subscribe to create one.",
         "failed_load_subscriptions": "Failed to load subscriptions. Please try again.",
-        "subscription_card": "Topics: {topics}\nType: {type}\nLanguage: {language}",
+        "subscription_card": "Request: {prompt_summary}\nType: {type}\nLanguage: {language}",
         "type_digest": "Digest",
         "type_event": "Event notifications",
         "edit_subscription_language_prompt": "Choose the language for this subscription.",
@@ -326,10 +326,11 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "processing_request": "Обрабатываю ваш запрос...",
         "create_subscription_failed": "Не удалось создать подписку. Попробуйте ещё раз.",
         "subscription_created_digest": (
-            "Подписка создана!\n\nТемы: {topics}\n\nЯ буду присылать дайджесты прямо в этот чат."
+            "Подписка создана!\n\nЗапрос: {prompt_summary}\n\n"
+            "Я буду присылать дайджесты прямо в этот чат."
         ),
         "subscription_created_event": (
-            "Подписка создана!\n\nТемы: {topics}\n\n"
+            "Подписка создана!\n\nЗапрос: {prompt_summary}\n\n"
             "Я буду присылать уведомления о событиях прямо в этот чат."
         ),
         "show_recent_events_prompt": "Показать, что вы могли пропустить за последние 7 дней?",
@@ -374,7 +375,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "У вас нет активных подписок. Используйте /subscribe, чтобы создать новую."
         ),
         "failed_load_subscriptions": "Не удалось загрузить подписки. Попробуйте ещё раз.",
-        "subscription_card": "Темы: {topics}\nТип: {type}\nЯзык: {language}",
+        "subscription_card": "Запрос: {prompt_summary}\nТип: {type}\nЯзык: {language}",
         "type_digest": "Дайджест",
         "type_event": "Уведомления о событиях",
         "edit_subscription_language_prompt": "Выберите язык для этой подписки.",

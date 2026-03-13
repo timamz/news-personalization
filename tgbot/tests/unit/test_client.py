@@ -129,7 +129,7 @@ async def test_create_subscription(client: BackendClient):
     mock_response.json.return_value = {
         "id": "sub-456",
         "raw_prompt": "AI news every morning",
-        "topics": ["artificial intelligence"],
+        "prompt_summary": "AI news every morning",
         "delivery_mode": "digest",
         "schedule_cron": "0 8 * * *",
         "format_instructions": "brief summary",
@@ -151,7 +151,7 @@ async def test_create_subscription(client: BackendClient):
         )
 
     assert sub.id == "sub-456"
-    assert sub.topics == ["artificial intelligence"]
+    assert sub.prompt_summary == "AI news every morning"
     assert sub.delivery_mode == "digest"
     assert sub.digest_language == "en"
 
@@ -163,7 +163,7 @@ async def test_create_subscription_uses_configured_timeout(client: BackendClient
     mock_response.json.return_value = {
         "id": "sub-789",
         "raw_prompt": "AI news every morning",
-        "topics": ["artificial intelligence"],
+        "prompt_summary": "AI news every morning",
         "delivery_mode": "digest",
         "schedule_cron": "0 8 * * *",
         "format_instructions": "brief summary",
@@ -196,7 +196,7 @@ async def test_create_subscription_sends_source_preferences(client: BackendClien
     mock_response.json.return_value = {
         "id": "sub-999",
         "raw_prompt": "ML news",
-        "topics": ["machine learning"],
+        "prompt_summary": "ML news",
         "delivery_mode": "digest",
         "schedule_cron": "0 8 * * *",
         "format_instructions": "brief summary",
@@ -250,7 +250,7 @@ async def test_parse_subscription_prompt(client: BackendClient):
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "topics": ["machine learning"],
+        "prompt_summary": "ML новости",
         "delivery_mode": "event",
         "schedule_cron": None,
         "schedule_was_explicit": False,
@@ -268,6 +268,7 @@ async def test_parse_subscription_prompt(client: BackendClient):
         parsed = await client.parse_subscription_prompt("my-key", "ML новости")
 
     assert parsed.delivery_mode == "event"
+    assert parsed.prompt_summary == "ML новости"
     assert parsed.schedule_was_explicit is False
     assert parsed.schedule_cron is None
     mock_http.post.assert_awaited_once_with(
@@ -308,7 +309,7 @@ async def test_list_subscriptions(client: BackendClient):
         {
             "id": "sub-1",
             "raw_prompt": "sports news",
-            "topics": ["sports"],
+            "prompt_summary": "sports news",
             "delivery_mode": "event",
             "schedule_cron": "0 8 * * *",
             "format_instructions": "brief summary",
@@ -327,7 +328,7 @@ async def test_list_subscriptions(client: BackendClient):
         subs = await client.list_subscriptions("my-key")
 
     assert len(subs) == 1
-    assert subs[0].topics == ["sports"]
+    assert subs[0].prompt_summary == "sports news"
     assert subs[0].delivery_mode == "event"
     assert subs[0].digest_language == "en"
 
@@ -413,7 +414,7 @@ async def test_update_subscription(client: BackendClient):
     mock_response.json.return_value = {
         "id": "sub-1",
         "raw_prompt": "AI news every morning",
-        "topics": ["artificial intelligence"],
+        "prompt_summary": "AI news every morning",
         "delivery_mode": "digest",
         "schedule_cron": None,
         "format_instructions": "concise alerts",

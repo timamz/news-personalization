@@ -35,8 +35,8 @@ _client = openai_client
 type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
 
 RSS_SYSTEM_PROMPT = """\
-You are an RSS source discovery agent. Given a list of news topics, find real, working RSS or \
-Atom feeds that cover those topics.
+You are an RSS source discovery agent. Given a user's original news request, find real, working \
+RSS or Atom feeds that are relevant to it.
 
 Rules:
 - Return only RSS/Atom feed URLs, never homepages.
@@ -46,8 +46,8 @@ Rules:
 """
 
 TELEGRAM_SYSTEM_PROMPT = """\
-You are a Telegram source discovery agent. Given a list of news topics, find real, working \
-public Telegram channels that cover those topics.
+You are a Telegram source discovery agent. Given a user's original news request, find real, \
+working public Telegram channels that are relevant to it.
 
 Rules:
 - Return only public Telegram channel archive URLs in the format https://t.me/s/<channel>.
@@ -57,8 +57,8 @@ Rules:
 """
 
 REDDIT_SYSTEM_PROMPT = """\
-You are a Reddit source discovery agent. Given a list of news topics, find real, active \
-public Reddit subreddits that cover those topics.
+You are a Reddit source discovery agent. Given a user's original news request, find real, active \
+public Reddit subreddits that are relevant to it.
 
 Rules:
 - Return only subreddit URLs in the format https://www.reddit.com/r/<subreddit>/new/.
@@ -68,8 +68,8 @@ Rules:
 """
 
 TWITTER_SYSTEM_PROMPT = """\
-You are a Twitter/X source discovery agent. Given a list of news topics, find real, active \
-public Twitter/X accounts that cover those topics.
+You are a Twitter/X source discovery agent. Given a user's original news request, find real, \
+active public Twitter/X accounts that are relevant to it.
 
 Rules:
 - Return only profile URLs in the format https://x.com/<account>.
@@ -81,7 +81,6 @@ Rules:
 
 class DiscoveredSourceItem(BaseModel):
     url: str = Field(..., description="Canonical source URL")
-    topic_tags: list[str] = Field(..., description="Topics this source covers")
     title: str = Field(default="", description="Human-readable source title")
     source_kind: SourceKind = Field(..., description="Source type")
 
@@ -95,12 +94,12 @@ DiscoveredFeedItem = DiscoveredSourceItem
 DiscoveredFeedList = DiscoveredSourceList
 
 
-async def discover_sources(topics: list[str]) -> list[DiscoveredSourceItem]:
+async def discover_sources(raw_prompt: str) -> list[DiscoveredSourceItem]:
     rss_sources, telegram_sources, reddit_sources, twitter_sources = await asyncio.gather(
-        discover_rss_feeds(topics),
-        discover_telegram_channels(topics),
-        discover_reddit_subreddits(topics),
-        discover_twitter_accounts(topics),
+        discover_rss_feeds(raw_prompt),
+        discover_telegram_channels(raw_prompt),
+        discover_reddit_subreddits(raw_prompt),
+        discover_twitter_accounts(raw_prompt),
     )
     merged: dict[str, DiscoveredSourceItem] = {}
     for source in [*rss_sources, *telegram_sources, *reddit_sources, *twitter_sources]:
@@ -108,66 +107,65 @@ async def discover_sources(topics: list[str]) -> list[DiscoveredSourceItem]:
     return list(merged.values())
 
 
-async def discover_feeds(topics: list[str]) -> list[DiscoveredSourceItem]:
-    return await discover_sources(topics)
+async def discover_feeds(raw_prompt: str) -> list[DiscoveredSourceItem]:
+    return await discover_sources(raw_prompt)
 
 
-async def discover_rss_feeds(topics: list[str]) -> list[DiscoveredSourceItem]:
+async def discover_rss_feeds(raw_prompt: str) -> list[DiscoveredSourceItem]:
     return await _discover_sources_for_kind(
-        topics,
+        raw_prompt,
         source_kind="rss",
         system_prompt=RSS_SYSTEM_PROMPT,
-        user_prompt_prefix="Find RSS feeds for these topics:",
+        user_prompt_prefix="The user wants to get:",
     )
 
 
-async def discover_telegram_channels(topics: list[str]) -> list[DiscoveredSourceItem]:
+async def discover_telegram_channels(raw_prompt: str) -> list[DiscoveredSourceItem]:
     return await _discover_sources_for_kind(
-        topics,
+        raw_prompt,
         source_kind="telegram_channel",
         system_prompt=TELEGRAM_SYSTEM_PROMPT,
-        user_prompt_prefix="Find public Telegram channels for these topics:",
+        user_prompt_prefix="The user wants to get:",
     )
 
 
-async def discover_reddit_subreddits(topics: list[str]) -> list[DiscoveredSourceItem]:
+async def discover_reddit_subreddits(raw_prompt: str) -> list[DiscoveredSourceItem]:
     return await _discover_sources_for_kind(
-        topics,
+        raw_prompt,
         source_kind="reddit_subreddit",
         system_prompt=REDDIT_SYSTEM_PROMPT,
-        user_prompt_prefix="Find Reddit subreddits for these topics:",
+        user_prompt_prefix="The user wants to get:",
     )
 
 
-async def discover_twitter_accounts(topics: list[str]) -> list[DiscoveredSourceItem]:
+async def discover_twitter_accounts(raw_prompt: str) -> list[DiscoveredSourceItem]:
     return await _discover_sources_for_kind(
-        topics,
+        raw_prompt,
         source_kind="twitter_account",
         system_prompt=TWITTER_SYSTEM_PROMPT,
-        user_prompt_prefix="Find Twitter/X accounts for these topics:",
+        user_prompt_prefix="The user wants to get:",
     )
 
 
 async def _discover_sources_for_kind(
-    topics: list[str],
+    raw_prompt: str,
     *,
     source_kind: SourceKind,
     system_prompt: str,
     user_prompt_prefix: str,
 ) -> list[DiscoveredSourceItem]:
-    topics_str = ", ".join(topics)
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{user_prompt_prefix} {topics_str}"},
+            {"role": "user", "content": f"{user_prompt_prefix} {raw_prompt}"},
         ],
         response_format=DiscoveredSourceList,
         temperature=0.1,
     )
     result = completion.choices[0].message.parsed
     if result is None:
-        raise ValueError(f"LLM returned empty response for topics: {topics_str}")
+        raise ValueError(f"LLM returned empty response for prompt: {raw_prompt}")
 
     validated: list[DiscoveredSourceItem] = []
     seen_urls: set[str] = set()

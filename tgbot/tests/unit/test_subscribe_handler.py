@@ -60,7 +60,7 @@ async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkey
         "parse_subscription_prompt",
         AsyncMock(
             return_value=SimpleNamespace(
-                topics=["ml"],
+                prompt_summary="Следить за @gonzo_ml каждый день в 9",
                 delivery_mode="digest",
                 schedule_cron="0 9 * * *",
                 schedule_was_explicit=True,
@@ -115,7 +115,7 @@ async def test_process_prompt_without_schedule_asks_schedule_decision(monkeypatc
         "parse_subscription_prompt",
         AsyncMock(
             return_value=SimpleNamespace(
-                topics=["ml"],
+                prompt_summary="Новости по ML",
                 delivery_mode="digest",
                 schedule_cron=None,
                 schedule_was_explicit=False,
@@ -164,7 +164,7 @@ async def test_process_prompt_with_event_mode_skips_schedule(monkeypatch):
         "parse_subscription_prompt",
         AsyncMock(
             return_value=SimpleNamespace(
-                topics=["tv"],
+                prompt_summary="New episode announcements",
                 delivery_mode="event",
                 schedule_cron=None,
                 schedule_was_explicit=False,
@@ -221,7 +221,7 @@ async def test_process_prompt_with_ask_mode_prompts_for_subscription_language(mo
         "parse_subscription_prompt",
         AsyncMock(
             return_value=SimpleNamespace(
-                topics=["ml"],
+                prompt_summary="Новости по ML",
                 delivery_mode="digest",
                 schedule_cron=None,
                 schedule_was_explicit=False,
@@ -295,7 +295,7 @@ async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch)
     create_subscription = AsyncMock(
         return_value=SimpleNamespace(
             id="sub-1",
-            topics=["машинное обучение"],
+            prompt_summary="ML daily",
             schedule_cron=None,
             format_instructions="brief summary",
         )
@@ -371,7 +371,7 @@ async def test_handle_scope_choice_for_event_subscription_offers_recent_events(m
         AsyncMock(
             return_value=SimpleNamespace(
                 id="sub-evt",
-                topics=["concerts"],
+                prompt_summary="Concert announcements",
                 schedule_cron=None,
                 format_instructions="brief summary",
             )

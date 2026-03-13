@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.parser import parse_schedule_preference, parse_subscription
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
-from news_service.db.vector_store import embed_texts
+from news_service.db.vector_store import embed_text
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
 from news_service.models.sent_item import SentItem
@@ -30,14 +30,15 @@ from news_service.schemas.subscription import (
     SubscriptionUpdate,
 )
 from news_service.services.coverage import (
+    ensure_prompt_coverage,
     ensure_reddit_subreddit_coverage,
     ensure_telegram_channel_coverage,
-    ensure_topic_coverage,
     ensure_twitter_account_coverage,
 )
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
 )
+from news_service.services.prompt_summaries import build_prompt_summary
 from news_service.services.reddit import (
     build_reddit_subreddit_url,
     extract_reddit_subreddits,
@@ -61,13 +62,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 
-async def _build_subscription_embeddings(
-    raw_prompt: str,
-    topics: list[str],
-) -> tuple[list[float], list[float]]:
-    topic_query = " ".join(topics)
-    raw_prompt_embedding, topics_embedding = await embed_texts([raw_prompt, topic_query])
-    return raw_prompt_embedding, topics_embedding
+async def _subscription_prompt_embedding(raw_prompt: str) -> list[float]:
+    return await embed_text(raw_prompt)
 
 
 def _normalize_fixed_sources(
@@ -117,13 +113,6 @@ async def _existing_subscription_source_urls(
     return {url for url in result.scalars().all()}
 
 
-async def _topics_embedding_for_subscription(subscription: Subscription) -> list[float]:
-    if subscription.topics_embedding is not None:
-        return list(subscription.topics_embedding)
-    topic_query = " ".join(subscription.topics)
-    return (await embed_texts([topic_query]))[0]
-
-
 def _normalized_digest_language(value: str | None) -> str | None:
     if value is None:
         return None
@@ -161,6 +150,13 @@ def _ensure_user_timezone_for_schedule(user: User, schedule_cron: str | None) ->
     )
 
 
+def _ensure_prompt_summary(subscription: Subscription) -> str:
+    if subscription.prompt_summary.strip():
+        return subscription.prompt_summary
+    subscription.prompt_summary = build_prompt_summary(subscription.raw_prompt)
+    return subscription.prompt_summary
+
+
 @router.post("/parse", response_model=SubscriptionParseResponse)
 async def parse_subscription_prompt(
     payload: SubscriptionParseRequest,
@@ -170,7 +166,7 @@ async def parse_subscription_prompt(
     config = await parse_subscription(payload.prompt)
     schedule_cron = _validated_schedule_or_422(config.schedule_cron)
     return SubscriptionParseResponse(
-        topics=config.topics,
+        prompt_summary=config.prompt_summary,
         delivery_mode=config.delivery_mode,
         schedule_cron=schedule_cron,
         schedule_was_explicit=config.schedule_was_explicit,
@@ -230,17 +226,14 @@ async def create_subscription(
     digest_language = (
         _normalized_digest_language(payload.digest_language_override) or config.digest_language
     )
-    raw_prompt_embedding, topics_embedding = await _build_subscription_embeddings(
-        payload.prompt,
-        config.topics,
-    )
+    raw_prompt_embedding = await _subscription_prompt_embedding(payload.prompt)
+    prompt_summary = config.prompt_summary or build_prompt_summary(payload.prompt)
 
     subscription = Subscription(
         user_id=user.id,
         raw_prompt=payload.prompt,
         raw_prompt_embedding=raw_prompt_embedding,
-        topics=config.topics,
-        topics_embedding=topics_embedding,
+        prompt_summary=prompt_summary,
         delivery_mode=delivery_mode,
         event_matching_mode=event_matching_mode,
         event_constraints=[],
@@ -257,8 +250,6 @@ async def create_subscription(
         telegram_sources = await ensure_telegram_channel_coverage(
             session,
             telegram_channels,
-            config.topics,
-            topics_embedding,
         )
         for source in telegram_sources:
             selected_sources[source.id] = source
@@ -267,8 +258,6 @@ async def create_subscription(
         reddit_sources = await ensure_reddit_subreddit_coverage(
             session,
             reddit_subreddits,
-            config.topics,
-            topics_embedding,
         )
         for source in reddit_sources:
             selected_sources[source.id] = source
@@ -277,14 +266,16 @@ async def create_subscription(
         twitter_sources = await ensure_twitter_account_coverage(
             session,
             twitter_accounts,
-            config.topics,
-            topics_embedding,
         )
         for source in twitter_sources:
             selected_sources[source.id] = source
 
     if include_discovered_sources:
-        discovered_sources = await ensure_topic_coverage(session, config.topics, topics_embedding)
+        discovered_sources = await ensure_prompt_coverage(
+            session,
+            payload.prompt,
+            raw_prompt_embedding,
+        )
         for source in discovered_sources:
             selected_sources[source.id] = source
 
@@ -357,14 +348,11 @@ async def append_subscription_sources(
         if build_twitter_account_url(account) not in existing_urls
     ]
 
-    topics_embedding = await _topics_embedding_for_subscription(subscription)
     selected_sources: dict[uuid.UUID, RssFeed] = {}
     if added_telegram_channels:
         telegram_sources = await ensure_telegram_channel_coverage(
             session,
             added_telegram_channels,
-            subscription.topics,
-            topics_embedding,
         )
         for source in telegram_sources:
             selected_sources[source.id] = source
@@ -372,8 +360,6 @@ async def append_subscription_sources(
         reddit_sources = await ensure_reddit_subreddit_coverage(
             session,
             added_reddit_subreddits,
-            subscription.topics,
-            topics_embedding,
         )
         for source in reddit_sources:
             selected_sources[source.id] = source
@@ -381,8 +367,6 @@ async def append_subscription_sources(
         twitter_sources = await ensure_twitter_account_coverage(
             session,
             added_twitter_accounts,
-            subscription.topics,
-            topics_embedding,
         )
         for source in twitter_sources:
             selected_sources[source.id] = source
@@ -416,7 +400,15 @@ async def list_subscriptions(
             Subscription.is_active.is_(True),
         )
     )
-    return list(result.scalars().all())
+    subscriptions = list(result.scalars().all())
+    updated = False
+    for subscription in subscriptions:
+        previous = subscription.prompt_summary
+        _ensure_prompt_summary(subscription)
+        updated = updated or previous != subscription.prompt_summary
+    if updated:
+        await session.commit()
+    return subscriptions
 
 
 @router.get(

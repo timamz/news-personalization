@@ -37,15 +37,15 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 
 | Agent | File | Trigger | Input | Output |
 |---|---|---|---|---|
-| **Parser** | `agents/parser.py` | New subscription | Raw user prompt | `SubscriptionConfig` (topics, delivery mode, event matching mode, optional dynamic event constraints, optional cron, explicit-schedule flag, format, digest language) |
-| **Discovery** | `agents/discovery.py` | Topic gap detected | Uncovered topic strings | Valid RSS feed URLs, public Telegram channel URLs, Reddit subreddit URLs, and public X/Twitter account URLs |
+| **Parser** | `agents/parser.py` | New subscription | Raw user prompt | `SubscriptionConfig` (prompt summary, delivery mode, event matching mode, optional dynamic event constraints, optional cron, explicit-schedule flag, format, digest language) |
+| **Discovery** | `agents/discovery.py` | No sufficiently similar fixed sources already exist | Original user prompt | Valid RSS feed URLs, public Telegram channel URLs, Reddit subreddit URLs, and public X/Twitter account URLs |
 | **Source Poller** | `tasks/poll_feeds.py` | Celery Beat (every 30 min) | All active source rows (`rss_feeds`) | New `NewsItem` rows + embeddings |
 | **Event Detector** | `agents/event.py` | New news item ingested | News item headline/body | Optional upcoming-event metadata on `NewsItem` |
 | **Event Notifier** | `tasks/deliver_events.py` | Event detected during polling | Event-tagged `NewsItem` + matching fixed-source subscriptions | Immediate webhook notifications, with optional strict per-subscription validation |
 | **Digest Dispatcher** | `tasks/schedule_digests.py` | Celery Beat (every 1 min) | Active subscriptions with schedule set | Queued digest delivery tasks |
 | **Digest** | `agents/digest.py` + `tasks/deliver_digest.py` | Dispatcher task | Subscription + unseen news from fixed subscription sources | Formatted digest text, delivery webhook call |
 
-Parser, Discovery, and Event Detector use OpenAI structured output. Discovery runs separate RSS, Telegram-channel, Reddit-subreddit, and X/Twitter-account agents in parallel. Source Poller ingests RSS feeds (`feedparser`), public Telegram channels (`t.me/s/<channel>` HTML parsing), Reddit subreddits (`/r/<subreddit>/new/` via headless Firefox + same-origin JSON fetch), and public X/Twitter accounts (`syndication.twitter.com` server-rendered timelines with rate-limit-aware retries). Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST. Scheduled digests are evaluated in each user's stored IANA timezone.
+Parser, Discovery, and Event Detector use OpenAI structured output. Discovery runs separate RSS, Telegram-channel, Reddit-subreddit, and X/Twitter-account agents in parallel against the original user prompt. Each fixed source stores a short LLM-generated source description plus an embedding, and prompt-to-source matching uses the raw-prompt embedding against those source-description embeddings. Source Poller ingests RSS feeds (`feedparser`), public Telegram channels (`t.me/s/<channel>` HTML parsing), Reddit subreddits (`/r/<subreddit>/new/` via headless Firefox + same-origin JSON fetch), and public X/Twitter accounts (`syndication.twitter.com` server-rendered timelines with rate-limit-aware retries). Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST. Scheduled digests are evaluated in each user's stored IANA timezone.
 
 ---
 

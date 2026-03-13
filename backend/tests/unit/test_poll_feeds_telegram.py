@@ -15,8 +15,8 @@ async def test_poll_single_feed_handles_telegram_channel(mocker) -> None:
         id=uuid.uuid4(),
         url="https://t.me/s/fondnauk",
         title="Telegram @fondnauk",
-        topic_tags=["science"],
-        topic_embedding=None,
+        source_description="Science Telegram channel",
+        source_description_embedding=None,
         is_active=True,
         last_polled_at=None,
         subscriber_count=1,
@@ -25,7 +25,7 @@ async def test_poll_single_feed_handles_telegram_channel(mocker) -> None:
         TelegramPost(
             url="https://t.me/fondnauk/1",
             body="First line\nSecond line",
-            published_at=datetime(2026, 2, 27, 8, 0, tzinfo=UTC),
+            published_at=datetime(2026, 3, 12, 8, 0, tzinfo=UTC),
         )
     ]
 

@@ -55,7 +55,11 @@ class SubscriptionCreate(BaseModel):
 class SubscriptionConfig(BaseModel):
     """Structured output from the Parser Agent."""
 
-    topics: list[str] = Field(..., min_length=1, description="List of news topics")
+    prompt_summary: str = Field(
+        ...,
+        min_length=3,
+        description="Short user-facing summary of the subscription request",
+    )
     delivery_mode: DeliveryMode = Field(
         default="digest",
         description="Whether the user wants a periodic digest or event notifications",
@@ -92,7 +96,7 @@ class SubscriptionConfig(BaseModel):
 class SubscriptionResponse(BaseModel):
     id: uuid.UUID
     raw_prompt: str
-    topics: list[str]
+    prompt_summary: str
     delivery_mode: DeliveryMode
     schedule_cron: str | None
     format_instructions: str
@@ -178,7 +182,7 @@ class SubscriptionParseRequest(BaseModel):
 
 
 class SubscriptionParseResponse(BaseModel):
-    topics: list[str]
+    prompt_summary: str
     delivery_mode: DeliveryMode
     schedule_cron: str | None
     schedule_was_explicit: bool

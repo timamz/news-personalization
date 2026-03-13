@@ -20,7 +20,7 @@ async def test_deactivate_subscription_removes_fixed_source_links(
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["ai"],
+        prompt_summary="AI updates",
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -31,13 +31,14 @@ async def test_deactivate_subscription_removes_fixed_source_links(
         new=AsyncMock(return_value=parsed_config),
     )
 
-    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
-        assert topics_embedding == [2.0] * 1536
+    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+        assert raw_prompt == "AI updates every morning"
+        assert raw_prompt_embedding == [2.0] * 1536
         feed = RssFeed(
             url="https://example.com/rss.xml",
             title="Example Feed",
-            topic_tags=topics,
-            topic_embedding=[0.0] * 1536,
+            source_description=f"Example Feed ({raw_prompt})",
+            source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
         )
@@ -46,8 +47,8 @@ async def test_deactivate_subscription_removes_fixed_source_links(
         return [feed]
 
     mocker.patch(
-        "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=fake_ensure_topic_coverage,
+        "news_service.api.routes_subscriptions.ensure_prompt_coverage",
+        new=fake_ensure_prompt_coverage,
     )
 
     user = await create_user(api_client, timezone="UTC")
@@ -106,7 +107,7 @@ async def test_create_event_subscription_forces_schedule_off(
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["tv"],
+        prompt_summary="TV episode notifications",
         delivery_mode="event",
         event_matching_mode="strict_with_prefilter",
         schedule_cron="0 8 * * *",
@@ -119,13 +120,14 @@ async def test_create_event_subscription_forces_schedule_off(
         new=AsyncMock(return_value=parsed_config),
     )
 
-    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
-        assert topics_embedding == [2.0] * 1536
+    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+        assert raw_prompt == "Notify me when the next episode is announced"
+        assert raw_prompt_embedding == [2.0] * 1536
         feed = RssFeed(
             url="https://example.com/shows.xml",
             title="Shows Feed",
-            topic_tags=topics,
-            topic_embedding=[0.0] * 1536,
+            source_description=f"Shows Feed ({raw_prompt})",
+            source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
         )
@@ -134,8 +136,8 @@ async def test_create_event_subscription_forces_schedule_off(
         return [feed]
 
     mocker.patch(
-        "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=fake_ensure_topic_coverage,
+        "news_service.api.routes_subscriptions.ensure_prompt_coverage",
+        new=fake_ensure_prompt_coverage,
     )
 
     user = await create_user(api_client)
@@ -170,7 +172,7 @@ async def test_append_subscription_sources_adds_only_new_links(
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["ai"],
+        prompt_summary="AI updates",
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -180,10 +182,10 @@ async def test_append_subscription_sources_adds_only_new_links(
         "news_service.api.routes_subscriptions.parse_subscription",
         new=AsyncMock(return_value=parsed_config),
     )
-    ensure_topic_coverage = AsyncMock()
+    ensure_prompt_coverage = AsyncMock()
     mocker.patch(
-        "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=ensure_topic_coverage,
+        "news_service.api.routes_subscriptions.ensure_prompt_coverage",
+        new=ensure_prompt_coverage,
     )
 
     user = await create_user(api_client, timezone="UTC")
@@ -239,4 +241,4 @@ async def test_append_subscription_sources_adds_only_new_links(
         assert reddit_feed is not None
         assert telegram_feed.subscriber_count == 1
         assert reddit_feed.subscriber_count == 1
-        assert ensure_topic_coverage.await_count == 0
+        assert ensure_prompt_coverage.await_count == 0

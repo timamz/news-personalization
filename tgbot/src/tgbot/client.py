@@ -12,7 +12,7 @@ _UNSET = object()
 @dataclass
 class SubscriptionInfo:
     id: str
-    topics: list[str]
+    prompt_summary: str
     delivery_mode: str
     schedule_cron: str | None
     format_instructions: str
@@ -21,7 +21,7 @@ class SubscriptionInfo:
 
 @dataclass
 class SubscriptionParseInfo:
-    topics: list[str]
+    prompt_summary: str
     delivery_mode: str
     schedule_cron: str | None
     schedule_was_explicit: bool
@@ -181,7 +181,7 @@ class BackendClient:
             data = response.json()
             return SubscriptionInfo(
                 id=data["id"],
-                topics=data["topics"],
+                prompt_summary=data["prompt_summary"],
                 delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
@@ -198,7 +198,7 @@ class BackendClient:
             response.raise_for_status()
             data = response.json()
             return SubscriptionParseInfo(
-                topics=data["topics"],
+                prompt_summary=data["prompt_summary"],
                 delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 schedule_was_explicit=data["schedule_was_explicit"],
@@ -227,7 +227,7 @@ class BackendClient:
             return [
                 SubscriptionInfo(
                     id=s["id"],
-                    topics=s["topics"],
+                    prompt_summary=s["prompt_summary"],
                     delivery_mode=s.get("delivery_mode", "digest"),
                     schedule_cron=s["schedule_cron"],
                     format_instructions=s["format_instructions"],
@@ -274,7 +274,7 @@ class BackendClient:
             data = response.json()
             return SubscriptionInfo(
                 id=data["id"],
-                topics=data["topics"],
+                prompt_summary=data["prompt_summary"],
                 delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],

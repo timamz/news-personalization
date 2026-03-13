@@ -19,7 +19,6 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
             return_value=[
                 DiscoveredSourceItem(
                     url="https://example.com/rss.xml",
-                    topic_tags=["ai"],
                     title="Example RSS",
                     source_kind="rss",
                 )
@@ -33,7 +32,6 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
             return_value=[
                 DiscoveredSourceItem(
                     url="https://t.me/s/ainews",
-                    topic_tags=["ai"],
                     title="Telegram @ainews",
                     source_kind="telegram_channel",
                 )
@@ -47,7 +45,6 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
             return_value=[
                 DiscoveredSourceItem(
                     url="https://www.reddit.com/r/ainews/new/",
-                    topic_tags=["ai"],
                     title="Reddit r/ainews",
                     source_kind="reddit_subreddit",
                 )
@@ -61,7 +58,6 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
             return_value=[
                 DiscoveredSourceItem(
                     url="https://x.com/openai",
-                    topic_tags=["ai"],
                     title="X @openai",
                     source_kind="twitter_account",
                 )
@@ -69,7 +65,7 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
         ),
     )
 
-    result = await discovery.discover_sources(["ai"])
+    result = await discovery.discover_sources("AI research updates")
 
     assert [item.url for item in result] == [
         "https://example.com/rss.xml",
@@ -77,10 +73,10 @@ async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -
         "https://www.reddit.com/r/ainews/new/",
         "https://x.com/openai",
     ]
-    rss_discovery.assert_awaited_once_with(["ai"])
-    telegram_discovery.assert_awaited_once_with(["ai"])
-    reddit_discovery.assert_awaited_once_with(["ai"])
-    twitter_discovery.assert_awaited_once_with(["ai"])
+    rss_discovery.assert_awaited_once_with("AI research updates")
+    telegram_discovery.assert_awaited_once_with("AI research updates")
+    reddit_discovery.assert_awaited_once_with("AI research updates")
+    twitter_discovery.assert_awaited_once_with("AI research updates")
 
 
 @pytest.mark.asyncio
@@ -93,13 +89,11 @@ async def test_discover_rss_feeds_filters_to_valid_rss_sources(mocker) -> None:
                         sources=[
                             DiscoveredSourceItem(
                                 url=" https://example.com/rss.xml ",
-                                topic_tags=["ai"],
                                 title="Example RSS",
                                 source_kind="rss",
                             ),
                             DiscoveredSourceItem(
                                 url="https://t.me/s/not-rss",
-                                topic_tags=["ai"],
                                 title="Wrong kind",
                                 source_kind="telegram_channel",
                             ),
@@ -120,12 +114,11 @@ async def test_discover_rss_feeds_filters_to_valid_rss_sources(mocker) -> None:
         new=AsyncMock(side_effect=[True]),
     )
 
-    result = await discovery.discover_rss_feeds(["ai"])
+    result = await discovery.discover_rss_feeds("AI research updates")
 
     assert result == [
         DiscoveredSourceItem(
             url="https://example.com/rss.xml",
-            topic_tags=["ai"],
             title="Example RSS",
             source_kind="rss",
         )
@@ -143,13 +136,11 @@ async def test_discover_telegram_channels_normalizes_and_validates_channels(mock
                         sources=[
                             DiscoveredSourceItem(
                                 url="https://t.me/AINews",
-                                topic_tags=["ai"],
                                 title="AI News",
                                 source_kind="telegram_channel",
                             ),
                             DiscoveredSourceItem(
                                 url="https://example.com/rss.xml",
-                                topic_tags=["ai"],
                                 title="Wrong kind",
                                 source_kind="rss",
                             ),
@@ -170,12 +161,11 @@ async def test_discover_telegram_channels_normalizes_and_validates_channels(mock
         new=AsyncMock(return_value=True),
     )
 
-    result = await discovery.discover_telegram_channels(["ai"])
+    result = await discovery.discover_telegram_channels("AI research updates")
 
     assert result == [
         DiscoveredSourceItem(
             url="https://t.me/s/ainews",
-            topic_tags=["ai"],
             title="AI News",
             source_kind="telegram_channel",
         )
@@ -193,13 +183,11 @@ async def test_discover_reddit_subreddits_normalizes_and_validates_subreddits(mo
                         sources=[
                             DiscoveredSourceItem(
                                 url="r/AINews",
-                                topic_tags=["ai"],
                                 title="AI News",
                                 source_kind="reddit_subreddit",
                             ),
                             DiscoveredSourceItem(
                                 url="https://example.com/rss.xml",
-                                topic_tags=["ai"],
                                 title="Wrong kind",
                                 source_kind="rss",
                             ),
@@ -220,12 +208,11 @@ async def test_discover_reddit_subreddits_normalizes_and_validates_subreddits(mo
         new=AsyncMock(return_value=True),
     )
 
-    result = await discovery.discover_reddit_subreddits(["ai"])
+    result = await discovery.discover_reddit_subreddits("AI research updates")
 
     assert result == [
         DiscoveredSourceItem(
             url="https://www.reddit.com/r/ainews/new/",
-            topic_tags=["ai"],
             title="AI News",
             source_kind="reddit_subreddit",
         )
@@ -243,13 +230,11 @@ async def test_discover_twitter_accounts_normalizes_and_validates_accounts(mocke
                         sources=[
                             DiscoveredSourceItem(
                                 url="https://twitter.com/OpenAI",
-                                topic_tags=["ai"],
                                 title="OpenAI",
                                 source_kind="twitter_account",
                             ),
                             DiscoveredSourceItem(
                                 url="https://example.com/rss.xml",
-                                topic_tags=["ai"],
                                 title="Wrong kind",
                                 source_kind="rss",
                             ),
@@ -270,12 +255,11 @@ async def test_discover_twitter_accounts_normalizes_and_validates_accounts(mocke
         new=AsyncMock(return_value=True),
     )
 
-    result = await discovery.discover_twitter_accounts(["ai"])
+    result = await discovery.discover_twitter_accounts("AI research updates")
 
     assert result == [
         DiscoveredSourceItem(
             url="https://x.com/openai",
-            topic_tags=["ai"],
             title="OpenAI",
             source_kind="twitter_account",
         )

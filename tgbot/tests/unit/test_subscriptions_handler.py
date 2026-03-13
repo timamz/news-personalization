@@ -34,7 +34,7 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
     state = SimpleNamespace()
     sub = SimpleNamespace(
         id="sub-1",
-        topics=["ai"],
+        prompt_summary="AI news",
         delivery_mode="digest",
         schedule_cron="0 8 * * *",
         format_instructions="brief summary",
@@ -53,7 +53,7 @@ async def test_cmd_list_adds_send_now_button(monkeypatch):
 
     message.answer.assert_awaited_once()
     message_text = message.answer.await_args.args[0]
-    assert message_text == "Topics: ai\nType: Digest\nLanguage: Russian"
+    assert message_text == "Request: AI news\nType: Digest\nLanguage: Russian"
 
     kwargs = message.answer.await_args.kwargs
     keyboard = kwargs["reply_markup"]
@@ -72,7 +72,7 @@ async def test_cmd_list_hides_send_now_for_event_subscription(monkeypatch):
     state = SimpleNamespace()
     sub = SimpleNamespace(
         id="sub-9",
-        topics=["concerts"],
+        prompt_summary="Concert announcements",
         delivery_mode="event",
         schedule_cron=None,
         format_instructions="brief summary",
@@ -92,7 +92,7 @@ async def test_cmd_list_hides_send_now_for_event_subscription(monkeypatch):
     message.answer.assert_awaited_once()
     assert (
         message.answer.await_args.args[0]
-        == "Topics: concerts\nType: Event notifications\nLanguage: English"
+        == "Request: Concert announcements\nType: Event notifications\nLanguage: English"
     )
 
     keyboard = message.answer.await_args.kwargs["reply_markup"]

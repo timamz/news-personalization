@@ -8,7 +8,7 @@ from news_service.schemas.subscription import SubscriptionConfig
 @pytest.fixture
 def mock_config():
     return SubscriptionConfig(
-        topics=["artificial intelligence", "machine learning"],
+        prompt_summary="AI news every third day",
         delivery_mode="digest",
         event_matching_mode="basic",
         schedule_cron="0 8 */3 * *",
@@ -37,9 +37,9 @@ async def test_parse_subscription_returns_config(mock_config):
 
         result = await parse_subscription("I want AI news every third day in the morning")
 
-    assert result.topics == ["artificial intelligence", "machine learning"]
     assert result.delivery_mode == "digest"
     assert result.event_matching_mode == "basic"
+    assert result.prompt_summary == "AI news every third day"
     assert result.schedule_cron == "0 8 */3 * *"
     assert result.schedule_was_explicit is True
     assert result.format_instructions == "brief summary"

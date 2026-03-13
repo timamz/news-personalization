@@ -25,7 +25,7 @@ async def _create_subscription(
 ) -> tuple[str, str, uuid.UUID]:
     feed_ref: dict[str, uuid.UUID] = {}
     parsed_config = SubscriptionConfig(
-        topics=["events"],
+        prompt_summary="Upcoming events",
         delivery_mode=delivery_mode,
         event_matching_mode=event_matching_mode,
         schedule_cron=None,
@@ -38,13 +38,14 @@ async def _create_subscription(
         new=AsyncMock(return_value=parsed_config),
     )
 
-    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
-        assert topics_embedding == [2.0] * 1536
+    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+        assert raw_prompt == "Notify me about upcoming events"
+        assert raw_prompt_embedding == [2.0] * 1536
         feed = RssFeed(
             url="https://example.com/events.xml",
             title="Events Feed",
-            topic_tags=topics,
-            topic_embedding=[0.0] * 1536,
+            source_description=f"Events Feed ({raw_prompt})",
+            source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
         )
@@ -54,8 +55,8 @@ async def _create_subscription(
         return [feed]
 
     mocker.patch(
-        "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=fake_ensure_topic_coverage,
+        "news_service.api.routes_subscriptions.ensure_prompt_coverage",
+        new=fake_ensure_prompt_coverage,
     )
 
     user_response = await api_client.post("/users")

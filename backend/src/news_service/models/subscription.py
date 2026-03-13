@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from news_service.models.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -17,8 +17,7 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     )
     raw_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     raw_prompt_embedding = mapped_column(Vector(1536), nullable=True)
-    topics: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
-    topics_embedding = mapped_column(Vector(1536), nullable=True)
+    prompt_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="digest")
     event_matching_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="basic")
     event_constraints: Mapped[list[dict[str, object]]] = mapped_column(

@@ -70,7 +70,6 @@ async def cmd_list(message: types.Message, state: FSMContext) -> None:
         return
 
     for sub in subs:
-        topics_str = ", ".join(sub.topics)
         mode_label = (
             t(ui_language, "type_event")
             if sub.delivery_mode == "event"
@@ -79,7 +78,7 @@ async def cmd_list(message: types.Message, state: FSMContext) -> None:
         text = t(
             ui_language,
             "subscription_card",
-            topics=topics_str,
+            prompt_summary=sub.prompt_summary,
             type=mode_label,
             language=interface_language_name(ui_language, sub.digest_language),
         )

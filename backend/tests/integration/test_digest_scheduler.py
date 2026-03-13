@@ -20,7 +20,7 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["artificial intelligence"],
+        prompt_summary="AI updates",
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -31,13 +31,14 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
         new=AsyncMock(return_value=parsed_config),
     )
 
-    async def fake_ensure_topic_coverage(session, topics, topics_embedding):  # noqa: ANN001
-        assert topics_embedding == [2.0] * 1536
+    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+        assert raw_prompt == "AI updates every morning in a brief summary"
+        assert raw_prompt_embedding == [2.0] * 1536
         feed = RssFeed(
             url="https://example.com/rss.xml",
             title="Example Feed",
-            topic_tags=topics,
-            topic_embedding=[0.0] * 1536,
+            source_description=f"Example Feed ({raw_prompt})",
+            source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
         )
@@ -46,8 +47,8 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
         return [feed]
 
     mocker.patch(
-        "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=fake_ensure_topic_coverage,
+        "news_service.api.routes_subscriptions.ensure_prompt_coverage",
+        new=fake_ensure_prompt_coverage,
     )
 
     user = await create_user(api_client, timezone="UTC")

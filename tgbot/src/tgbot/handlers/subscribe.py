@@ -456,11 +456,13 @@ async def _create_subscription_from_state(
         await state.clear()
         return
 
-    topics_str = ", ".join(subscription.topics)
     completion_key = (
         "subscription_created_event" if delivery_mode == "event" else "subscription_created_digest"
     )
-    await _answer(event, t(ui_language, completion_key, topics=topics_str))
+    await _answer(
+        event,
+        t(ui_language, completion_key, prompt_summary=subscription.prompt_summary),
+    )
     if delivery_mode == "event":
         await state.update_data(created_subscription_id=subscription.id)
         await state.set_state(SubscribeFlow.waiting_for_recent_events_decision)

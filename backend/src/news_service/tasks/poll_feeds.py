@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import feedparser
 import httpx
@@ -88,9 +88,26 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
     if not entries:
         return 0
 
-    headlines = [e.get("title", "") for e in entries]
-    bodies = [e.get("summary", e.get("description", "")) for e in entries]
-    texts_to_embed = [f"{h} {b}" for h, b in zip(headlines, bodies, strict=True)]
+    now = datetime.now(UTC)
+    recent_entries: list[tuple[object, str, str, datetime | None]] = []
+    for entry in entries:
+        headline = entry.get("title", "")
+        body = entry.get("summary", entry.get("description", ""))
+        published_at = _published_at_from_rss_entry(entry)
+        if not _is_fresh_news_item(published_at, now):
+            continue
+        recent_entries.append((entry, headline, body, published_at))
+    if not recent_entries:
+        feed.last_polled_at = now
+        logger.info(
+            "Polled feed %s: 0 new items from %d recent entries",
+            feed.url,
+            len(entries),
+            extra={"feed_id": str(feed.id)},
+        )
+        return 0
+
+    texts_to_embed = [f"{headline} {body}" for _, headline, body, _ in recent_entries]
     try:
         embeddings = await embed_texts(texts_to_embed)
     except Exception:
@@ -102,31 +119,24 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
         return 0
 
     new_count = 0
-    for entry, embedding in zip(entries, embeddings, strict=True):
+    for (entry, headline, body, published_at), embedding in zip(
+        recent_entries,
+        embeddings,
+        strict=True,
+    ):
         url = entry.get("link", "")
         if not url:
             continue
 
-        published_str = entry.get("published", None)
-        published_at = None
-        if published_str:
-            try:
-                import email.utils
-
-                parsed_date = email.utils.parsedate_to_datetime(published_str)
-                published_at = parsed_date.astimezone(UTC)
-            except (ValueError, TypeError):
-                pass
-
         item = await upsert_news_item(
             session,
             feed_id=feed.id,
-            headline=entry.get("title", "Untitled"),
-            body=entry.get("summary", entry.get("description", "")),
+            headline=headline or "Untitled",
+            body=body,
             url=url,
             source=feed.title or feed.url,
             published_at=published_at,
-            fetched_at=datetime.now(UTC),
+            fetched_at=now,
             embedding=embedding,
         )
         if item is not None:
@@ -134,12 +144,12 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
             if isinstance(item, NewsItem):
                 await _maybe_store_upcoming_event(session, item)
 
-    feed.last_polled_at = datetime.now(UTC)
+    feed.last_polled_at = now
     logger.info(
-        "Polled feed %s: %d new items from %d entries",
+        "Polled feed %s: %d new items from %d recent entries",
         feed.url,
         new_count,
-        len(entries),
+        len(recent_entries),
         extra={"feed_id": str(feed.id)},
     )
     return new_count
@@ -160,10 +170,13 @@ async def _poll_single_telegram_channel(
         )
         return 0
 
-    if not posts:
+    now = datetime.now(UTC)
+    fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
+    if not fresh_posts:
+        feed.last_polled_at = now
         return 0
 
-    texts_to_embed = [post.body for post in posts]
+    texts_to_embed = [post.body for post in fresh_posts]
     try:
         embeddings = await embed_texts(texts_to_embed)
     except Exception:
@@ -175,9 +188,8 @@ async def _poll_single_telegram_channel(
         return 0
 
     source_name = feed.title or f"Telegram @{channel_handle}"
-    now = datetime.now(UTC)
     new_count = 0
-    for post, embedding in zip(posts, embeddings, strict=True):
+    for post, embedding in zip(fresh_posts, embeddings, strict=True):
         headline = post.body.splitlines()[0][:200]
         item = await upsert_news_item(
             session,
@@ -200,7 +212,7 @@ async def _poll_single_telegram_channel(
         "Polled Telegram channel @%s: %d new items from %d posts",
         channel_handle,
         new_count,
-        len(posts),
+        len(fresh_posts),
         extra={"feed_id": str(feed.id)},
     )
     return new_count
@@ -221,11 +233,15 @@ async def _poll_single_reddit_subreddit(
         )
         return 0
 
-    if not posts:
+    now = datetime.now(UTC)
+    fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
+    if not fresh_posts:
+        feed.last_polled_at = now
         return 0
 
     texts_to_embed = [
-        "\n\n".join(part for part in [post.title, post.body] if part).strip() for post in posts
+        "\n\n".join(part for part in [post.title, post.body] if part).strip()
+        for post in fresh_posts
     ]
     try:
         embeddings = await embed_texts(texts_to_embed)
@@ -238,9 +254,8 @@ async def _poll_single_reddit_subreddit(
         return 0
 
     source_name = feed.title or f"Reddit r/{subreddit}"
-    now = datetime.now(UTC)
     new_count = 0
-    for post, embedding in zip(posts, embeddings, strict=True):
+    for post, embedding in zip(fresh_posts, embeddings, strict=True):
         item = await upsert_news_item(
             session,
             feed_id=feed.id,
@@ -262,7 +277,7 @@ async def _poll_single_reddit_subreddit(
         "Polled Reddit subreddit r/%s: %d new items from %d posts",
         subreddit,
         new_count,
-        len(posts),
+        len(fresh_posts),
         extra={"feed_id": str(feed.id)},
     )
     return new_count
@@ -283,10 +298,13 @@ async def _poll_single_twitter_account(
         )
         return 0
 
-    if not posts:
+    now = datetime.now(UTC)
+    fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
+    if not fresh_posts:
+        feed.last_polled_at = now
         return 0
 
-    texts_to_embed = [post.body for post in posts]
+    texts_to_embed = [post.body for post in fresh_posts]
     try:
         embeddings = await embed_texts(texts_to_embed)
     except Exception:
@@ -298,9 +316,8 @@ async def _poll_single_twitter_account(
         return 0
 
     source_name = feed.title or f"X @{account}"
-    now = datetime.now(UTC)
     new_count = 0
-    for post, embedding in zip(posts, embeddings, strict=True):
+    for post, embedding in zip(fresh_posts, embeddings, strict=True):
         headline = post.body.splitlines()[0][:200]
         item = await upsert_news_item(
             session,
@@ -323,10 +340,29 @@ async def _poll_single_twitter_account(
         "Polled Twitter/X account @%s: %d new items from %d posts",
         account,
         new_count,
-        len(posts),
+        len(fresh_posts),
         extra={"feed_id": str(feed.id)},
     )
     return new_count
+
+
+def _published_at_from_rss_entry(entry: object) -> datetime | None:
+    published_str = entry.get("published", None)
+    if not published_str:
+        return None
+    try:
+        import email.utils
+
+        parsed_date = email.utils.parsedate_to_datetime(published_str)
+        return parsed_date.astimezone(UTC)
+    except (ValueError, TypeError):
+        return None
+
+
+def _is_fresh_news_item(published_at: datetime | None, now: datetime) -> bool:
+    if published_at is None:
+        return True
+    return published_at >= now - timedelta(days=settings.news_item_max_age_days)
 
 
 async def _maybe_store_upcoming_event(session: AsyncSession, item: NewsItem) -> None:

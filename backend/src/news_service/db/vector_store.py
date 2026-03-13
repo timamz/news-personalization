@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from openai import OpenAIError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
@@ -79,11 +79,11 @@ async def find_similar_feeds(
     stmt = (
         select(RssFeed)
         .where(
-            RssFeed.topic_embedding.isnot(None),
+            RssFeed.source_description_embedding.isnot(None),
             RssFeed.is_active.is_(True),
-            RssFeed.topic_embedding.cosine_distance(query_embedding) <= max_distance,
+            RssFeed.source_description_embedding.cosine_distance(query_embedding) <= max_distance,
         )
-        .order_by(RssFeed.topic_embedding.cosine_distance(query_embedding))
+        .order_by(RssFeed.source_description_embedding.cosine_distance(query_embedding))
         .limit(limit)
     )
     result = await session.execute(stmt)
@@ -95,23 +95,31 @@ async def find_similar_news(
     query_embedding: list[float],
     exclude_ids: set[uuid.UUID],
     allowed_feed_ids: set[uuid.UUID] | None = None,
+    published_after: datetime | None = None,
     limit: int = 20,
 ) -> list[NewsItem]:
     if allowed_feed_ids is not None and not allowed_feed_ids:
         return []
 
     exclude_list = list(exclude_ids) if exclude_ids else [uuid.uuid4()]
+    recent_marker = func.coalesce(NewsItem.published_at, NewsItem.fetched_at)
     where_clauses = [
         NewsItem.embedding.isnot(None),
         NewsItem.id.notin_(exclude_list),
     ]
     if allowed_feed_ids is not None:
         where_clauses.append(NewsItem.feed_id.in_(list(allowed_feed_ids)))
+    if published_after is not None:
+        where_clauses.append(recent_marker >= published_after)
 
     stmt = (
         select(NewsItem)
         .where(*where_clauses)
-        .order_by(NewsItem.embedding.cosine_distance(query_embedding))
+        .order_by(
+            NewsItem.embedding.cosine_distance(query_embedding),
+            recent_marker.desc(),
+            NewsItem.fetched_at.desc(),
+        )
         .limit(limit)
     )
     result = await session.execute(stmt)

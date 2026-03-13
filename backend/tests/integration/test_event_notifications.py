@@ -28,7 +28,7 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
         feed = RssFeed(
             url="https://example.com/events.xml",
             title="Events Feed",
-            topic_tags=["television"],
+            source_description="Television events feed",
             is_active=True,
             subscriber_count=1,
         )
@@ -39,7 +39,7 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
         subscription = Subscription(
             user_id=user.id,
             raw_prompt="Notify me when a new episode is announced",
-            topics=["Severance"],
+            prompt_summary="Severance episode announcements",
             delivery_mode="event",
             event_matching_mode="basic",
             event_constraints=[],
@@ -112,7 +112,7 @@ async def test_strict_event_notification_skips_non_matching_event(mocker) -> Non
         feed = RssFeed(
             url="https://example.com/strict-events.xml",
             title="Strict Events Feed",
-            topic_tags=["science"],
+            source_description="Science events feed",
             is_active=True,
             subscriber_count=1,
         )
@@ -123,7 +123,7 @@ async def test_strict_event_notification_skips_non_matching_event(mocker) -> Non
         subscription = Subscription(
             user_id=user.id,
             raw_prompt="Only Stanislav Drobyshevsky's own lectures",
-            topics=["Drobyshevsky"],
+            prompt_summary="Drobyshevsky lectures only",
             delivery_mode="event",
             event_matching_mode="strict_with_prefilter",
             event_constraints=[],
@@ -193,14 +193,14 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         old_feed = RssFeed(
             url="https://example.com/old-events.xml",
             title="Old Events Feed",
-            topic_tags=["science"],
+            source_description="Science events feed",
             is_active=True,
             subscriber_count=0,
         )
         current_feed = RssFeed(
             url="https://example.com/current-events.xml",
             title="Current Events Feed",
-            topic_tags=["science"],
+            source_description="Science events feed",
             is_active=True,
             subscriber_count=1,
         )
@@ -210,7 +210,7 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         old_subscription = Subscription(
             user_id=user.id,
             raw_prompt="Notify me about Drobyshevsky lectures",
-            topics=["Drobyshevsky"],
+            prompt_summary="Drobyshevsky lectures",
             delivery_mode="event",
             event_matching_mode="basic",
             event_constraints=[],
@@ -223,7 +223,7 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         current_subscription = Subscription(
             user_id=user.id,
             raw_prompt="Notify me about Drobyshevsky lectures",
-            topics=["Drobyshevsky"],
+            prompt_summary="Drobyshevsky lectures",
             delivery_mode="event",
             event_matching_mode="basic",
             event_constraints=[],

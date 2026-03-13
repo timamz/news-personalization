@@ -19,7 +19,7 @@ async def test_subscription_with_twitter_account_registers_source(
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["ai"],
+        prompt_summary="AI updates",
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -29,10 +29,10 @@ async def test_subscription_with_twitter_account_registers_source(
         "news_service.api.routes_subscriptions.parse_subscription",
         new=AsyncMock(return_value=parsed_config),
     )
-    ensure_topic_coverage = AsyncMock()
+    ensure_prompt_coverage = AsyncMock()
     mocker.patch(
-        "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=ensure_topic_coverage,
+        "news_service.api.routes_subscriptions.ensure_prompt_coverage",
+        new=ensure_prompt_coverage,
     )
 
     user = await create_user(api_client, timezone="UTC")
@@ -65,9 +65,9 @@ async def test_subscription_with_twitter_account_registers_source(
     assert feed is not None
     assert feed.title == "X @openai"
     assert feed.subscriber_count == 1
-    assert list(feed.topic_embedding) == [2.0] * 1536
+    assert list(feed.source_description_embedding) == [2.0] * 1536
     assert source_link is not None
-    ensure_topic_coverage.assert_not_awaited()
+    ensure_prompt_coverage.assert_not_awaited()
 
 
 async def test_subscription_prompt_extracts_twitter_account_source(
@@ -75,7 +75,7 @@ async def test_subscription_prompt_extracts_twitter_account_source(
     mocker,
 ) -> None:
     parsed_config = SubscriptionConfig(
-        topics=["ai"],
+        prompt_summary="AI updates",
         schedule_cron="0 8 * * *",
         schedule_was_explicit=True,
         format_instructions="brief summary",
@@ -85,10 +85,10 @@ async def test_subscription_prompt_extracts_twitter_account_source(
         "news_service.api.routes_subscriptions.parse_subscription",
         new=AsyncMock(return_value=parsed_config),
     )
-    ensure_topic_coverage = AsyncMock()
+    ensure_prompt_coverage = AsyncMock()
     mocker.patch(
-        "news_service.api.routes_subscriptions.ensure_topic_coverage",
-        new=ensure_topic_coverage,
+        "news_service.api.routes_subscriptions.ensure_prompt_coverage",
+        new=ensure_prompt_coverage,
     )
 
     user = await create_user(api_client, timezone="UTC")
@@ -119,4 +119,4 @@ async def test_subscription_prompt_extracts_twitter_account_source(
 
     assert feed is not None
     assert source_link is not None
-    ensure_topic_coverage.assert_not_awaited()
+    ensure_prompt_coverage.assert_not_awaited()

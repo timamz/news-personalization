@@ -25,7 +25,7 @@ def test_subscription_create_too_short():
 
 def test_subscription_config_valid():
     config = SubscriptionConfig(
-        topics=["AI"],
+        prompt_summary="AI news every morning",
         delivery_mode="digest",
         event_matching_mode="basic",
         schedule_cron="0 8 * * *",
@@ -33,26 +33,13 @@ def test_subscription_config_valid():
         format_instructions="detailed analysis",
         digest_language="en",
     )
-    assert config.topics == ["AI"]
     assert config.delivery_mode == "digest"
     assert config.schedule_cron == "0 8 * * *"
 
 
-def test_subscription_config_empty_topics():
-    with pytest.raises(ValidationError):
-        SubscriptionConfig(
-            topics=[],
-            delivery_mode="digest",
-            event_matching_mode="basic",
-            schedule_cron="0 8 * * *",
-            schedule_was_explicit=True,
-            digest_language="en",
-        )
-
-
 def test_subscription_config_default_format():
     config = SubscriptionConfig(
-        topics=["politics"],
+        prompt_summary="Evening AI digest",
         delivery_mode="digest",
         event_matching_mode="basic",
         schedule_cron="0 21 * * *",
@@ -64,7 +51,7 @@ def test_subscription_config_default_format():
 
 def test_subscription_config_supports_manual_mode():
     config = SubscriptionConfig(
-        topics=["politics"],
+        prompt_summary="AI news",
         schedule_cron=None,
         schedule_was_explicit=False,
         digest_language="en",
@@ -92,7 +79,7 @@ def test_subscription_update_rejects_empty_format_string():
 
 def test_strict_event_subscription_is_allowed_without_constraints():
     config = SubscriptionConfig(
-        topics=["lectures"],
+        prompt_summary="Drobyshevsky events",
         delivery_mode="event",
         event_matching_mode="strict_with_prefilter",
         schedule_cron=None,
