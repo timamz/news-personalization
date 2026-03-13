@@ -9,6 +9,7 @@ from news_service.db.session import async_session_factory
 from news_service.models.rss_feed import RssFeed
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.schemas.subscription import SubscriptionConfig
+from tests.integration.helpers import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -34,9 +35,8 @@ async def test_subscription_with_reddit_subreddit_registers_source(
         new=ensure_topic_coverage,
     )
 
-    user_response = await api_client.post("/users")
-    assert user_response.status_code == 201
-    api_key = user_response.json()["api_key"]
+    user = await create_user(api_client, timezone="UTC")
+    api_key = user["api_key"]
 
     create_response = await api_client.post(
         "/subscriptions",
@@ -93,9 +93,8 @@ async def test_subscription_prompt_extracts_reddit_subreddit_source(
         new=ensure_topic_coverage,
     )
 
-    user_response = await api_client.post("/users")
-    assert user_response.status_code == 201
-    api_key = user_response.json()["api_key"]
+    user = await create_user(api_client, timezone="UTC")
+    api_key = user["api_key"]
 
     create_response = await api_client.post(
         "/subscriptions",

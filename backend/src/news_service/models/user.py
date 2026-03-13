@@ -8,6 +8,7 @@ class User(UUIDPrimaryKey, TimestampMixin, Base):
     __tablename__ = "users"
 
     api_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    timezone: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     subscriptions: Mapped[list["Subscription"]] = relationship(  # noqa: F821
         back_populates="user", cascade="all, delete-orphan"

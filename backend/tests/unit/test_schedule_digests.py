@@ -9,23 +9,20 @@ from news_service.tasks import schedule_digests
 
 
 class _FakeResult:
-    def __init__(self, subscriptions: list[Subscription]) -> None:
-        self._subscriptions = subscriptions
+    def __init__(self, rows: list[tuple[Subscription, str | None]]) -> None:
+        self._rows = rows
 
-    def scalars(self) -> "_FakeResult":
-        return self
-
-    def all(self) -> list[Subscription]:
-        return self._subscriptions
+    def all(self) -> list[tuple[Subscription, str | None]]:
+        return self._rows
 
 
 class _FakeSession:
-    def __init__(self, subscriptions: list[Subscription]) -> None:
-        self._subscriptions = subscriptions
+    def __init__(self, rows: list[tuple[Subscription, str | None]]) -> None:
+        self._rows = rows
         self.committed = False
 
     async def execute(self, _statement) -> _FakeResult:  # noqa: ANN001
-        return _FakeResult(self._subscriptions)
+        return _FakeResult(self._rows)
 
     async def commit(self) -> None:
         self.committed = True
@@ -91,7 +88,15 @@ async def test_schedule_due_digests_queues_only_due_subscriptions(mocker):
         created_at=datetime(2026, 2, 20, 8, 0, tzinfo=UTC),
     )
 
-    session = _FakeSession([due, not_due, invalid, manual_only, event_subscription])
+    session = _FakeSession(
+        [
+            (due, "UTC"),
+            (not_due, "UTC"),
+            (invalid, "UTC"),
+            (manual_only, "UTC"),
+            (event_subscription, "UTC"),
+        ]
+    )
     mocker.patch.object(
         schedule_digests,
         "get_task_session",

@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
+from news_service.models.user import User
 from news_service.services.scheduler import is_schedule_due
 from news_service.tasks.celery_app import celery_app
 
@@ -26,14 +27,14 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
 
     async with get_task_session() as session:
         result = await session.execute(
-            select(Subscription).where(
+            select(Subscription, User.timezone).join(User, User.id == Subscription.user_id).where(
                 Subscription.is_active.is_(True),
                 Subscription.delivery_mode == "digest",
             )
         )
-        subscriptions = list(result.scalars().all())
+        subscription_rows = list(result.all())
 
-        for subscription in subscriptions:
+        for subscription, timezone_name in subscription_rows:
             if subscription.delivery_mode != "digest":
                 continue
             if not subscription.schedule_cron:
@@ -45,6 +46,7 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
                     subscription.schedule_cron,
                     last_run_at=last_run_at,
                     now=current_time,
+                    timezone_name=timezone_name or "UTC",
                 )
             except ValueError:
                 invalid_cron += 1
@@ -67,11 +69,11 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
 
     logger.info(
         "Digest scheduling scan complete: checked=%d queued=%d invalid_cron=%d",
-        len(subscriptions),
+        len(subscription_rows),
         queued,
         invalid_cron,
     )
-    return {"checked": len(subscriptions), "queued": queued, "invalid_cron": invalid_cron}
+    return {"checked": len(subscription_rows), "queued": queued, "invalid_cron": invalid_cron}
 
 
 def _truncate_to_minute(value: datetime) -> datetime:

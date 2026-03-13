@@ -283,6 +283,18 @@ wheels = [
 ]
 
 [[package]]
+name = "geonamescache"
+version = "3.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/25/16/250e1be82f1a10581361ddc0d379a37c5660f1818fed780ac42ef6706540/geonamescache-3.0.0.tar.gz", hash = "sha256:6eca4a4ceca134a6827dc36b9a0415428081129ec1d731ea496f63f9e9e450ba", size = 30675196, upload-time = "2025-09-26T19:40:29.002Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/49/6a6e14f4e99a29991f3446c4204c4fb28906bc07fc480ec11b0cad03ca43/geonamescache-3.0.0-py3-none-any.whl", hash = "sha256:a6bed16ccd0bcfe6a822541ef8fb3192fe40e14905c2cdef1f51a13232585329", size = 31965646, upload-time = "2025-09-26T19:38:48.063Z" },
+]
+
+[[package]]
 name = "greenlet"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -583,6 +595,7 @@ dependencies = [
     { name = "celery", extra = ["redis"] },
     { name = "fastapi" },
     { name = "feedparser" },
+    { name = "geonamescache" },
     { name = "httpx" },
     { name = "openai" },
     { name = "pgvector" },
@@ -609,6 +622,7 @@ requires-dist = [
     { name = "celery", extras = ["redis"], specifier = ">=5.4.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "feedparser", specifier = ">=6.0.11" },
+    { name = "geonamescache", specifier = ">=3.0.0" },
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "openai", specifier = ">=1.60.0" },
     { name = "pgvector", specifier = ">=0.3.6" },

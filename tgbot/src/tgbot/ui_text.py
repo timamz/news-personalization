@@ -10,6 +10,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "/subscribe - set up a news subscription\n"
             "/list - view your active subscriptions\n"
             "/language - change bot interface language\n"
+            "/timezone - change your time zone\n"
             "/subscription_language - change default subscription language behavior\n"
             "/help - show this message"
         ),
@@ -45,6 +46,46 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "I couldn't update existing subscriptions right now. "
             "Run /subscription_language again later."
         ),
+        "timezone_initial": (
+            "What city are you in?\n\n"
+            "This lets me deliver digests at your local time.\n"
+            "Examples: Berlin, Tbilisi, New York, or Берлин.\n"
+            "You can also send a time zone like Europe/Berlin."
+        ),
+        "timezone_current": (
+            "Current time zone: {timezone}.\n"
+            "Local time there is {local_time}.\n\n"
+            "Send a new city or time zone."
+        ),
+        "timezone_input_empty": "Send a city or time zone.",
+        "timezone_lookup_failed": "I couldn't look up that city right now. Please try again.",
+        "timezone_not_found": (
+            "I couldn't match that city. Try a clearer form like Berlin, Берлин, "
+            "or Paris, France."
+        ),
+        "timezone_ambiguous": (
+            "I found multiple matches. Choose the right one or send another city."
+        ),
+        "timezone_confirm": (
+            "I found {location}.\n"
+            "Time zone: {timezone}\n"
+            "Local time there: {local_time}\n\n"
+            "Is this correct?"
+        ),
+        "timezone_saved": (
+            "Saved.\n"
+            "{location}\n"
+            "{timezone}\n"
+            "Local time: {local_time}"
+        ),
+        "timezone_updated": (
+            "Time zone updated.\n"
+            "{location}\n"
+            "{timezone}\n"
+            "Local time: {local_time}"
+        ),
+        "timezone_save_failed": "I couldn't save the time zone. Please try again.",
+        "timezone_retry": "Send another city or time zone.",
         "choose_subscription_request": "Please describe your subscription request.",
         "failed_process_request": "Failed to process your request. Please try again.",
         "subscription_setup_expired": "Subscription setup expired. Please run /subscribe again.",
@@ -151,6 +192,8 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_change_format": "Change format",
         "button_change_language": "Change language",
         "button_deliver_here": "Deliver here",
+        "button_confirm": "Confirm",
+        "button_try_another_city": "Another city",
         "button_yes_set_schedule": "Yes, set schedule",
         "button_no_button_only": "No, send only by button",
         "button_yes_have_channels": "Yes, I have sources",
@@ -173,6 +216,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "/subscribe - создать подписку\n"
             "/list - посмотреть активные подписки\n"
             "/language - изменить язык интерфейса бота\n"
+            "/timezone - изменить часовой пояс\n"
             "/subscription_language - изменить язык подписок по умолчанию\n"
             "/help - показать это сообщение"
         ),
@@ -208,6 +252,46 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "Сейчас не удалось обновить существующие подписки. "
             "Повторите /subscription_language позже."
         ),
+        "timezone_initial": (
+            "В каком вы городе?\n\n"
+            "Это нужно, чтобы присылать дайджесты по вашему местному времени.\n"
+            "Примеры: Берлин, Тбилиси, Нью-Йорк.\n"
+            "Можно также отправить часовой пояс вроде Europe/Berlin."
+        ),
+        "timezone_current": (
+            "Текущий часовой пояс: {timezone}.\n"
+            "Локальное время там: {local_time}.\n\n"
+            "Отправьте новый город или часовой пояс."
+        ),
+        "timezone_input_empty": "Отправьте город или часовой пояс.",
+        "timezone_lookup_failed": "Сейчас не удалось определить этот город. Попробуйте ещё раз.",
+        "timezone_not_found": (
+            "Не удалось сопоставить этот город. Попробуйте вариант вроде Берлин "
+            "или Paris, France."
+        ),
+        "timezone_ambiguous": (
+            "Нашёл несколько вариантов. Выберите нужный или отправьте другой город."
+        ),
+        "timezone_confirm": (
+            "Я нашёл: {location}\n"
+            "Часовой пояс: {timezone}\n"
+            "Локальное время: {local_time}\n\n"
+            "Это правильно?"
+        ),
+        "timezone_saved": (
+            "Сохранено.\n"
+            "{location}\n"
+            "{timezone}\n"
+            "Локальное время: {local_time}"
+        ),
+        "timezone_updated": (
+            "Часовой пояс обновлён.\n"
+            "{location}\n"
+            "{timezone}\n"
+            "Локальное время: {local_time}"
+        ),
+        "timezone_save_failed": "Не удалось сохранить часовой пояс. Попробуйте ещё раз.",
+        "timezone_retry": "Отправьте другой город или часовой пояс.",
         "choose_subscription_request": "Опишите, какую подписку вы хотите.",
         "failed_process_request": "Не удалось обработать запрос. Попробуйте ещё раз.",
         "subscription_setup_expired": (
@@ -319,6 +403,8 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_change_format": "Изменить формат",
         "button_change_language": "Изменить язык",
         "button_deliver_here": "Доставлять сюда",
+        "button_confirm": "Подтвердить",
+        "button_try_another_city": "Другой город",
         "button_yes_set_schedule": "Да, настроить расписание",
         "button_no_button_only": "Нет, только по кнопке",
         "button_yes_have_channels": "Да, у меня есть источники",

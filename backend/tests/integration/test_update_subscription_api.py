@@ -8,6 +8,7 @@ from news_service.db.session import async_session_factory
 from news_service.models.rss_feed import RssFeed
 from news_service.models.subscription import Subscription
 from news_service.schemas.subscription import SubscriptionConfig
+from tests.integration.helpers import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -50,9 +51,8 @@ async def _create_user_and_subscription(
         new=fake_ensure_topic_coverage,
     )
 
-    user_response = await api_client.post("/users")
-    assert user_response.status_code == 201
-    api_key = user_response.json()["api_key"]
+    user = await create_user(api_client, timezone="UTC")
+    api_key = user["api_key"]
 
     create_response = await api_client.post(
         "/subscriptions",
@@ -186,9 +186,8 @@ async def test_create_subscription_rejects_invalid_schedule_override(
         new=fake_ensure_topic_coverage,
     )
 
-    user_response = await api_client.post("/users")
-    assert user_response.status_code == 201
-    api_key = user_response.json()["api_key"]
+    user = await create_user(api_client)
+    api_key = user["api_key"]
 
     create_response = await api_client.post(
         "/subscriptions",
@@ -240,9 +239,8 @@ async def test_create_subscription_applies_digest_language_override(
         new=fake_ensure_topic_coverage,
     )
 
-    user_response = await api_client.post("/users")
-    assert user_response.status_code == 201
-    api_key = user_response.json()["api_key"]
+    user = await create_user(api_client, timezone="UTC")
+    api_key = user["api_key"]
 
     create_response = await api_client.post(
         "/subscriptions",

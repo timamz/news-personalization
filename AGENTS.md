@@ -45,7 +45,7 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 | **Digest Dispatcher** | `tasks/schedule_digests.py` | Celery Beat (every 1 min) | Active subscriptions with schedule set | Queued digest delivery tasks |
 | **Digest** | `agents/digest.py` + `tasks/deliver_digest.py` | Dispatcher task | Subscription + unseen news from fixed subscription sources | Formatted digest text, delivery webhook call |
 
-Parser, Discovery, and Event Detector use OpenAI structured output. Discovery runs separate RSS, Telegram-channel, Reddit-subreddit, and X/Twitter-account agents in parallel. Source Poller ingests RSS feeds (`feedparser`), public Telegram channels (`t.me/s/<channel>` HTML parsing), Reddit subreddits (`/r/<subreddit>/new/` via headless Firefox + same-origin JSON fetch), and public X/Twitter accounts (`syndication.twitter.com` server-rendered timelines with rate-limit-aware retries). Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST.
+Parser, Discovery, and Event Detector use OpenAI structured output. Discovery runs separate RSS, Telegram-channel, Reddit-subreddit, and X/Twitter-account agents in parallel. Source Poller ingests RSS feeds (`feedparser`), public Telegram channels (`t.me/s/<channel>` HTML parsing), Reddit subreddits (`/r/<subreddit>/new/` via headless Firefox + same-origin JSON fetch), and public X/Twitter accounts (`syndication.twitter.com` server-rendered timelines with rate-limit-aware retries). Digest uses RAG (pgvector similarity search) then LLM generation, and delivery is done via webhook POST. Scheduled digests are evaluated in each user's stored IANA timezone.
 
 ---
 

@@ -84,6 +84,15 @@ def _validated_schedule_or_422(schedule_cron: str | None) -> str | None:
     return normalized
 
 
+def _ensure_user_timezone_for_schedule(user: User, schedule_cron: str | None) -> None:
+    if schedule_cron is None or user.timezone is not None:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Set your timezone before enabling automatic schedules",
+    )
+
+
 @router.post("/parse", response_model=SubscriptionParseResponse)
 async def parse_subscription_prompt(
     payload: SubscriptionParseRequest,
@@ -159,6 +168,7 @@ async def create_subscription(
     if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
     schedule_cron = _validated_schedule_or_422(schedule_cron)
+    _ensure_user_timezone_for_schedule(user, schedule_cron)
     digest_language = (
         _normalized_digest_language(payload.digest_language_override) or config.digest_language
     )
@@ -404,7 +414,9 @@ async def update_subscription(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Automatic schedule is available only for digest subscriptions",
             )
-        subscription.schedule_cron = _validated_schedule_or_422(updates["schedule_cron"])
+        validated_schedule = _validated_schedule_or_422(updates["schedule_cron"])
+        _ensure_user_timezone_for_schedule(user, validated_schedule)
+        subscription.schedule_cron = validated_schedule
     if "format_instructions" in updates:
         subscription.format_instructions = updates["format_instructions"]
     if "delivery_webhook_url" in updates:

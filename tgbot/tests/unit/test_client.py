@@ -35,6 +35,94 @@ async def test_register_user(client: BackendClient):
 
 
 @pytest.mark.asyncio
+async def test_get_current_user(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "user-1",
+        "api_key": "generated-key",
+        "timezone": "Europe/Berlin",
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.get = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        user = await client.get_current_user("api-key")
+
+    assert user.timezone == "Europe/Berlin"
+    mock_http.get.assert_awaited_once_with(
+        "http://test-backend:8000/users/me",
+        headers={"X-API-Key": "api-key"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_resolve_timezone(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": "resolved",
+        "candidates": [
+            {
+                "label": "Berlin, Germany",
+                "timezone": "Europe/Berlin",
+                "local_time": "2026-03-13T10:00:00+01:00",
+            }
+        ],
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.post = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        resolution = await client.resolve_timezone("api-key", "Berlin")
+
+    assert resolution.status == "resolved"
+    assert resolution.candidates[0].timezone == "Europe/Berlin"
+    mock_http.post.assert_awaited_once_with(
+        "http://test-backend:8000/users/resolve-timezone",
+        headers={"X-API-Key": "api-key"},
+        json={"query": "Berlin"},
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_user_timezone(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "user-1",
+        "api_key": "generated-key",
+        "timezone": "Europe/Berlin",
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.patch = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        user = await client.update_user_timezone("api-key", "Europe/Berlin")
+
+    assert user.timezone == "Europe/Berlin"
+    mock_http.patch.assert_awaited_once_with(
+        "http://test-backend:8000/users/me",
+        headers={"X-API-Key": "api-key"},
+        json={"timezone": "Europe/Berlin"},
+    )
+
+
+@pytest.mark.asyncio
 async def test_create_subscription(client: BackendClient):
     mock_response = MagicMock()
     mock_response.status_code = 201

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from celery.schedules import crontab
 
@@ -24,16 +25,18 @@ def is_schedule_due(
     *,
     last_run_at: datetime,
     now: datetime | None = None,
+    timezone_name: str = "UTC",
 ) -> bool:
     """Return True when cron expression is due at the provided moment."""
-    current_time = _as_utc(now or datetime.now(UTC))
+    timezone = ZoneInfo(timezone_name)
+    current_time = _as_timezone(now or datetime.now(UTC), timezone)
     schedule = parse_cron_to_celery(cron_expr)
     schedule.nowfun = lambda: current_time
-    due, _next_check_seconds = schedule.is_due(_as_utc(last_run_at))
+    due, _next_check_seconds = schedule.is_due(_as_timezone(last_run_at, timezone))
     return due
 
 
-def _as_utc(value: datetime) -> datetime:
+def _as_timezone(value: datetime, timezone: ZoneInfo) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
+        return value.replace(tzinfo=UTC).astimezone(timezone)
+    return value.astimezone(timezone)

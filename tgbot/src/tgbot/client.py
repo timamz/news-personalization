@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 import httpx
 
@@ -35,6 +36,27 @@ class RecentEventsPreviewInfo:
     body: str
 
 
+@dataclass
+class UserInfo:
+    id: str
+    api_key: str
+    timezone: str | None
+    created_at: datetime
+
+
+@dataclass
+class TimezoneCandidateInfo:
+    label: str
+    timezone: str
+    local_time: str
+
+
+@dataclass
+class TimezoneResolutionInfo:
+    status: str
+    candidates: list[TimezoneCandidateInfo]
+
+
 class BackendClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.backend_url).rstrip("/")
@@ -51,6 +73,58 @@ class BackendClient:
             response.raise_for_status()
             data = response.json()
             return data["api_key"]
+
+    async def get_current_user(self, api_key: str) -> UserInfo:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.get(
+                f"{self.base_url}/users/me",
+                headers={"X-API-Key": api_key},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return UserInfo(
+                id=data["id"],
+                api_key=data["api_key"],
+                timezone=data.get("timezone"),
+                created_at=datetime.fromisoformat(data["created_at"].replace("Z", "+00:00")),
+            )
+
+    async def resolve_timezone(self, api_key: str, query: str) -> TimezoneResolutionInfo:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/users/resolve-timezone",
+                headers={"X-API-Key": api_key},
+                json={"query": query},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return TimezoneResolutionInfo(
+                status=data["status"],
+                candidates=[
+                    TimezoneCandidateInfo(
+                        label=item["label"],
+                        timezone=item["timezone"],
+                        local_time=item["local_time"],
+                    )
+                    for item in data["candidates"]
+                ],
+            )
+
+    async def update_user_timezone(self, api_key: str, timezone: str) -> UserInfo:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.patch(
+                f"{self.base_url}/users/me",
+                headers={"X-API-Key": api_key},
+                json={"timezone": timezone},
+            )
+            response.raise_for_status()
+            data = response.json()
+            return UserInfo(
+                id=data["id"],
+                api_key=data["api_key"],
+                timezone=data.get("timezone"),
+                created_at=datetime.fromisoformat(data["created_at"].replace("Z", "+00:00")),
+            )
 
     async def create_subscription(
         self,

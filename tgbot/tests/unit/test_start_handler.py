@@ -111,6 +111,11 @@ async def test_handle_subscription_language_choice_updates_existing_subscription
     monkeypatch.setattr(start, "save_language_preference", AsyncMock())
     monkeypatch.setattr(
         start.backend,
+        "get_current_user",
+        AsyncMock(return_value=SimpleNamespace(timezone="UTC")),
+    )
+    monkeypatch.setattr(
+        start.backend,
         "list_subscriptions",
         AsyncMock(return_value=[SimpleNamespace(id="sub-1", digest_language="en")]),
     )
@@ -124,12 +129,45 @@ async def test_handle_subscription_language_choice_updates_existing_subscription
         "sub-1",
         digest_language="ru",
     )
-    state.update_data.assert_awaited_once_with(
-        setup_next_action=None,
-        setup_require_subscription_after_ui=False,
-    )
+    assert state.update_data.await_args_list[0].kwargs == {
+        "setup_next_action": None,
+        "setup_require_subscription_after_ui": False,
+    }
     state.clear.assert_awaited_once()
     assert (
         "Обновлено существующих подписок: 1." in callback.message.answer.await_args_list[0].args[0]
     )
     assert callback.message.answer.await_args_list[1].args[0] == t("ru", "welcome")
+
+
+@pytest.mark.asyncio
+async def test_handle_subscription_language_choice_prompts_timezone_when_missing(
+    monkeypatch,
+) -> None:
+    callback = _mock_callback(telegram_id=123, data=start.SUBSCRIPTION_LANGUAGE_FIXED_EN)
+    state = SimpleNamespace(
+        get_data=AsyncMock(return_value={"setup_next_action": "welcome"}),
+        update_data=AsyncMock(),
+        clear=AsyncMock(),
+        set_state=AsyncMock(),
+    )
+
+    monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="en"))
+    monkeypatch.setattr(
+        start,
+        "get_language_preference",
+        AsyncMock(return_value=LanguagePreference(mode="ask", code=None)),
+    )
+    monkeypatch.setattr(start, "save_language_preference", AsyncMock())
+    monkeypatch.setattr(start.backend, "list_subscriptions", AsyncMock(return_value=[]))
+    monkeypatch.setattr(
+        start.backend,
+        "get_current_user",
+        AsyncMock(return_value=SimpleNamespace(timezone=None)),
+    )
+
+    await start.handle_subscription_language_choice(callback, state)
+
+    state.set_state.assert_awaited_once_with(start.SetupFlow.waiting_for_timezone_city)
+    assert callback.message.answer.await_args_list[1].args[0] == t("en", "timezone_initial")
