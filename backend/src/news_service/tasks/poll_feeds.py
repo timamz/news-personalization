@@ -39,10 +39,18 @@ async def _poll_all_feeds() -> dict:
 
         total_new = 0
         for feed in feeds:
-            count = await _poll_single_feed(session, feed)
+            try:
+                count = await _poll_single_feed(session, feed)
+            except Exception:
+                await session.rollback()
+                logger.exception(
+                    "Unexpected failure while polling feed %s",
+                    feed.url,
+                    extra={"feed_id": str(feed.id)},
+                )
+                continue
+            await session.commit()
             total_new += count
-
-        await session.commit()
 
         event_item_ids = list(dict.fromkeys(session.info.pop("event_item_ids", [])))
 

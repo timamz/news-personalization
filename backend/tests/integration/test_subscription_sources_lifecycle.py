@@ -163,3 +163,80 @@ async def test_create_event_subscription_forces_schedule_off(
         assert subscription.event_matching_mode == "strict_with_prefilter"
         assert subscription.event_constraints == []
         assert subscription.schedule_cron is None
+
+
+async def test_append_subscription_sources_adds_only_new_links(
+    api_client: AsyncClient,
+    mocker,
+) -> None:
+    parsed_config = SubscriptionConfig(
+        topics=["ai"],
+        schedule_cron="0 8 * * *",
+        schedule_was_explicit=True,
+        format_instructions="brief summary",
+        digest_language="en",
+    )
+    mocker.patch(
+        "news_service.api.routes_subscriptions.parse_subscription",
+        new=AsyncMock(return_value=parsed_config),
+    )
+    ensure_topic_coverage = AsyncMock()
+    mocker.patch(
+        "news_service.api.routes_subscriptions.ensure_topic_coverage",
+        new=ensure_topic_coverage,
+    )
+
+    user = await create_user(api_client, timezone="UTC")
+    api_key = user["api_key"]
+
+    create_response = await api_client.post(
+        "/subscriptions",
+        headers={"X-API-Key": api_key},
+        json={
+            "prompt": "Track @fondnauk every morning",
+            "delivery_webhook_url": "http://frontend.example.test/deliver/1",
+            "fixed_telegram_channels": ["fondnauk"],
+            "include_discovered_sources": False,
+        },
+    )
+    assert create_response.status_code == 201
+    subscription_id = uuid.UUID(create_response.json()["id"])
+
+    append_response = await api_client.post(
+        f"/subscriptions/{subscription_id}/sources",
+        headers={"X-API-Key": api_key},
+        json={
+            "fixed_telegram_channels": ["fondnauk"],
+            "fixed_reddit_subreddits": ["badminton"],
+        },
+    )
+
+    assert append_response.status_code == 200
+    assert append_response.json() == {
+        "added_telegram_channels": [],
+        "added_reddit_subreddits": ["badminton"],
+        "added_twitter_accounts": [],
+        "added_sources_count": 1,
+    }
+
+    async with async_session_factory() as session:
+        links_result = await session.execute(
+            select(SubscriptionSource).where(SubscriptionSource.subscription_id == subscription_id)
+        )
+        links = list(links_result.scalars().all())
+        assert len(links) == 2
+
+        telegram_result = await session.execute(
+            select(RssFeed).where(RssFeed.url == "https://t.me/s/fondnauk")
+        )
+        telegram_feed = telegram_result.scalar_one_or_none()
+        reddit_result = await session.execute(
+            select(RssFeed).where(RssFeed.url == "https://www.reddit.com/r/badminton/new/")
+        )
+        reddit_feed = reddit_result.scalar_one_or_none()
+
+        assert telegram_feed is not None
+        assert reddit_feed is not None
+        assert telegram_feed.subscriber_count == 1
+        assert reddit_feed.subscriber_count == 1
+        assert ensure_topic_coverage.await_count == 0

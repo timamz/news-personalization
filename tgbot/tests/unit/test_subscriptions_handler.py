@@ -130,13 +130,16 @@ async def test_handle_edit_menu_shows_digest_edit_actions():
     first_row = keyboard.inline_keyboard[0]
     second_row = keyboard.inline_keyboard[1]
     third_row = keyboard.inline_keyboard[2]
+    fourth_row = keyboard.inline_keyboard[3]
     assert first_row[0].text == "Change schedule"
     assert first_row[0].callback_data == "edit_sched:sub-2"
     assert first_row[1].text == "Disable schedule"
     assert first_row[1].callback_data == "disable_sched:sub-2"
     assert second_row[0].text == "Change language"
     assert second_row[1].text == "Change format"
-    assert third_row[0].text == "Deliver here"
+    assert third_row[0].text == "Add sources"
+    assert third_row[0].callback_data == "add_sources:sub-2"
+    assert fourth_row[0].text == "Deliver here"
 
 
 @pytest.mark.asyncio
@@ -192,6 +195,32 @@ async def test_process_format_edit_updates_subscription(monkeypatch):
         format_instructions="bullet list with links",
     )
     message.answer.assert_awaited_once_with("Format updated.")
+    state.clear.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_process_sources_edit_appends_subscription_sources(monkeypatch):
+    message = _mock_message(telegram_id=123)
+    message.text = "@gonzo_ml r/python"
+    state = SimpleNamespace(
+        get_data=AsyncMock(return_value={"subscription_id": "sub-5"}),
+        clear=AsyncMock(),
+    )
+
+    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
+    append_sources = AsyncMock(return_value=SimpleNamespace(added_sources_count=2))
+    monkeypatch.setattr(subscriptions.backend, "append_subscription_sources", append_sources)
+
+    await subscriptions.process_sources_edit(message, state)
+
+    append_sources.assert_awaited_once_with(
+        "api-key",
+        "sub-5",
+        fixed_telegram_channels=["gonzo_ml"],
+        fixed_reddit_subreddits=["python"],
+        fixed_twitter_accounts=[],
+    )
+    message.answer.assert_awaited_once_with("Added 2 sources.")
     state.clear.assert_awaited_once()
 
 

@@ -10,6 +10,45 @@ from news_service.models.rss_feed import RssFeed
 from news_service.tasks import poll_feeds
 
 
+class _FakeResult:
+    def __init__(self, feeds: list[RssFeed]) -> None:
+        self._feeds = feeds
+
+    def scalars(self) -> "_FakeResult":
+        return self
+
+    def all(self) -> list[RssFeed]:
+        return self._feeds
+
+
+class _FakeSession:
+    def __init__(self, feeds: list[RssFeed]) -> None:
+        self._feeds = feeds
+        self.info: dict[str, list[uuid.UUID]] = {}
+        self.commits = 0
+        self.rollbacks = 0
+
+    async def execute(self, _statement) -> _FakeResult:  # noqa: ANN001
+        return _FakeResult(self._feeds)
+
+    async def commit(self) -> None:
+        self.commits += 1
+
+    async def rollback(self) -> None:
+        self.rollbacks += 1
+
+
+class _FakeSessionFactory:
+    def __init__(self, session: _FakeSession) -> None:
+        self._session = session
+
+    async def __aenter__(self) -> _FakeSession:
+        return self._session
+
+    async def __aexit__(self, _exc_type, _exc, _tb) -> bool:
+        return False
+
+
 @pytest.mark.asyncio
 async def test_fetch_rss_feed_content_retries_before_succeeding() -> None:
     response = MagicMock()
@@ -71,3 +110,52 @@ async def test_poll_single_feed_fetches_rss_with_helper(mocker) -> None:
     upsert_news_item.assert_awaited_once()
     assert feed.last_polled_at is not None
     assert feed.last_polled_at.tzinfo == UTC
+
+
+@pytest.mark.asyncio
+async def test_poll_all_feeds_commits_after_each_feed(mocker) -> None:
+    feeds = [
+        RssFeed(
+            id=uuid.uuid4(),
+            url="https://example.com/1.xml",
+            title="Feed 1",
+            topic_tags=["ai"],
+            topic_embedding=None,
+            is_active=True,
+            last_polled_at=None,
+            subscriber_count=1,
+        ),
+        RssFeed(
+            id=uuid.uuid4(),
+            url="https://example.com/2.xml",
+            title="Feed 2",
+            topic_tags=["ml"],
+            topic_embedding=None,
+            is_active=True,
+            last_polled_at=None,
+            subscriber_count=1,
+        ),
+    ]
+    session = _FakeSession(feeds)
+    mocker.patch.object(
+        poll_feeds,
+        "get_task_session",
+        return_value=_FakeSessionFactory(session),
+    )
+    mocker.patch.object(
+        poll_feeds,
+        "_poll_single_feed",
+        new=AsyncMock(side_effect=[1, 2]),
+    )
+    send_task = mocker.patch.object(poll_feeds.celery_app, "send_task")
+
+    result = await poll_feeds._poll_all_feeds()
+
+    assert result == {
+        "feeds_polled": 2,
+        "new_items": 3,
+        "event_notifications_queued": 0,
+    }
+    assert session.commits == 2
+    assert session.rollbacks == 0
+    send_task.assert_not_called()

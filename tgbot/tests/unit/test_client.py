@@ -451,3 +451,39 @@ async def test_update_subscription(client: BackendClient):
             "digest_language": "ru",
         },
     )
+
+
+@pytest.mark.asyncio
+async def test_append_subscription_sources(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "added_telegram_channels": ["gonzo_ml"],
+        "added_reddit_subreddits": ["machinelearning"],
+        "added_twitter_accounts": [],
+        "added_sources_count": 2,
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.post = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        result = await client.append_subscription_sources(
+            "api-key",
+            "sub-1",
+            fixed_telegram_channels=["gonzo_ml"],
+            fixed_reddit_subreddits=["machinelearning"],
+        )
+
+    assert result.added_sources_count == 2
+    mock_http.post.assert_awaited_once_with(
+        "http://test-backend:8000/subscriptions/sub-1/sources",
+        headers={"X-API-Key": "api-key"},
+        json={
+            "fixed_telegram_channels": ["gonzo_ml"],
+            "fixed_reddit_subreddits": ["machinelearning"],
+        },
+    )

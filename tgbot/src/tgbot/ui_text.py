@@ -177,6 +177,13 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "edit_format_empty": "Please send the new format instructions.",
         "format_updated": "Format updated.",
         "format_update_failed": "Failed to update format. Please try again.",
+        "edit_sources_prompt": (
+            "Send sources to add "
+            "(for example: @channel_one r/python t.me/channel x.com/OpenAI)."
+        ),
+        "sources_added": "Added {count} sources.",
+        "sources_already_added": "Those sources are already included.",
+        "sources_add_failed": "Failed to add sources. Please try again.",
         "delivery_updated_here": "Delivery updated to this chat.",
         "delivery_update_failed": "Failed to update delivery. Try again.",
         "subscription_deleted": "Subscription deleted.",
@@ -191,6 +198,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_disable_schedule": "Disable schedule",
         "button_change_format": "Change format",
         "button_change_language": "Change language",
+        "button_add_edit_sources": "Add sources",
         "button_deliver_here": "Deliver here",
         "button_confirm": "Confirm",
         "button_try_another_city": "Another city",
@@ -388,6 +396,13 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "edit_format_empty": "Пожалуйста, отправьте новые инструкции по формату.",
         "format_updated": "Формат обновлён.",
         "format_update_failed": "Не удалось обновить формат. Попробуйте ещё раз.",
+        "edit_sources_prompt": (
+            "Отправьте источники, которые хотите добавить "
+            "(например: @channel_one r/python t.me/channel x.com/OpenAI)."
+        ),
+        "sources_added": "Добавлено источников: {count}.",
+        "sources_already_added": "Эти источники уже добавлены.",
+        "sources_add_failed": "Не удалось добавить источники. Попробуйте ещё раз.",
         "delivery_updated_here": "Доставка обновлена на этот чат.",
         "delivery_update_failed": "Не удалось обновить доставку. Попробуйте ещё раз.",
         "subscription_deleted": "Подписка удалена.",
@@ -402,6 +417,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_disable_schedule": "Отключить расписание",
         "button_change_format": "Изменить формат",
         "button_change_language": "Изменить язык",
+        "button_add_edit_sources": "Добавить источники",
         "button_deliver_here": "Доставлять сюда",
         "button_confirm": "Подтвердить",
         "button_try_another_city": "Другой город",

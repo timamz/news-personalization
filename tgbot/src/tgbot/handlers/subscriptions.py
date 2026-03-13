@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from tgbot.client import BackendClient
 from tgbot.handlers import start as start_handler
 from tgbot.language import UILanguage
+from tgbot.source_parser import parse_source_tokens
 from tgbot.storage import get_ui_language
 from tgbot.ui_text import interface_language_name, t
 from tgbot.user_registry import ensure_api_key
@@ -28,11 +29,13 @@ EDIT_FORMAT_PREFIX = "edit_fmt:"
 EDIT_LANGUAGE_PREFIX = "edit_lang:"
 SET_LANGUAGE_PREFIX = "set_lang:"
 DELIVER_HERE_PREFIX = "deliver_here:"
+ADD_SOURCES_PREFIX = "add_sources:"
 
 
 class EditFlow(StatesGroup):
     waiting_for_schedule = State()
     waiting_for_format = State()
+    waiting_for_sources = State()
 
 
 @router.message(Command("list"))
@@ -246,6 +249,17 @@ async def handle_edit_format(callback: CallbackQuery, state: FSMContext) -> None
         )
 
 
+@router.callback_query(lambda c: c.data and c.data.startswith(ADD_SOURCES_PREFIX))
+async def handle_add_sources(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    subscription_id = _subscription_id_from_callback(callback.data, ADD_SOURCES_PREFIX)
+    await state.set_state(EditFlow.waiting_for_sources)
+    await state.update_data(subscription_id=subscription_id)
+    if callback.message:
+        ui_language = await _ui_language_or_default(callback.from_user.id)
+        await callback.message.answer(t(ui_language, "edit_sources_prompt"))
+
+
 @router.message(EditFlow.waiting_for_format)
 async def process_format_edit(message: types.Message, state: FSMContext) -> None:
     format_instructions = (message.text or "").strip()
@@ -273,6 +287,44 @@ async def process_format_edit(message: types.Message, state: FSMContext) -> None
     except Exception:
         logger.exception("Failed to update format for subscription %s", subscription_id)
         await message.answer(t(ui_language, "format_update_failed"))
+    finally:
+        await state.clear()
+
+
+@router.message(EditFlow.waiting_for_sources)
+async def process_sources_edit(message: types.Message, state: FSMContext) -> None:
+    ui_language = await _ui_language_or_default(message.from_user.id)
+    channels, subreddits, twitter_accounts = parse_source_tokens(message.text or "")
+    if not channels and not subreddits and not twitter_accounts:
+        await message.answer(t(ui_language, "sources_parse_failed"))
+        return
+
+    state_data = await state.get_data()
+    subscription_id = state_data.get("subscription_id")
+    if not isinstance(subscription_id, str):
+        await message.answer(t(ui_language, "edit_session_expired"))
+        await state.clear()
+        return
+
+    telegram_id = message.from_user.id
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+        result = await backend.append_subscription_sources(
+            api_key,
+            subscription_id,
+            fixed_telegram_channels=channels,
+            fixed_reddit_subreddits=subreddits,
+            fixed_twitter_accounts=twitter_accounts,
+        )
+        if result.added_sources_count == 0:
+            await message.answer(t(ui_language, "sources_already_added"))
+        else:
+            await message.answer(
+                t(ui_language, "sources_added", count=result.added_sources_count)
+            )
+    except Exception:
+        logger.exception("Failed to append sources for subscription %s", subscription_id)
+        await message.answer(t(ui_language, "sources_add_failed"))
     finally:
         await state.clear()
 
@@ -347,6 +399,14 @@ def _edit_keyboard(
             InlineKeyboardButton(
                 text=t(ui_language, "button_change_format"),
                 callback_data=f"{EDIT_FORMAT_PREFIX}{subscription_id}",
+            ),
+        ]
+    )
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                text=t(ui_language, "button_add_edit_sources"),
+                callback_data=f"{ADD_SOURCES_PREFIX}{subscription_id}",
             ),
         ]
     )

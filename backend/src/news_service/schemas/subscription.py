@@ -141,6 +141,38 @@ class SubscriptionUpdate(BaseModel):
     )
 
 
+class SubscriptionSourcesAppendRequest(BaseModel):
+    fixed_telegram_channels: list[str] = Field(
+        default_factory=list,
+        description="Telegram channels to append to this subscription",
+    )
+    fixed_reddit_subreddits: list[str] = Field(
+        default_factory=list,
+        description="Reddit subreddits to append to this subscription",
+    )
+    fixed_twitter_accounts: list[str] = Field(
+        default_factory=list,
+        description="Twitter/X accounts to append to this subscription",
+    )
+
+    @model_validator(mode="after")
+    def validate_has_sources(self) -> "SubscriptionSourcesAppendRequest":
+        if (
+            not self.fixed_telegram_channels
+            and not self.fixed_reddit_subreddits
+            and not self.fixed_twitter_accounts
+        ):
+            raise ValueError("At least one source must be provided")
+        return self
+
+
+class SubscriptionSourcesAppendResponse(BaseModel):
+    added_telegram_channels: list[str]
+    added_reddit_subreddits: list[str]
+    added_twitter_accounts: list[str]
+    added_sources_count: int
+
+
 class SubscriptionParseRequest(BaseModel):
     prompt: str = Field(..., min_length=5, description="Natural language subscription request")
 

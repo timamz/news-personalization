@@ -57,6 +57,14 @@ class TimezoneResolutionInfo:
     candidates: list[TimezoneCandidateInfo]
 
 
+@dataclass
+class SubscriptionSourcesAppendInfo:
+    added_telegram_channels: list[str]
+    added_reddit_subreddits: list[str]
+    added_twitter_accounts: list[str]
+    added_sources_count: int
+
+
 class BackendClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.backend_url).rstrip("/")
@@ -271,6 +279,38 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
                 digest_language=data["digest_language"],
+            )
+
+    async def append_subscription_sources(
+        self,
+        api_key: str,
+        subscription_id: str,
+        *,
+        fixed_telegram_channels: list[str] | None = None,
+        fixed_reddit_subreddits: list[str] | None = None,
+        fixed_twitter_accounts: list[str] | None = None,
+    ) -> SubscriptionSourcesAppendInfo:
+        payload: dict[str, object] = {}
+        if fixed_telegram_channels is not None:
+            payload["fixed_telegram_channels"] = fixed_telegram_channels
+        if fixed_reddit_subreddits is not None:
+            payload["fixed_reddit_subreddits"] = fixed_reddit_subreddits
+        if fixed_twitter_accounts is not None:
+            payload["fixed_twitter_accounts"] = fixed_twitter_accounts
+
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/{subscription_id}/sources",
+                headers={"X-API-Key": api_key},
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return SubscriptionSourcesAppendInfo(
+                added_telegram_channels=data["added_telegram_channels"],
+                added_reddit_subreddits=data["added_reddit_subreddits"],
+                added_twitter_accounts=data["added_twitter_accounts"],
+                added_sources_count=data["added_sources_count"],
             )
 
     async def list_recent_events(

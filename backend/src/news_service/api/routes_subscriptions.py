@@ -25,6 +25,8 @@ from news_service.schemas.subscription import (
     SubscriptionParseRequest,
     SubscriptionParseResponse,
     SubscriptionResponse,
+    SubscriptionSourcesAppendRequest,
+    SubscriptionSourcesAppendResponse,
     SubscriptionUpdate,
 )
 from news_service.services.coverage import (
@@ -36,10 +38,22 @@ from news_service.services.coverage import (
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
 )
-from news_service.services.reddit import extract_reddit_subreddits, normalize_reddit_subreddit
+from news_service.services.reddit import (
+    build_reddit_subreddit_url,
+    extract_reddit_subreddits,
+    normalize_reddit_subreddit,
+)
 from news_service.services.scheduler import parse_cron_to_celery
-from news_service.services.telegram import extract_telegram_channels, normalize_telegram_channel
-from news_service.services.twitter import extract_twitter_accounts, normalize_twitter_account
+from news_service.services.telegram import (
+    build_telegram_channel_url,
+    extract_telegram_channels,
+    normalize_telegram_channel,
+)
+from news_service.services.twitter import (
+    build_twitter_account_url,
+    extract_twitter_accounts,
+    normalize_twitter_account,
+)
 from news_service.tasks.deliver_digest import deliver_digest
 
 logger = logging.getLogger(__name__)
@@ -54,6 +68,60 @@ async def _build_subscription_embeddings(
     topic_query = " ".join(topics)
     raw_prompt_embedding, topics_embedding = await embed_texts([raw_prompt, topic_query])
     return raw_prompt_embedding, topics_embedding
+
+
+def _normalize_fixed_sources(
+    telegram_channels: list[str],
+    reddit_subreddits: list[str],
+    twitter_accounts: list[str],
+) -> tuple[list[str], list[str], list[str]]:
+    try:
+        return (
+            _dedupe_strings(
+                [normalize_telegram_channel(channel) for channel in telegram_channels]
+            ),
+            _dedupe_strings(
+                [normalize_reddit_subreddit(subreddit) for subreddit in reddit_subreddits]
+            ),
+            _dedupe_strings(
+                [normalize_twitter_account(account) for account in twitter_accounts]
+            ),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+def _dedupe_strings(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
+
+
+async def _existing_subscription_source_urls(
+    session: AsyncSession,
+    subscription_id: uuid.UUID,
+) -> set[str]:
+    result = await session.execute(
+        select(RssFeed.url)
+        .join(SubscriptionSource, SubscriptionSource.feed_id == RssFeed.id)
+        .where(SubscriptionSource.subscription_id == subscription_id)
+    )
+    return {url for url in result.scalars().all()}
+
+
+async def _topics_embedding_for_subscription(subscription: Subscription) -> list[float]:
+    if subscription.topics_embedding is not None:
+        return list(subscription.topics_embedding)
+    topic_query = " ".join(subscription.topics)
+    return (await embed_texts([topic_query]))[0]
 
 
 def _normalized_digest_language(value: str | None) -> str | None:
@@ -133,21 +201,11 @@ async def create_subscription(
     prompt_channels = extract_telegram_channels(payload.prompt)
     prompt_subreddits = extract_reddit_subreddits(payload.prompt)
     prompt_twitter_accounts = extract_twitter_accounts(payload.prompt)
-    try:
-        explicit_channels = [
-            normalize_telegram_channel(channel) for channel in payload.fixed_telegram_channels
-        ]
-        explicit_subreddits = [
-            normalize_reddit_subreddit(subreddit) for subreddit in payload.fixed_reddit_subreddits
-        ]
-        explicit_twitter_accounts = [
-            normalize_twitter_account(account) for account in payload.fixed_twitter_accounts
-        ]
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    explicit_channels, explicit_subreddits, explicit_twitter_accounts = _normalize_fixed_sources(
+        payload.fixed_telegram_channels,
+        payload.fixed_reddit_subreddits,
+        payload.fixed_twitter_accounts,
+    )
     # For backward compatibility with older clients that only send a prompt.
     telegram_channels = explicit_channels or prompt_channels
     reddit_subreddits = explicit_subreddits or prompt_subreddits
@@ -249,6 +307,102 @@ async def create_subscription(
         extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
     )
     return subscription
+
+
+@router.post(
+    "/{subscription_id}/sources",
+    response_model=SubscriptionSourcesAppendResponse,
+)
+async def append_subscription_sources(
+    subscription_id: str,
+    payload: SubscriptionSourcesAppendRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SubscriptionSourcesAppendResponse:
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
+        )
+
+    telegram_channels, reddit_subreddits, twitter_accounts = _normalize_fixed_sources(
+        payload.fixed_telegram_channels,
+        payload.fixed_reddit_subreddits,
+        payload.fixed_twitter_accounts,
+    )
+    existing_urls = await _existing_subscription_source_urls(session, subscription.id)
+
+    added_telegram_channels = [
+        channel
+        for channel in telegram_channels
+        if build_telegram_channel_url(channel) not in existing_urls
+    ]
+    added_reddit_subreddits = [
+        subreddit
+        for subreddit in reddit_subreddits
+        if build_reddit_subreddit_url(subreddit) not in existing_urls
+    ]
+    added_twitter_accounts = [
+        account
+        for account in twitter_accounts
+        if build_twitter_account_url(account) not in existing_urls
+    ]
+
+    topics_embedding = await _topics_embedding_for_subscription(subscription)
+    selected_sources: dict[uuid.UUID, RssFeed] = {}
+    if added_telegram_channels:
+        telegram_sources = await ensure_telegram_channel_coverage(
+            session,
+            added_telegram_channels,
+            subscription.topics,
+            topics_embedding,
+        )
+        for source in telegram_sources:
+            selected_sources[source.id] = source
+    if added_reddit_subreddits:
+        reddit_sources = await ensure_reddit_subreddit_coverage(
+            session,
+            added_reddit_subreddits,
+            subscription.topics,
+            topics_embedding,
+        )
+        for source in reddit_sources:
+            selected_sources[source.id] = source
+    if added_twitter_accounts:
+        twitter_sources = await ensure_twitter_account_coverage(
+            session,
+            added_twitter_accounts,
+            subscription.topics,
+            topics_embedding,
+        )
+        for source in twitter_sources:
+            selected_sources[source.id] = source
+
+    for feed_id in selected_sources:
+        session.add(SubscriptionSource(subscription_id=subscription.id, feed_id=feed_id))
+
+    await session.commit()
+
+    added_sources_count = (
+        len(added_telegram_channels)
+        + len(added_reddit_subreddits)
+        + len(added_twitter_accounts)
+    )
+    return SubscriptionSourcesAppendResponse(
+        added_telegram_channels=added_telegram_channels,
+        added_reddit_subreddits=added_reddit_subreddits,
+        added_twitter_accounts=added_twitter_accounts,
+        added_sources_count=added_sources_count,
+    )
 
 
 @router.get("", response_model=list[SubscriptionResponse])
