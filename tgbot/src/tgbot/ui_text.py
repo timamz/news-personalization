@@ -173,10 +173,19 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_update_failed": "Failed to update schedule. Please try again.",
         "schedule_disabled": "Automatic schedule disabled.",
         "schedule_disable_failed": "Failed to update schedule. Try again.",
-        "edit_format_prompt": "Send new format instructions.",
-        "edit_format_empty": "Please send the new format instructions.",
-        "format_updated": "Format updated.",
-        "format_update_failed": "Failed to update format. Please try again.",
+        "edit_request_prompt": "Describe what should change in this subscription.",
+        "edit_request_empty": "Please describe what should change.",
+        "edit_request_preview": (
+            "Proposed update:\n\n"
+            "Request: {prompt_summary}\n"
+            "Format: {format_instructions}\n"
+            "Change: {change_summary}\n\n"
+            "Sources, schedule, and language stay unchanged."
+        ),
+        "edit_request_failed": "Failed to prepare the update. Please try again.",
+        "edit_request_applied": "Subscription updated.\n\nRequest: {prompt_summary}",
+        "edit_request_apply_failed": "Failed to save the update. Please try again.",
+        "edit_request_cancelled": "Update cancelled.",
         "edit_sources_prompt": (
             "Send sources to add "
             "(for example: @channel_one r/python t.me/channel x.com/OpenAI)."
@@ -184,8 +193,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "sources_added": "Added {count} sources.",
         "sources_already_added": "Those sources are already included.",
         "sources_add_failed": "Failed to add sources. Please try again.",
-        "delivery_updated_here": "Delivery updated to this chat.",
-        "delivery_update_failed": "Failed to update delivery. Try again.",
         "subscription_deleted": "Subscription deleted.",
         "subscription_delete_failed": "Failed to delete. Try again.",
         "button_english": "English",
@@ -196,11 +203,12 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_delete": "Delete",
         "button_change_schedule": "Change schedule",
         "button_disable_schedule": "Disable schedule",
-        "button_change_format": "Change format",
+        "button_edit_request": "Edit request",
         "button_change_language": "Change language",
         "button_add_edit_sources": "Add sources",
-        "button_deliver_here": "Deliver here",
         "button_confirm": "Confirm",
+        "button_revise": "Revise",
+        "button_cancel": "Cancel",
         "button_try_another_city": "Another city",
         "button_yes_set_schedule": "Yes, set schedule",
         "button_no_button_only": "No, send only by button",
@@ -393,10 +401,19 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_update_failed": "Не удалось обновить расписание. Попробуйте ещё раз.",
         "schedule_disabled": "Автоматическое расписание отключено.",
         "schedule_disable_failed": "Не удалось обновить расписание. Попробуйте ещё раз.",
-        "edit_format_prompt": "Отправьте новые инструкции по формату.",
-        "edit_format_empty": "Пожалуйста, отправьте новые инструкции по формату.",
-        "format_updated": "Формат обновлён.",
-        "format_update_failed": "Не удалось обновить формат. Попробуйте ещё раз.",
+        "edit_request_prompt": "Опишите, что нужно изменить в этой подписке.",
+        "edit_request_empty": "Пожалуйста, опишите, что нужно изменить.",
+        "edit_request_preview": (
+            "Предлагаемое обновление:\n\n"
+            "Запрос: {prompt_summary}\n"
+            "Формат: {format_instructions}\n"
+            "Изменение: {change_summary}\n\n"
+            "Источники, расписание и язык не изменятся."
+        ),
+        "edit_request_failed": "Не удалось подготовить обновление. Попробуйте ещё раз.",
+        "edit_request_applied": "Подписка обновлена.\n\nЗапрос: {prompt_summary}",
+        "edit_request_apply_failed": "Не удалось сохранить обновление. Попробуйте ещё раз.",
+        "edit_request_cancelled": "Обновление отменено.",
         "edit_sources_prompt": (
             "Отправьте источники, которые хотите добавить "
             "(например: @channel_one r/python t.me/channel x.com/OpenAI)."
@@ -404,8 +421,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "sources_added": "Добавлено источников: {count}.",
         "sources_already_added": "Эти источники уже добавлены.",
         "sources_add_failed": "Не удалось добавить источники. Попробуйте ещё раз.",
-        "delivery_updated_here": "Доставка обновлена на этот чат.",
-        "delivery_update_failed": "Не удалось обновить доставку. Попробуйте ещё раз.",
         "subscription_deleted": "Подписка удалена.",
         "subscription_delete_failed": "Не удалось удалить подписку. Попробуйте ещё раз.",
         "button_english": "English",
@@ -416,11 +431,12 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_delete": "Удалить",
         "button_change_schedule": "Изменить расписание",
         "button_disable_schedule": "Отключить расписание",
-        "button_change_format": "Изменить формат",
+        "button_edit_request": "Изменить запрос",
         "button_change_language": "Изменить язык",
         "button_add_edit_sources": "Добавить источники",
-        "button_deliver_here": "Доставлять сюда",
         "button_confirm": "Подтвердить",
+        "button_revise": "Уточнить",
+        "button_cancel": "Отмена",
         "button_try_another_city": "Другой город",
         "button_yes_set_schedule": "Да, настроить расписание",
         "button_no_button_only": "Нет, только по кнопке",

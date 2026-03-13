@@ -76,7 +76,8 @@ async def test_generate_digest_passes_language_to_composer(mocker) -> None:
     subscription = SimpleNamespace(
         id=subscription_id,
         raw_prompt="AI lectures every morning",
-        raw_prompt_embedding=[0.0] * 1536,
+        canonical_prompt="AI lectures every morning",
+        canonical_prompt_embedding=[0.0] * 1536,
         prompt_summary="AI lectures every morning",
         format_instructions="brief summary",
         digest_language="ru",
@@ -116,6 +117,7 @@ async def test_generate_digest_returns_none_without_fixed_sources(mocker) -> Non
     subscription = SimpleNamespace(
         id=uuid.uuid4(),
         raw_prompt="AI lectures every morning",
+        canonical_prompt="AI lectures every morning",
         prompt_summary="AI lectures every morning",
         format_instructions="brief summary",
         digest_language="ru",
@@ -145,7 +147,8 @@ async def test_generate_digest_falls_back_to_raw_prompt_embedding_when_missing(m
     subscription = SimpleNamespace(
         id=uuid.uuid4(),
         raw_prompt="AI lectures every morning",
-        raw_prompt_embedding=None,
+        canonical_prompt="AI lectures every morning",
+        canonical_prompt_embedding=None,
         prompt_summary="AI lectures every morning",
         format_instructions="brief summary",
         digest_language="ru",
@@ -163,7 +166,7 @@ async def test_generate_digest_falls_back_to_raw_prompt_embedding_when_missing(m
 
     assert result == "digest"
     embed_text.assert_awaited_once_with("AI lectures every morning")
-    assert subscription.raw_prompt_embedding == [0.0] * 1536
+    assert subscription.canonical_prompt_embedding == [0.0] * 1536
 
 
 @pytest.mark.asyncio
@@ -180,7 +183,8 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
     subscription = SimpleNamespace(
         id=uuid.uuid4(),
         raw_prompt="Latest ML papers",
-        raw_prompt_embedding=[0.0] * 1536,
+        canonical_prompt="Latest ML papers",
+        canonical_prompt_embedding=[0.0] * 1536,
         prompt_summary="Latest ML papers",
         format_instructions="brief summary",
         digest_language="en",
@@ -213,7 +217,8 @@ async def test_generate_digest_excludes_reddit_sources_for_research_prompt(mocke
     subscription = SimpleNamespace(
         id=uuid.uuid4(),
         raw_prompt="Хочу получать сводку по самым актуальным научным статьям в ML / AI",
-        raw_prompt_embedding=[0.0] * 1536,
+        canonical_prompt="Хочу получать сводку по самым актуальным научным статьям в ML / AI",
+        canonical_prompt_embedding=[0.0] * 1536,
         prompt_summary="Актуальные научные статьи в ML / AI",
         format_instructions="brief summary",
         digest_language="ru",

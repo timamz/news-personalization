@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.parser import parse_schedule_preference, parse_subscription
+from news_service.agents.subscription_edit import propose_subscription_edit
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
 from news_service.db.vector_store import embed_text
@@ -22,6 +23,9 @@ from news_service.schemas.subscription import (
     ScheduleParseRequest,
     ScheduleParseResponse,
     SubscriptionCreate,
+    SubscriptionEditApplyRequest,
+    SubscriptionEditProposalRequest,
+    SubscriptionEditProposalResponse,
     SubscriptionParseRequest,
     SubscriptionParseResponse,
     SubscriptionResponse,
@@ -64,6 +68,13 @@ router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 async def _subscription_prompt_embedding(raw_prompt: str) -> list[float]:
     return await embed_text(raw_prompt)
+
+
+def _canonical_prompt(subscription: Subscription) -> str:
+    prompt = subscription.canonical_prompt.strip()
+    if prompt:
+        return prompt
+    return subscription.raw_prompt
 
 
 def _normalize_fixed_sources(
@@ -153,7 +164,7 @@ def _ensure_user_timezone_for_schedule(user: User, schedule_cron: str | None) ->
 def _ensure_prompt_summary(subscription: Subscription) -> str:
     if subscription.prompt_summary.strip():
         return subscription.prompt_summary
-    subscription.prompt_summary = build_prompt_summary(subscription.raw_prompt)
+    subscription.prompt_summary = build_prompt_summary(_canonical_prompt(subscription))
     return subscription.prompt_summary
 
 
@@ -227,12 +238,15 @@ async def create_subscription(
         _normalized_digest_language(payload.digest_language_override) or config.digest_language
     )
     raw_prompt_embedding = await _subscription_prompt_embedding(payload.prompt)
+    canonical_prompt_embedding = list(raw_prompt_embedding)
     prompt_summary = config.prompt_summary or build_prompt_summary(payload.prompt)
 
     subscription = Subscription(
         user_id=user.id,
         raw_prompt=payload.prompt,
         raw_prompt_embedding=raw_prompt_embedding,
+        canonical_prompt=payload.prompt,
+        canonical_prompt_embedding=canonical_prompt_embedding,
         prompt_summary=prompt_summary,
         delivery_mode=delivery_mode,
         event_matching_mode=event_matching_mode,
@@ -274,7 +288,7 @@ async def create_subscription(
         discovered_sources = await ensure_prompt_coverage(
             session,
             payload.prompt,
-            raw_prompt_embedding,
+            canonical_prompt_embedding,
         )
         for source in discovered_sources:
             selected_sources[source.id] = source
@@ -409,6 +423,77 @@ async def list_subscriptions(
     if updated:
         await session.commit()
     return subscriptions
+
+
+@router.post(
+    "/{subscription_id}/edit/propose",
+    response_model=SubscriptionEditProposalResponse,
+)
+async def propose_subscription_edit_for_subscription(
+    subscription_id: str,
+    payload: SubscriptionEditProposalRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> SubscriptionEditProposalResponse:
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
+        )
+
+    canonical_prompt = payload.draft_canonical_prompt or _canonical_prompt(subscription)
+    format_instructions = payload.draft_format_instructions or subscription.format_instructions
+    return await propose_subscription_edit(
+        canonical_prompt=canonical_prompt,
+        format_instructions=format_instructions,
+        change_request=payload.change_request,
+    )
+
+
+@router.post(
+    "/{subscription_id}/edit/apply",
+    response_model=SubscriptionResponse,
+)
+async def apply_subscription_edit(
+    subscription_id: str,
+    payload: SubscriptionEditApplyRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Subscription:
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
+        )
+
+    subscription.canonical_prompt = payload.canonical_prompt.strip()
+    subscription.canonical_prompt_embedding = await _subscription_prompt_embedding(
+        subscription.canonical_prompt
+    )
+    subscription.prompt_summary = payload.prompt_summary.strip()
+    subscription.format_instructions = payload.format_instructions.strip()
+
+    await session.commit()
+    await session.refresh(subscription)
+    return subscription
 
 
 @router.get(

@@ -17,6 +17,8 @@ class SubscriptionInfo:
     schedule_cron: str | None
     format_instructions: str
     digest_language: str
+    raw_prompt: str | None = None
+    canonical_prompt: str | None = None
 
 
 @dataclass
@@ -63,6 +65,14 @@ class SubscriptionSourcesAppendInfo:
     added_reddit_subreddits: list[str]
     added_twitter_accounts: list[str]
     added_sources_count: int
+
+
+@dataclass
+class SubscriptionEditProposalInfo:
+    canonical_prompt: str
+    prompt_summary: str
+    format_instructions: str
+    change_summary: str
 
 
 class BackendClient:
@@ -186,6 +196,8 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
                 digest_language=data["digest_language"],
+                raw_prompt=data.get("raw_prompt"),
+                canonical_prompt=data.get("canonical_prompt"),
             )
 
     async def parse_subscription_prompt(self, api_key: str, prompt: str) -> SubscriptionParseInfo:
@@ -232,6 +244,8 @@ class BackendClient:
                     schedule_cron=s["schedule_cron"],
                     format_instructions=s["format_instructions"],
                     digest_language=s["digest_language"],
+                    raw_prompt=s.get("raw_prompt"),
+                    canonical_prompt=s.get("canonical_prompt"),
                 )
                 for s in response.json()
             ]
@@ -279,6 +293,8 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
                 digest_language=data["digest_language"],
+                raw_prompt=data.get("raw_prompt"),
+                canonical_prompt=data.get("canonical_prompt"),
             )
 
     async def append_subscription_sources(
@@ -311,6 +327,68 @@ class BackendClient:
                 added_reddit_subreddits=data["added_reddit_subreddits"],
                 added_twitter_accounts=data["added_twitter_accounts"],
                 added_sources_count=data["added_sources_count"],
+            )
+
+    async def propose_subscription_edit(
+        self,
+        api_key: str,
+        subscription_id: str,
+        *,
+        change_request: str,
+        draft_canonical_prompt: str | None = None,
+        draft_format_instructions: str | None = None,
+    ) -> SubscriptionEditProposalInfo:
+        payload: dict[str, object] = {"change_request": change_request}
+        if draft_canonical_prompt is not None:
+            payload["draft_canonical_prompt"] = draft_canonical_prompt
+        if draft_format_instructions is not None:
+            payload["draft_format_instructions"] = draft_format_instructions
+
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/{subscription_id}/edit/propose",
+                headers={"X-API-Key": api_key},
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return SubscriptionEditProposalInfo(
+                canonical_prompt=data["canonical_prompt"],
+                prompt_summary=data["prompt_summary"],
+                format_instructions=data["format_instructions"],
+                change_summary=data["change_summary"],
+            )
+
+    async def apply_subscription_edit(
+        self,
+        api_key: str,
+        subscription_id: str,
+        *,
+        canonical_prompt: str,
+        prompt_summary: str,
+        format_instructions: str,
+    ) -> SubscriptionInfo:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/{subscription_id}/edit/apply",
+                headers={"X-API-Key": api_key},
+                json={
+                    "canonical_prompt": canonical_prompt,
+                    "prompt_summary": prompt_summary,
+                    "format_instructions": format_instructions,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return SubscriptionInfo(
+                id=data["id"],
+                prompt_summary=data["prompt_summary"],
+                delivery_mode=data["delivery_mode"],
+                schedule_cron=data["schedule_cron"],
+                format_instructions=data["format_instructions"],
+                digest_language=data["digest_language"],
+                raw_prompt=data.get("raw_prompt"),
+                canonical_prompt=data.get("canonical_prompt"),
             )
 
     async def list_recent_events(

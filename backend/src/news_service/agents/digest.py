@@ -24,6 +24,11 @@ settings = get_settings()
 _client = openai_client
 
 
+def _effective_prompt(subscription: Subscription) -> str:
+    canonical_prompt = getattr(subscription, "canonical_prompt", "")
+    return canonical_prompt.strip() or subscription.raw_prompt
+
+
 async def generate_digest(session: AsyncSession, subscription: Subscription) -> str | None:
     sent_result = await session.execute(
         select(SentItem.news_item_id, SentItem.sent_at).where(
@@ -43,11 +48,11 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
         )
         return None
 
-    query_embedding = getattr(subscription, "raw_prompt_embedding", None)
+    query_embedding = getattr(subscription, "canonical_prompt_embedding", None)
     if query_embedding is None:
-        query_text = subscription.raw_prompt.strip() or subscription.prompt_summary.strip()
+        query_text = _effective_prompt(subscription) or subscription.prompt_summary.strip()
         query_embedding = await embed_text(query_text)
-        subscription.raw_prompt_embedding = query_embedding
+        subscription.canonical_prompt_embedding = query_embedding
 
     news_items = await find_similar_news(
         session,
@@ -174,14 +179,14 @@ async def _source_feed_ids_for_digest(
 
 def _should_exclude_reddit_sources(subscription: Subscription) -> bool:
     return _is_research_focused_subscription(subscription) and not extract_reddit_subreddits(
-        subscription.raw_prompt
+        _effective_prompt(subscription)
     )
 
 
 def _is_research_focused_subscription(subscription: Subscription) -> bool:
     text = " ".join(
         part
-        for part in [subscription.raw_prompt, getattr(subscription, "prompt_summary", "")]
+        for part in [_effective_prompt(subscription), getattr(subscription, "prompt_summary", "")]
         if part
     ).lower()
     return any(

@@ -17,6 +17,8 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     )
     raw_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     raw_prompt_embedding = mapped_column(Vector(1536), nullable=True)
+    canonical_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    canonical_prompt_embedding = mapped_column(Vector(1536), nullable=True)
     prompt_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="digest")
     event_matching_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="basic")

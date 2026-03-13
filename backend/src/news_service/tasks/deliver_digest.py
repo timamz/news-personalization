@@ -49,7 +49,7 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
             return {"status": "skipped", "reason": "no_new_items"}
         channel = get_delivery_channel(subscription.delivery_webhook_url)
         prompt_summary = subscription.prompt_summary or build_prompt_summary(
-            subscription.raw_prompt
+            getattr(subscription, "canonical_prompt", "") or subscription.raw_prompt
         )
         subject = f"Your News Digest: {prompt_summary}"
         await channel.send(subject, digest_text)

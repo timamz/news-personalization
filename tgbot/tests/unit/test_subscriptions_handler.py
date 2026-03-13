@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from tgbot.handlers import subscriptions
-from tgbot.webhook_server import delivery_webhook_url
 
 
 def _mock_message(telegram_id: int):
@@ -136,10 +135,11 @@ async def test_handle_edit_menu_shows_digest_edit_actions():
     assert first_row[1].text == "Disable schedule"
     assert first_row[1].callback_data == "disable_sched:sub-2"
     assert second_row[0].text == "Change language"
-    assert second_row[1].text == "Change format"
+    assert second_row[1].text == "Edit request"
     assert third_row[0].text == "Add sources"
     assert third_row[0].callback_data == "add_sources:sub-2"
-    assert fourth_row[0].text == "Deliver here"
+    assert fourth_row[0].text == "Delete"
+    assert fourth_row[0].callback_data == "delete_sub:sub-2"
 
 
 @pytest.mark.asyncio
@@ -175,27 +175,56 @@ async def test_handle_disable_schedule_updates_subscription(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_process_format_edit_updates_subscription(monkeypatch):
+async def test_process_request_edit_shows_preview(monkeypatch):
     message = _mock_message(telegram_id=123)
-    message.text = "bullet list with links"
+    message.text = "Make it more concise and add MLOps coverage."
     state = SimpleNamespace(
-        get_data=AsyncMock(return_value={"subscription_id": "sub-5"}),
-        clear=AsyncMock(),
+        get_data=AsyncMock(
+            return_value={
+                "subscription_id": "sub-5",
+                "draft_canonical_prompt": None,
+                "draft_format_instructions": None,
+            }
+        ),
+        update_data=AsyncMock(),
     )
 
     monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
-    update_subscription = AsyncMock()
-    monkeypatch.setattr(subscriptions.backend, "update_subscription", update_subscription)
+    monkeypatch.setattr(
+        subscriptions.backend,
+        "propose_subscription_edit",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                canonical_prompt="Track AI, ML, and MLOps research updates.",
+                prompt_summary="AI, ML, and MLOps research updates",
+                format_instructions="concise summary",
+                change_summary="Added MLOps and made the digest more concise.",
+            )
+        ),
+    )
 
-    await subscriptions.process_format_edit(message, state)
+    await subscriptions.process_request_edit(message, state)
 
-    update_subscription.assert_awaited_once_with(
+    subscriptions.backend.propose_subscription_edit.assert_awaited_once_with(
         "api-key",
         "sub-5",
-        format_instructions="bullet list with links",
+        change_request="Make it more concise and add MLOps coverage.",
+        draft_canonical_prompt=None,
+        draft_format_instructions=None,
     )
-    message.answer.assert_awaited_once_with("Format updated.")
-    state.clear.assert_awaited_once()
+    state.update_data.assert_awaited_once_with(
+        proposed_canonical_prompt="Track AI, ML, and MLOps research updates.",
+        proposed_prompt_summary="AI, ML, and MLOps research updates",
+        proposed_format_instructions="concise summary",
+        draft_canonical_prompt="Track AI, ML, and MLOps research updates.",
+        draft_format_instructions="concise summary",
+    )
+    message.answer.assert_awaited_once()
+    assert "Proposed update:" in message.answer.await_args.args[0]
+    keyboard = message.answer.await_args.kwargs["reply_markup"]
+    assert keyboard.inline_keyboard[0][0].text == "Confirm"
+    assert keyboard.inline_keyboard[0][1].text == "Revise"
+    assert keyboard.inline_keyboard[1][0].text == "Cancel"
 
 
 @pytest.mark.asyncio
@@ -225,18 +254,45 @@ async def test_process_sources_edit_appends_subscription_sources(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handle_deliver_here_updates_webhook(monkeypatch):
-    callback = _mock_callback(telegram_id=222, data="deliver_here:sub-2")
+async def test_handle_confirm_request_edit_applies_proposal(monkeypatch):
+    callback = _mock_callback(telegram_id=222, data="edit_confirm:sub-2")
+    state = SimpleNamespace(
+        get_data=AsyncMock(
+            return_value={
+                "proposed_canonical_prompt": "Track major anime episode releases.",
+                "proposed_prompt_summary": "Major anime episode releases",
+                "proposed_format_instructions": "brief summary",
+            }
+        ),
+        clear=AsyncMock(),
+    )
 
     monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
-    update_subscription = AsyncMock()
-    monkeypatch.setattr(subscriptions.backend, "update_subscription", update_subscription)
+    apply_edit = AsyncMock()
+    monkeypatch.setattr(subscriptions.backend, "apply_subscription_edit", apply_edit)
 
-    await subscriptions.handle_deliver_here(callback)
+    await subscriptions.handle_confirm_request_edit(callback, state)
 
-    update_subscription.assert_awaited_once_with(
+    apply_edit.assert_awaited_once_with(
         "api-key",
         "sub-2",
-        delivery_webhook_url=delivery_webhook_url(222),
+        canonical_prompt="Track major anime episode releases.",
+        prompt_summary="Major anime episode releases",
+        format_instructions="brief summary",
     )
-    callback.answer.assert_awaited_once_with("Delivery updated to this chat.")
+    callback.message.answer.assert_awaited_once_with(
+        "Subscription updated.\n\nRequest: Major anime episode releases"
+    )
+    state.clear.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_cancel_request_edit_clears_state():
+    callback = _mock_callback(telegram_id=222, data="edit_cancel:sub-2")
+    state = SimpleNamespace(clear=AsyncMock())
+
+    await subscriptions.handle_cancel_request_edit(callback, state)
+
+    callback.answer.assert_awaited_once()
+    state.clear.assert_awaited_once()
+    callback.message.answer.assert_awaited_once_with("Update cancelled.")

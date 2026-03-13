@@ -13,7 +13,6 @@ from tgbot.source_parser import parse_source_tokens
 from tgbot.storage import get_ui_language
 from tgbot.ui_text import interface_language_name, t
 from tgbot.user_registry import ensure_api_key
-from tgbot.webhook_server import delivery_webhook_url
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +24,18 @@ SEND_NOW_PREFIX = "send_now:"
 EDIT_PREFIX = "edit_sub:"
 EDIT_SCHEDULE_PREFIX = "edit_sched:"
 DISABLE_SCHEDULE_PREFIX = "disable_sched:"
-EDIT_FORMAT_PREFIX = "edit_fmt:"
+EDIT_REQUEST_PREFIX = "edit_req:"
 EDIT_LANGUAGE_PREFIX = "edit_lang:"
 SET_LANGUAGE_PREFIX = "set_lang:"
-DELIVER_HERE_PREFIX = "deliver_here:"
 ADD_SOURCES_PREFIX = "add_sources:"
+EDIT_CONFIRM_PREFIX = "edit_confirm:"
+EDIT_REVISE_PREFIX = "edit_revise:"
+EDIT_CANCEL_PREFIX = "edit_cancel:"
 
 
 class EditFlow(StatesGroup):
     waiting_for_schedule = State()
-    waiting_for_format = State()
+    waiting_for_request = State()
     waiting_for_sources = State()
 
 
@@ -236,15 +237,22 @@ async def handle_disable_schedule(callback: CallbackQuery) -> None:
         await callback.answer(t(ui_language, "schedule_disable_failed"))
 
 
-@router.callback_query(lambda c: c.data and c.data.startswith(EDIT_FORMAT_PREFIX))
-async def handle_edit_format(callback: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(lambda c: c.data and c.data.startswith(EDIT_REQUEST_PREFIX))
+async def handle_edit_request(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
-    subscription_id = _subscription_id_from_callback(callback.data, EDIT_FORMAT_PREFIX)
-    await state.set_state(EditFlow.waiting_for_format)
-    await state.update_data(subscription_id=subscription_id)
+    subscription_id = _subscription_id_from_callback(callback.data, EDIT_REQUEST_PREFIX)
+    await state.set_state(EditFlow.waiting_for_request)
+    await state.update_data(
+        subscription_id=subscription_id,
+        draft_canonical_prompt=None,
+        draft_format_instructions=None,
+        proposed_canonical_prompt=None,
+        proposed_prompt_summary=None,
+        proposed_format_instructions=None,
+    )
     if callback.message:
         await callback.message.answer(
-            t(await _ui_language_or_default(callback.from_user.id), "edit_format_prompt")
+            t(await _ui_language_or_default(callback.from_user.id), "edit_request_prompt")
         )
 
 
@@ -259,12 +267,12 @@ async def handle_add_sources(callback: CallbackQuery, state: FSMContext) -> None
         await callback.message.answer(t(ui_language, "edit_sources_prompt"))
 
 
-@router.message(EditFlow.waiting_for_format)
-async def process_format_edit(message: types.Message, state: FSMContext) -> None:
-    format_instructions = (message.text or "").strip()
+@router.message(EditFlow.waiting_for_request)
+async def process_request_edit(message: types.Message, state: FSMContext) -> None:
+    change_request = (message.text or "").strip()
     ui_language = await _ui_language_or_default(message.from_user.id)
-    if not format_instructions:
-        await message.answer(t(ui_language, "edit_format_empty"))
+    if not change_request:
+        await message.answer(t(ui_language, "edit_request_empty"))
         return
 
     state_data = await state.get_data()
@@ -277,17 +285,92 @@ async def process_format_edit(message: types.Message, state: FSMContext) -> None
     telegram_id = message.from_user.id
     try:
         api_key = await ensure_api_key(telegram_id, backend)
-        await backend.update_subscription(
+        proposal = await backend.propose_subscription_edit(
             api_key,
             subscription_id,
+            change_request=change_request,
+            draft_canonical_prompt=state_data.get("draft_canonical_prompt"),
+            draft_format_instructions=state_data.get("draft_format_instructions"),
+        )
+        await state.update_data(
+            proposed_canonical_prompt=proposal.canonical_prompt,
+            proposed_prompt_summary=proposal.prompt_summary,
+            proposed_format_instructions=proposal.format_instructions,
+            draft_canonical_prompt=proposal.canonical_prompt,
+            draft_format_instructions=proposal.format_instructions,
+        )
+        await message.answer(
+            t(
+                ui_language,
+                "edit_request_preview",
+                prompt_summary=proposal.prompt_summary,
+                format_instructions=proposal.format_instructions,
+                change_summary=proposal.change_summary,
+            ),
+            reply_markup=_edit_request_preview_keyboard(subscription_id, ui_language),
+        )
+    except Exception:
+        logger.exception("Failed to propose request edit for subscription %s", subscription_id)
+        await message.answer(t(ui_language, "edit_request_failed"))
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith(EDIT_CONFIRM_PREFIX))
+async def handle_confirm_request_edit(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    subscription_id = _subscription_id_from_callback(callback.data, EDIT_CONFIRM_PREFIX)
+    state_data = await state.get_data()
+    ui_language = await _ui_language_or_default(callback.from_user.id)
+
+    canonical_prompt = state_data.get("proposed_canonical_prompt")
+    prompt_summary = state_data.get("proposed_prompt_summary")
+    format_instructions = state_data.get("proposed_format_instructions")
+    if not all(
+        isinstance(value, str) and value
+        for value in (canonical_prompt, prompt_summary, format_instructions)
+    ):
+        await callback.answer(t(ui_language, "edit_session_expired"))
+        await state.clear()
+        return
+
+    try:
+        api_key = await ensure_api_key(callback.from_user.id, backend)
+        await backend.apply_subscription_edit(
+            api_key,
+            subscription_id,
+            canonical_prompt=canonical_prompt,
+            prompt_summary=prompt_summary,
             format_instructions=format_instructions,
         )
-        await message.answer(t(ui_language, "format_updated"))
+        if callback.message:
+            await callback.message.answer(
+                t(ui_language, "edit_request_applied", prompt_summary=prompt_summary)
+            )
     except Exception:
-        logger.exception("Failed to update format for subscription %s", subscription_id)
-        await message.answer(t(ui_language, "format_update_failed"))
-    finally:
-        await state.clear()
+        logger.exception("Failed to apply request edit for subscription %s", subscription_id)
+        await callback.answer(t(ui_language, "edit_request_apply_failed"))
+        return
+
+    await state.clear()
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith(EDIT_REVISE_PREFIX))
+async def handle_revise_request_edit(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.set_state(EditFlow.waiting_for_request)
+    if callback.message:
+        await callback.message.answer(
+            t(await _ui_language_or_default(callback.from_user.id), "edit_request_prompt")
+        )
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith(EDIT_CANCEL_PREFIX))
+async def handle_cancel_request_edit(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    if callback.message:
+        await callback.message.answer(
+            t(await _ui_language_or_default(callback.from_user.id), "edit_request_cancelled")
+        )
 
 
 @router.message(EditFlow.waiting_for_sources)
@@ -326,25 +409,6 @@ async def process_sources_edit(message: types.Message, state: FSMContext) -> Non
         await message.answer(t(ui_language, "sources_add_failed"))
     finally:
         await state.clear()
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(DELIVER_HERE_PREFIX))
-async def handle_deliver_here(callback: CallbackQuery) -> None:
-    subscription_id = _subscription_id_from_callback(callback.data, DELIVER_HERE_PREFIX)
-    telegram_id = callback.from_user.id
-    ui_language = await _ui_language_or_default(telegram_id)
-
-    try:
-        api_key = await ensure_api_key(telegram_id, backend)
-        await backend.update_subscription(
-            api_key,
-            subscription_id,
-            delivery_webhook_url=_webhook_url_for_chat(telegram_id),
-        )
-        await callback.answer(t(ui_language, "delivery_updated_here"))
-    except Exception:
-        logger.exception("Failed to update delivery target for subscription %s", subscription_id)
-        await callback.answer(t(ui_language, "delivery_update_failed"))
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(DELETE_PREFIX))
@@ -396,8 +460,8 @@ def _edit_keyboard(
                 callback_data=f"{EDIT_LANGUAGE_PREFIX}{subscription_id}",
             ),
             InlineKeyboardButton(
-                text=t(ui_language, "button_change_format"),
-                callback_data=f"{EDIT_FORMAT_PREFIX}{subscription_id}",
+                text=t(ui_language, "button_edit_request"),
+                callback_data=f"{EDIT_REQUEST_PREFIX}{subscription_id}",
             ),
         ]
     )
@@ -406,14 +470,6 @@ def _edit_keyboard(
             InlineKeyboardButton(
                 text=t(ui_language, "button_add_edit_sources"),
                 callback_data=f"{ADD_SOURCES_PREFIX}{subscription_id}",
-            ),
-        ]
-    )
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                text=t(ui_language, "button_deliver_here"),
-                callback_data=f"{DELIVER_HERE_PREFIX}{subscription_id}",
             ),
         ]
     )
@@ -467,8 +523,30 @@ def _parse_subscription_language_callback(callback_data: str | None) -> tuple[st
     return subscription_id, digest_language
 
 
-def _webhook_url_for_chat(chat_id: int) -> str:
-    return delivery_webhook_url(chat_id)
+def _edit_request_preview_keyboard(
+    subscription_id: str,
+    ui_language: UILanguage,
+) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t(ui_language, "button_confirm"),
+                    callback_data=f"{EDIT_CONFIRM_PREFIX}{subscription_id}",
+                ),
+                InlineKeyboardButton(
+                    text=t(ui_language, "button_revise"),
+                    callback_data=f"{EDIT_REVISE_PREFIX}{subscription_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=t(ui_language, "button_cancel"),
+                    callback_data=f"{EDIT_CANCEL_PREFIX}{subscription_id}",
+                )
+            ],
+        ]
+    )
 
 
 async def _ui_language_or_default(telegram_id: int) -> UILanguage:

@@ -488,3 +488,86 @@ async def test_append_subscription_sources(client: BackendClient):
             "fixed_reddit_subreddits": ["machinelearning"],
         },
     )
+
+
+@pytest.mark.asyncio
+async def test_propose_subscription_edit(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "canonical_prompt": "Notify me when Frieren and Apothecary Diaries air.",
+        "prompt_summary": "Anime episode notifications",
+        "format_instructions": "brief summary",
+        "change_summary": "Added Frieren.",
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.post = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        result = await client.propose_subscription_edit(
+            "api-key",
+            "sub-1",
+            change_request="Also add Frieren.",
+            draft_canonical_prompt="Notify me when Apothecary Diaries air.",
+            draft_format_instructions="brief summary",
+        )
+
+    assert result.prompt_summary == "Anime episode notifications"
+    mock_http.post.assert_awaited_once_with(
+        "http://test-backend:8000/subscriptions/sub-1/edit/propose",
+        headers={"X-API-Key": "api-key"},
+        json={
+            "change_request": "Also add Frieren.",
+            "draft_canonical_prompt": "Notify me when Apothecary Diaries air.",
+            "draft_format_instructions": "brief summary",
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_apply_subscription_edit(client: BackendClient):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "sub-1",
+        "raw_prompt": "Notify me when Apothecary Diaries air.",
+        "canonical_prompt": "Notify me when Frieren and Apothecary Diaries air.",
+        "prompt_summary": "Anime episode notifications",
+        "delivery_mode": "event",
+        "schedule_cron": None,
+        "format_instructions": "brief summary",
+        "digest_language": "en",
+        "delivery_webhook_url": "http://bot:8001/deliver/123",
+        "is_active": True,
+        "created_at": "2026-01-01T00:00:00Z",
+    }
+    mock_response.raise_for_status = MagicMock()
+
+    mock_http = AsyncMock()
+    mock_http.post = AsyncMock(return_value=mock_response)
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        result = await client.apply_subscription_edit(
+            "api-key",
+            "sub-1",
+            canonical_prompt="Notify me when Frieren and Apothecary Diaries air.",
+            prompt_summary="Anime episode notifications",
+            format_instructions="brief summary",
+        )
+
+    assert result.prompt_summary == "Anime episode notifications"
+    mock_http.post.assert_awaited_once_with(
+        "http://test-backend:8000/subscriptions/sub-1/edit/apply",
+        headers={"X-API-Key": "api-key"},
+        json={
+            "canonical_prompt": "Notify me when Frieren and Apothecary Diaries air.",
+            "prompt_summary": "Anime episode notifications",
+            "format_instructions": "brief summary",
+        },
+    )

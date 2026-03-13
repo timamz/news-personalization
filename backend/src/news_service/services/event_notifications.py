@@ -73,7 +73,7 @@ async def subscription_matches_event(subscription: Subscription, item: NewsItem)
         headline=item.headline,
         body=item.body,
         published_at=item.published_at,
-        raw_prompt=subscription.raw_prompt,
+        raw_prompt=(getattr(subscription, "canonical_prompt", "") or subscription.raw_prompt),
         event_title=item.event_title,
         event_summary=item.event_summary,
         event_starts_at=item.event_starts_at,
@@ -303,7 +303,7 @@ async def build_recent_events_preview_for_subscription(
     history = await load_recent_notification_history(session, subscription.id)
     try:
         decision = await render_recent_events_preview(
-            raw_prompt=subscription.raw_prompt,
+            raw_prompt=(getattr(subscription, "canonical_prompt", "") or subscription.raw_prompt),
             target_language=subscription.digest_language,
             event_matching_mode=subscription.event_matching_mode,
             lookback_days=lookback_days,
