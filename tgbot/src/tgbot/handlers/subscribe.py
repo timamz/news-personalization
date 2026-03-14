@@ -1,9 +1,8 @@
+"""New subscription flow — entered from menu, multi-step with inline editing."""
+
 import logging
-from collections.abc import Awaitable, Callable
 
 from aiogram import Router, types
-from aiogram.enums import ParseMode
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
@@ -11,6 +10,15 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from tgbot.client import BackendClient
 from tgbot.handlers import start as start_handler
 from tgbot.language import UILanguage
+from tgbot.menu_utils import (
+    M_MAIN,
+    M_NEW,
+    M_SUBS,
+    SUB_CANCEL,
+    back_button,
+    cancel_button,
+    edit_menu,
+)
 from tgbot.source_parser import (
     extract_reddit_subreddits,
     extract_telegram_channels,
@@ -18,7 +26,6 @@ from tgbot.source_parser import (
     parse_source_tokens,
 )
 from tgbot.storage import get_language_preference, get_ui_language
-from tgbot.telegram_format import render_html_message
 from tgbot.ui_text import t
 from tgbot.user_registry import ensure_api_key
 from tgbot.webhook_server import delivery_webhook_url
@@ -52,18 +59,22 @@ class SubscribeFlow(StatesGroup):
     waiting_for_recent_events_decision = State()
 
 
-@router.message(Command("subscribe"))
-async def cmd_subscribe(message: types.Message, state: FSMContext) -> None:
-    telegram_id = message.from_user.id
+# ---------- Entry point (from menu) ----------
+
+
+@router.callback_query(lambda c: c.data == M_NEW)
+async def handle_new_subscription(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    telegram_id = callback.from_user.id
     try:
         api_key = await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
-        await message.answer(t("en", "registration_failed"))
+        await edit_menu(callback, state, t("en", "registration_failed"))
         return
 
     if not await start_handler.ensure_user_setup(
-        message,
+        callback,
         state,
         api_key=api_key,
         next_action="subscribe",
@@ -71,15 +82,47 @@ async def cmd_subscribe(message: types.Message, state: FSMContext) -> None:
     ):
         return
 
-    await _show_prompt_step(message, state, reset_data=True)
+    await start_subscribe_flow(callback, state)
+
+
+async def start_subscribe_flow(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+) -> None:
+    """Public entry: show the prompt step."""
+    await _show_prompt_step(event, state, reset_data=True)
+
+
+# ---------- Cancel ----------
+
+
+@router.callback_query(lambda c: c.data == SUB_CANCEL)
+async def handle_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    from tgbot.handlers.menu import show_main_menu
+
+    await show_main_menu(callback, state)
+
+
+# ---------- Steps ----------
 
 
 @router.message(SubscribeFlow.waiting_for_prompt)
 async def process_prompt(message: types.Message, state: FSMContext) -> None:
     prompt = (message.text or "").strip()
     ui_language = await _ui_language_or_default(message.from_user.id)
+
+    if prompt == "📋 Menu":
+        return
+
     if not prompt:
-        await message.answer(t(ui_language, "choose_subscription_request"))
+        await edit_menu(
+            message,
+            state,
+            t(ui_language, "choose_subscription_request"),
+            _cancel_keyboard(ui_language),
+        )
         return
 
     telegram_id = message.from_user.id
@@ -87,9 +130,16 @@ async def process_prompt(message: types.Message, state: FSMContext) -> None:
         api_key = await ensure_api_key(telegram_id, backend)
         parsed = await backend.parse_subscription_prompt(api_key, prompt)
     except Exception:
-        logger.exception("Failed to parse subscription prompt for telegram_id=%d", telegram_id)
-        await message.answer(t(ui_language, "failed_process_request"))
-        await state.clear()
+        logger.exception(
+            "Failed to parse subscription prompt for telegram_id=%d",
+            telegram_id,
+        )
+        await edit_menu(
+            message,
+            state,
+            t(ui_language, "failed_process_request"),
+            _cancel_keyboard(ui_language),
+        )
         return
 
     delivery_mode = parsed.delivery_mode
@@ -119,7 +169,6 @@ async def process_prompt(message: types.Message, state: FSMContext) -> None:
 
     await state.update_data(digest_language_override=preference.code)
     await _continue_after_prompt(message, state, back_target="prompt")
-    return
 
 
 @router.callback_query(
@@ -147,18 +196,12 @@ async def handle_schedule_decision(callback: CallbackQuery, state: FSMContext) -
     prompt = state_data.get("prompt")
     await state.update_data(schedule_cron_override=None, manual_only=True)
     if not isinstance(prompt, str) or not prompt.strip():
-        await _answer(
-            callback,
-            t(await _ui_language_or_default(callback.from_user.id), "subscription_setup_expired"),
-        )
+        lang = await _ui_language_or_default(callback.from_user.id)
+        await edit_menu(callback, state, t(lang, "subscription_setup_expired"))
         await state.clear()
         return
     await _continue_with_source_flow(
-        callback,
-        state,
-        prompt,
-        "digest",
-        source_back_target="schedule_decision",
+        callback, state, prompt, "digest", source_back_target="schedule_decision"
     )
 
 
@@ -166,8 +209,17 @@ async def handle_schedule_decision(callback: CallbackQuery, state: FSMContext) -
 async def process_schedule_input(message: types.Message, state: FSMContext) -> None:
     schedule_text = (message.text or "").strip()
     ui_language = await _ui_language_or_default(message.from_user.id)
+
+    if schedule_text == "📋 Menu":
+        return
+
     if not schedule_text:
-        await message.answer(t(ui_language, "describe_schedule"))
+        await edit_menu(
+            message,
+            state,
+            t(ui_language, "describe_schedule"),
+            _back_cancel_keyboard(ui_language),
+        )
         return
 
     telegram_id = message.from_user.id
@@ -176,22 +228,23 @@ async def process_schedule_input(message: types.Message, state: FSMContext) -> N
         schedule_cron = await backend.parse_schedule(api_key, schedule_text)
     except Exception:
         logger.exception("Failed to parse schedule for telegram_id=%d", telegram_id)
-        await message.answer(t(ui_language, "schedule_parse_failed"))
+        await edit_menu(
+            message,
+            state,
+            t(ui_language, "schedule_parse_failed"),
+            _back_cancel_keyboard(ui_language),
+        )
         return
 
     state_data = await state.get_data()
     prompt = state_data.get("prompt")
     await state.update_data(schedule_cron_override=schedule_cron, manual_only=False)
     if not isinstance(prompt, str) or not prompt.strip():
-        await message.answer(t(ui_language, "subscription_setup_expired"))
+        await edit_menu(message, state, t(ui_language, "subscription_setup_expired"))
         await state.clear()
         return
     await _continue_with_source_flow(
-        message,
-        state,
-        prompt,
-        "digest",
-        source_back_target="schedule_input",
+        message, state, prompt, "digest", source_back_target="schedule_input"
     )
 
 
@@ -218,10 +271,18 @@ async def handle_source_knowledge_choice(callback: CallbackQuery, state: FSMCont
 
 @router.message(SubscribeFlow.waiting_for_channels_input)
 async def process_channels_input(message: types.Message, state: FSMContext) -> None:
+    if (message.text or "").strip() == "📋 Menu":
+        return
+
     channels, subreddits, twitter_accounts = parse_source_tokens(message.text or "")
     ui_language = await _ui_language_or_default(message.from_user.id)
     if not channels and not subreddits and not twitter_accounts:
-        await message.answer(t(ui_language, "sources_parse_failed"))
+        await edit_menu(
+            message,
+            state,
+            t(ui_language, "sources_parse_failed"),
+            _back_cancel_keyboard(ui_language),
+        )
         return
 
     await state.update_data(
@@ -264,14 +325,16 @@ async def handle_recent_events_decision(callback: CallbackQuery, state: FSMConte
     await callback.answer()
     ui_language = await _ui_language_or_default(callback.from_user.id)
     if callback.data == RECENT_EVENTS_NO:
-        await _answer(callback, t(ui_language, "recent_events_future_only"))
         await state.clear()
+        from tgbot.handlers.menu import show_subscription_list
+
+        await show_subscription_list(callback, state)
         return
 
     state_data = await state.get_data()
     subscription_id = state_data.get("created_subscription_id")
     if not isinstance(subscription_id, str) or not subscription_id:
-        await _answer(callback, t(ui_language, "recent_events_expired"))
+        await edit_menu(callback, state, t(ui_language, "recent_events_expired"))
         await state.clear()
         return
 
@@ -280,11 +343,11 @@ async def handle_recent_events_decision(callback: CallbackQuery, state: FSMConte
         api_key = await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
-        await _answer(callback, t(ui_language, "registration_failed"))
+        await edit_menu(callback, state, t(ui_language, "registration_failed"))
         await state.clear()
         return
 
-    await _answer(callback, t(ui_language, "recent_events_loading"))
+    await edit_menu(callback, state, t(ui_language, "recent_events_loading"))
     try:
         recent_events = await backend.list_recent_events(api_key, subscription_id)
     except Exception:
@@ -293,31 +356,34 @@ async def handle_recent_events_decision(callback: CallbackQuery, state: FSMConte
             telegram_id,
             subscription_id,
         )
-        await _answer(callback, t(ui_language, "recent_events_failed"))
+        await edit_menu(callback, state, t(ui_language, "recent_events_failed"))
         await state.clear()
         return
 
     if recent_events is None:
-        await _answer(callback, t(ui_language, "recent_events_empty"))
-        await state.clear()
-        return
-
-    await _answer(callback, f"{recent_events.subject}\n\n{recent_events.body}")
-
-    try:
-        await backend.acknowledge_recent_events(
-            api_key,
-            subscription_id,
-            recent_events.news_item_ids,
-        )
-    except Exception:
-        logger.exception(
-            "Failed to acknowledge recent events for telegram_id=%d subscription=%s",
-            telegram_id,
-            subscription_id,
-        )
+        await edit_menu(callback, state, t(ui_language, "recent_events_empty"))
+    else:
+        # Send recent events as a separate message (can be long)
+        if callback.message:
+            await callback.message.answer(f"{recent_events.subject}\n\n{recent_events.body}")
+        try:
+            await backend.acknowledge_recent_events(
+                api_key, subscription_id, recent_events.news_item_ids
+            )
+        except Exception:
+            logger.exception(
+                "Failed to acknowledge recent events for telegram_id=%d subscription=%s",
+                telegram_id,
+                subscription_id,
+            )
 
     await state.clear()
+    from tgbot.handlers.menu import show_subscription_list
+
+    await show_subscription_list(callback, state)
+
+
+# ---------- Back ----------
 
 
 @router.callback_query(lambda c: c.data == BACK)
@@ -351,10 +417,11 @@ async def handle_back(callback: CallbackQuery, state: FSMContext) -> None:
         await _undo_recent_event_step(callback, state)
         return
 
-    await _answer(
-        callback,
-        t(await _ui_language_or_default(callback.from_user.id), "back_not_available"),
-    )
+    lang = await _ui_language_or_default(callback.from_user.id)
+    await edit_menu(callback, state, t(lang, "back_not_available"))
+
+
+# ---------- Internal helpers ----------
 
 
 async def _continue_with_source_flow(
@@ -407,7 +474,7 @@ async def _create_subscription_from_state(
     prompt = state_data.get("prompt")
     ui_language = await _ui_language_or_default(_telegram_id_from_event(event))
     if not isinstance(prompt, str) or not prompt.strip():
-        await _answer(event, t(ui_language, "subscription_setup_expired"))
+        await edit_menu(event, state, t(ui_language, "subscription_setup_expired"))
         await state.clear()
         return
 
@@ -422,19 +489,19 @@ async def _create_subscription_from_state(
         api_key = await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
-        await _answer(event, t(ui_language, "registration_failed"))
+        await edit_menu(event, state, t(ui_language, "registration_failed"))
         await state.clear()
         return
 
     webhook_url = delivery_webhook_url(telegram_id)
-    await _answer(event, t(ui_language, "processing_request"))
+    await edit_menu(event, state, t(ui_language, "processing_request"))
 
     create_kwargs: dict[str, object | None] = {
         "include_discovered_sources": include_discovered_sources,
         "schedule_cron_override": schedule_cron_override,
         "manual_only": manual_only,
         "delivery_mode": delivery_mode,
-        "digest_language": digest_language if isinstance(digest_language, str) else None,
+        "digest_language": (digest_language if isinstance(digest_language, str) else None),
     }
     if telegram_channels:
         create_kwargs["fixed_telegram_channels"] = telegram_channels
@@ -445,35 +512,61 @@ async def _create_subscription_from_state(
 
     try:
         subscription = await backend.create_subscription(
-            api_key,
-            prompt,
-            webhook_url,
-            **create_kwargs,
+            api_key, prompt, webhook_url, **create_kwargs
         )
     except Exception:
         logger.exception("Failed to create subscription for telegram_id=%d", telegram_id)
-        await _answer(event, t(ui_language, "create_subscription_failed"))
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [back_button(ui_language, M_MAIN)],
+            ]
+        )
+        await edit_menu(
+            event,
+            state,
+            t(ui_language, "create_subscription_failed"),
+            keyboard,
+        )
         await state.clear()
         return
 
     completion_key = (
         "subscription_created_event" if delivery_mode == "event" else "subscription_created_digest"
     )
-    await _answer(
-        event,
-        t(ui_language, completion_key, prompt_summary=subscription.prompt_summary),
-    )
     if delivery_mode == "event":
         await state.update_data(created_subscription_id=subscription.id)
         await state.set_state(SubscribeFlow.waiting_for_recent_events_decision)
-        await _answer_with_markup(
+        text = (
+            t(
+                ui_language,
+                completion_key,
+                prompt_summary=subscription.prompt_summary,
+            )
+            + "\n\n"
+            + t(ui_language, "show_recent_events_prompt")
+        )
+        await edit_menu(
             event,
-            t(ui_language, "show_recent_events_prompt"),
+            state,
+            text,
             _recent_events_choice_keyboard(ui_language),
         )
         return
 
     await state.clear()
+    # Show success then go to subscription list
+
+    text = t(
+        ui_language,
+        completion_key,
+        prompt_summary=subscription.prompt_summary,
+    )
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [back_button(ui_language, M_SUBS)],
+        ]
+    )
+    await edit_menu(event, state, text, keyboard)
 
 
 async def _show_prompt_step(
@@ -485,7 +578,13 @@ async def _show_prompt_step(
     if reset_data:
         await state.clear()
     await state.set_state(SubscribeFlow.waiting_for_prompt)
-    await _answer(event, _subscription_prompt_text(await _ui_language_for_event(event)))
+    lang = await _ui_language_for_event(event)
+    await edit_menu(
+        event,
+        state,
+        t(lang, "subscription_prompt"),
+        _cancel_keyboard(lang),
+    )
 
 
 async def _show_schedule_decision_step(
@@ -497,8 +596,9 @@ async def _show_schedule_decision_step(
     ui_language = await _ui_language_for_event(event)
     await state.update_data(schedule_back_target=back_target)
     await state.set_state(SubscribeFlow.waiting_for_schedule_decision)
-    await _answer_with_markup(
+    await edit_menu(
         event,
+        state,
         t(ui_language, "schedule_choice"),
         _schedule_choice_keyboard(ui_language),
     )
@@ -510,10 +610,11 @@ async def _show_schedule_input_step(
 ) -> None:
     ui_language = await _ui_language_for_event(event)
     await state.set_state(SubscribeFlow.waiting_for_schedule_input)
-    await _answer_with_markup(
+    await edit_menu(
         event,
+        state,
         t(ui_language, "schedule_input_prompt"),
-        _back_only_keyboard(ui_language),
+        _back_cancel_keyboard(ui_language),
     )
 
 
@@ -528,8 +629,9 @@ async def _show_source_knowledge_step(
         state_data = await state.get_data()
         delivery_mode = str(state_data.get("delivery_mode", "digest"))
     await state.set_state(SubscribeFlow.waiting_for_source_knowledge)
-    await _answer_with_markup(
+    await edit_menu(
         event,
+        state,
         _source_knowledge_question(ui_language, delivery_mode),
         _source_knowledge_keyboard(ui_language),
     )
@@ -541,8 +643,9 @@ async def _show_language_choice_step(
 ) -> None:
     ui_language = await _ui_language_for_event(event)
     await state.set_state(SubscribeFlow.waiting_for_language_choice)
-    await _answer_with_markup(
+    await edit_menu(
         event,
+        state,
         t(ui_language, "subscription_language_choose"),
         _subscription_language_keyboard(ui_language),
     )
@@ -554,10 +657,11 @@ async def _show_channels_input_step(
 ) -> None:
     ui_language = await _ui_language_for_event(event)
     await state.set_state(SubscribeFlow.waiting_for_channels_input)
-    await _answer_with_markup(
+    await edit_menu(
         event,
+        state,
         t(ui_language, "channels_input_prompt"),
-        _back_only_keyboard(ui_language),
+        _back_cancel_keyboard(ui_language),
     )
 
 
@@ -608,7 +712,7 @@ async def _show_scope_choice_step(
             channels=formatted_sources,
         )
 
-    await _answer_with_markup(event, text, _scope_keyboard(ui_language))
+    await edit_menu(event, state, text, _scope_keyboard(ui_language))
 
 
 async def _show_source_previous_step(
@@ -662,7 +766,7 @@ async def _undo_recent_event_step(
     subscription_id = state_data.get("created_subscription_id")
     ui_language = await _ui_language_or_default(callback.from_user.id)
     if not isinstance(subscription_id, str) or not subscription_id:
-        await _answer(callback, t(ui_language, "undo_recent_events_expired"))
+        await edit_menu(callback, state, t(ui_language, "undo_recent_events_expired"))
         await state.clear()
         return
 
@@ -676,7 +780,7 @@ async def _undo_recent_event_step(
             telegram_id,
             subscription_id,
         )
-        await _answer(callback, t(ui_language, "undo_recent_events_failed"))
+        await edit_menu(callback, state, t(ui_language, "undo_recent_events_failed"))
         return
 
     await state.update_data(created_subscription_id=None)
@@ -688,118 +792,140 @@ async def _undo_recent_event_step(
     await _show_source_knowledge_step(callback, state)
 
 
-def _source_knowledge_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+# ---------- Keyboards ----------
+
+
+def _cancel_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[cancel_button(lang)]])
+
+
+def _back_cancel_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=t(lang, "button_back"), callback_data=BACK),
+                cancel_button(lang),
+            ]
+        ]
+    )
+
+
+def _source_knowledge_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_yes_have_channels"),
+                    text=t(lang, "button_yes_have_channels"),
                     callback_data=KNOW_SOURCES_YES,
                 ),
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_no_find_sources"),
+                    text=t(lang, "button_no_find_sources"),
                     callback_data=KNOW_SOURCES_NO,
                 ),
             ],
-            [InlineKeyboardButton(text=t(ui_language, "button_back"), callback_data=BACK)],
+            [
+                InlineKeyboardButton(text=t(lang, "button_back"), callback_data=BACK),
+                cancel_button(lang),
+            ],
         ]
     )
 
 
-def _subscription_language_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+def _subscription_language_keyboard(
+    lang: UILanguage,
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_russian"),
+                    text=t(lang, "button_russian"),
                     callback_data=SUBSCRIPTION_LANGUAGE_RU,
                 ),
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_english"),
+                    text=t(lang, "button_english"),
                     callback_data=SUBSCRIPTION_LANGUAGE_EN,
                 ),
             ],
-            [InlineKeyboardButton(text=t(ui_language, "button_back"), callback_data=BACK)],
+            [
+                InlineKeyboardButton(text=t(lang, "button_back"), callback_data=BACK),
+                cancel_button(lang),
+            ],
         ]
     )
 
 
-def _scope_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+def _scope_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_only_channels"),
+                    text=t(lang, "button_only_channels"),
                     callback_data=SCOPE_ONLY_PROVIDED,
                 ),
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_add_sources"),
+                    text=t(lang, "button_add_sources"),
                     callback_data=SCOPE_WITH_DISCOVERY,
                 ),
             ],
-            [InlineKeyboardButton(text=t(ui_language, "button_back"), callback_data=BACK)],
+            [
+                InlineKeyboardButton(text=t(lang, "button_back"), callback_data=BACK),
+                cancel_button(lang),
+            ],
         ]
     )
 
 
-def _schedule_choice_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+def _schedule_choice_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_yes_set_schedule"),
+                    text=t(lang, "button_yes_set_schedule"),
                     callback_data=SCHEDULE_ENABLE_YES,
                 ),
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_no_button_only"),
+                    text=t(lang, "button_no_button_only"),
                     callback_data=SCHEDULE_ENABLE_NO,
                 ),
             ],
-            [InlineKeyboardButton(text=t(ui_language, "button_back"), callback_data=BACK)],
+            [
+                InlineKeyboardButton(text=t(lang, "button_back"), callback_data=BACK),
+                cancel_button(lang),
+            ],
         ]
     )
 
 
-def _recent_events_choice_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+def _recent_events_choice_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_yes_show_recent"),
+                    text=t(lang, "button_yes_show_recent"),
                     callback_data=RECENT_EVENTS_YES,
                 ),
                 InlineKeyboardButton(
-                    text=t(ui_language, "button_no_future_only"),
+                    text=t(lang, "button_no_future_only"),
                     callback_data=RECENT_EVENTS_NO,
                 ),
             ],
-            [InlineKeyboardButton(text=t(ui_language, "button_back"), callback_data=BACK)],
         ]
     )
 
 
-def _back_only_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text=t(ui_language, "button_back"), callback_data=BACK)],
-        ]
-    )
+# ---------- Text helpers ----------
 
 
-def _subscription_prompt_text(ui_language: UILanguage) -> str:
-    return t(ui_language, "subscription_prompt")
-
-
-def _scope_question(ui_language: UILanguage, delivery_mode: str) -> str:
+def _scope_question(lang: UILanguage, delivery_mode: str) -> str:
     if delivery_mode == "event":
-        return t(ui_language, "scope_question_event")
-    return t(ui_language, "scope_question_digest")
+        return t(lang, "scope_question_event")
+    return t(lang, "scope_question_digest")
 
 
-def _source_knowledge_question(ui_language: UILanguage, delivery_mode: str) -> str:
+def _source_knowledge_question(lang: UILanguage, delivery_mode: str) -> str:
     if delivery_mode == "event":
-        return t(ui_language, "source_question_event")
-    return t(ui_language, "source_question_digest")
+        return t(lang, "source_question_event")
+    return t(lang, "source_question_digest")
 
 
 def _format_sources(
@@ -813,7 +939,9 @@ def _format_sources(
     return "\n".join(lines)
 
 
-def _telegram_id_from_event(event: types.Message | CallbackQuery) -> int:
+def _telegram_id_from_event(
+    event: types.Message | CallbackQuery,
+) -> int:
     return event.from_user.id
 
 
@@ -821,42 +949,10 @@ async def _ui_language_or_default(telegram_id: int) -> UILanguage:
     return await get_ui_language(telegram_id) or "en"
 
 
-async def _ui_language_for_event(event: types.Message | CallbackQuery) -> UILanguage:
-    return await _ui_language_or_default(_telegram_id_from_event(event))
-
-
-async def _answer(event: types.Message | CallbackQuery, text: str) -> None:
-    sender: Callable[[str], Awaitable[types.Message | bool]]
-    if hasattr(event, "message"):
-        if event.message is None:
-            return
-        await event.message.answer(
-            render_html_message(text),
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-        )
-        return
-    else:
-        sender = event.answer
-    await sender(text)
-
-
-async def _answer_with_markup(
+async def _ui_language_for_event(
     event: types.Message | CallbackQuery,
-    text: str,
-    reply_markup: InlineKeyboardMarkup,
-) -> None:
-    if hasattr(event, "message"):
-        if event.message is None:
-            return
-        await event.message.answer(
-            render_html_message(text),
-            reply_markup=reply_markup,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-        )
-        return
-    await event.answer(text, reply_markup=reply_markup)
+) -> UILanguage:
+    return await _ui_language_or_default(_telegram_id_from_event(event))
 
 
 async def _continue_after_prompt(
@@ -871,10 +967,8 @@ async def _continue_after_prompt(
     schedule_cron_override = state_data.get("schedule_cron_override")
     schedule_was_explicit = bool(state_data.get("schedule_was_explicit"))
     if not isinstance(prompt, str) or not prompt.strip():
-        await _answer(
-            event,
-            t(await _ui_language_for_event(event), "subscription_setup_expired"),
-        )
+        lang = await _ui_language_for_event(event)
+        await edit_menu(event, state, t(lang, "subscription_setup_expired"))
         await state.clear()
         return
 

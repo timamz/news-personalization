@@ -2,64 +2,83 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from aiogram.filters import Command
 
 from tgbot.handlers import start
 from tgbot.language import LanguagePreference
-from tgbot.ui_text import t
 
 
 def _mock_message(telegram_id: int):
     return SimpleNamespace(
         from_user=SimpleNamespace(id=telegram_id),
+        chat=SimpleNamespace(id=telegram_id),
         answer=AsyncMock(),
+        bot=SimpleNamespace(
+            edit_message_text=AsyncMock(),
+            delete_message=AsyncMock(),
+            send_message=AsyncMock(return_value=SimpleNamespace(message_id=99)),
+        ),
     )
 
 
 def _mock_callback(telegram_id: int, data: str):
+    msg = SimpleNamespace(
+        answer=AsyncMock(),
+        edit_text=AsyncMock(),
+        chat=SimpleNamespace(id=telegram_id),
+        message_id=42,
+    )
     return SimpleNamespace(
         from_user=SimpleNamespace(id=telegram_id),
         data=data,
         answer=AsyncMock(),
-        message=SimpleNamespace(answer=AsyncMock()),
+        message=msg,
+        bot=SimpleNamespace(
+            edit_message_text=AsyncMock(),
+            delete_message=AsyncMock(),
+            send_message=AsyncMock(return_value=SimpleNamespace(message_id=99)),
+        ),
     )
 
 
-def test_cmd_help_uses_command_filter() -> None:
-    help_handler = next(
-        handler
-        for handler in start.router.message.handlers
-        if handler.callback.__name__ == "cmd_help"
+def _mock_state(data=None):
+    base = {"_menu_msg_id": 42}
+    if data:
+        base.update(data)
+    return SimpleNamespace(
+        get_data=AsyncMock(return_value=base),
+        update_data=AsyncMock(),
+        set_state=AsyncMock(),
+        clear=AsyncMock(),
     )
 
-    command_filters = [
-        filter_obj.callback
-        for filter_obj in help_handler.filters
-        if isinstance(filter_obj.callback, Command)
-    ]
 
-    assert command_filters
-    assert command_filters[0].commands == ("help",)
+@pytest.fixture(autouse=True)
+def _mock_storage(monkeypatch) -> None:
+    from tgbot.handlers import menu
+
+    monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="en"))
+    monkeypatch.setattr(menu, "get_ui_language", AsyncMock(return_value="en"))
 
 
 @pytest.mark.asyncio
 async def test_cmd_start_prompts_for_ui_language_when_missing(monkeypatch) -> None:
     message = _mock_message(telegram_id=123)
-    state = SimpleNamespace(clear=AsyncMock(), update_data=AsyncMock())
+    state = _mock_state()
 
     monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value="api-key"))
     monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value=None))
 
     await start.cmd_start(message, state)
 
-    state.clear.assert_awaited_once()
-    state.update_data.assert_awaited_once_with(
-        setup_next_action="welcome",
-        setup_require_subscription_after_ui=True,
-    )
+    # Should show welcome + persistent keyboard first
     message.answer.assert_awaited_once()
-    assert message.answer.await_args.args[0] == t("en", "ui_language_initial")
-    assert message.answer.await_args.kwargs["reply_markup"] is not None
+    # edit_menu should edit the stored menu message or send a new one
+    bot_calls = list(message.bot.edit_message_text.await_args_list) + list(
+        message.bot.send_message.await_args_list
+    )
+    assert bot_calls, "Expected edit_menu to call bot.edit_message_text or send_message"
+    any_lang_text = any("language" in str(c).lower() or "язык" in str(c).lower() for c in bot_calls)
+    assert any_lang_text
 
 
 @pytest.mark.asyncio
@@ -67,15 +86,11 @@ async def test_handle_ui_language_choice_prompts_subscription_language_when_miss
     monkeypatch,
 ) -> None:
     callback = _mock_callback(telegram_id=123, data=start.UI_LANGUAGE_RU)
-    state = SimpleNamespace(
-        get_data=AsyncMock(
-            return_value={
-                "setup_next_action": "subscribe",
-                "setup_require_subscription_after_ui": True,
-            }
-        ),
-        update_data=AsyncMock(),
-        clear=AsyncMock(),
+    state = _mock_state(
+        data={
+            "setup_next_action": "subscribe",
+            "setup_require_subscription_after_ui": True,
+        }
     )
 
     monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value="api-key"))
@@ -85,9 +100,10 @@ async def test_handle_ui_language_choice_prompts_subscription_language_when_miss
     await start.handle_ui_language_choice(callback, state)
 
     start.save_ui_language.assert_awaited_once_with(123, "api-key", "ru")
-    state.clear.assert_not_awaited()
-    callback.message.answer.assert_awaited_once()
-    assert callback.message.answer.await_args.args[0] == t("ru", "subscription_language_initial")
+    # Should show subscription language selection via edit_menu (bot.edit_message_text)
+    callback.bot.edit_message_text.assert_awaited_once()
+    edit_text = callback.bot.edit_message_text.await_args.kwargs["text"]
+    assert "подписок" in edit_text.lower() or "subscription" in edit_text.lower()
 
 
 @pytest.mark.asyncio
@@ -95,11 +111,7 @@ async def test_handle_subscription_language_choice_updates_existing_subscription
     monkeypatch,
 ) -> None:
     callback = _mock_callback(telegram_id=123, data=start.SUBSCRIPTION_LANGUAGE_FIXED_RU)
-    state = SimpleNamespace(
-        get_data=AsyncMock(return_value={"setup_next_action": "welcome"}),
-        update_data=AsyncMock(),
-        clear=AsyncMock(),
-    )
+    state = _mock_state(data={"setup_next_action": "menu"})
 
     monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value="api-key"))
     monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="ru"))
@@ -124,20 +136,11 @@ async def test_handle_subscription_language_choice_updates_existing_subscription
 
     await start.handle_subscription_language_choice(callback, state)
 
-    update_subscription.assert_awaited_once_with(
-        "api-key",
-        "sub-1",
-        digest_language="ru",
-    )
-    assert state.update_data.await_args_list[0].kwargs == {
-        "setup_next_action": None,
-        "setup_require_subscription_after_ui": False,
-    }
-    state.clear.assert_awaited_once()
-    assert (
-        "Обновлено существующих подписок: 1." in callback.message.answer.await_args_list[0].args[0]
-    )
-    assert callback.message.answer.await_args_list[1].args[0] == t("ru", "welcome")
+    update_subscription.assert_awaited_once_with("api-key", "sub-1", digest_language="ru")
+    # Confirmation message sent via _answer (event.message.answer)
+    callback.message.answer.assert_awaited()
+    all_texts = " ".join(str(c) for c in callback.message.answer.await_args_list)
+    assert "Обновлено" in all_texts or "Updated" in all_texts
 
 
 @pytest.mark.asyncio
@@ -145,12 +148,7 @@ async def test_handle_subscription_language_choice_prompts_timezone_when_missing
     monkeypatch,
 ) -> None:
     callback = _mock_callback(telegram_id=123, data=start.SUBSCRIPTION_LANGUAGE_FIXED_EN)
-    state = SimpleNamespace(
-        get_data=AsyncMock(return_value={"setup_next_action": "welcome"}),
-        update_data=AsyncMock(),
-        clear=AsyncMock(),
-        set_state=AsyncMock(),
-    )
+    state = _mock_state(data={"setup_next_action": "menu"})
 
     monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value="api-key"))
     monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="en"))
@@ -170,4 +168,3 @@ async def test_handle_subscription_language_choice_prompts_timezone_when_missing
     await start.handle_subscription_language_choice(callback, state)
 
     state.set_state.assert_awaited_once_with(start.SetupFlow.waiting_for_timezone_city)
-    assert callback.message.answer.await_args_list[1].args[0] == t("en", "timezone_initial")

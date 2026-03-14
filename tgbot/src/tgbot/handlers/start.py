@@ -1,16 +1,27 @@
+"""Onboarding and setup: /start, language/timezone selection callbacks."""
+
 import logging
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from aiogram import Router, types
 from aiogram.enums import ParseMode
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
 from tgbot.client import BackendClient
 from tgbot.language import LanguagePreference, UILanguage
+from tgbot.menu_utils import (
+    M_SET_LANG,
+    M_SET_SUB_LANG,
+    M_SET_TZ,
+    M_SETTINGS,
+    back_button,
+    edit_menu,
+    persistent_keyboard,
+)
 from tgbot.storage import (
     get_language_preference,
     get_ui_language,
@@ -48,6 +59,9 @@ class SetupFlow(StatesGroup):
     waiting_for_timezone_city = State()
 
 
+# ---------- /start ----------
+
+
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext) -> None:
     telegram_id = message.from_user.id
@@ -58,58 +72,52 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
         await message.answer(t("en", "registration_failed"))
         return
 
+    # Show persistent reply keyboard right away
+    await message.answer(
+        t(await _ui_language_or_default(telegram_id), "welcome"),
+        reply_markup=persistent_keyboard(),
+    )
+
     if not await ensure_user_setup(
-        message,
-        state,
-        api_key=api_key,
-        next_action="welcome",
-        reset_state=True,
+        message, state, api_key=api_key, next_action="menu", reset_state=True
     ):
         return
 
-    ui_language = await _ui_language_or_default(telegram_id)
-    await message.answer(t(ui_language, "welcome"))
+    # Setup already complete — show menu
+    from tgbot.handlers.menu import show_main_menu
+
+    await show_main_menu(message, state)
 
 
-@router.message(Command("language"))
-async def cmd_language(message: types.Message, state: FSMContext) -> None:
-    telegram_id = message.from_user.id
-    try:
-        await ensure_api_key(telegram_id, backend)
-    except Exception:
-        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
-        await message.answer(t("en", "registration_failed"))
-        return
+# ---------- Settings callbacks (from menu) ----------
 
-    current_ui_language = await _ui_language_or_default(telegram_id)
+
+@router.callback_query(lambda c: c.data == M_SET_LANG)
+async def handle_settings_language(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    current_ui_language = await _ui_language_or_default(callback.from_user.id)
     await prompt_ui_language_selection(
-        message,
+        callback,
         state,
         current_ui_language=current_ui_language,
-        next_action=None,
+        next_action="settings",
         require_subscription_language_after_ui=False,
         initial=False,
         reset_state=False,
     )
 
 
-@router.message(Command("subscription_language"))
-async def cmd_subscription_language(message: types.Message, state: FSMContext) -> None:
-    telegram_id = message.from_user.id
-    try:
-        await ensure_api_key(telegram_id, backend)
-    except Exception:
-        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
-        await message.answer(t("en", "registration_failed"))
-        return
-
+@router.callback_query(lambda c: c.data == M_SET_SUB_LANG)
+async def handle_settings_sub_language(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    telegram_id = callback.from_user.id
     ui_language = await get_ui_language(telegram_id)
     if ui_language is None:
         await prompt_ui_language_selection(
-            message,
+            callback,
             state,
             current_ui_language="en",
-            next_action=None,
+            next_action="settings",
             require_subscription_language_after_ui=True,
             initial=True,
             reset_state=False,
@@ -118,44 +126,42 @@ async def cmd_subscription_language(message: types.Message, state: FSMContext) -
 
     preference = await get_language_preference(telegram_id)
     await prompt_subscription_language_selection(
-        message,
+        callback,
         state,
         ui_language=ui_language,
-        next_action=None,
+        next_action="settings",
         initial=preference is None,
         reset_state=False,
         current_preference=preference,
     )
 
 
-@router.message(Command("timezone"))
-async def cmd_timezone(message: types.Message, state: FSMContext) -> None:
-    telegram_id = message.from_user.id
+@router.callback_query(lambda c: c.data == M_SET_TZ)
+async def handle_settings_timezone(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    telegram_id = callback.from_user.id
     ui_language = await _ui_language_or_default(telegram_id)
     try:
         api_key = await ensure_api_key(telegram_id, backend)
         profile = await backend.get_current_user(api_key)
     except Exception:
         logger.exception("Failed to load timezone settings for telegram_id=%d", telegram_id)
-        await message.answer(t(ui_language, "registration_failed"))
+        await _answer(callback, t(ui_language, "registration_failed"))
         return
 
     await prompt_timezone_selection(
-        message,
+        callback,
         state,
         ui_language=ui_language,
-        next_action=None,
+        next_action="settings",
         initial=profile.timezone is None,
-        reset_state=True,
+        reset_state=False,
         current_timezone=profile.timezone,
         editing=True,
     )
 
 
-@router.message(Command("help"))
-async def cmd_help(message: types.Message) -> None:
-    ui_language = await _ui_language_or_default(message.from_user.id)
-    await message.answer(t(ui_language, "welcome"))
+# ---------- Language choice callbacks ----------
 
 
 @router.callback_query(lambda c: c.data in {UI_LANGUAGE_RU, UI_LANGUAGE_EN})
@@ -240,8 +246,7 @@ async def handle_subscription_language_choice(callback: CallbackQuery, state: FS
     if preference.mode == "fixed" and preference.code is not None:
         try:
             updated, failed = await _apply_fixed_language_to_existing_subscriptions(
-                api_key,
-                preference.code,
+                api_key, preference.code
             )
         except Exception:
             logger.exception(
@@ -250,12 +255,7 @@ async def handle_subscription_language_choice(callback: CallbackQuery, state: FS
             )
             update_failed = True
 
-    await state.update_data(
-        **{
-            _SETUP_NEXT_ACTION: None,
-            _SETUP_REQUIRE_SUBSCRIPTION: False,
-        }
-    )
+    await state.update_data(**{_SETUP_NEXT_ACTION: None, _SETUP_REQUIRE_SUBSCRIPTION: False})
 
     await _answer(
         callback,
@@ -278,10 +278,18 @@ async def handle_subscription_language_choice(callback: CallbackQuery, state: FS
     )
 
 
+# ---------- Timezone callbacks ----------
+
+
 @router.message(SetupFlow.waiting_for_timezone_city)
 async def handle_timezone_city_input(message: types.Message, state: FSMContext) -> None:
     timezone_query = (message.text or "").strip()
     ui_language = await _ui_language_or_default(message.from_user.id)
+
+    # Ignore the menu button text during timezone input
+    if timezone_query == "📋 Menu":
+        return
+
     if not timezone_query:
         await message.answer(t(ui_language, "timezone_input_empty"))
         return
@@ -310,11 +318,11 @@ async def handle_timezone_city_input(message: types.Message, state: FSMContext) 
     if resolution.status == "ambiguous":
         choices = [
             {
-                "label": candidate.label,
-                "timezone": candidate.timezone,
-                "local_time": candidate.local_time,
+                "label": c.label,
+                "timezone": c.timezone,
+                "local_time": c.local_time,
             }
-            for candidate in resolution.candidates
+            for c in resolution.candidates
         ]
         await state.update_data(
             **{
@@ -324,9 +332,11 @@ async def handle_timezone_city_input(message: types.Message, state: FSMContext) 
                 _SETUP_TIMEZONE_CHOICES: choices,
             }
         )
-        await message.answer(
+        await edit_menu(
+            message,
+            state,
             t(ui_language, "timezone_ambiguous"),
-            reply_markup=_timezone_choice_keyboard(choices, ui_language),
+            _timezone_choice_keyboard(choices, ui_language),
         )
         return
 
@@ -339,7 +349,9 @@ async def handle_timezone_city_input(message: types.Message, state: FSMContext) 
             _SETUP_TIMEZONE_CHOICES: [],
         }
     )
-    await message.answer(
+    await edit_menu(
+        message,
+        state,
         t(
             ui_language,
             "timezone_confirm",
@@ -347,7 +359,7 @@ async def handle_timezone_city_input(message: types.Message, state: FSMContext) 
             timezone=candidate.timezone,
             local_time=_format_backend_datetime(candidate.local_time),
         ),
-        reply_markup=_timezone_confirm_keyboard(ui_language),
+        _timezone_confirm_keyboard(ui_language),
     )
 
 
@@ -438,6 +450,9 @@ async def handle_timezone_choice(callback: CallbackQuery, state: FSMContext) -> 
     )
 
 
+# ---------- Public helpers ----------
+
+
 async def ensure_user_setup(
     event: types.Message | CallbackQuery,
     state: FSMContext,
@@ -521,7 +536,8 @@ async def prompt_ui_language_selection(
             current_language=interface_language_name(current_ui_language, current_ui_language),
         )
     )
-    await _answer_with_markup(event, text, _ui_language_keyboard(current_ui_language))
+    keyboard = _ui_language_keyboard(current_ui_language, back_target=M_SETTINGS)
+    await edit_menu(event, state, text, keyboard)
 
 
 async def prompt_subscription_language_selection(
@@ -536,12 +552,7 @@ async def prompt_subscription_language_selection(
 ) -> None:
     if reset_state:
         await state.clear()
-    await state.update_data(
-        **{
-            _SETUP_NEXT_ACTION: next_action,
-            _SETUP_REQUIRE_SUBSCRIPTION: False,
-        }
-    )
+    await state.update_data(**{_SETUP_NEXT_ACTION: next_action, _SETUP_REQUIRE_SUBSCRIPTION: False})
     text = (
         t(ui_language, "subscription_language_initial")
         if initial
@@ -551,7 +562,8 @@ async def prompt_subscription_language_selection(
             summary=subscription_preference_summary(ui_language, current_preference),
         )
     )
-    await _answer_with_markup(event, text, _subscription_language_keyboard(ui_language))
+    keyboard = _subscription_language_keyboard(ui_language, back_target=M_SETTINGS)
+    await edit_menu(event, state, text, keyboard)
 
 
 async def prompt_timezone_selection(
@@ -588,12 +600,15 @@ async def prompt_timezone_selection(
             timezone=current_timezone,
             local_time=_format_timezone_now(current_timezone),
         )
-    await _answer(event, text)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_button(ui_language, M_SETTINGS)]])
+    await edit_menu(event, state, text, keyboard)
+
+
+# ---------- Internal helpers ----------
 
 
 async def _apply_fixed_language_to_existing_subscriptions(
-    api_key: str,
-    digest_language: str,
+    api_key: str, digest_language: str
 ) -> tuple[int, int]:
     subscriptions = await backend.list_subscriptions(api_key)
     updated = 0
@@ -603,14 +618,15 @@ async def _apply_fixed_language_to_existing_subscriptions(
             continue
         try:
             await backend.update_subscription(
-                api_key,
-                subscription.id,
-                digest_language=digest_language,
+                api_key, subscription.id, digest_language=digest_language
             )
             updated += 1
         except Exception:
             failed += 1
-            logger.exception("Failed to update language for subscription %s", subscription.id)
+            logger.exception(
+                "Failed to update language for subscription %s",
+                subscription.id,
+            )
     return updated, failed
 
 
@@ -672,20 +688,31 @@ async def _finish_setup(
         }
     )
 
-    if next_action == "welcome":
-        await state.clear()
-        await _answer(event, t(ui_language, "welcome"))
+    if next_action == "welcome" or next_action == "menu":
+        await state.set_state(None)
+        from tgbot.handlers.menu import show_main_menu
+
+        await show_main_menu(event, state)
         return
     if next_action == "subscribe":
-        from tgbot.handlers import subscribe as subscribe_handler
+        from tgbot.handlers.subscribe import start_subscribe_flow
 
-        await subscribe_handler._show_prompt_step(event, state, reset_data=True)
+        await start_subscribe_flow(event, state)
+        return
+    if next_action == "settings":
+        await state.set_state(None)
+        from tgbot.handlers.menu import _show_settings
+
+        await _show_settings(event, state)
         return
     if fallback_message is not None:
-        await state.clear()
-        await _answer(event, fallback_message)
+        await state.set_state(None)
+        # Show confirmation then return to menu
+        from tgbot.handlers.menu import show_main_menu
+
+        await show_main_menu(event, state)
         return
-    await state.clear()
+    await state.set_state(None)
 
 
 async def _save_timezone_selection(
@@ -748,7 +775,11 @@ def _subscription_language_confirmation(
 
     language = interface_language_name(ui_language, new_preference.code or "en")
     if update_failed:
-        return t(ui_language, "subscription_language_saved_fixed_failed", language=language)
+        return t(
+            ui_language,
+            "subscription_language_saved_fixed_failed",
+            language=language,
+        )
     if failed:
         return t(
             ui_language,
@@ -765,7 +796,11 @@ def _subscription_language_confirmation(
     )
 
 
-def _ui_language_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+def _ui_language_keyboard(
+    ui_language: UILanguage,
+    *,
+    back_target: str = M_SETTINGS,
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -777,12 +812,17 @@ def _ui_language_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
                     text=t(ui_language, "button_russian"),
                     callback_data=UI_LANGUAGE_RU,
                 ),
-            ]
+            ],
+            [back_button(ui_language, back_target)],
         ]
     )
 
 
-def _subscription_language_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+def _subscription_language_keyboard(
+    ui_language: UILanguage,
+    *,
+    back_target: str = M_SETTINGS,
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -801,11 +841,14 @@ def _subscription_language_keyboard(ui_language: UILanguage) -> InlineKeyboardMa
                     callback_data=SUBSCRIPTION_LANGUAGE_ASK,
                 )
             ],
+            [back_button(ui_language, back_target)],
         ]
     )
 
 
-def _timezone_confirm_keyboard(ui_language: UILanguage) -> InlineKeyboardMarkup:
+def _timezone_confirm_keyboard(
+    ui_language: UILanguage,
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -846,7 +889,9 @@ def _timezone_choice_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def _ui_language_from_callback(callback_data: str | None) -> UILanguage | None:
+def _ui_language_from_callback(
+    callback_data: str | None,
+) -> UILanguage | None:
     if callback_data == UI_LANGUAGE_RU:
         return "ru"
     if callback_data == UI_LANGUAGE_EN:
