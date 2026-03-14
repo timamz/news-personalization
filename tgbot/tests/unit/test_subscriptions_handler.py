@@ -18,7 +18,7 @@ def _mock_callback(telegram_id: int, data: str):
         from_user=SimpleNamespace(id=telegram_id),
         data=data,
         answer=AsyncMock(),
-        message=SimpleNamespace(answer=AsyncMock(), edit_text=AsyncMock()),
+        message=SimpleNamespace(answer=AsyncMock(), edit_text=AsyncMock(), delete=AsyncMock()),
     )
 
 
@@ -115,6 +115,49 @@ async def test_handle_send_now_queues_digest(monkeypatch):
 
     send_now.assert_awaited_once_with("api-key", "sub-2")
     callback.answer.assert_awaited_once_with("Digest queued.")
+
+
+@pytest.mark.asyncio
+async def test_handle_delete_shows_confirmation(monkeypatch):
+    callback = _mock_callback(telegram_id=222, data="delete_sub:sub-2")
+
+    await subscriptions.handle_delete(callback)
+
+    callback.answer.assert_awaited_once()
+    callback.message.edit_text.assert_awaited_once()
+    text = callback.message.edit_text.await_args.args[0]
+    assert text == "Are you sure you want to delete this subscription?"
+    keyboard = callback.message.edit_text.await_args.kwargs["reply_markup"]
+    buttons = keyboard.inline_keyboard[0]
+    assert buttons[0].text == "Yes, delete"
+    assert buttons[0].callback_data == "confirm_del:sub-2"
+    assert buttons[1].text == "Cancel"
+    assert buttons[1].callback_data == "cancel_del:sub-2"
+
+
+@pytest.mark.asyncio
+async def test_handle_confirm_delete_deletes_subscription(monkeypatch):
+    callback = _mock_callback(telegram_id=222, data="confirm_del:sub-2")
+
+    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
+    delete_sub = AsyncMock()
+    monkeypatch.setattr(subscriptions.backend, "delete_subscription", delete_sub)
+
+    await subscriptions.handle_confirm_delete(callback)
+
+    delete_sub.assert_awaited_once_with("api-key", "sub-2")
+    callback.answer.assert_awaited_once_with("Subscription deleted.")
+    callback.message.edit_text.assert_awaited_once_with("Subscription deleted.")
+
+
+@pytest.mark.asyncio
+async def test_handle_cancel_delete_removes_message():
+    callback = _mock_callback(telegram_id=222, data="cancel_del:sub-2")
+
+    await subscriptions.handle_cancel_delete(callback)
+
+    callback.answer.assert_awaited_once_with("Deletion cancelled.")
+    callback.message.delete.assert_awaited_once()
 
 
 @pytest.mark.asyncio

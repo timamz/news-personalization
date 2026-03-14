@@ -20,6 +20,8 @@ router = Router()
 backend = BackendClient()
 
 DELETE_PREFIX = "delete_sub:"
+CONFIRM_DELETE_PREFIX = "confirm_del:"
+CANCEL_DELETE_PREFIX = "cancel_del:"
 SEND_NOW_PREFIX = "send_now:"
 EDIT_PREFIX = "edit_sub:"
 EDIT_SCHEDULE_PREFIX = "edit_sched:"
@@ -401,9 +403,7 @@ async def process_sources_edit(message: types.Message, state: FSMContext) -> Non
         if result.added_sources_count == 0:
             await message.answer(t(ui_language, "sources_already_added"))
         else:
-            await message.answer(
-                t(ui_language, "sources_added", count=result.added_sources_count)
-            )
+            await message.answer(t(ui_language, "sources_added", count=result.added_sources_count))
     except Exception:
         logger.exception("Failed to append sources for subscription %s", subscription_id)
         await message.answer(t(ui_language, "sources_add_failed"))
@@ -413,8 +413,34 @@ async def process_sources_edit(message: types.Message, state: FSMContext) -> Non
 
 @router.callback_query(lambda c: c.data and c.data.startswith(DELETE_PREFIX))
 async def handle_delete(callback: CallbackQuery) -> None:
-    telegram_id = callback.from_user.id
+    await callback.answer()
     subscription_id = callback.data[len(DELETE_PREFIX) :]
+    ui_language = await _ui_language_or_default(callback.from_user.id)
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t(ui_language, "button_confirm_delete"),
+                    callback_data=f"{CONFIRM_DELETE_PREFIX}{subscription_id}",
+                ),
+                InlineKeyboardButton(
+                    text=t(ui_language, "button_cancel"),
+                    callback_data=f"{CANCEL_DELETE_PREFIX}{subscription_id}",
+                ),
+            ]
+        ]
+    )
+    if callback.message:
+        await callback.message.edit_text(
+            t(ui_language, "confirm_delete_prompt"),
+            reply_markup=keyboard,
+        )
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith(CONFIRM_DELETE_PREFIX))
+async def handle_confirm_delete(callback: CallbackQuery) -> None:
+    telegram_id = callback.from_user.id
+    subscription_id = callback.data[len(CONFIRM_DELETE_PREFIX) :]
     ui_language = await _ui_language_or_default(telegram_id)
 
     try:
@@ -432,6 +458,14 @@ async def handle_delete(callback: CallbackQuery) -> None:
     except Exception:
         logger.exception("Failed to delete subscription %s", subscription_id)
         await callback.answer(t(ui_language, "subscription_delete_failed"))
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith(CANCEL_DELETE_PREFIX))
+async def handle_cancel_delete(callback: CallbackQuery) -> None:
+    ui_language = await _ui_language_or_default(callback.from_user.id)
+    await callback.answer(t(ui_language, "delete_cancelled"))
+    if callback.message:
+        await callback.message.delete()
 
 
 def _edit_keyboard(
