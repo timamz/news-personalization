@@ -17,6 +17,7 @@ class SubscriptionInfo:
     schedule_cron: str | None
     format_instructions: str
     digest_language: str
+    short_label: str = ""
     raw_prompt: str | None = None
     canonical_prompt: str | None = None
 
@@ -196,6 +197,7 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
                 digest_language=data["digest_language"],
+                short_label=data.get("short_label", ""),
                 raw_prompt=data.get("raw_prompt"),
                 canonical_prompt=data.get("canonical_prompt"),
             )
@@ -244,11 +246,21 @@ class BackendClient:
                     schedule_cron=s["schedule_cron"],
                     format_instructions=s["format_instructions"],
                     digest_language=s["digest_language"],
+                    short_label=s.get("short_label", ""),
                     raw_prompt=s.get("raw_prompt"),
                     canonical_prompt=s.get("canonical_prompt"),
                 )
                 for s in response.json()
             ]
+
+    async def backfill_short_labels(self, api_key: str) -> int:
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/backfill-labels",
+                headers={"X-API-Key": api_key},
+            )
+            response.raise_for_status()
+            return response.json().get("updated", 0)
 
     async def delete_subscription(self, api_key: str, subscription_id: str) -> None:
         async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
@@ -293,6 +305,7 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
                 digest_language=data["digest_language"],
+                short_label=data.get("short_label", ""),
                 raw_prompt=data.get("raw_prompt"),
                 canonical_prompt=data.get("canonical_prompt"),
             )
@@ -387,6 +400,7 @@ class BackendClient:
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
                 digest_language=data["digest_language"],
+                short_label=data.get("short_label", ""),
                 raw_prompt=data.get("raw_prompt"),
                 canonical_prompt=data.get("canonical_prompt"),
             )

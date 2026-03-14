@@ -25,6 +25,7 @@ def test_subscription_create_too_short():
 
 def test_subscription_config_valid():
     config = SubscriptionConfig(
+        short_label="AI News",
         prompt_summary="AI news every morning",
         delivery_mode="digest",
         event_matching_mode="basic",
@@ -39,6 +40,7 @@ def test_subscription_config_valid():
 
 def test_subscription_config_default_format():
     config = SubscriptionConfig(
+        short_label="AI Digest",
         prompt_summary="Evening AI digest",
         delivery_mode="digest",
         event_matching_mode="basic",
@@ -51,6 +53,7 @@ def test_subscription_config_default_format():
 
 def test_subscription_config_supports_manual_mode():
     config = SubscriptionConfig(
+        short_label="AI News",
         prompt_summary="AI news",
         schedule_cron=None,
         schedule_was_explicit=False,
@@ -79,6 +82,7 @@ def test_subscription_update_rejects_empty_format_string():
 
 def test_strict_event_subscription_is_allowed_without_constraints():
     config = SubscriptionConfig(
+        short_label="Drobyshevsky",
         prompt_summary="Drobyshevsky events",
         delivery_mode="event",
         event_matching_mode="strict_with_prefilter",

@@ -30,6 +30,12 @@ Rules for schedule_was_explicit:
 - true if user explicitly asked for automatic schedule/timing in this prompt.
 - false if schedule was not explicitly specified.
 
+Rules for short_label:
+- Return an ultra-short 2-3 word label for this subscription.
+- Think of it as a category or topic name that fits on a button.
+- Examples: "AI News", "Tech Events", "Кино новинки", "Crypto Prices", "ML Research".
+- Preserve the language of the user's prompt.
+
 Rules for prompt_summary:
 - Return a short human-readable summary of the user's request.
 - Keep it concise, usually 3-8 words.

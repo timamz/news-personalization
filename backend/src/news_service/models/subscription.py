@@ -20,6 +20,7 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     canonical_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
     canonical_prompt_embedding = mapped_column(Vector(1536), nullable=True)
     prompt_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    short_label: Mapped[str] = mapped_column(String(30), nullable=False, default="")
     delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="digest")
     event_matching_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="basic")
     event_constraints: Mapped[list[dict[str, object]]] = mapped_column(

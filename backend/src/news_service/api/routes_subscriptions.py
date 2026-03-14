@@ -84,15 +84,11 @@ def _normalize_fixed_sources(
 ) -> tuple[list[str], list[str], list[str]]:
     try:
         return (
-            _dedupe_strings(
-                [normalize_telegram_channel(channel) for channel in telegram_channels]
-            ),
+            _dedupe_strings([normalize_telegram_channel(channel) for channel in telegram_channels]),
             _dedupe_strings(
                 [normalize_reddit_subreddit(subreddit) for subreddit in reddit_subreddits]
             ),
-            _dedupe_strings(
-                [normalize_twitter_account(account) for account in twitter_accounts]
-            ),
+            _dedupe_strings([normalize_twitter_account(account) for account in twitter_accounts]),
         )
     except ValueError as exc:
         raise HTTPException(
@@ -240,6 +236,7 @@ async def create_subscription(
     raw_prompt_embedding = await _subscription_prompt_embedding(payload.prompt)
     canonical_prompt_embedding = list(raw_prompt_embedding)
     prompt_summary = config.prompt_summary or build_prompt_summary(payload.prompt)
+    short_label = config.short_label or prompt_summary[:30]
 
     subscription = Subscription(
         user_id=user.id,
@@ -248,6 +245,7 @@ async def create_subscription(
         canonical_prompt=payload.prompt,
         canonical_prompt_embedding=canonical_prompt_embedding,
         prompt_summary=prompt_summary,
+        short_label=short_label,
         delivery_mode=delivery_mode,
         event_matching_mode=event_matching_mode,
         event_constraints=[],
@@ -391,9 +389,7 @@ async def append_subscription_sources(
     await session.commit()
 
     added_sources_count = (
-        len(added_telegram_channels)
-        + len(added_reddit_subreddits)
-        + len(added_twitter_accounts)
+        len(added_telegram_channels) + len(added_reddit_subreddits) + len(added_twitter_accounts)
     )
     return SubscriptionSourcesAppendResponse(
         added_telegram_channels=added_telegram_channels,
@@ -740,3 +736,34 @@ async def send_subscription_now(
         extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
     )
     return {"task_id": task.id, "status": "queued"}
+
+
+@router.post("/backfill-labels", status_code=status.HTTP_200_OK)
+async def backfill_short_labels(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, int]:
+    """Generate short_label for all active subscriptions that don't have one."""
+    from news_service.agents.short_label import generate_short_label
+
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.user_id == user.id,
+            Subscription.is_active.is_(True),
+            Subscription.short_label == "",
+        )
+    )
+    subscriptions = list(result.scalars().all())
+    updated = 0
+    for subscription in subscriptions:
+        try:
+            label = await generate_short_label(subscription.prompt_summary)
+            subscription.short_label = label[:30]
+            updated += 1
+        except Exception:
+            logger.exception(
+                "Failed to generate short label for subscription %s",
+                subscription.id,
+            )
+    await session.commit()
+    return {"updated": updated}

@@ -55,6 +55,12 @@ class SubscriptionCreate(BaseModel):
 class SubscriptionConfig(BaseModel):
     """Structured output from the Parser Agent."""
 
+    short_label: str = Field(
+        ...,
+        min_length=1,
+        max_length=30,
+        description="Ultra-short 2-3 word label for the subscription, like a category name",
+    )
     prompt_summary: str = Field(
         ...,
         min_length=3,
@@ -97,6 +103,7 @@ class SubscriptionResponse(BaseModel):
     id: uuid.UUID
     raw_prompt: str
     canonical_prompt: str
+    short_label: str
     prompt_summary: str
     delivery_mode: DeliveryMode
     schedule_cron: str | None

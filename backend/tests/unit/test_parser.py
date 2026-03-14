@@ -8,6 +8,7 @@ from news_service.schemas.subscription import SubscriptionConfig
 @pytest.fixture
 def mock_config():
     return SubscriptionConfig(
+        short_label="AI News",
         prompt_summary="AI news every third day",
         delivery_mode="digest",
         event_matching_mode="basic",
