@@ -27,7 +27,9 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
 
     async with get_task_session() as session:
         result = await session.execute(
-            select(Subscription, User.timezone).join(User, User.id == Subscription.user_id).where(
+            select(Subscription, User.timezone)
+            .join(User, User.id == Subscription.user_id)
+            .where(
                 Subscription.is_active.is_(True),
                 Subscription.delivery_mode == "digest",
             )

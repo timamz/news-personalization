@@ -112,8 +112,7 @@ def _city_index() -> tuple[dict[str, tuple[TimezoneCandidate, ...]], tuple[str, 
             alias_map.setdefault(normalized_alias, []).append(candidate)
 
     deduped_alias_map = {
-        alias: tuple(_dedupe_candidates(candidates))
-        for alias, candidates in alias_map.items()
+        alias: tuple(_dedupe_candidates(candidates)) for alias, candidates in alias_map.items()
     }
     return deduped_alias_map, tuple(deduped_alias_map.keys())
 
@@ -185,9 +184,7 @@ def resolve_timezone(query: str) -> TimezoneResolution:
 
     return TimezoneResolution(
         status="ambiguous",
-        candidates=tuple(
-            ranked.candidate for ranked in ranked_candidates[:_AMBIGUOUS_MATCH_LIMIT]
-        ),
+        candidates=tuple(ranked.candidate for ranked in ranked_candidates[:_AMBIGUOUS_MATCH_LIMIT]),
     )
 
 
@@ -268,8 +265,5 @@ def _normalize_text(value: str) -> str:
     decomposed = unicodedata.normalize("NFKD", value)
     without_marks = "".join(char for char in decomposed if not unicodedata.combining(char))
     lowered = without_marks.lower().replace("&", " and ")
-    collapsed = "".join(
-        char if char.isalnum() or char in "/_+" else " "
-        for char in lowered
-    )
+    collapsed = "".join(char if char.isalnum() or char in "/_+" else " " for char in lowered)
     return re.sub(r"\s+", " ", collapsed).strip()

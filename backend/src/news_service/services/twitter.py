@@ -228,12 +228,7 @@ def parse_twitter_posts(html: str, account: str, *, limit: int) -> list[TwitterP
         raise ValueError(f"Twitter syndication payload missing __NEXT_DATA__ for @{account}")
 
     payload = json.loads(unescape(match.group(1)))
-    entries = (
-        payload.get("props", {})
-        .get("pageProps", {})
-        .get("timeline", {})
-        .get("entries", [])
-    )
+    entries = payload.get("props", {}).get("pageProps", {}).get("timeline", {}).get("entries", [])
     if not isinstance(entries, list):
         raise ValueError(f"Twitter timeline payload is malformed for @{account}")
 

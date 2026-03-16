@@ -25,6 +25,7 @@ from tgbot.menu_utils import (
     back_button,
     edit_menu,
     main_menu_keyboard,
+    send_new_menu,
 )
 from tgbot.storage import get_ui_language
 from tgbot.ui_text import interface_language_name, t
@@ -63,7 +64,8 @@ async def handle_menu_button(message: types.Message, state: FSMContext) -> None:
     ):
         return
 
-    await _show_main_menu(message, state)
+    lang = await _ui_lang(message)
+    await send_new_menu(message, state, t(lang, "menu_title"), main_menu_keyboard(lang))
 
 
 # ---------- Main menu ----------
@@ -73,15 +75,8 @@ async def handle_menu_button(message: types.Message, state: FSMContext) -> None:
 async def handle_main_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await state.set_state(None)
-    await _show_main_menu(callback, state)
-
-
-async def _show_main_menu(
-    event: types.Message | CallbackQuery,
-    state: FSMContext,
-) -> None:
-    lang = await _ui_lang(event)
-    await edit_menu(event, state, t(lang, "menu_title"), main_menu_keyboard(lang))
+    lang = await _ui_lang(callback)
+    await edit_menu(callback, state, t(lang, "menu_title"), main_menu_keyboard(lang))
 
 
 async def show_main_menu(
@@ -89,7 +84,8 @@ async def show_main_menu(
     state: FSMContext,
 ) -> None:
     """Public entry for showing the main menu (called from start.py etc.)."""
-    await _show_main_menu(event, state)
+    lang = await _ui_lang(event)
+    await send_new_menu(event, state, t(lang, "menu_title"), main_menu_keyboard(lang))
 
 
 # ---------- Help ----------
@@ -189,9 +185,9 @@ async def show_subscription_list(event: types.Message | CallbackQuery, state: FS
 
     buttons: list[list[InlineKeyboardButton]] = []
     for sub in subs:
-        label = f"📰 {sub.short_label or sub.prompt_summary}"
-        if len(label) > 30:
-            label = label[:27] + "..."
+        label = sub.short_label or sub.prompt_summary
+        if len(label) > 28:
+            label = label[:25] + "..."
         buttons.append(
             [
                 InlineKeyboardButton(

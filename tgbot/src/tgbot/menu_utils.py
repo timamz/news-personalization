@@ -116,6 +116,27 @@ async def edit_menu(
     await state.update_data(**{MENU_MSG_KEY: msg.message_id})
 
 
+async def send_new_menu(
+    event: types.Message | types.CallbackQuery,
+    state: FSMContext,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """Always delete the old menu message and send a fresh one at the bottom."""
+    chat_id, bot = _resolve_chat(event)
+    if not chat_id or not bot:
+        return
+
+    state_data = await state.get_data()
+    old_msg_id = state_data.get(MENU_MSG_KEY)
+    if old_msg_id:
+        with contextlib.suppress(Exception):
+            await bot.delete_message(chat_id=chat_id, message_id=old_msg_id)
+
+    msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+    await state.update_data(**{MENU_MSG_KEY: msg.message_id})
+
+
 def main_menu_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[

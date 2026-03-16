@@ -67,9 +67,7 @@ async def test_compose_digest_requires_english_source_label_for_english_digest(m
 async def test_generate_digest_passes_language_to_composer(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
     source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(
-        all=lambda: [(source_feed_id, "https://t.me/s/lectures")]
-    )
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id, "https://t.me/s/lectures")])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription_id = uuid.uuid4()
@@ -139,9 +137,7 @@ async def test_generate_digest_returns_none_without_fixed_sources(mocker) -> Non
 async def test_generate_digest_falls_back_to_raw_prompt_embedding_when_missing(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
     source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(
-        all=lambda: [(source_feed_id, "https://t.me/s/lectures")]
-    )
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id, "https://t.me/s/lectures")])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(
@@ -175,9 +171,7 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
     sent_news_id = uuid.uuid4()
     sent_result = SimpleNamespace(all=lambda: [(sent_news_id, last_sent_at)])
     source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(
-        all=lambda: [(source_feed_id, "https://t.me/s/research")]
-    )
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id, "https://t.me/s/research")])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(

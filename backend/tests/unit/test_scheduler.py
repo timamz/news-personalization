@@ -52,9 +52,12 @@ def test_schedule_uses_user_timezone():
     now = datetime(2026, 2, 26, 6, 0, tzinfo=UTC)
     last_run = datetime(2026, 2, 25, 6, 0, tzinfo=UTC)
 
-    assert is_schedule_due(
-        "0 9 * * *",
-        last_run_at=last_run,
-        now=now,
-        timezone_name="Europe/Berlin",
-    ) is True
+    assert (
+        is_schedule_due(
+            "0 9 * * *",
+            last_run_at=last_run,
+            now=now,
+            timezone_name="Europe/Berlin",
+        )
+        is True
+    )
