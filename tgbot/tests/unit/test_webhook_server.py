@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestClient, TestServer
 
 from tgbot.webhook_server import (
     TELEGRAM_MAX_MESSAGE_LENGTH,
+    _split_text,
     create_webhook_app,
     delivery_webhook_path,
     set_bot,
@@ -101,3 +102,35 @@ async def test_deliver_rejects_invalid_token(webhook_client: TestClient):
     )
 
     assert response.status == 403
+
+
+def test_split_text_short_message():
+    assert _split_text("short", 100) == ["short"]
+
+
+def test_split_text_splits_paragraphs_into_balanced_halves():
+    paras = ["Para one.", "Para two.", "Para three.", "Para four."]
+    text = "\n\n".join(paras)
+    # Use a limit that fits 2 paragraphs but not all 4
+    chunks = _split_text(text, len(text) - 1)
+    assert len(chunks) == 2
+    assert "Para one." in chunks[0]
+    assert "Para two." in chunks[0]
+    assert "Para three." in chunks[1]
+    assert "Para four." in chunks[1]
+
+
+def test_split_text_preserves_all_content():
+    paras = [f"Paragraph {i} content here." for i in range(6)]
+    text = "\n\n".join(paras)
+    chunks = _split_text(text, len(text) // 2 + 10)
+    reassembled = "\n\n".join(chunks)
+    assert reassembled == text
+
+
+def test_split_text_respects_max_length():
+    paras = [f"Paragraph {i}: " + "x" * 100 for i in range(10)]
+    text = "\n\n".join(paras)
+    chunks = _split_text(text, 400)
+    for chunk in chunks:
+        assert len(chunk) <= 400
