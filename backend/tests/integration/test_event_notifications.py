@@ -88,7 +88,7 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
         "news_item_id": str(news_item_id),
     }
     channel.send.assert_awaited_once()
-    assert channel.send.await_args.args[0] == "Upcoming event: Severance season finale"
+    assert channel.send.await_args.args[0] == ""
     assert "When: 2026-04-01 20:00 UTC" in channel.send.await_args.args[1]
     assert "Apple confirmed the new episode release date." in channel.send.await_args.args[1]
 

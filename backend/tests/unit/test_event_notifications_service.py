@@ -313,8 +313,8 @@ async def test_build_event_notification_uses_cyrillic_russian_labels() -> None:
 
     subject, body = await event_notifications.build_event_notification("ru", item)
 
-    assert subject == "Предстоящее событие: Новая лекция"
-    assert "Событие: Новая лекция" in body
+    assert subject == ""
+    assert body.startswith("Новая лекция")
     assert "Когда: 2026-03-04 16:00 UTC" in body
     assert "Источник: https://example.com/news-1" in body
     assert "Telegram @fondnauk" not in body

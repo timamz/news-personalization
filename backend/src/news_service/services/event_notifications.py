@@ -256,16 +256,13 @@ async def build_event_notification(digest_language: str, item: NewsItem) -> tupl
         title = localized.title
         summary = localized.summary
 
-    subject = f"{labels['subject']}: {title}"
-    lines = [f"{labels['event']}: {title}"]
+    lines = [title]
     if item.event_starts_at is not None:
         lines.append(f"{labels['when']}: {_format_event_time(item.event_starts_at)}")
-
-    if summary:
+    if summary and summary != title:
         lines.extend(["", summary])
-
     lines.extend(["", f"{labels['source']}: {item.url}"])
-    return subject, "\n".join(lines)
+    return "", "\n".join(lines)
 
 
 async def build_recent_events_preview(
