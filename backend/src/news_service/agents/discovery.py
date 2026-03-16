@@ -41,7 +41,7 @@ RSS or Atom feeds that are relevant to it.
 Rules:
 - Return only RSS/Atom feed URLs, never homepages.
 - Prefer high-signal, active sources from established publishers or niche experts.
-- Find 2-4 good feeds per topic when possible.
+- Find 3-6 good feeds per topic when possible.
 - Do not return Telegram URLs or social profiles.
 """
 
@@ -52,7 +52,7 @@ working public Telegram channels that are relevant to it.
 Rules:
 - Return only public Telegram channel archive URLs in the format https://t.me/s/<channel>.
 - Prefer high-signal, active channels with frequent news or analysis posts.
-- Find 2-4 good channels per topic when possible.
+- Find 3-6 good channels per topic when possible.
 - Do not return RSS feeds, websites, invite links, group chats, or private channels.
 """
 
@@ -63,7 +63,7 @@ public Reddit subreddits that are relevant to it.
 Rules:
 - Return only subreddit URLs in the format https://www.reddit.com/r/<subreddit>/new/.
 - Prefer active communities where new topical posts appear regularly.
-- Find 2-4 good subreddits per topic when possible.
+- Find 3-6 good subreddits per topic when possible.
 - Do not return Reddit post URLs, users, or non-Reddit websites.
 """
 
@@ -74,7 +74,7 @@ active public Twitter/X accounts that are relevant to it.
 Rules:
 - Return only profile URLs in the format https://x.com/<account>.
 - Prefer active accounts that post original news, announcements, or analysis.
-- Find 2-4 good accounts per topic when possible.
+- Find 3-6 good accounts per topic when possible.
 - Do not return tweet URLs, lists, hashtags, or non-X websites.
 """
 

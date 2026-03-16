@@ -193,5 +193,3 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
     await digest.generate_digest(session, subscription)
 
     assert find_similar_news.await_args.kwargs["published_after"] == last_sent_at
-
-

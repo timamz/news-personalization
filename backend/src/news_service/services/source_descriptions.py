@@ -16,11 +16,12 @@ _client = openai_client
 SYSTEM_PROMPT = """\
 You summarize news sources for source matching.
 
-Given a source type, source title, and canonical URL, write one short paragraph describing
-what this source likely covers. Keep it factual, neutral, and concise.
+Given a source type, source title, canonical URL, and optionally sample content from the source,
+write one short paragraph describing what this source covers. Keep it factual, neutral, and concise.
 
 Rules:
-- Base the summary only on the source type, title, and URL.
+- If sample content is provided, base the summary on the actual content.
+- If no sample content is provided, infer from the source type, title, and URL.
 - Do not mention subscribers, popularity, or unverifiable claims.
 - Do not address the user directly.
 - Keep it under 60 words.
@@ -36,19 +37,22 @@ async def describe_source(
     source_kind: SourceKind,
     title: str,
     url: str,
+    sample_content: list[str] | None = None,
 ) -> str:
+    user_lines = [
+        f"Source type: {source_kind}",
+        f"Source title: {title or '(missing)'}",
+        f"Canonical URL: {url}",
+    ]
+    if sample_content:
+        truncated = [text[:300] for text in sample_content[:5]]
+        user_lines.append("\nSample content from this source:\n" + "\n---\n".join(truncated))
+
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Source type: {source_kind}\n"
-                    f"Source title: {title or '(missing)'}\n"
-                    f"Canonical URL: {url}"
-                ),
-            },
+            {"role": "user", "content": "\n".join(user_lines)},
         ],
         response_format=SourceDescription,
         temperature=0.1,

@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     rss_poll_interval_minutes: int = 30
     topic_similarity_threshold: float = 0.85
 
+    source_target_count: int = 8
+    content_sample_size: int = 10
+    content_relevance_top_k: int = 3
+    content_db_candidate_threshold: float = 0.80
+
 
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]
