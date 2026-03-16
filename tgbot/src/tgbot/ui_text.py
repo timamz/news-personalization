@@ -180,7 +180,13 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_update_failed": ("Failed to update schedule. Please try again."),
         "schedule_disabled": "🚫 Automatic schedule disabled.",
         "schedule_disable_failed": "Failed to update schedule. Try again.",
-        "edit_request_prompt": ("📝 Describe what should change in this subscription."),
+        "edit_request_prompt": (
+            "📝 Describe what should change.\n\n"
+            "Edit is best for small tweaks: format, language details, "
+            "or adding a specific filter.\n"
+            "For a completely different topic, delete this subscription "
+            "and create a new one."
+        ),
         "edit_request_empty": "Please describe what should change.",
         "edit_request_preview": (
             "Proposed update:\n\n"
@@ -428,7 +434,12 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "schedule_update_failed": ("Не удалось обновить расписание. Попробуйте ещё раз."),
         "schedule_disabled": "🚫 Автоматическое расписание отключено.",
         "schedule_disable_failed": ("Не удалось обновить расписание. Попробуйте ещё раз."),
-        "edit_request_prompt": ("📝 Опишите, что нужно изменить в этой подписке."),
+        "edit_request_prompt": (
+            "📝 Опишите, что нужно изменить.\n\n"
+            "Редактирование подходит для мелких правок: формат, детали языка, "
+            "добавление фильтра.\n"
+            "Если нужна совсем другая тема — удалите подписку и создайте новую."
+        ),
         "edit_request_empty": ("Пожалуйста, опишите, что нужно изменить."),
         "edit_request_preview": (
             "Предлагаемое обновление:\n\n"

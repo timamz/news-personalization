@@ -67,7 +67,7 @@ async def test_compose_digest_requires_english_source_label_for_english_digest(m
 async def test_generate_digest_passes_language_to_composer(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
     source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id, "https://t.me/s/lectures")])
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription_id = uuid.uuid4()
@@ -137,7 +137,7 @@ async def test_generate_digest_returns_none_without_fixed_sources(mocker) -> Non
 async def test_generate_digest_falls_back_to_raw_prompt_embedding_when_missing(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
     source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id, "https://t.me/s/lectures")])
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(
@@ -171,7 +171,7 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
     sent_news_id = uuid.uuid4()
     sent_result = SimpleNamespace(all=lambda: [(sent_news_id, last_sent_at)])
     source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id, "https://t.me/s/research")])
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(
@@ -195,35 +195,3 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
     assert find_similar_news.await_args.kwargs["published_after"] == last_sent_at
 
 
-@pytest.mark.asyncio
-async def test_generate_digest_excludes_reddit_sources_for_research_prompt(mocker) -> None:
-    sent_result = SimpleNamespace(all=lambda: [])
-    reddit_feed_id = uuid.uuid4()
-    arxiv_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(
-        all=lambda: [
-            (reddit_feed_id, "https://www.reddit.com/r/machinelearning/new/"),
-            (arxiv_feed_id, "https://export.arxiv.org/rss/cs.LG"),
-        ]
-    )
-    session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
-
-    subscription = SimpleNamespace(
-        id=uuid.uuid4(),
-        raw_prompt="Хочу получать сводку по самым актуальным научным статьям в ML / AI",
-        canonical_prompt="Хочу получать сводку по самым актуальным научным статьям в ML / AI",
-        canonical_prompt_embedding=[0.0] * 1536,
-        prompt_summary="Актуальные научные статьи в ML / AI",
-        format_instructions="brief summary",
-        digest_language="ru",
-    )
-    item = SimpleNamespace(id=uuid.uuid4())
-
-    find_similar_news = AsyncMock(return_value=[item])
-    mocker.patch.object(digest, "find_similar_news", new=find_similar_news)
-    mocker.patch.object(digest, "_compose_digest", new=AsyncMock(return_value="digest"))
-    mocker.patch.object(digest, "_mark_as_sent", new=AsyncMock())
-
-    await digest.generate_digest(session, subscription)
-
-    assert find_similar_news.await_args.kwargs["allowed_feed_ids"] == {arxiv_feed_id}

@@ -8,7 +8,6 @@ from news_service.agents.digest import generate_digest
 from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
 from news_service.services.delivery import get_delivery_channel
-from news_service.services.prompt_summaries import build_prompt_summary
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -48,11 +47,7 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
                 return {"status": "notified", "reason": "no_new_items"}
             return {"status": "skipped", "reason": "no_new_items"}
         channel = get_delivery_channel(subscription.delivery_webhook_url)
-        prompt_summary = subscription.prompt_summary or build_prompt_summary(
-            getattr(subscription, "canonical_prompt", "") or subscription.raw_prompt
-        )
-        subject = f"Your News Digest: {prompt_summary}"
-        await channel.send(subject, digest_text)
+        await channel.send("", digest_text)
 
         await session.commit()
         return {"status": "delivered", "subscription_id": str(subscription_id)}

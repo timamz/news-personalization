@@ -32,9 +32,9 @@ async def handle_deliver(request: web.Request) -> web.Response:
     except Exception:
         return web.json_response({"error": "invalid json"}, status=400)
 
-    subject = data.get("subject", "News Digest")
+    subject = data.get("subject", "")
     body = data.get("body", "")
-    text = f"{subject}\n\n{body}"
+    text = f"{subject}\n\n{body}".strip() if subject else body
 
     if _bot_instance is None:
         logger.error("Bot instance not set, cannot deliver to %s", chat_id)

@@ -13,10 +13,6 @@ from news_service.models.rss_feed import RssFeed
 from news_service.models.sent_item import SentItem
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
-from news_service.services.reddit import (
-    extract_reddit_subreddit_from_url,
-    extract_reddit_subreddits,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -157,55 +153,11 @@ async def _source_feed_ids_for_digest(
     subscription: Subscription,
 ) -> set[uuid.UUID]:
     source_result = await session.execute(
-        select(RssFeed.id, RssFeed.url)
+        select(RssFeed.id)
         .join(SubscriptionSource, SubscriptionSource.feed_id == RssFeed.id)
         .where(SubscriptionSource.subscription_id == subscription.id)
     )
-    source_rows = list(source_result.all())
-    if not source_rows:
-        return set()
-    if not _should_exclude_reddit_sources(subscription):
-        return {feed_id for feed_id, _ in source_rows}
-
-    filtered_rows = [
-        (feed_id, url)
-        for feed_id, url in source_rows
-        if extract_reddit_subreddit_from_url(url) is None
-    ]
-    if filtered_rows:
-        return {feed_id for feed_id, _ in filtered_rows}
-    return {feed_id for feed_id, _ in source_rows}
-
-
-def _should_exclude_reddit_sources(subscription: Subscription) -> bool:
-    return _is_research_focused_subscription(subscription) and not extract_reddit_subreddits(
-        _effective_prompt(subscription)
-    )
-
-
-def _is_research_focused_subscription(subscription: Subscription) -> bool:
-    text = " ".join(
-        part
-        for part in [_effective_prompt(subscription), getattr(subscription, "prompt_summary", "")]
-        if part
-    ).lower()
-    return any(
-        keyword in text
-        for keyword in (
-            "research paper",
-            "research papers",
-            "scientific article",
-            "scientific articles",
-            "paper",
-            "papers",
-            "study",
-            "studies",
-            "arxiv",
-            "научн",
-            "исследован",
-            "стат",
-        )
-    )
+    return {row[0] for row in source_result.all()}
 
 
 async def _mark_as_sent(
