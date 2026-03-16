@@ -134,3 +134,14 @@ def test_split_text_respects_max_length():
     chunks = _split_text(text, 400)
     for chunk in chunks:
         assert len(chunk) <= 400
+
+
+def test_split_text_no_newlines_splits_at_sentence():
+    sentences = ["First sentence. ", "Second sentence. ", "Third sentence. ", "Fourth sentence."]
+    text = "".join(sentences)
+    # Limit that forces a split but fits ~2 sentences
+    chunks = _split_text(text, len(text) - 1)
+    assert len(chunks) == 2
+    assert chunks[0].endswith(".")
+    assert "First sentence" in chunks[0]
+    assert "Fourth sentence" in chunks[1]

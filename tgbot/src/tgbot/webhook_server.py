@@ -126,7 +126,7 @@ def _balanced_split(paragraphs: list[str], num_parts: int) -> list[str]:
 
 
 def _split_hard(text: str, max_length: int) -> list[str]:
-    """Fallback: split on newlines, then hard character boundary."""
+    """Fallback: split on newlines, then sentences, then hard character boundary."""
     chunks: list[str] = []
     current = ""
     for line in text.split("\n"):
@@ -138,15 +138,36 @@ def _split_hard(text: str, max_length: int) -> list[str]:
             current = candidate
     if current:
         chunks.append(current)
-    # If any chunk still exceeds max_length, hard-split it
+    # If any chunk still exceeds max_length, split on nearest sentence boundary
     result: list[str] = []
     for chunk in chunks:
         while len(chunk) > max_length:
-            result.append(chunk[:max_length])
-            chunk = chunk[max_length:]
+            part = _split_at_sentence(chunk, max_length)
+            result.append(part)
+            chunk = chunk[len(part) :].lstrip()
         if chunk:
             result.append(chunk)
     return result
+
+
+def _split_at_sentence(text: str, max_length: int) -> str:
+    """Split at the sentence-ending '.' closest to the middle, within max_length."""
+    window = text[:max_length]
+    mid = len(window) // 2
+    # Search outward from the middle for a '. ' or '.\n' boundary
+    best = -1
+    for i in range(mid + 1):
+        for pos in (mid + i, mid - i):
+            if 0 <= pos < len(window) - 1 and window[pos] == ".":
+                next_ch = window[pos + 1]
+                if next_ch in (" ", "\n"):
+                    best = pos
+                    break
+        if best != -1:
+            break
+    if best != -1:
+        return text[: best + 1]
+    return text[:max_length]
 
 
 def _delivery_token() -> str:
