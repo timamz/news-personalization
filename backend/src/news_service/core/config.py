@@ -40,6 +40,8 @@ class Settings(BaseSettings):
 
     conversation_ttl_seconds: int = 1800
 
+    llm_max_context_chars: int = 1_200_000
+
 
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]

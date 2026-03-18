@@ -1,6 +1,7 @@
-"""Tests for the agentic digest curation module."""
+"""Tests for single-shot digest curation."""
 
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -8,8 +9,10 @@ import pytest
 
 from news_service.agents.digest_curator import (
     DigestCurationResult,
-    _create_digest_curator_agent,
+    _build_items_text,
+    _cosine_similarity,
     _format_news_item,
+    _is_russian_language,
     run_digest_curator,
 )
 
@@ -18,14 +21,17 @@ def _make_news_item(
     headline: str = "Test Headline",
     body: str = "Test body content",
     url: str = "https://example.com/article",
+    embedding: list[float] | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
+        feed_id=uuid.uuid4(),
         headline=headline,
         body=body,
         url=url,
         published_at=None,
-        fetched_at=None,
+        fetched_at=datetime.now(UTC),
+        embedding=embedding or [0.1] * 10,
     )
 
 
@@ -38,91 +44,70 @@ def test_format_news_item_includes_id_and_fields():
     assert "https://example.com/article" in result
 
 
-@pytest.mark.asyncio
-async def test_create_agent_has_correct_tools():
-    session = AsyncMock()
-    agent = _create_digest_curator_agent(
-        session=session,
-        query_embedding=[0.1] * 10,
-        exclude_ids=set(),
-        allowed_feed_ids={uuid.uuid4()},
-        published_after=MagicMock(),
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-
-    tool_names = {t.name for t in agent.tools}
-    assert "search_news_by_relevance" in tool_names
-    assert "search_news_by_recency" in tool_names
-    assert "get_article_details" in tool_names
-    assert len(agent.tools) == 3
+def test_cosine_similarity_identical_vectors():
+    v = [1.0, 2.0, 3.0]
+    assert _cosine_similarity(v, v) == pytest.approx(1.0)
 
 
-@pytest.mark.asyncio
-async def test_create_agent_uses_structured_output():
-    session = AsyncMock()
-    agent = _create_digest_curator_agent(
-        session=session,
-        query_embedding=[0.1] * 10,
-        exclude_ids=set(),
-        allowed_feed_ids={uuid.uuid4()},
-        published_after=MagicMock(),
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    assert agent.output_type is DigestCurationResult
+def test_cosine_similarity_orthogonal_vectors():
+    assert _cosine_similarity([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
 
 
-@pytest.mark.asyncio
-async def test_create_agent_uses_russian_label_for_ru():
-    session = AsyncMock()
-    agent = _create_digest_curator_agent(
-        session=session,
-        query_embedding=[0.1] * 10,
-        exclude_ids=set(),
-        allowed_feed_ids={uuid.uuid4()},
-        published_after=MagicMock(),
-        format_instructions="краткое содержание",
-        digest_language="ru",
-    )
-    assert "Источник" in agent.instructions
+def test_cosine_similarity_zero_vector():
+    assert _cosine_similarity([0.0, 0.0], [1.0, 2.0]) == 0.0
 
 
-@pytest.mark.asyncio
-async def test_create_agent_uses_english_label_for_en():
-    session = AsyncMock()
-    agent = _create_digest_curator_agent(
-        session=session,
-        query_embedding=[0.1] * 10,
-        exclude_ids=set(),
-        allowed_feed_ids={uuid.uuid4()},
-        published_after=MagicMock(),
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    assert "Source" in agent.instructions
+def test_is_russian_language():
+    assert _is_russian_language("ru") is True
+    assert _is_russian_language("ru-RU") is True
+    assert _is_russian_language("en") is False
+
+
+def test_build_items_text_respects_budget():
+    items = [_make_news_item(headline=f"Item {i}") for i in range(10)]
+    single_formatted = _format_news_item(items[0])
+    budget = len(single_formatted) * 3  # room for ~3 items
+    result = _build_items_text(items, budget)
+    assert result.count("[ID:") <= 3
+
+
+def test_build_items_text_includes_all_when_budget_large():
+    items = [_make_news_item(headline=f"Item {i}") for i in range(5)]
+    result = _build_items_text(items, 1_000_000)
+    assert result.count("[ID:") == 5
 
 
 @pytest.mark.asyncio
 async def test_run_digest_curator_returns_result(mocker):
+    item_id = str(uuid.uuid4())
     expected = DigestCurationResult(
         digest_text="Here is your digest...",
-        used_item_ids=[str(uuid.uuid4())],
+        used_item_ids=[item_id],
     )
-    mock_run_result = MagicMock()
-    mock_run_result.final_output = expected
 
     mocker.patch(
-        "news_service.agents.digest_curator.Runner.run",
-        new=AsyncMock(return_value=mock_run_result),
+        "news_service.agents.digest_curator._parse_digest",
+        new=AsyncMock(return_value=expected),
     )
 
+    items = [_make_news_item()]
+    mocker.patch(
+        "news_service.agents.digest_curator.find_similar_news",
+        new=AsyncMock(return_value=items),
+    )
+    mock_session = AsyncMock()
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = []
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
     result = await run_digest_curator(
-        session=AsyncMock(),
+        session=mock_session,
         query_embedding=[0.1] * 10,
         exclude_ids=set(),
         allowed_feed_ids={uuid.uuid4()},
-        published_after=MagicMock(),
+        published_after=datetime.now(UTC),
         format_instructions="brief summary",
         digest_language="en",
     )
@@ -133,50 +118,26 @@ async def test_run_digest_curator_returns_result(mocker):
 
 
 @pytest.mark.asyncio
-async def test_run_digest_curator_returns_none_when_no_items(mocker):
-    empty_result = DigestCurationResult(digest_text="", used_item_ids=[])
-    mock_run_result = MagicMock()
-    mock_run_result.final_output = empty_result
-
+async def test_run_digest_curator_returns_none_when_no_candidates(mocker):
     mocker.patch(
-        "news_service.agents.digest_curator.Runner.run",
-        new=AsyncMock(return_value=mock_run_result),
+        "news_service.agents.digest_curator.find_similar_news",
+        new=AsyncMock(return_value=[]),
     )
+    mock_session = AsyncMock()
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = []
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    mock_session.execute = AsyncMock(return_value=mock_result)
 
     result = await run_digest_curator(
-        session=AsyncMock(),
+        session=mock_session,
         query_embedding=[0.1] * 10,
         exclude_ids=set(),
         allowed_feed_ids={uuid.uuid4()},
-        published_after=MagicMock(),
+        published_after=datetime.now(UTC),
         format_instructions="brief summary",
         digest_language="en",
     )
 
     assert result is None
-
-
-@pytest.mark.asyncio
-async def test_search_news_by_relevance_tool(mocker):
-    session = AsyncMock()
-    item = _make_news_item()
-
-    mocker.patch(
-        "news_service.agents.digest_curator.find_similar_news",
-        new=AsyncMock(return_value=[item]),
-    )
-
-    agent = _create_digest_curator_agent(
-        session=session,
-        query_embedding=[0.1] * 10,
-        exclude_ids=set(),
-        allowed_feed_ids={uuid.uuid4()},
-        published_after=MagicMock(),
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    relevance_tool = next(t for t in agent.tools if t.name == "search_news_by_relevance")
-
-    result = await relevance_tool.on_invoke_tool(MagicMock(), '{"limit": 10}')
-    assert "Test Headline" in result
-    assert str(item.id) in result
