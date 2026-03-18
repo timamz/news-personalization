@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
+from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 
 type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
@@ -32,6 +33,7 @@ class SourceDescription(BaseModel):
     description: str = Field(..., min_length=10, description="Short source coverage summary")
 
 
+@with_llm_retry()
 async def describe_source(
     *,
     source_kind: SourceKind,

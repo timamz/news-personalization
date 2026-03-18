@@ -5,6 +5,7 @@ import logging
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
+from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class ShortLabel(BaseModel):
     label: str = Field(..., min_length=1, max_length=30, description="Ultra-short 2-3 word label")
 
 
+@with_llm_retry()
 async def generate_short_label(prompt_summary: str) -> str:
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,

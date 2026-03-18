@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
+from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
@@ -24,6 +25,7 @@ def _normalize_embedding_text(content: str) -> str:
     return normalized[:EMBEDDING_MAX_CHARS]
 
 
+@with_llm_retry()
 async def embed_text(content: str) -> list[float]:
     response = await _client.embeddings.create(
         input=_normalize_embedding_text(content),

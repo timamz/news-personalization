@@ -7,6 +7,7 @@ import httpx
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
+from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 from news_service.services.reddit import (
     build_reddit_subreddit_url,
@@ -147,6 +148,7 @@ async def discover_twitter_accounts(raw_prompt: str) -> list[DiscoveredSourceIte
     )
 
 
+@with_llm_retry()
 async def _discover_sources_for_kind(
     raw_prompt: str,
     *,

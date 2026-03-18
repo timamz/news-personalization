@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-5-mini"
     recent_event_match_concurrency: int = 8
 
+    llm_retry_max_attempts: int = 3
+    llm_retry_base_delay_seconds: float = 1.0
+
     rss_poll_interval_minutes: int = 30
     topic_similarity_threshold: float = 0.85
 

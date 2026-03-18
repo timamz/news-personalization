@@ -1,10 +1,10 @@
 import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from news_service.agents.discovery import DiscoveredSourceItem
+from news_service.agents.source_discovery import ScoredSource, SourceDiscoveryResult
 from news_service.services import coverage
 
 
@@ -20,106 +20,108 @@ def _make_db_feed(url: str = "https://example.com/rss.xml") -> SimpleNamespace:
     )
 
 
-def _make_discovered(
-    url: str = "https://example.com/rss.xml",
+def _make_scored_source(
+    url: str = "https://example.com/feed",
     title: str = "Example Feed",
     source_kind: str = "rss",
-) -> DiscoveredSourceItem:
-    return DiscoveredSourceItem(url=url, title=title, source_kind=source_kind)
-
-
-@pytest.fixture(autouse=True)
-def _patch_feed_source_kind(mocker):
-    mocker.patch.object(coverage, "_feed_source_kind", return_value="rss")
+    score: float = 0.8,
+) -> ScoredSource:
+    return ScoredSource(url=url, title=title, source_kind=source_kind, relevance_score=score)
 
 
 @pytest.mark.asyncio
-async def test_ensure_prompt_coverage_ranks_by_score(mocker) -> None:
-    """Top-K candidates by content relevance score are selected."""
+async def test_ensure_prompt_coverage_registers_agent_results(mocker) -> None:
+    """Agent-returned sources are registered in DB via _register_or_reuse_source."""
     session = AsyncMock()
+    source_a = _make_scored_source("https://a.com/feed", score=0.9)
+    source_b = _make_scored_source("https://b.com/feed", score=0.7)
+    agent_result = SourceDiscoveryResult(sources=[source_a, source_b])
+
+    mocker.patch(
+        "news_service.agents.source_discovery.run_source_discovery",
+        new=AsyncMock(return_value=agent_result),
+    )
+
     feed_a = _make_db_feed("https://a.com/feed")
     feed_b = _make_db_feed("https://b.com/feed")
-
-    mocker.patch.object(
-        coverage, "find_similar_feeds", new=AsyncMock(return_value=[feed_a, feed_b])
-    )
-    mocker.patch.object(coverage, "_discover_all", new=AsyncMock(return_value=[]))
-    # feed_b scores higher
-    mocker.patch.object(
-        coverage,
-        "score_candidate",
-        new=AsyncMock(side_effect=[(0.3, ["text"]), (0.8, ["text"])]),
-    )
-    mocker.patch.object(coverage, "_ensure_feed_profile", new=AsyncMock())
-
-    mocker.patch.object(coverage.settings, "source_target_count", 1)
-
-    result = await coverage.ensure_prompt_coverage(session, "test", [0.1])
-
-    assert len(result) == 1
-    assert result[0] == feed_b
-    assert feed_b.subscriber_count == 1
-    assert feed_a.subscriber_count == 0
-
-
-@pytest.mark.asyncio
-async def test_ensure_prompt_coverage_merges_db_and_web(mocker) -> None:
-    """DB and web candidates are merged, deduped, and ranked together."""
-    session = AsyncMock()
-    db_feed = _make_db_feed("https://existing.com/feed")
-
-    web_item = _make_discovered("https://new.com/feed", "New Feed", "rss")
-    registered_feed = _make_db_feed("https://new.com/feed")
-
-    mocker.patch.object(coverage, "find_similar_feeds", new=AsyncMock(return_value=[db_feed]))
-    mocker.patch.object(coverage, "_discover_all", new=AsyncMock(return_value=[web_item]))
-    # web candidate scores higher
-    mocker.patch.object(
-        coverage,
-        "score_candidate",
-        new=AsyncMock(side_effect=[(0.2, ["text"]), (0.9, ["text"])]),
-    )
-    mocker.patch.object(coverage, "_ensure_feed_profile", new=AsyncMock())
-    mocker.patch.object(coverage, "_register_feed", new=AsyncMock(return_value=registered_feed))
-    mocker.patch.object(coverage.settings, "source_target_count", 2)
+    register_mock = AsyncMock(side_effect=[feed_a, feed_b])
+    mocker.patch.object(coverage, "_register_or_reuse_source", register_mock)
 
     result = await coverage.ensure_prompt_coverage(session, "test", [0.1])
 
     assert len(result) == 2
-    # Higher-scored web candidate should be first
-    assert result[0] == registered_feed
-    assert result[1] == db_feed
+    assert result[0] == feed_a
+    assert result[1] == feed_b
+    assert register_mock.await_count == 2
 
 
 @pytest.mark.asyncio
-async def test_ensure_prompt_coverage_deduplicates_by_url(mocker) -> None:
-    """Same URL from DB and web discovery is not scored twice."""
+async def test_ensure_prompt_coverage_returns_empty_on_agent_failure(mocker) -> None:
+    """Returns empty list when the discovery agent raises."""
     session = AsyncMock()
-    db_feed = _make_db_feed("https://example.com/feed")
-    web_item = _make_discovered("https://example.com/feed")
-
-    mocker.patch.object(coverage, "find_similar_feeds", new=AsyncMock(return_value=[db_feed]))
-    mocker.patch.object(coverage, "_discover_all", new=AsyncMock(return_value=[web_item]))
-    score_mock = mocker.patch.object(
-        coverage, "score_candidate", new=AsyncMock(return_value=(0.5, ["text"]))
+    mocker.patch(
+        "news_service.agents.source_discovery.run_source_discovery",
+        new=AsyncMock(side_effect=RuntimeError("agent failed")),
     )
-    mocker.patch.object(coverage, "_ensure_feed_profile", new=AsyncMock())
-    mocker.patch.object(coverage.settings, "source_target_count", 8)
-
-    result = await coverage.ensure_prompt_coverage(session, "test", [0.1])
-
-    assert len(result) == 1
-    # Only scored once despite appearing in both DB and web
-    score_mock.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_ensure_prompt_coverage_handles_no_candidates(mocker) -> None:
-    """Returns empty list when no candidates found."""
-    session = AsyncMock()
-    mocker.patch.object(coverage, "find_similar_feeds", new=AsyncMock(return_value=[]))
-    mocker.patch.object(coverage, "_discover_all", new=AsyncMock(return_value=[]))
 
     result = await coverage.ensure_prompt_coverage(session, "test", [0.1])
 
     assert result == []
+
+
+@pytest.mark.asyncio
+async def test_ensure_prompt_coverage_returns_empty_on_no_sources(mocker) -> None:
+    """Returns empty list when agent finds no sources."""
+    session = AsyncMock()
+    agent_result = SourceDiscoveryResult(sources=[])
+    mocker.patch(
+        "news_service.agents.source_discovery.run_source_discovery",
+        new=AsyncMock(return_value=agent_result),
+    )
+
+    result = await coverage.ensure_prompt_coverage(session, "test", [0.1])
+
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_register_or_reuse_source_reuses_existing_feed(mocker) -> None:
+    """Existing feed is reused with incremented subscriber count."""
+    session = AsyncMock()
+    existing = _make_db_feed("https://example.com/feed")
+    existing.subscriber_count = 2
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = existing
+    session.execute = AsyncMock(return_value=mock_result)
+    mocker.patch.object(coverage, "_ensure_feed_profile", new=AsyncMock())
+
+    source = _make_scored_source("https://example.com/feed")
+    feed = await coverage._register_or_reuse_source(session, source)
+
+    assert feed == existing
+    assert existing.subscriber_count == 3
+    assert existing.is_active is True
+
+
+@pytest.mark.asyncio
+async def test_register_or_reuse_source_creates_new_feed(mocker) -> None:
+    """New feed is created when URL not in DB."""
+    session = AsyncMock()
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    session.execute = AsyncMock(return_value=mock_result)
+    session.add = MagicMock()
+    session.flush = AsyncMock()
+
+    mocker.patch.object(
+        coverage, "_build_feed_profile", new=AsyncMock(return_value=("desc", [0.1] * 10))
+    )
+
+    source = _make_scored_source("https://new.com/feed", title="New Feed")
+    feed = await coverage._register_or_reuse_source(session, source)
+
+    assert feed is not None
+    session.add.assert_called_once()
+    session.flush.assert_awaited_once()

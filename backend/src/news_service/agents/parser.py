@@ -3,6 +3,7 @@ import logging
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
+from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 from news_service.schemas.subscription import SubscriptionConfig
 
@@ -85,6 +86,7 @@ class ParsedSchedule(BaseModel):
     schedule_cron: str = Field(..., description="Cron expression for delivery schedule")
 
 
+@with_llm_retry()
 async def parse_subscription(prompt: str) -> SubscriptionConfig:
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,
@@ -115,6 +117,7 @@ async def parse_subscription(prompt: str) -> SubscriptionConfig:
     return result
 
 
+@with_llm_retry()
 async def parse_schedule_preference(schedule_text: str) -> str:
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,

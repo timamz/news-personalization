@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
+from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,7 @@ def _trim_text(value: str) -> str:
     return normalized[:MAX_EVENT_TEXT_CHARS]
 
 
+@with_llm_retry()
 async def extract_upcoming_event(
     headline: str,
     body: str,
@@ -179,6 +181,7 @@ async def extract_upcoming_event(
     return result
 
 
+@with_llm_retry()
 async def localize_event_text(
     *,
     headline: str,
@@ -228,6 +231,7 @@ async def localize_event_text(
     return result
 
 
+@with_llm_retry()
 async def render_recent_events_preview(
     *,
     raw_prompt: str,
@@ -280,6 +284,7 @@ async def render_recent_events_preview(
     return result
 
 
+@with_llm_retry()
 async def judge_event_match(
     *,
     headline: str,
@@ -333,6 +338,7 @@ async def judge_event_match(
     return result
 
 
+@with_llm_retry()
 async def judge_notification_duplicate(
     *,
     headline: str,

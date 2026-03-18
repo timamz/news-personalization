@@ -1,6 +1,7 @@
 import logging
 
 from news_service.core.config import get_settings
+from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 from news_service.schemas.subscription import SubscriptionEditProposalResponse
 
@@ -32,6 +33,7 @@ Rules:
 """
 
 
+@with_llm_retry()
 async def propose_subscription_edit(
     *,
     canonical_prompt: str,

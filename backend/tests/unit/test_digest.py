@@ -6,65 +6,20 @@ from unittest.mock import AsyncMock
 import pytest
 
 from news_service.agents import digest
+from news_service.agents.digest_curator import DigestCurationResult
 
 
-def _mock_completion(content: str) -> SimpleNamespace:
-    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
-
-
-@pytest.mark.asyncio
-async def test_compose_digest_uses_subscription_language(mocker) -> None:
-    create_completion = AsyncMock(return_value=_mock_completion("готово"))
-    fake_client = SimpleNamespace(
-        chat=SimpleNamespace(completions=SimpleNamespace(create=create_completion))
-    )
-    mocker.patch.object(digest, "_client", fake_client)
-
-    item = SimpleNamespace(
-        headline="Лекция",
-        body="Анонс лекции",
-        source="Telegram",
-        url="https://example.com/1",
-    )
-
-    result = await digest._compose_digest([item], "кратко", "ru")
-
-    assert result == "готово"
-    system_prompt = create_completion.await_args.kwargs["messages"][0]["content"]
-    user_prompt = create_completion.await_args.kwargs["messages"][1]["content"]
-    assert "language 'ru'" in system_prompt
-    assert "Return only the digest itself" in system_prompt
-    assert "Use exactly 'Источник:'" in system_prompt
-    assert "Ignore stale items and low-signal community chatter" in system_prompt
-    assert "Link: https://example.com/1" in user_prompt
-    assert "Published at:" in user_prompt
-    assert "Source: Telegram" not in user_prompt
+def _make_curator_result(
+    digest_text: str = "digest",
+    item_ids: list[str] | None = None,
+) -> DigestCurationResult:
+    if item_ids is None:
+        item_ids = [str(uuid.uuid4())]
+    return DigestCurationResult(digest_text=digest_text, used_item_ids=item_ids)
 
 
 @pytest.mark.asyncio
-async def test_compose_digest_requires_english_source_label_for_english_digest(mocker) -> None:
-    create_completion = AsyncMock(return_value=_mock_completion("done"))
-    fake_client = SimpleNamespace(
-        chat=SimpleNamespace(completions=SimpleNamespace(create=create_completion))
-    )
-    mocker.patch.object(digest, "_client", fake_client)
-
-    item = SimpleNamespace(
-        headline="Paper roundup",
-        body="Top picks from the week",
-        source="Telegram",
-        url="https://example.com/2",
-    )
-
-    await digest._compose_digest([item], "brief summary", "en")
-
-    system_prompt = create_completion.await_args.kwargs["messages"][0]["content"]
-    assert "Use exactly 'Source:'" in system_prompt
-    assert "never switch to a different language" in system_prompt
-
-
-@pytest.mark.asyncio
-async def test_generate_digest_passes_language_to_composer(mocker) -> None:
+async def test_generate_digest_passes_params_to_curator(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
     source_feed_id = uuid.uuid4()
     source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
@@ -80,30 +35,26 @@ async def test_generate_digest_passes_language_to_composer(mocker) -> None:
         format_instructions="brief summary",
         digest_language="ru",
     )
-    item = SimpleNamespace(id=uuid.uuid4())
 
-    mocker.patch.object(digest, "embed_text", new=AsyncMock(return_value=[0.0] * 1536))
-    find_similar_news = AsyncMock(return_value=[item])
-    mocker.patch.object(digest, "find_similar_news", new=find_similar_news)
-    compose_digest = AsyncMock(return_value="digest")
+    curator_result = _make_curator_result("ru digest")
+    run_curator = AsyncMock(return_value=curator_result)
+    mocker.patch(
+        "news_service.agents.digest_curator.run_digest_curator",
+        new=run_curator,
+    )
     mark_as_sent = AsyncMock()
-    mocker.patch.object(digest, "_compose_digest", new=compose_digest)
     mocker.patch.object(digest, "_mark_as_sent", new=mark_as_sent)
 
     result = await digest.generate_digest(session, subscription)
 
-    assert result == "digest"
-    digest.embed_text.assert_not_awaited()
-    find_similar_news.assert_awaited_once_with(
-        session,
-        [0.0] * 1536,
-        exclude_ids=set(),
-        allowed_feed_ids={source_feed_id},
-        published_after=mocker.ANY,
-        limit=15,
-    )
-    compose_digest.assert_awaited_once_with([item], "brief summary", "ru")
-    mark_as_sent.assert_awaited_once_with(session, subscription_id, [item.id])
+    assert result == "ru digest"
+    call_kwargs = run_curator.await_args.kwargs
+    assert call_kwargs["query_embedding"] == [0.0] * 1536
+    assert call_kwargs["exclude_ids"] == set()
+    assert call_kwargs["allowed_feed_ids"] == {source_feed_id}
+    assert call_kwargs["format_instructions"] == "brief summary"
+    assert call_kwargs["digest_language"] == "ru"
+    mark_as_sent.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -121,16 +72,9 @@ async def test_generate_digest_returns_none_without_fixed_sources(mocker) -> Non
         digest_language="ru",
     )
 
-    embed_text = AsyncMock(return_value=[0.0] * 1536)
-    find_similar_news = AsyncMock()
-    mocker.patch.object(digest, "embed_text", new=embed_text)
-    mocker.patch.object(digest, "find_similar_news", new=find_similar_news)
-
     result = await digest.generate_digest(session, subscription)
 
     assert result is None
-    embed_text.assert_not_awaited()
-    find_similar_news.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -149,18 +93,19 @@ async def test_generate_digest_falls_back_to_raw_prompt_embedding_when_missing(m
         format_instructions="brief summary",
         digest_language="ru",
     )
-    item = SimpleNamespace(id=uuid.uuid4())
 
     embed_text = AsyncMock(return_value=[0.0] * 1536)
-    find_similar_news = AsyncMock(return_value=[item])
     mocker.patch.object(digest, "embed_text", new=embed_text)
-    mocker.patch.object(digest, "find_similar_news", new=find_similar_news)
-    mocker.patch.object(digest, "_compose_digest", new=AsyncMock(return_value="digest"))
+    curator_result = _make_curator_result()
+    mocker.patch(
+        "news_service.agents.digest_curator.run_digest_curator",
+        new=AsyncMock(return_value=curator_result),
+    )
     mocker.patch.object(digest, "_mark_as_sent", new=AsyncMock())
 
     result = await digest.generate_digest(session, subscription)
 
-    assert result == "digest"
+    assert result is not None
     embed_text.assert_awaited_once_with("AI lectures every morning")
     assert subscription.canonical_prompt_embedding == [0.0] * 1536
 
@@ -183,13 +128,71 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
         format_instructions="brief summary",
         digest_language="en",
     )
-    item = SimpleNamespace(id=uuid.uuid4())
 
-    find_similar_news = AsyncMock(return_value=[item])
-    mocker.patch.object(digest, "find_similar_news", new=find_similar_news)
-    mocker.patch.object(digest, "_compose_digest", new=AsyncMock(return_value="digest"))
+    curator_result = _make_curator_result()
+    run_curator = AsyncMock(return_value=curator_result)
+    mocker.patch(
+        "news_service.agents.digest_curator.run_digest_curator",
+        new=run_curator,
+    )
     mocker.patch.object(digest, "_mark_as_sent", new=AsyncMock())
 
     await digest.generate_digest(session, subscription)
 
-    assert find_similar_news.await_args.kwargs["published_after"] == last_sent_at
+    call_kwargs = run_curator.await_args.kwargs
+    assert call_kwargs["published_after"] == last_sent_at
+    assert call_kwargs["exclude_ids"] == {sent_news_id}
+
+
+@pytest.mark.asyncio
+async def test_generate_digest_returns_none_on_curator_failure(mocker) -> None:
+    sent_result = SimpleNamespace(all=lambda: [])
+    source_feed_id = uuid.uuid4()
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
+    session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
+
+    subscription = SimpleNamespace(
+        id=uuid.uuid4(),
+        raw_prompt="AI news",
+        canonical_prompt="AI news",
+        canonical_prompt_embedding=[0.0] * 1536,
+        prompt_summary="AI news",
+        format_instructions="brief summary",
+        digest_language="en",
+    )
+
+    mocker.patch(
+        "news_service.agents.digest_curator.run_digest_curator",
+        new=AsyncMock(side_effect=RuntimeError("agent crashed")),
+    )
+
+    result = await digest.generate_digest(session, subscription)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_generate_digest_returns_none_when_curator_finds_no_items(mocker) -> None:
+    sent_result = SimpleNamespace(all=lambda: [])
+    source_feed_id = uuid.uuid4()
+    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
+    session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
+
+    subscription = SimpleNamespace(
+        id=uuid.uuid4(),
+        raw_prompt="AI news",
+        canonical_prompt="AI news",
+        canonical_prompt_embedding=[0.0] * 1536,
+        prompt_summary="AI news",
+        format_instructions="brief summary",
+        digest_language="en",
+    )
+
+    mocker.patch(
+        "news_service.agents.digest_curator.run_digest_curator",
+        new=AsyncMock(return_value=None),
+    )
+
+    result = await digest.generate_digest(session, subscription)
+
+    assert result is None
