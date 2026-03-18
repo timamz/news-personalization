@@ -20,9 +20,6 @@ class NewsItem(UUIDPrimaryKey, Base):
     url: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     source: Mapped[str] = mapped_column(Text, nullable=False, default="")
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    event_title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    event_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    event_starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     embedding = mapped_column(Vector(1536), nullable=True)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

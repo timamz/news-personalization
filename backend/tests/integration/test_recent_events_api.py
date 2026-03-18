@@ -1,12 +1,11 @@
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from news_service.agents.event import NotificationDuplicateDecision, RecentEventsPreviewDecision
+from news_service.agents.event import RecentEventsPreviewDecision
 from news_service.db.session import async_session_factory
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
@@ -83,9 +82,6 @@ async def test_recent_events_returns_last_week_previews(
                     url="https://example.com/events/recent",
                     source="Events Feed",
                     published_at=now - timedelta(days=2),
-                    event_title="New concert",
-                    event_summary="A new concert was announced for next month.",
-                    event_starts_at=now + timedelta(days=10),
                     fetched_at=now - timedelta(days=2),
                 ),
                 NewsItem(
@@ -95,9 +91,6 @@ async def test_recent_events_returns_last_week_previews(
                     url="https://example.com/events/old",
                     source="Events Feed",
                     published_at=now - timedelta(days=9),
-                    event_title="Old concert",
-                    event_summary="This was announced more than a week ago.",
-                    event_starts_at=now + timedelta(days=3),
                     fetched_at=now - timedelta(days=9),
                 ),
             ]
@@ -113,26 +106,16 @@ async def test_recent_events_returns_last_week_previews(
     payload = response.json()
     assert payload["news_item_ids"]
     assert payload["subject"] == "Recent events you may have missed"
-    assert "Title: New concert" in payload["body"]
+    assert "Title: New concert announced" in payload["body"]
     assert "A new concert was announced for next month." in payload["body"]
 
 
-async def test_recent_events_deduplicates_same_event_posts(
+async def test_recent_events_deduplicates_same_headline_posts(
     api_client: AsyncClient,
     mocker,
 ) -> None:
     api_key, subscription_id, feed_id = await _create_subscription(api_client, mocker)
     now = datetime.now(UTC)
-    starts_at = now + timedelta(days=10)
-    duplicate_judge = mocker.patch(
-        "news_service.services.event_notifications.judge_notification_duplicate",
-        new=AsyncMock(
-            return_value=NotificationDuplicateDecision(
-                already_notified=True,
-                reason="Second post is the same announcement.",
-            )
-        ),
-    )
 
     async with async_session_factory() as session:
         session.add_all(
@@ -144,21 +127,15 @@ async def test_recent_events_deduplicates_same_event_posts(
                     url="https://example.com/events/club-1",
                     source="Events Feed",
                     published_at=now - timedelta(days=1),
-                    event_title="Intellectual club of S. V. Drobyshevsky",
-                    event_summary="A lecture by Stanislav Drobyshevsky and a book presentation.",
-                    event_starts_at=starts_at,
                     fetched_at=now - timedelta(days=1),
                 ),
                 NewsItem(
                     feed_id=feed_id,
-                    headline="Intellectual club reminder",
+                    headline="Intellectual club announced",
                     body="A lecture by Stanislav Drobyshevsky and a book presentation.",
                     url="https://example.com/events/club-2",
                     source="Events Feed",
                     published_at=now - timedelta(days=2),
-                    event_title="Intellectual club of S. Drobyshevsky 2026",
-                    event_summary="A lecture by Stanislav Drobyshevsky and a book presentation.",
-                    event_starts_at=starts_at,
                     fetched_at=now - timedelta(days=2),
                 ),
             ]
@@ -173,10 +150,9 @@ async def test_recent_events_deduplicates_same_event_posts(
     assert response.status_code == 200
     payload = response.json()
     assert len(payload["news_item_ids"]) == 1
-    duplicate_judge.assert_not_awaited()
 
 
-async def test_recent_events_filters_strict_subscription_with_prompt_judge(
+async def test_recent_events_filters_strict_subscription_with_preview_renderer(
     api_client: AsyncClient,
     mocker,
 ) -> None:
@@ -186,6 +162,8 @@ async def test_recent_events_filters_strict_subscription_with_prompt_judge(
         event_matching_mode="strict_with_prefilter",
     )
     now = datetime.now(UTC)
+
+    from unittest.mock import AsyncMock
 
     async def _preview_renderer(  # noqa: ANN001
         *,
@@ -228,9 +206,6 @@ async def test_recent_events_filters_strict_subscription_with_prompt_judge(
                     url="https://example.com/events/other",
                     source="Events Feed",
                     published_at=now - timedelta(days=1),
-                    event_title="Lecture by another person",
-                    event_summary="A different speaker was announced for next week.",
-                    event_starts_at=now + timedelta(days=9),
                     fetched_at=now - timedelta(days=1),
                 ),
                 NewsItem(
@@ -240,11 +215,6 @@ async def test_recent_events_filters_strict_subscription_with_prompt_judge(
                     url="https://example.com/events/drobyshevsky",
                     source="Events Feed",
                     published_at=now - timedelta(days=2),
-                    event_title="Stanislav Drobyshevsky lecture",
-                    event_summary=(
-                        "A lecture by Stanislav Drobyshevsky was announced for next week."
-                    ),
-                    event_starts_at=now + timedelta(days=8),
                     fetched_at=now - timedelta(days=2),
                 ),
             ]
@@ -260,7 +230,7 @@ async def test_recent_events_filters_strict_subscription_with_prompt_judge(
     payload = response.json()
     assert len(payload["news_item_ids"]) == 1
     assert payload["subject"] == "Recent events you may have missed"
-    assert "Stanislav Drobyshevsky lecture" in payload["body"]
+    assert "Stanislav Drobyshevsky lecture announced" in payload["body"]
     preview_renderer.assert_awaited_once()
 
 
@@ -306,9 +276,6 @@ async def test_acknowledge_recent_events_marks_items_as_sent(
                     url="https://example.com/events/ack-1",
                     source="Events Feed",
                     published_at=now - timedelta(days=2),
-                    event_title="Concert one",
-                    event_summary="The first concert was announced for next month.",
-                    event_starts_at=now + timedelta(days=8),
                     fetched_at=now - timedelta(days=2),
                 ),
                 NewsItem(
@@ -319,9 +286,6 @@ async def test_acknowledge_recent_events_marks_items_as_sent(
                     url="https://example.com/events/ack-2",
                     source="Events Feed",
                     published_at=now - timedelta(days=1),
-                    event_title="Concert two",
-                    event_summary="The second concert was announced for next month.",
-                    event_starts_at=now + timedelta(days=9),
                     fetched_at=now - timedelta(days=1),
                 ),
             ]

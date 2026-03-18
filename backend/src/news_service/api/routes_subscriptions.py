@@ -521,7 +521,6 @@ async def acknowledge_recent_events(
         select(NewsItem).where(
             NewsItem.id.in_(requested_item_ids),
             NewsItem.feed_id.in_(allowed_feed_ids),
-            NewsItem.event_title.is_not(None),
         )
     )
     items = list(items_result.scalars().all())

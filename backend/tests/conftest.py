@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy.engine import make_url
 
-from news_service.agents.event import LocalizedEventText, RecentEventsPreviewDecision
+from news_service.agents.event import RecentEventsPreviewDecision
 
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
@@ -34,27 +34,7 @@ else:
 
 
 @pytest.fixture(autouse=True)
-def mock_event_localization(mocker) -> None:
-    async def _identity_localization(
-        *,
-        headline: str,
-        body: str,
-        event_title: str | None,
-        event_summary: str | None,
-        event_starts_at,  # noqa: ANN001
-        target_language: str,
-    ) -> LocalizedEventText:
-        del body, event_starts_at, target_language
-        return LocalizedEventText(
-            title=event_title or headline,
-            summary=event_summary or headline,
-        )
-
-    mocker.patch(
-        "news_service.services.event_notifications.localize_event_text",
-        new=AsyncMock(side_effect=_identity_localization),
-    )
-
+def mock_event_preview_renderer(mocker) -> None:
     async def _preview_renderer(
         *,
         raw_prompt: str,
