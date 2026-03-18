@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
+from news_service.models.rss_feed import RssFeed
 from tests.integration.helpers import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -44,24 +45,6 @@ async def test_create_subscription_rejects_schedule_without_timezone(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    from unittest.mock import AsyncMock
-
-    from news_service.models.rss_feed import RssFeed
-    from news_service.schemas.subscription import SubscriptionConfig
-
-    parsed_config = SubscriptionConfig(
-        prompt_summary="AI updates",
-        delivery_mode="digest",
-        schedule_cron="0 8 * * *",
-        schedule_was_explicit=True,
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    mocker.patch(
-        "news_service.api.routes_subscriptions.parse_subscription",
-        new=AsyncMock(return_value=parsed_config),
-    )
-
     async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "AI updates every morning"
         assert raw_prompt_embedding == [2.0] * 1536
@@ -91,6 +74,10 @@ async def test_create_subscription_rejects_schedule_without_timezone(
         json={
             "prompt": "AI updates every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
+            "prompt_summary": "AI updates",
+            "schedule_cron_override": "0 8 * * *",
+            "format_instructions": "brief summary",
+            "digest_language_override": "en",
         },
     )
 

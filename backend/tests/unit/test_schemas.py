@@ -2,7 +2,6 @@ import pytest
 from pydantic import ValidationError
 
 from news_service.schemas.subscription import (
-    SubscriptionConfig,
     SubscriptionCreate,
     SubscriptionUpdate,
 )
@@ -23,45 +22,27 @@ def test_subscription_create_too_short():
         SubscriptionCreate(prompt="hi")
 
 
-def test_subscription_config_valid():
-    config = SubscriptionConfig(
-        short_label="AI News",
+def test_subscription_create_optional_fields_default_to_none():
+    payload = SubscriptionCreate(prompt="I want AI news every morning")
+    assert payload.prompt_summary is None
+    assert payload.short_label is None
+    assert payload.format_instructions is None
+    assert payload.event_matching_mode is None
+
+
+def test_subscription_create_accepts_all_optional_fields():
+    payload = SubscriptionCreate(
+        prompt="I want AI news every morning",
         prompt_summary="AI news every morning",
-        delivery_mode="digest",
-        event_matching_mode="basic",
-        schedule_cron="0 8 * * *",
-        schedule_was_explicit=True,
-        format_instructions="detailed analysis",
-        digest_language="en",
-    )
-    assert config.delivery_mode == "digest"
-    assert config.schedule_cron == "0 8 * * *"
-
-
-def test_subscription_config_default_format():
-    config = SubscriptionConfig(
-        short_label="AI Digest",
-        prompt_summary="Evening AI digest",
-        delivery_mode="digest",
-        event_matching_mode="basic",
-        schedule_cron="0 21 * * *",
-        schedule_was_explicit=True,
-        digest_language="en",
-    )
-    assert config.format_instructions == "brief summary"
-
-
-def test_subscription_config_supports_manual_mode():
-    config = SubscriptionConfig(
         short_label="AI News",
-        prompt_summary="AI news",
-        schedule_cron=None,
-        schedule_was_explicit=False,
-        digest_language="en",
+        format_instructions="detailed analysis",
+        event_matching_mode="strict_with_prefilter",
+        delivery_mode="event",
     )
-    assert config.delivery_mode == "digest"
-    assert config.schedule_cron is None
-    assert config.event_matching_mode == "basic"
+    assert payload.prompt_summary == "AI news every morning"
+    assert payload.short_label == "AI News"
+    assert payload.format_instructions == "detailed analysis"
+    assert payload.event_matching_mode == "strict_with_prefilter"
 
 
 def test_subscription_update_accepts_partial_fields():
@@ -78,16 +59,3 @@ def test_subscription_update_accepts_partial_fields():
 def test_subscription_update_rejects_empty_format_string():
     with pytest.raises(ValidationError):
         SubscriptionUpdate(format_instructions="")
-
-
-def test_strict_event_subscription_is_allowed_without_constraints():
-    config = SubscriptionConfig(
-        short_label="Drobyshevsky",
-        prompt_summary="Drobyshevsky events",
-        delivery_mode="event",
-        event_matching_mode="strict_with_prefilter",
-        schedule_cron=None,
-        schedule_was_explicit=False,
-        digest_language="ru",
-    )
-    assert config.event_matching_mode == "strict_with_prefilter"

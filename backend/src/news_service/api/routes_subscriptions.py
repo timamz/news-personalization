@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.parser import parse_schedule_preference, parse_subscription
+from news_service.agents.schedule_parser import parse_schedule_preference
 from news_service.agents.subscription_edit import propose_subscription_edit
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
@@ -26,8 +26,6 @@ from news_service.schemas.subscription import (
     SubscriptionEditApplyRequest,
     SubscriptionEditProposalRequest,
     SubscriptionEditProposalResponse,
-    SubscriptionParseRequest,
-    SubscriptionParseResponse,
     SubscriptionResponse,
     SubscriptionSourcesAppendRequest,
     SubscriptionSourcesAppendResponse,
@@ -162,24 +160,6 @@ def _ensure_prompt_summary(subscription: Subscription) -> str:
     return subscription.prompt_summary
 
 
-@router.post("/parse", response_model=SubscriptionParseResponse)
-async def parse_subscription_prompt(
-    payload: SubscriptionParseRequest,
-    user: User = Depends(get_current_user),
-) -> SubscriptionParseResponse:
-    del user
-    config = await parse_subscription(payload.prompt)
-    schedule_cron = _validated_schedule_or_422(config.schedule_cron)
-    return SubscriptionParseResponse(
-        prompt_summary=config.prompt_summary,
-        delivery_mode=config.delivery_mode,
-        schedule_cron=schedule_cron,
-        schedule_was_explicit=config.schedule_was_explicit,
-        format_instructions=config.format_instructions,
-        digest_language=config.digest_language,
-    )
-
-
 @router.post("/parse-schedule", response_model=ScheduleParseResponse)
 async def parse_schedule(
     payload: ScheduleParseRequest,
@@ -211,30 +191,25 @@ async def create_subscription(
     telegram_channels = explicit_channels or prompt_channels
     reddit_subreddits = explicit_subreddits or prompt_subreddits
     twitter_accounts = explicit_twitter_accounts or prompt_twitter_accounts
-    config = await parse_subscription(payload.prompt)
     include_discovered_sources = (
         payload.include_discovered_sources
         if payload.include_discovered_sources is not None
         else not bool(telegram_channels or reddit_subreddits or twitter_accounts)
     )
-    delivery_mode = payload.delivery_mode or config.delivery_mode
-    event_matching_mode = config.event_matching_mode if delivery_mode == "event" else "basic"
-    schedule_cron = (
-        payload.schedule_cron_override
-        if payload.schedule_cron_override is not None
-        else config.schedule_cron
+    delivery_mode = payload.delivery_mode or "digest"
+    event_matching_mode = (
+        (payload.event_matching_mode or "basic") if delivery_mode == "event" else "basic"
     )
+    schedule_cron = payload.schedule_cron_override
     if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
     schedule_cron = _validated_schedule_or_422(schedule_cron)
     _ensure_user_timezone_for_schedule(user, schedule_cron)
-    digest_language = (
-        _normalized_digest_language(payload.digest_language_override) or config.digest_language
-    )
+    digest_language = _normalized_digest_language(payload.digest_language_override) or "en"
     raw_prompt_embedding = await _subscription_prompt_embedding(payload.prompt)
     canonical_prompt_embedding = list(raw_prompt_embedding)
-    prompt_summary = config.prompt_summary or build_prompt_summary(payload.prompt)
-    short_label = config.short_label or prompt_summary[:30]
+    prompt_summary = payload.prompt_summary or build_prompt_summary(payload.prompt)
+    short_label = payload.short_label or prompt_summary[:30]
 
     subscription = Subscription(
         user_id=user.id,
@@ -248,7 +223,7 @@ async def create_subscription(
         event_matching_mode=event_matching_mode,
         event_constraints=[],
         schedule_cron=schedule_cron,
-        format_instructions=config.format_instructions,
+        format_instructions=payload.format_instructions or "brief summary",
         digest_language=digest_language,
         delivery_webhook_url=payload.delivery_webhook_url,
     )

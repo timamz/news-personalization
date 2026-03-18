@@ -23,16 +23,6 @@ class SubscriptionInfo:
 
 
 @dataclass
-class SubscriptionParseInfo:
-    prompt_summary: str
-    delivery_mode: str
-    schedule_cron: str | None
-    schedule_was_explicit: bool
-    format_instructions: str
-    digest_language: str
-
-
-@dataclass
 class RecentEventsPreviewInfo:
     news_item_ids: list[str]
     subject: str
@@ -173,6 +163,10 @@ class BackendClient:
         manual_only: bool | None = None,
         delivery_mode: str | None = None,
         digest_language: str | None = None,
+        prompt_summary: str | None = None,
+        short_label: str | None = None,
+        format_instructions: str | None = None,
+        event_matching_mode: str | None = None,
     ) -> SubscriptionInfo:
         payload: dict[str, object] = {
             "prompt": prompt,
@@ -194,6 +188,14 @@ class BackendClient:
             payload["delivery_mode"] = delivery_mode
         if digest_language is not None:
             payload["digest_language_override"] = digest_language
+        if prompt_summary is not None:
+            payload["prompt_summary"] = prompt_summary
+        if short_label is not None:
+            payload["short_label"] = short_label
+        if format_instructions is not None:
+            payload["format_instructions"] = format_instructions
+        if event_matching_mode is not None:
+            payload["event_matching_mode"] = event_matching_mode
 
         async with httpx.AsyncClient(
             timeout=settings.backend_create_subscription_timeout_seconds
@@ -215,24 +217,6 @@ class BackendClient:
                 short_label=data.get("short_label", ""),
                 raw_prompt=data.get("raw_prompt"),
                 canonical_prompt=data.get("canonical_prompt"),
-            )
-
-    async def parse_subscription_prompt(self, api_key: str, prompt: str) -> SubscriptionParseInfo:
-        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
-            response = await client.post(
-                f"{self.base_url}/subscriptions/parse",
-                headers={"X-API-Key": api_key},
-                json={"prompt": prompt},
-            )
-            response.raise_for_status()
-            data = response.json()
-            return SubscriptionParseInfo(
-                prompt_summary=data["prompt_summary"],
-                delivery_mode=data["delivery_mode"],
-                schedule_cron=data["schedule_cron"],
-                schedule_was_explicit=data["schedule_was_explicit"],
-                format_instructions=data["format_instructions"],
-                digest_language=data["digest_language"],
             )
 
     async def parse_schedule(self, api_key: str, schedule_text: str) -> str:

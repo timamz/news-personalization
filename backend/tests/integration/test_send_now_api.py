@@ -1,5 +1,4 @@
 import uuid
-from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
@@ -7,7 +6,6 @@ from httpx import AsyncClient
 from news_service.db.session import async_session_factory
 from news_service.models.rss_feed import RssFeed
 from news_service.models.subscription import Subscription
-from news_service.schemas.subscription import SubscriptionConfig
 from tests.integration.helpers import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -19,19 +17,6 @@ async def _create_user_and_subscription(
     *,
     delivery_mode: str | None = None,
 ) -> tuple[str, uuid.UUID]:
-    parsed_config = SubscriptionConfig(
-        prompt_summary="AI updates",
-        delivery_mode="digest",
-        schedule_cron="0 8 * * *",
-        schedule_was_explicit=True,
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    mocker.patch(
-        "news_service.api.routes_subscriptions.parse_subscription",
-        new=AsyncMock(return_value=parsed_config),
-    )
-
     async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "AI updates every morning in a brief summary"
         assert raw_prompt_embedding == [2.0] * 1536
@@ -62,6 +47,10 @@ async def _create_user_and_subscription(
             "prompt": "AI updates every morning in a brief summary",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": delivery_mode,
+            "prompt_summary": "AI updates",
+            "schedule_cron_override": "0 8 * * *",
+            "format_instructions": "brief summary",
+            "digest_language_override": "en",
         },
     )
     assert create_response.status_code == 201

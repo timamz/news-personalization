@@ -246,39 +246,6 @@ async def test_create_subscription_sends_source_preferences(client: BackendClien
 
 
 @pytest.mark.asyncio
-async def test_parse_subscription_prompt(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "prompt_summary": "ML новости",
-        "delivery_mode": "event",
-        "schedule_cron": None,
-        "schedule_was_explicit": False,
-        "format_instructions": "brief summary",
-        "digest_language": "ru",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        parsed = await client.parse_subscription_prompt("my-key", "ML новости")
-
-    assert parsed.delivery_mode == "event"
-    assert parsed.prompt_summary == "ML новости"
-    assert parsed.schedule_was_explicit is False
-    assert parsed.schedule_cron is None
-    mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/parse",
-        headers={"X-API-Key": "my-key"},
-        json={"prompt": "ML новости"},
-    )
-
-
-@pytest.mark.asyncio
 async def test_parse_schedule(client: BackendClient):
     mock_response = MagicMock()
     mock_response.status_code = 200

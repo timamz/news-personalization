@@ -7,27 +7,13 @@ from httpx import AsyncClient
 from news_service.db.session import async_session_factory
 from news_service.models.rss_feed import RssFeed
 from news_service.models.subscription import Subscription
-from news_service.schemas.subscription import SubscriptionConfig, SubscriptionEditProposalResponse
+from news_service.schemas.subscription import SubscriptionEditProposalResponse
 from tests.integration.helpers import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uuid.UUID]:
-    parsed_config = SubscriptionConfig(
-        prompt_summary="Anime episode notifications",
-        delivery_mode="event",
-        event_matching_mode="basic",
-        schedule_cron=None,
-        schedule_was_explicit=False,
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    mocker.patch(
-        "news_service.api.routes_subscriptions.parse_subscription",
-        new=AsyncMock(return_value=parsed_config),
-    )
-
     async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "Notify me when new episodes of Apothecary Diaries air."
         assert raw_prompt_embedding == [2.0] * 1536
@@ -58,6 +44,10 @@ async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uu
             "prompt": "Notify me when new episodes of Apothecary Diaries air.",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
+            "prompt_summary": "Anime episode notifications",
+            "event_matching_mode": "basic",
+            "format_instructions": "brief summary",
+            "digest_language_override": "en",
         },
     )
     assert create_response.status_code == 201

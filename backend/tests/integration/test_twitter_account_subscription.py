@@ -8,7 +8,6 @@ from sqlalchemy import select
 from news_service.db.session import async_session_factory
 from news_service.models.rss_feed import RssFeed
 from news_service.models.subscription_source import SubscriptionSource
-from news_service.schemas.subscription import SubscriptionConfig
 from tests.integration.helpers import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -18,17 +17,6 @@ async def test_subscription_with_twitter_account_registers_source(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    parsed_config = SubscriptionConfig(
-        prompt_summary="AI updates",
-        schedule_cron="0 8 * * *",
-        schedule_was_explicit=True,
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    mocker.patch(
-        "news_service.api.routes_subscriptions.parse_subscription",
-        new=AsyncMock(return_value=parsed_config),
-    )
     ensure_prompt_coverage = AsyncMock()
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_prompt_coverage",
@@ -46,6 +34,10 @@ async def test_subscription_with_twitter_account_registers_source(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "fixed_twitter_accounts": ["OpenAI"],
             "include_discovered_sources": False,
+            "prompt_summary": "AI updates",
+            "schedule_cron_override": "0 8 * * *",
+            "format_instructions": "brief summary",
+            "digest_language_override": "en",
         },
     )
     assert create_response.status_code == 201
@@ -74,17 +66,6 @@ async def test_subscription_prompt_extracts_twitter_account_source(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    parsed_config = SubscriptionConfig(
-        prompt_summary="AI updates",
-        schedule_cron="0 8 * * *",
-        schedule_was_explicit=True,
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    mocker.patch(
-        "news_service.api.routes_subscriptions.parse_subscription",
-        new=AsyncMock(return_value=parsed_config),
-    )
     ensure_prompt_coverage = AsyncMock()
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_prompt_coverage",
@@ -101,6 +82,10 @@ async def test_subscription_prompt_extracts_twitter_account_source(
             "prompt": "Track https://x.com/OpenAI every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "include_discovered_sources": False,
+            "prompt_summary": "AI updates",
+            "schedule_cron_override": "0 8 * * *",
+            "format_instructions": "brief summary",
+            "digest_language_override": "en",
         },
     )
     assert create_response.status_code == 201

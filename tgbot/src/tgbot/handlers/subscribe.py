@@ -289,6 +289,10 @@ async def _create_subscription_from_config(
         "manual_only": config.get("manual_only", False),
         "delivery_mode": config.get("delivery_mode", "digest"),
         "digest_language": config.get("digest_language"),
+        "prompt_summary": config.get("prompt_summary"),
+        "short_label": config.get("short_label"),
+        "format_instructions": config.get("format_instructions"),
+        "event_matching_mode": config.get("event_matching_mode"),
     }
 
     channels = config.get("fixed_telegram_channels", [])

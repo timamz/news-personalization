@@ -11,7 +11,6 @@ from news_service.db.session import async_session_factory
 from news_service.models.news_item import NewsItem
 from news_service.models.rss_feed import RssFeed
 from news_service.models.sent_item import SentItem
-from news_service.schemas.subscription import SubscriptionConfig
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -24,19 +23,6 @@ async def _create_subscription(
     event_matching_mode: str = "basic",
 ) -> tuple[str, str, uuid.UUID]:
     feed_ref: dict[str, uuid.UUID] = {}
-    parsed_config = SubscriptionConfig(
-        prompt_summary="Upcoming events",
-        delivery_mode=delivery_mode,
-        event_matching_mode=event_matching_mode,
-        schedule_cron=None,
-        schedule_was_explicit=False,
-        format_instructions="brief summary",
-        digest_language="en",
-    )
-    mocker.patch(
-        "news_service.api.routes_subscriptions.parse_subscription",
-        new=AsyncMock(return_value=parsed_config),
-    )
 
     async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "Notify me about upcoming events"
@@ -70,6 +56,10 @@ async def _create_subscription(
             "prompt": "Notify me about upcoming events",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": delivery_mode,
+            "prompt_summary": "Upcoming events",
+            "event_matching_mode": event_matching_mode,
+            "format_instructions": "brief summary",
+            "digest_language_override": "en",
         },
     )
     assert create_response.status_code == 201

@@ -50,53 +50,23 @@ class SubscriptionCreate(BaseModel):
         max_length=16,
         description="Override output language for digests and event notifications",
     )
-
-
-class SubscriptionConfig(BaseModel):
-    """Structured output from the Parser Agent."""
-
-    short_label: str = Field(
-        ...,
-        min_length=1,
+    prompt_summary: str | None = Field(
+        default=None,
+        description="Short user-facing summary; auto-generated from prompt if omitted",
+    )
+    short_label: str | None = Field(
+        default=None,
         max_length=30,
-        description="Ultra-short 2-3 word label for the subscription, like a category name",
+        description="Ultra-short 2-3 word label; derived from prompt_summary if omitted",
     )
-    prompt_summary: str = Field(
-        ...,
-        min_length=3,
-        description="Short user-facing summary of the subscription request",
+    format_instructions: str | None = Field(
+        default=None,
+        description="How the user wants to consume news; defaults to 'brief summary'",
     )
-    delivery_mode: DeliveryMode = Field(
-        default="digest",
-        description="Whether the user wants a periodic digest or event notifications",
-    )
-    event_matching_mode: EventMatchingMode = Field(
-        default="basic",
+    event_matching_mode: EventMatchingMode | None = Field(
+        default=None,
         description="How event subscriptions should be matched against candidate events",
     )
-    schedule_cron: str | None = Field(
-        default=None,
-        description="Cron expression for delivery schedule, if explicitly requested",
-    )
-    schedule_was_explicit: bool = Field(
-        ...,
-        description="Whether the user explicitly requested automatic schedule in the prompt",
-    )
-    format_instructions: str = Field(
-        default="brief summary", description="How the user wants to consume news"
-    )
-    digest_language: str = Field(
-        ...,
-        min_length=2,
-        max_length=16,
-        description="Language code for digest output (for example: en, ru, es)",
-    )
-
-    @model_validator(mode="after")
-    def validate_event_matching(self) -> "SubscriptionConfig":
-        if self.event_matching_mode == "strict_with_prefilter" and self.delivery_mode != "event":
-            raise ValueError("strict_with_prefilter is supported only for event subscriptions")
-        return self
 
 
 class SubscriptionResponse(BaseModel):
@@ -214,19 +184,6 @@ class SubscriptionSourcesAppendResponse(BaseModel):
     added_reddit_subreddits: list[str]
     added_twitter_accounts: list[str]
     added_sources_count: int
-
-
-class SubscriptionParseRequest(BaseModel):
-    prompt: str = Field(..., min_length=5, description="Natural language subscription request")
-
-
-class SubscriptionParseResponse(BaseModel):
-    prompt_summary: str
-    delivery_mode: DeliveryMode
-    schedule_cron: str | None
-    schedule_was_explicit: bool
-    format_instructions: str
-    digest_language: str
 
 
 class ScheduleParseRequest(BaseModel):
