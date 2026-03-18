@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     content_relevance_top_k: int = 3
     content_db_candidate_threshold: float = 0.80
 
+    conversation_ttl_seconds: int = 1800
+
 
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]

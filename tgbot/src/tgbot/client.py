@@ -76,6 +76,21 @@ class SubscriptionEditProposalInfo:
     change_summary: str
 
 
+@dataclass
+class ConversationChoiceInfo:
+    label: str
+    value: str
+
+
+@dataclass
+class ConversationTurnInfo:
+    conversation_id: str
+    agent_message: str
+    status: str  # "in_progress" or "ready"
+    choices: list[ConversationChoiceInfo] | None
+    finalized_config: dict | None
+
+
 class BackendClient:
     def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.backend_url).rstrip("/")
@@ -438,6 +453,70 @@ class BackendClient:
                 json={"news_item_ids": news_item_ids},
             )
             response.raise_for_status()
+
+    async def start_subscription_conversation(
+        self,
+        api_key: str,
+        message: str,
+        user_language: str | None = None,
+        user_timezone: str | None = None,
+    ) -> ConversationTurnInfo:
+        payload: dict[str, object] = {"message": message}
+        if user_language is not None:
+            payload["user_language"] = user_language
+        if user_timezone is not None:
+            payload["user_timezone"] = user_timezone
+
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/conversations",
+                headers={"X-API-Key": api_key},
+                json=payload,
+            )
+            response.raise_for_status()
+            return self._parse_conversation_turn(response.json())
+
+    async def continue_subscription_conversation(
+        self,
+        api_key: str,
+        conversation_id: str,
+        message: str,
+    ) -> ConversationTurnInfo:
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/conversations/{conversation_id}/messages",
+                headers={"X-API-Key": api_key},
+                json={"message": message},
+            )
+            response.raise_for_status()
+            return self._parse_conversation_turn(response.json())
+
+    async def cancel_subscription_conversation(
+        self,
+        api_key: str,
+        conversation_id: str,
+    ) -> None:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.delete(
+                f"{self.base_url}/subscriptions/conversations/{conversation_id}",
+                headers={"X-API-Key": api_key},
+            )
+            response.raise_for_status()
+
+    @staticmethod
+    def _parse_conversation_turn(data: dict) -> ConversationTurnInfo:
+        choices = None
+        if data.get("choices"):
+            choices = [
+                ConversationChoiceInfo(label=c["label"], value=c["value"]) for c in data["choices"]
+            ]
+        return ConversationTurnInfo(
+            conversation_id=data["conversation_id"],
+            agent_message=data["agent_message"],
+            status=data["status"],
+            choices=choices,
+            finalized_config=data.get("finalized_config"),
+        )
 
     async def send_now(self, api_key: str, subscription_id: str) -> dict[str, str]:
         async with httpx.AsyncClient(timeout=self._request_timeout()) as client:

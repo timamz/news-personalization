@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from tgbot.client import ConversationChoiceInfo, ConversationTurnInfo
 from tgbot.handlers import subscribe
 from tgbot.language import LanguagePreference
 
@@ -54,25 +55,35 @@ def _mock_state(data=None):
     )
 
 
+def _conversation_turn(
+    *,
+    conversation_id: str = "conv-123",
+    agent_message: str = "What schedule?",
+    status: str = "in_progress",
+    choices: list[ConversationChoiceInfo] | None = None,
+    finalized_config: dict | None = None,
+) -> ConversationTurnInfo:
+    return ConversationTurnInfo(
+        conversation_id=conversation_id,
+        agent_message=agent_message,
+        status=status,
+        choices=choices,
+        finalized_config=finalized_config,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _mock_ui_language(monkeypatch) -> None:
     monkeypatch.setattr(subscribe, "get_ui_language", AsyncMock(return_value="en"))
 
 
+# ---------- First message starts conversation ----------
+
+
 @pytest.mark.asyncio
-async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkeypatch):
+async def test_first_message_starts_conversation(monkeypatch):
     message = _mock_message(telegram_id=111, text="AI news every morning")
-    # Pre-populate state with what update_data would set, so _continue_after_prompt
-    # can read the prompt and delivery_mode
-    state = _mock_state(
-        data={
-            "prompt": "AI news every morning",
-            "delivery_mode": "digest",
-            "schedule_cron_override": "0 8 * * *",
-            "schedule_was_explicit": True,
-            "digest_language_override": "en",
-        }
-    )
+    state = _mock_state()
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
     monkeypatch.setattr(
@@ -82,240 +93,172 @@ async def test_process_prompt_with_explicit_schedule_goes_to_source_scope(monkey
     )
     monkeypatch.setattr(
         subscribe.backend,
-        "parse_subscription_prompt",
-        AsyncMock(
-            return_value=SimpleNamespace(
-                delivery_mode="digest",
-                schedule_cron="0 8 * * *",
-                schedule_was_explicit=True,
-            )
-        ),
+        "get_current_user",
+        AsyncMock(return_value=SimpleNamespace(timezone="UTC")),
     )
 
-    await subscribe.process_prompt(message, state)
-
-    # Should set source knowledge state (via _continue_with_source_flow)
-    state.set_state.assert_awaited()
-
-
-@pytest.mark.asyncio
-async def test_process_prompt_without_schedule_asks_schedule_decision(monkeypatch):
-    message = _mock_message(telegram_id=111, text="AI news")
-    state = _mock_state(
-        data={
-            "prompt": "AI news",
-            "delivery_mode": "digest",
-            "schedule_cron_override": None,
-            "schedule_was_explicit": False,
-            "digest_language_override": "en",
-        }
-    )
-
-    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
-    monkeypatch.setattr(
-        subscribe,
-        "get_language_preference",
-        AsyncMock(return_value=LanguagePreference(mode="fixed", code="en")),
+    turn = _conversation_turn(
+        agent_message="How often would you like to receive the digest?",
+        choices=[
+            ConversationChoiceInfo(label="Every morning", value="every morning"),
+            ConversationChoiceInfo(label="Manual only", value="manual only"),
+        ],
     )
     monkeypatch.setattr(
         subscribe.backend,
-        "parse_subscription_prompt",
-        AsyncMock(
-            return_value=SimpleNamespace(
-                delivery_mode="digest",
-                schedule_cron=None,
-                schedule_was_explicit=False,
-            )
-        ),
+        "start_subscription_conversation",
+        AsyncMock(return_value=turn),
     )
 
-    await subscribe.process_prompt(message, state)
+    await subscribe.process_chat_message(message, state)
 
-    state.set_state.assert_awaited_with(subscribe.SubscribeFlow.waiting_for_schedule_decision)
+    subscribe.backend.start_subscription_conversation.assert_awaited_once()
+    state.update_data.assert_awaited()
+
+
+# ---------- Continued message relays to backend ----------
 
 
 @pytest.mark.asyncio
-async def test_process_prompt_with_event_mode_skips_schedule(monkeypatch):
-    message = _mock_message(telegram_id=111, text="Notify me about new Severance episodes")
-    state = _mock_state(
-        data={
-            "prompt": "Notify me about new Severance episodes",
-            "delivery_mode": "event",
-            "schedule_cron_override": None,
-            "schedule_was_explicit": False,
-            "digest_language_override": "en",
-        }
-    )
+async def test_continued_message_relays_to_backend(monkeypatch):
+    message = _mock_message(telegram_id=111, text="every morning")
+    state = _mock_state(data={"conversation_id": "conv-123"})
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    turn = _conversation_turn(agent_message="Do you know specific sources?")
     monkeypatch.setattr(
-        subscribe,
-        "get_language_preference",
-        AsyncMock(return_value=LanguagePreference(mode="fixed", code="en")),
+        subscribe.backend,
+        "continue_subscription_conversation",
+        AsyncMock(return_value=turn),
+    )
+
+    await subscribe.process_chat_message(message, state)
+
+    subscribe.backend.continue_subscription_conversation.assert_awaited_once_with(
+        "api-key", "conv-123", "every morning"
+    )
+
+
+# ---------- Finalized config triggers subscription creation ----------
+
+
+@pytest.mark.asyncio
+async def test_finalized_config_creates_digest_subscription(monkeypatch):
+    message = _mock_message(telegram_id=111, text="yes, discover sources")
+    state = _mock_state(data={"conversation_id": "conv-123"})
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    config = {
+        "prompt_summary": "AI news digest",
+        "short_label": "AI News",
+        "delivery_mode": "digest",
+        "schedule_cron": "0 8 * * *",
+        "manual_only": False,
+        "format_instructions": "brief summary",
+        "digest_language": "en",
+        "fixed_telegram_channels": [],
+        "fixed_reddit_subreddits": [],
+        "fixed_twitter_accounts": [],
+        "include_discovered_sources": True,
+    }
+    turn = _conversation_turn(
+        agent_message="Your subscription is ready!",
+        status="ready",
+        finalized_config=config,
     )
     monkeypatch.setattr(
         subscribe.backend,
-        "parse_subscription_prompt",
-        AsyncMock(
-            return_value=SimpleNamespace(
-                delivery_mode="event",
-                schedule_cron=None,
-                schedule_was_explicit=False,
-            )
-        ),
+        "continue_subscription_conversation",
+        AsyncMock(return_value=turn),
     )
 
-    await subscribe.process_prompt(message, state)
-
-    # Should go to source flow, not schedule
-    state.set_state.assert_awaited()
-    # Should NOT be schedule_decision
-    set_calls = [str(c) for c in state.set_state.await_args_list]
-    assert not any("schedule_decision" in c for c in set_calls)
-
-
-@pytest.mark.asyncio
-async def test_handle_schedule_decision_no_continues_source_flow(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data=subscribe.SCHEDULE_ENABLE_NO)
-    state = _mock_state(data={"prompt": "AI news", "delivery_mode": "digest", "_menu_msg_id": 42})
-
-    await subscribe.handle_schedule_decision(callback, state)
-
-    state.set_state.assert_awaited()
-
-
-@pytest.mark.asyncio
-async def test_process_prompt_with_ask_mode_prompts_for_subscription_language(monkeypatch):
-    message = _mock_message(telegram_id=111, text="AI news")
-    state = _mock_state(data={"_menu_msg_id": 42})
-
-    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
-    monkeypatch.setattr(
-        subscribe,
-        "get_language_preference",
-        AsyncMock(return_value=LanguagePreference(mode="ask", code=None)),
+    create_sub = AsyncMock(
+        return_value=SimpleNamespace(id="sub-new", prompt_summary="AI news digest")
     )
-    monkeypatch.setattr(
-        subscribe.backend,
-        "parse_subscription_prompt",
-        AsyncMock(
-            return_value=SimpleNamespace(
-                delivery_mode="digest",
-                schedule_cron=None,
-                schedule_was_explicit=False,
-            )
-        ),
-    )
-
-    await subscribe.process_prompt(message, state)
-
-    state.set_state.assert_awaited_with(subscribe.SubscribeFlow.waiting_for_language_choice)
-
-
-@pytest.mark.asyncio
-async def test_handle_back_from_schedule_input_returns_to_schedule_decision(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data=subscribe.BACK)
-    state = _mock_state(data={"_menu_msg_id": 42})
-    state.get_state = AsyncMock(
-        return_value=subscribe.SubscribeFlow.waiting_for_schedule_input.state
-    )
-
-    await subscribe.handle_back(callback, state)
-
-    state.set_state.assert_awaited_with(subscribe.SubscribeFlow.waiting_for_schedule_decision)
-
-
-@pytest.mark.asyncio
-async def test_handle_back_from_channels_input_returns_to_source_knowledge(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data=subscribe.BACK)
-    state = _mock_state(data={"delivery_mode": "digest", "_menu_msg_id": 42})
-    state.get_state = AsyncMock(
-        return_value=subscribe.SubscribeFlow.waiting_for_channels_input.state
-    )
-
-    await subscribe.handle_back(callback, state)
-
-    state.set_state.assert_awaited_with(subscribe.SubscribeFlow.waiting_for_source_knowledge)
-
-
-@pytest.mark.asyncio
-async def test_handle_scope_choice_creates_manual_only_subscription(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data=subscribe.SCOPE_ONLY_PROVIDED)
-    state = _mock_state(
-        data={
-            "prompt": "AI news",
-            "delivery_mode": "digest",
-            "schedule_cron_override": None,
-            "manual_only": True,
-            "telegram_channels": ["test_channel"],
-            "reddit_subreddits": [],
-            "twitter_accounts": [],
-            "_menu_msg_id": 42,
-        }
-    )
-
-    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
-    create_sub = AsyncMock(return_value=SimpleNamespace(id="sub-new", prompt_summary="AI news"))
     monkeypatch.setattr(subscribe.backend, "create_subscription", create_sub)
 
-    await subscribe.handle_scope_choice(callback, state)
+    await subscribe.process_chat_message(message, state)
 
     create_sub.assert_awaited_once()
     call_kwargs = create_sub.await_args.kwargs
-    assert call_kwargs["fixed_telegram_channels"] == ["test_channel"]
-    assert call_kwargs["manual_only"] is True
     assert call_kwargs["delivery_mode"] == "digest"
+    assert call_kwargs["schedule_cron_override"] == "0 8 * * *"
+    assert call_kwargs["include_discovered_sources"] is True
+
+
+# ---------- Event subscription shows recent events prompt ----------
 
 
 @pytest.mark.asyncio
-async def test_show_scope_choice_formats_x_accounts_without_https(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data="unused")
-    state = _mock_state(
-        data={
-            "delivery_mode": "digest",
-            "telegram_channels": [],
-            "reddit_subreddits": [],
-            "twitter_accounts": ["OpenAI"],
-            "scope_channels_origin": "manual",
-            "_menu_msg_id": 42,
-        }
-    )
-
-    await subscribe._show_scope_choice_step(callback, state)
-
-    # edit_menu edits via bot.edit_message_text since mock isn't real CallbackQuery
-    callback.bot.edit_message_text.assert_awaited_once()
-    text = callback.bot.edit_message_text.await_args.kwargs["text"]
-    assert "x.com/OpenAI" in text
-    assert "https://" not in text
-
-
-@pytest.mark.asyncio
-async def test_handle_scope_choice_for_event_subscription_offers_recent_events(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data=subscribe.SCOPE_ONLY_PROVIDED)
-    state = _mock_state(
-        data={
-            "prompt": "Concert announcements",
-            "delivery_mode": "event",
-            "schedule_cron_override": None,
-            "manual_only": None,
-            "telegram_channels": [],
-            "reddit_subreddits": [],
-            "twitter_accounts": [],
-            "_menu_msg_id": 42,
-        }
-    )
+async def test_finalized_event_subscription_offers_recent_events(monkeypatch):
+    message = _mock_message(telegram_id=111, text="yes")
+    state = _mock_state(data={"conversation_id": "conv-123"})
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    config = {
+        "prompt_summary": "Concert alerts",
+        "short_label": "Concerts",
+        "delivery_mode": "event",
+        "event_matching_mode": "basic",
+        "schedule_cron": None,
+        "manual_only": False,
+        "format_instructions": "brief summary",
+        "digest_language": "en",
+        "fixed_telegram_channels": [],
+        "fixed_reddit_subreddits": [],
+        "fixed_twitter_accounts": [],
+        "include_discovered_sources": True,
+    }
+    turn = _conversation_turn(
+        agent_message="Ready!",
+        status="ready",
+        finalized_config=config,
+    )
+    monkeypatch.setattr(
+        subscribe.backend,
+        "continue_subscription_conversation",
+        AsyncMock(return_value=turn),
+    )
     monkeypatch.setattr(
         subscribe.backend,
         "create_subscription",
         AsyncMock(return_value=SimpleNamespace(id="sub-evt", prompt_summary="Concerts")),
     )
 
-    await subscribe.handle_scope_choice(callback, state)
+    await subscribe.process_chat_message(message, state)
 
     state.set_state.assert_awaited_with(subscribe.SubscribeFlow.waiting_for_recent_events_decision)
+
+
+# ---------- Choice callback sends value as message ----------
+
+
+@pytest.mark.asyncio
+async def test_choice_callback_relays_value(monkeypatch):
+    callback = _mock_callback(telegram_id=111, data=f"{subscribe.CONV_CHOICE_PREFIX}every morning")
+    state = _mock_state(data={"conversation_id": "conv-123"})
+    state.get_state = AsyncMock(return_value=subscribe.SubscribeFlow.chatting.state)
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    turn = _conversation_turn(agent_message="Got it, every morning!")
+    monkeypatch.setattr(
+        subscribe.backend,
+        "continue_subscription_conversation",
+        AsyncMock(return_value=turn),
+    )
+
+    await subscribe.handle_conversation_choice(callback, state)
+
+    subscribe.backend.continue_subscription_conversation.assert_awaited_once_with(
+        "api-key", "conv-123", "every morning"
+    )
+
+
+# ---------- Recent events flow ----------
 
 
 @pytest.mark.asyncio
@@ -348,26 +291,83 @@ async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
     state.clear.assert_awaited()
 
 
+# ---------- Cancel cleans up conversation ----------
+
+
 @pytest.mark.asyncio
-async def test_handle_back_from_recent_events_deletes_created_subscription(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data=subscribe.BACK)
-    state = _mock_state(
-        data={
-            "created_subscription_id": "sub-evt",
-            "creation_back_target": "source_knowledge",
-            "delivery_mode": "event",
-            "_menu_msg_id": 42,
-        }
-    )
-    state.get_state = AsyncMock(
-        return_value=subscribe.SubscribeFlow.waiting_for_recent_events_decision.state
-    )
+async def test_cancel_cleans_up_conversation(monkeypatch):
+    callback = _mock_callback(telegram_id=111, data="subscribe:cancel")
+    state = _mock_state(data={"conversation_id": "conv-123"})
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
-    delete_sub = AsyncMock()
-    monkeypatch.setattr(subscribe.backend, "delete_subscription", delete_sub)
+    monkeypatch.setattr(subscribe.backend, "cancel_subscription_conversation", AsyncMock())
 
-    await subscribe.handle_back(callback, state)
+    with patch("tgbot.handlers.menu.show_main_menu", new_callable=AsyncMock):
+        await subscribe.handle_cancel(callback, state)
 
-    delete_sub.assert_awaited_once_with("api-key", "sub-evt")
-    state.set_state.assert_awaited()
+    subscribe.backend.cancel_subscription_conversation.assert_awaited_once_with(
+        "api-key", "conv-123"
+    )
+    state.clear.assert_awaited()
+
+
+# ---------- Menu text is ignored ----------
+
+
+@pytest.mark.asyncio
+async def test_menu_text_is_ignored(monkeypatch):
+    message = _mock_message(telegram_id=111, text="📋 Menu")
+    state = _mock_state()
+
+    await subscribe.process_chat_message(message, state)
+
+    # No state changes
+    state.set_state.assert_not_awaited()
+
+
+# ---------- Fixed sources in config are forwarded ----------
+
+
+@pytest.mark.asyncio
+async def test_fixed_sources_forwarded_to_create(monkeypatch):
+    message = _mock_message(telegram_id=111, text="ok")
+    state = _mock_state(data={"conversation_id": "conv-123"})
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    config = {
+        "prompt_summary": "Tech news from specific channels",
+        "short_label": "Tech",
+        "delivery_mode": "digest",
+        "schedule_cron": None,
+        "manual_only": True,
+        "format_instructions": "brief summary",
+        "digest_language": "en",
+        "fixed_telegram_channels": ["durov"],
+        "fixed_reddit_subreddits": ["technology"],
+        "fixed_twitter_accounts": ["openai"],
+        "include_discovered_sources": False,
+    }
+    turn = _conversation_turn(
+        agent_message="Ready!",
+        status="ready",
+        finalized_config=config,
+    )
+    monkeypatch.setattr(
+        subscribe.backend,
+        "continue_subscription_conversation",
+        AsyncMock(return_value=turn),
+    )
+
+    create_sub = AsyncMock(return_value=SimpleNamespace(id="sub-1", prompt_summary="Tech news"))
+    monkeypatch.setattr(subscribe.backend, "create_subscription", create_sub)
+
+    await subscribe.process_chat_message(message, state)
+
+    create_sub.assert_awaited_once()
+    call_kwargs = create_sub.await_args.kwargs
+    assert call_kwargs["fixed_telegram_channels"] == ["durov"]
+    assert call_kwargs["fixed_reddit_subreddits"] == ["technology"]
+    assert call_kwargs["fixed_twitter_accounts"] == ["openai"]
+    assert call_kwargs["include_discovered_sources"] is False
+    assert call_kwargs["manual_only"] is True
