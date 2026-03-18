@@ -35,9 +35,7 @@ from news_service.schemas.subscription import (
 )
 from news_service.services.coverage import (
     ensure_prompt_coverage,
-    ensure_reddit_subreddit_coverage,
-    ensure_telegram_channel_coverage,
-    ensure_twitter_account_coverage,
+    ensure_source_coverage,
 )
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
@@ -258,29 +256,14 @@ async def create_subscription(
     await session.flush()
 
     selected_sources: dict[uuid.UUID, RssFeed] = {}
-    if telegram_channels:
-        telegram_sources = await ensure_telegram_channel_coverage(
-            session,
-            telegram_channels,
-        )
-        for source in telegram_sources:
-            selected_sources[source.id] = source
-
-    if reddit_subreddits:
-        reddit_sources = await ensure_reddit_subreddit_coverage(
-            session,
-            reddit_subreddits,
-        )
-        for source in reddit_sources:
-            selected_sources[source.id] = source
-
-    if twitter_accounts:
-        twitter_sources = await ensure_twitter_account_coverage(
-            session,
-            twitter_accounts,
-        )
-        for source in twitter_sources:
-            selected_sources[source.id] = source
+    for identifiers, kind in [
+        (telegram_channels, "telegram_channel"),
+        (reddit_subreddits, "reddit_subreddit"),
+        (twitter_accounts, "twitter_account"),
+    ]:
+        if identifiers:
+            for source in await ensure_source_coverage(session, identifiers, kind):
+                selected_sources[source.id] = source
 
     if include_discovered_sources:
         discovered_sources = await ensure_prompt_coverage(
@@ -361,27 +344,14 @@ async def append_subscription_sources(
     ]
 
     selected_sources: dict[uuid.UUID, RssFeed] = {}
-    if added_telegram_channels:
-        telegram_sources = await ensure_telegram_channel_coverage(
-            session,
-            added_telegram_channels,
-        )
-        for source in telegram_sources:
-            selected_sources[source.id] = source
-    if added_reddit_subreddits:
-        reddit_sources = await ensure_reddit_subreddit_coverage(
-            session,
-            added_reddit_subreddits,
-        )
-        for source in reddit_sources:
-            selected_sources[source.id] = source
-    if added_twitter_accounts:
-        twitter_sources = await ensure_twitter_account_coverage(
-            session,
-            added_twitter_accounts,
-        )
-        for source in twitter_sources:
-            selected_sources[source.id] = source
+    for identifiers, kind in [
+        (added_telegram_channels, "telegram_channel"),
+        (added_reddit_subreddits, "reddit_subreddit"),
+        (added_twitter_accounts, "twitter_account"),
+    ]:
+        if identifiers:
+            for source in await ensure_source_coverage(session, identifiers, kind):
+                selected_sources[source.id] = source
 
     for feed_id in selected_sources:
         session.add(SubscriptionSource(subscription_id=subscription.id, feed_id=feed_id))

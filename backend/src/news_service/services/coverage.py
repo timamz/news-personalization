@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -21,6 +22,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+_SOURCE_TYPE_CONFIG: dict[SourceKind, tuple[Callable[[str], str], str]] = {
+    "telegram_channel": (build_telegram_channel_url, "Telegram @{}"),
+    "reddit_subreddit": (build_reddit_subreddit_url, "Reddit r/{}"),
+    "twitter_account": (build_twitter_account_url, "X @{}"),
+}
 
 
 async def ensure_prompt_coverage(
@@ -89,16 +96,19 @@ async def _register_or_reuse_source(
     return feed
 
 
-async def ensure_telegram_channel_coverage(
+async def ensure_source_coverage(
     session: AsyncSession,
-    channels: list[str],
+    identifiers: list[str],
+    source_kind: SourceKind,
 ) -> list[RssFeed]:
-    if not channels:
+    if not identifiers:
         return []
 
+    url_builder, title_template = _SOURCE_TYPE_CONFIG[source_kind]
+
     resolved: dict[uuid.UUID, RssFeed] = {}
-    for channel in channels:
-        source_url = build_telegram_channel_url(channel)
+    for identifier in identifiers:
+        source_url = url_builder(identifier)
         result = await session.execute(select(RssFeed).where(RssFeed.url == source_url))
         existing_feed = result.scalar_one_or_none()
         if existing_feed is not None:
@@ -106,16 +116,16 @@ async def ensure_telegram_channel_coverage(
             existing_feed.is_active = True
             await _ensure_feed_profile(
                 existing_feed,
-                source_kind="telegram_channel",
-                fallback_title=f"Telegram @{channel}",
+                source_kind=source_kind,
+                fallback_title=title_template.format(identifier),
             )
             resolved[existing_feed.id] = existing_feed
-            logger.info("Telegram channel source already exists: %s", source_url)
+            logger.info("Source already exists: %s", source_url)
             continue
 
-        title = f"Telegram @{channel}"
+        title = title_template.format(identifier)
         description, embedding = await _build_feed_profile(
-            source_kind="telegram_channel",
+            source_kind=source_kind,
             title=title,
             url=source_url,
         )
@@ -130,99 +140,7 @@ async def ensure_telegram_channel_coverage(
         session.add(feed)
         await session.flush()
         resolved[feed.id] = feed
-        logger.info("Registered Telegram channel source: %s", source_url)
-
-    return list(resolved.values())
-
-
-async def ensure_reddit_subreddit_coverage(
-    session: AsyncSession,
-    subreddits: list[str],
-) -> list[RssFeed]:
-    if not subreddits:
-        return []
-
-    resolved: dict[uuid.UUID, RssFeed] = {}
-    for subreddit in subreddits:
-        source_url = build_reddit_subreddit_url(subreddit)
-        result = await session.execute(select(RssFeed).where(RssFeed.url == source_url))
-        existing_feed = result.scalar_one_or_none()
-        if existing_feed is not None:
-            existing_feed.subscriber_count += 1
-            existing_feed.is_active = True
-            await _ensure_feed_profile(
-                existing_feed,
-                source_kind="reddit_subreddit",
-                fallback_title=f"Reddit r/{subreddit}",
-            )
-            resolved[existing_feed.id] = existing_feed
-            logger.info("Reddit subreddit source already exists: %s", source_url)
-            continue
-
-        title = f"Reddit r/{subreddit}"
-        description, embedding = await _build_feed_profile(
-            source_kind="reddit_subreddit",
-            title=title,
-            url=source_url,
-        )
-        feed = RssFeed(
-            url=source_url,
-            title=title,
-            source_description=description,
-            source_description_embedding=embedding,
-            is_active=True,
-            subscriber_count=1,
-        )
-        session.add(feed)
-        await session.flush()
-        resolved[feed.id] = feed
-        logger.info("Registered Reddit subreddit source: %s", source_url)
-
-    return list(resolved.values())
-
-
-async def ensure_twitter_account_coverage(
-    session: AsyncSession,
-    accounts: list[str],
-) -> list[RssFeed]:
-    if not accounts:
-        return []
-
-    resolved: dict[uuid.UUID, RssFeed] = {}
-    for account in accounts:
-        source_url = build_twitter_account_url(account)
-        result = await session.execute(select(RssFeed).where(RssFeed.url == source_url))
-        existing_feed = result.scalar_one_or_none()
-        if existing_feed is not None:
-            existing_feed.subscriber_count += 1
-            existing_feed.is_active = True
-            await _ensure_feed_profile(
-                existing_feed,
-                source_kind="twitter_account",
-                fallback_title=f"X @{account}",
-            )
-            resolved[existing_feed.id] = existing_feed
-            logger.info("Twitter/X account source already exists: %s", source_url)
-            continue
-
-        title = f"X @{account}"
-        description, embedding = await _build_feed_profile(
-            source_kind="twitter_account",
-            title=title,
-            url=source_url,
-        )
-        feed = RssFeed(
-            url=source_url,
-            title=title,
-            source_description=description,
-            source_description_embedding=embedding,
-            is_active=True,
-            subscriber_count=1,
-        )
-        session.add(feed)
-        await session.flush()
-        resolved[feed.id] = feed
-        logger.info("Registered Twitter/X account source: %s", source_url)
+        logger.info("Registered %s source: %s", source_kind, source_url)
 
     return list(resolved.values())
 
