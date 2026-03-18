@@ -64,7 +64,7 @@ class AgentTurnOutput(BaseModel):
 
 class ConversationState(BaseModel):
     user_id: str = Field(..., description="User UUID")
-    messages: list[dict[str, str]] = Field(default_factory=list)
+    messages: list[dict] = Field(default_factory=list)
     status: Literal["in_progress", "ready"] = Field(default="in_progress")
     finalized_config: FinalizedSubscriptionConfig | None = Field(default=None)
     user_language: str | None = Field(default=None)

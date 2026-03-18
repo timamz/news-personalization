@@ -81,15 +81,14 @@ async def start_conversation(
     """Start a new subscription setup conversation."""
     conversation_id = uuid.uuid4().hex
 
-    messages: list[dict[str, str]] = [{"role": "user", "content": payload.message}]
+    messages: list[dict] = [{"role": "user", "content": payload.message}]
 
-    agent_output = await run_conversation_turn(
+    agent_output, new_messages = await run_conversation_turn(
         messages,
         user_language=payload.user_language,
         user_timezone=payload.user_timezone,
     )
-
-    messages.append({"role": "assistant", "content": agent_output.message})
+    messages.extend(new_messages)
 
     state = ConversationState(
         user_id=str(user.id),
@@ -127,13 +126,12 @@ async def continue_conversation(
 
     state.messages.append({"role": "user", "content": payload.message})
 
-    agent_output = await run_conversation_turn(
+    agent_output, new_messages = await run_conversation_turn(
         state.messages,
         user_language=state.user_language,
         user_timezone=state.user_timezone,
     )
-
-    state.messages.append({"role": "assistant", "content": agent_output.message})
+    state.messages.extend(new_messages)
     state.status = agent_output.status
     state.finalized_config = agent_output.finalized_config
 

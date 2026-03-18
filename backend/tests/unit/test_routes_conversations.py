@@ -62,7 +62,12 @@ async def test_start_conversation(mocker):
     )
     mocker.patch(
         f"{MODULE}.run_conversation_turn",
-        new=AsyncMock(return_value=agent_output),
+        new=AsyncMock(
+            return_value=(
+                agent_output,
+                [{"role": "assistant", "content": agent_output.message}],
+            )
+        ),
     )
 
     redis_mock = _mock_redis()
@@ -112,7 +117,12 @@ async def test_continue_conversation(mocker):
     )
     mocker.patch(
         f"{MODULE}.run_conversation_turn",
-        new=AsyncMock(return_value=agent_output),
+        new=AsyncMock(
+            return_value=(
+                agent_output,
+                [{"role": "assistant", "content": agent_output.message}],
+            )
+        ),
     )
 
     mock_user = MagicMock()
