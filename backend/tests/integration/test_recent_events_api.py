@@ -19,7 +19,6 @@ async def _create_subscription(
     mocker,
     *,
     delivery_mode: str = "event",
-    event_matching_mode: str = "basic",
 ) -> tuple[str, str, uuid.UUID]:
     feed_ref: dict[str, uuid.UUID] = {}
 
@@ -56,7 +55,6 @@ async def _create_subscription(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": delivery_mode,
             "prompt_summary": "Upcoming events",
-            "event_matching_mode": event_matching_mode,
             "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
@@ -159,7 +157,6 @@ async def test_recent_events_filters_strict_subscription_with_preview_renderer(
     api_key, subscription_id, feed_id = await _create_subscription(
         api_client,
         mocker,
-        event_matching_mode="strict_with_prefilter",
     )
     now = datetime.now(UTC)
 
@@ -169,12 +166,11 @@ async def test_recent_events_filters_strict_subscription_with_preview_renderer(
         *,
         raw_prompt,
         target_language,
-        event_matching_mode,
         lookback_days,
         candidate_events,
         recent_notifications,
     ):
-        del raw_prompt, target_language, event_matching_mode, lookback_days, recent_notifications
+        del raw_prompt, target_language, lookback_days, recent_notifications
         selected_item_id = ""
         selected_entry = ""
         for entry in candidate_events:

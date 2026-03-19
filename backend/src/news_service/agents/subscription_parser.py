@@ -89,8 +89,6 @@ https://x.com/handle.
 6. **Source discovery** — if user provided sources, ask whether to also find additional \
 sources automatically, or stick with only theirs.
 7. **Format** — default to "brief summary" unless the user specifies preferences.
-8. **Event matching mode** — use "strict_with_prefilter" if the user includes exclusions \
-or exact requirements ("only", "not", "except"). Otherwise "basic".
 
 Behavior rules:
 - Be friendly and concise. Ask at most ONE question per turn.

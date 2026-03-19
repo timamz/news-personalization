@@ -94,7 +94,6 @@ async def assess_and_compose_event_notification(
     published_at: datetime | None,
     raw_prompt: str,
     target_language: str,
-    event_matching_mode: str = "basic",
     recent_notification_history: list[str],
     max_history_chars: int,
 ) -> EventAssessmentResult:
@@ -107,13 +106,6 @@ async def assess_and_compose_event_notification(
 
     history_block = history_text if history_text else "No recent notification history."
 
-    matching_note = ""
-    if event_matching_mode == "strict_with_prefilter":
-        matching_note = (
-            "\nMatching mode: STRICT — only match posts that explicitly mention "
-            "items named in the subscription request. Reject anything tangential.\n"
-        )
-
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,
         messages=[
@@ -121,8 +113,7 @@ async def assess_and_compose_event_notification(
             {
                 "role": "user",
                 "content": (
-                    f"Target language: {target_language}\n"
-                    f"{matching_note}\n"
+                    f"Target language: {target_language}\n\n"
                     f"Subscription request:\n{_trim_text(raw_prompt)}\n\n"
                     f"Post headline:\n{_trim_text(headline)}\n\n"
                     f"Post body:\n{_trim_text(body)}\n\n"
@@ -151,7 +142,6 @@ async def render_recent_events_preview(
     *,
     raw_prompt: str,
     target_language: str,
-    event_matching_mode: str,
     lookback_days: int,
     candidate_events: list[str],
     recent_notifications: list[str],
@@ -180,7 +170,6 @@ async def render_recent_events_preview(
                 "role": "user",
                 "content": (
                     f"Target language: {normalized_language}\n"
-                    f"Event matching mode: {event_matching_mode}\n"
                     f"Lookback window: last {lookback_days} days\n\n"
                     f"Original subscription request:\n{_trim_text(raw_prompt)}\n\n"
                     "Recent notification history:\n"

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from news_service.models.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -22,12 +22,6 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     prompt_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     short_label: Mapped[str] = mapped_column(String(30), nullable=False, default="")
     delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="digest")
-    event_matching_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="basic")
-    event_constraints: Mapped[list[dict[str, object]]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=list,
-    )
     schedule_cron: Mapped[str | None] = mapped_column(String(100), nullable=True)
     format_instructions: Mapped[str] = mapped_column(Text, nullable=False, default="brief summary")
     digest_language: Mapped[str] = mapped_column(String(16), nullable=False, default="en")

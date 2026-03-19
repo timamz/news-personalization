@@ -5,7 +5,6 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 type DeliveryMode = Literal["digest", "event"]
-type EventMatchingMode = Literal["basic", "strict_with_prefilter"]
 
 
 class SubscriptionCreate(BaseModel):
@@ -62,10 +61,6 @@ class SubscriptionCreate(BaseModel):
     format_instructions: str | None = Field(
         default=None,
         description="How the user wants to consume news; defaults to 'brief summary'",
-    )
-    event_matching_mode: EventMatchingMode | None = Field(
-        default=None,
-        description="How event subscriptions should be matched against candidate events",
     )
 
 

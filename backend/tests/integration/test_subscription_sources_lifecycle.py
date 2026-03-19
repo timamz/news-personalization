@@ -128,7 +128,6 @@ async def test_create_event_subscription_forces_schedule_off(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
             "prompt_summary": "TV episode notifications",
-            "event_matching_mode": "strict_with_prefilter",
             "schedule_cron_override": "0 8 * * *",
             "format_instructions": "brief summary",
             "digest_language_override": "en",
@@ -144,8 +143,6 @@ async def test_create_event_subscription_forces_schedule_off(
         subscription = await session.get(Subscription, subscription_id)
         assert subscription is not None
         assert subscription.delivery_mode == "event"
-        assert subscription.event_matching_mode == "strict_with_prefilter"
-        assert subscription.event_constraints == []
         assert subscription.schedule_cron is None
 
 

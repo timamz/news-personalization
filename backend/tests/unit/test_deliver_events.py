@@ -78,7 +78,6 @@ def _make_subscription() -> SimpleNamespace:
         user_id=uuid.uuid4(),
         raw_prompt="Notify me when Drobyshevsky lectures are announced",
         canonical_prompt="Notify me when Drobyshevsky lectures are announced",
-        event_matching_mode="basic",
         delivery_webhook_url="http://frontend.example.test/deliver/1",
         digest_language="en",
     )

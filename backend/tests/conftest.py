@@ -39,12 +39,11 @@ def mock_event_preview_renderer(mocker) -> None:
         *,
         raw_prompt: str,
         target_language: str,
-        event_matching_mode: str,
         lookback_days: int,
         candidate_events: list[str],
         recent_notifications: list[str],
     ) -> RecentEventsPreviewDecision:
-        del target_language, event_matching_mode, recent_notifications
+        del target_language, recent_notifications
         selected_ids: list[str] = []
         selected_entries: list[str] = []
         normalized_prompt = raw_prompt.casefold()

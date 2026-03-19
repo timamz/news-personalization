@@ -203,9 +203,6 @@ async def _create_subscription_streaming(
         else not bool(telegram_channels or reddit_subreddits or twitter_accounts)
     )
     delivery_mode = payload.delivery_mode or "digest"
-    event_matching_mode = (
-        (payload.event_matching_mode or "basic") if delivery_mode == "event" else "basic"
-    )
     schedule_cron = payload.schedule_cron_override
     if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
@@ -229,8 +226,6 @@ async def _create_subscription_streaming(
         prompt_summary=prompt_summary,
         short_label=short_label,
         delivery_mode=delivery_mode,
-        event_matching_mode=event_matching_mode,
-        event_constraints=[],
         schedule_cron=schedule_cron,
         format_instructions=payload.format_instructions or "brief summary",
         digest_language=digest_language,
@@ -351,9 +346,6 @@ async def create_subscription(
         else not bool(telegram_channels or reddit_subreddits or twitter_accounts)
     )
     delivery_mode = payload.delivery_mode or "digest"
-    event_matching_mode = (
-        (payload.event_matching_mode or "basic") if delivery_mode == "event" else "basic"
-    )
     schedule_cron = payload.schedule_cron_override
     if delivery_mode == "event" or payload.manual_only:
         schedule_cron = None
@@ -374,8 +366,6 @@ async def create_subscription(
         prompt_summary=prompt_summary,
         short_label=short_label,
         delivery_mode=delivery_mode,
-        event_matching_mode=event_matching_mode,
-        event_constraints=[],
         schedule_cron=schedule_cron,
         format_instructions=payload.format_instructions or "brief summary",
         digest_language=digest_language,

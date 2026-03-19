@@ -154,7 +154,6 @@ async def build_recent_events_preview_for_subscription(
         decision = await render_recent_events_preview(
             raw_prompt=(getattr(subscription, "canonical_prompt", "") or subscription.raw_prompt),
             target_language=subscription.digest_language,
-            event_matching_mode=subscription.event_matching_mode,
             lookback_days=lookback_days,
             candidate_events=[_format_preview_candidate(item) for item in deduplicated_items],
             recent_notifications=[_format_history_entry(entry) for entry in history],

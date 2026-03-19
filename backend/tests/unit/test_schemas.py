@@ -27,7 +27,6 @@ def test_subscription_create_optional_fields_default_to_none():
     assert payload.prompt_summary is None
     assert payload.short_label is None
     assert payload.format_instructions is None
-    assert payload.event_matching_mode is None
 
 
 def test_subscription_create_accepts_all_optional_fields():
@@ -36,13 +35,11 @@ def test_subscription_create_accepts_all_optional_fields():
         prompt_summary="AI news every morning",
         short_label="AI News",
         format_instructions="detailed analysis",
-        event_matching_mode="strict_with_prefilter",
         delivery_mode="event",
     )
     assert payload.prompt_summary == "AI news every morning"
     assert payload.short_label == "AI News"
     assert payload.format_instructions == "detailed analysis"
-    assert payload.event_matching_mode == "strict_with_prefilter"
 
 
 def test_subscription_update_accepts_partial_fields():

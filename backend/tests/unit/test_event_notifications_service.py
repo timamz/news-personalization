@@ -43,13 +43,12 @@ def _make_item(
     )
 
 
-def _make_subscription(*, strict: bool = True) -> SimpleNamespace:
+def _make_subscription() -> SimpleNamespace:
     return SimpleNamespace(
         id="sub-1",
         user_id="user-1",
         raw_prompt="Only lectures by Stanislav Drobyshevsky himself",
         canonical_prompt="Only lectures by Stanislav Drobyshevsky himself",
-        event_matching_mode="strict_with_prefilter" if strict else "basic",
         digest_language="en",
     )
 
@@ -73,7 +72,7 @@ async def test_list_recent_subscription_events_filters_duplicates() -> None:
         _make_item(item_id="news-2", headline="Лекция Дробышевского"),
         _make_item(item_id="news-3", headline="Другая лекция Дробышевского"),
     ]
-    subscription = _make_subscription(strict=False)
+    subscription = _make_subscription()
     session = _FakeSession(
         [
             items,
@@ -94,7 +93,7 @@ async def test_list_recent_subscription_events_loads_history_for_current_subscri
     mocker,
 ) -> None:
     item = _make_item()
-    subscription = _make_subscription(strict=False)
+    subscription = _make_subscription()
     session = _FakeSession([[item]])
 
     history_loader = mocker.patch.object(

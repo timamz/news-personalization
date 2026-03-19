@@ -45,7 +45,6 @@ async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uu
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
             "prompt_summary": "Anime episode notifications",
-            "event_matching_mode": "basic",
             "format_instructions": "brief summary",
             "digest_language_override": "en",
         },

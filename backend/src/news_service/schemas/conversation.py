@@ -2,7 +2,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from news_service.schemas.subscription import DeliveryMode, EventMatchingMode
+from news_service.schemas.subscription import DeliveryMode
 
 
 class StreamEvent(BaseModel):
@@ -31,7 +31,6 @@ class FinalizedSubscriptionConfig(BaseModel):
     prompt_summary: str = Field(..., description="Short human-readable summary")
     short_label: str = Field(..., description="Ultra-short 2-3 word label")
     delivery_mode: DeliveryMode = Field(default="digest")
-    event_matching_mode: EventMatchingMode = Field(default="basic")
     schedule_cron: str | None = Field(default=None, description="5-field cron expression")
     manual_only: bool = Field(default=False)
     format_instructions: str = Field(default="brief summary")

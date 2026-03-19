@@ -290,7 +290,6 @@ async def test_finalized_event_subscription_offers_recent_events(monkeypatch):
         "prompt_summary": "Concert alerts",
         "short_label": "Concerts",
         "delivery_mode": "event",
-        "event_matching_mode": "basic",
         "schedule_cron": None,
         "manual_only": False,
         "format_instructions": "brief summary",

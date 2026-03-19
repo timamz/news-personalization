@@ -161,7 +161,6 @@ class BackendClient:
         prompt_summary: str | None = None,
         short_label: str | None = None,
         format_instructions: str | None = None,
-        event_matching_mode: str | None = None,
     ) -> SubscriptionInfo:
         payload = self._build_create_payload(
             prompt,
@@ -177,7 +176,6 @@ class BackendClient:
             prompt_summary=prompt_summary,
             short_label=short_label,
             format_instructions=format_instructions,
-            event_matching_mode=event_matching_mode,
         )
 
         async with httpx.AsyncClient(

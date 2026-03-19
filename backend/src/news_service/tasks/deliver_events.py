@@ -117,7 +117,6 @@ async def _deliver_event_notifications(news_item_id: uuid.UUID) -> dict:
                     published_at=item.published_at,
                     raw_prompt=raw_prompt,
                     target_language=subscription.digest_language,
-                    event_matching_mode=subscription.event_matching_mode,
                     recent_notification_history=history_strings,
                     max_history_chars=settings.llm_max_context_chars,
                 )

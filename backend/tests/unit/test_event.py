@@ -154,7 +154,6 @@ async def test_render_recent_events_preview_returns_subject_and_body() -> None:
         result = await render_recent_events_preview(
             raw_prompt="Только лекции Дробышевского",
             target_language="ru",
-            event_matching_mode="strict_with_prefilter",
             lookback_days=7,
             candidate_events=[
                 "ID: event-1\nTitle: Лекция Станислава Дробышевского\n"
