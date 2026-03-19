@@ -433,25 +433,28 @@ class BackendClient:
                 canonical_prompt=data.get("canonical_prompt"),
             )
 
-    async def list_recent_events(
+    async def list_recent_events_stream(
         self,
         api_key: str,
         subscription_id: str,
-    ) -> RecentEventsPreviewInfo | None:
-        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
-            response = await client.get(
-                f"{self.base_url}/subscriptions/{subscription_id}/recent-events",
+    ) -> AsyncGenerator[dict, None]:
+        """Stream recent events preview (polls sources, then composes). Yields NDJSON dicts."""
+        async with (
+            httpx.AsyncClient(
+                timeout=httpx.Timeout(
+                    settings.backend_create_subscription_timeout_seconds, connect=10.0
+                ),
+            ) as client,
+            client.stream(
+                "POST",
+                f"{self.base_url}/subscriptions/{subscription_id}/recent-events/stream",
                 headers={"X-API-Key": api_key},
-            )
+            ) as response,
+        ):
             response.raise_for_status()
-            payload = response.json()
-            if payload is None:
-                return None
-            return RecentEventsPreviewInfo(
-                news_item_ids=payload["news_item_ids"],
-                subject=payload["subject"],
-                body=payload["body"],
-            )
+            async for line in response.aiter_lines():
+                if line.strip():
+                    yield json.loads(line)
 
     async def acknowledge_recent_events(
         self,

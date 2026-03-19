@@ -40,6 +40,7 @@ from news_service.services.coverage import (
     ensure_prompt_coverage,
     ensure_source_coverage,
 )
+from news_service.services.feed_display import feed_display_name
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
 )
@@ -588,6 +589,101 @@ async def apply_subscription_edit(
     await session.commit()
     await session.refresh(subscription)
     return subscription
+
+
+async def _recent_events_preview_streaming(
+    subscription: Subscription,
+    session: AsyncSession,
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Poll subscription sources, then build a recent events preview. Yields NDJSON."""
+    from news_service.tasks.poll_feeds import _poll_single_feed
+
+    # Load feeds for this subscription
+    feed_result = await session.execute(
+        select(RssFeed)
+        .join(SubscriptionSource, SubscriptionSource.feed_id == RssFeed.id)
+        .where(SubscriptionSource.subscription_id == subscription.id)
+    )
+    feeds = list(feed_result.scalars().all())
+
+    if not feeds:
+        yield {"event": "done", "preview": None}
+        return
+
+    # Pre-initialize session.info keys that _poll_single_feed reads/writes
+    session.info["event_feed_ids"] = set()
+    session.info["event_item_ids"] = []
+
+    for feed in feeds:
+        display = feed_display_name(feed)
+        yield {"event": "status", "status_message": f"Checking {display}..."}
+        try:
+            await _poll_single_feed(session, feed)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            logger.exception(
+                "Failed to poll feed %s during recent events preview",
+                feed.url,
+                extra={"feed_id": str(feed.id)},
+            )
+
+    yield {"event": "status", "status_message": "Looking for events..."}
+    try:
+        preview = await build_recent_events_preview_for_subscription(
+            session, subscription, lookback_days=7,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to build recent events preview for subscription %s",
+            subscription.id,
+        )
+        preview = None
+
+    if preview is None:
+        yield {"event": "done", "preview": None}
+    else:
+        yield {
+            "event": "done",
+            "preview": {
+                "news_item_ids": [str(item_id) for item_id in preview.news_item_ids],
+                "subject": preview.subject,
+                "body": preview.body,
+            },
+        }
+
+
+@router.post("/{subscription_id}/recent-events/stream")
+async def recent_events_preview_stream(
+    subscription_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    """Poll sources and build a recent events preview with streaming status updates."""
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.id == subscription_id,
+            Subscription.user_id == user.id,
+        )
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    if not subscription.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Subscription is inactive",
+        )
+    if subscription.delivery_mode != "event":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Recent events preview is available only for event subscriptions",
+        )
+
+    async def generate() -> AsyncGenerator[str, None]:
+        async for event in _recent_events_preview_streaming(subscription, session):
+            yield json.dumps(event) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.get(

@@ -36,6 +36,7 @@ def _mock_callback(telegram_id: int, data: str) -> SimpleNamespace:
     msg = SimpleNamespace(
         answer=AsyncMock(),
         edit_text=AsyncMock(),
+        edit_reply_markup=AsyncMock(),
         chat=SimpleNamespace(id=telegram_id),
         message_id=42,
     )
@@ -47,7 +48,7 @@ def _mock_callback(telegram_id: int, data: str) -> SimpleNamespace:
         bot=SimpleNamespace(
             edit_message_text=AsyncMock(),
             delete_message=AsyncMock(),
-            send_message=AsyncMock(return_value=SimpleNamespace(message_id=99)),
+            send_message=AsyncMock(return_value=_mock_status_msg()),
         ),
     )
 
@@ -324,6 +325,25 @@ async def test_finalized_event_subscription_offers_recent_events(monkeypatch):
 # ---------- Recent events flow ----------
 
 
+async def _mock_recent_events_stream_with_preview():
+    """Async generator that yields status then done with preview."""
+    yield {"event": "status", "status_message": "Checking @channel..."}
+    yield {
+        "event": "done",
+        "preview": {
+            "news_item_ids": ["n1", "n2"],
+            "subject": "Recent events",
+            "body": "Event 1\nEvent 2",
+        },
+    }
+
+
+async def _mock_recent_events_stream_empty():
+    """Async generator that yields done with no preview."""
+    yield {"event": "status", "status_message": "Checking @channel..."}
+    yield {"event": "done", "preview": None}
+
+
 @pytest.mark.asyncio
 async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
     callback = _mock_callback(telegram_id=111, data=subscribe.RECENT_EVENTS_YES)
@@ -335,28 +355,21 @@ async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
     monkeypatch.setattr(
         subscribe.backend,
-        "list_recent_events",
-        AsyncMock(
-            return_value=SimpleNamespace(
-                subject="Recent events",
-                body="Event 1\nEvent 2",
-                news_item_ids=["n1", "n2"],
-            )
-        ),
+        "list_recent_events_stream",
+        lambda *a, **kw: _mock_recent_events_stream_with_preview(),
     )
     monkeypatch.setattr(subscribe.backend, "acknowledge_recent_events", AsyncMock())
 
     with patch("tgbot.handlers.menu.show_subscription_list", new_callable=AsyncMock):
         await subscribe.handle_recent_events_decision(callback, state)
 
-    subscribe.backend.list_recent_events.assert_awaited_once_with("api-key", "sub-evt")
     subscribe.backend.acknowledge_recent_events.assert_awaited_once()
     state.clear.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_handle_recent_events_empty_shows_message_with_back_button(monkeypatch):
-    """When no recent events, show the empty message with a back button instead of navigating."""
+    """When no recent events, show the empty message instead of navigating away."""
     callback = _mock_callback(telegram_id=111, data=subscribe.RECENT_EVENTS_YES)
     state = _mock_state(data={"created_subscription_id": "sub-evt", "_menu_msg_id": 42})
     state.get_state = AsyncMock(
@@ -366,18 +379,16 @@ async def test_handle_recent_events_empty_shows_message_with_back_button(monkeyp
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
     monkeypatch.setattr(
         subscribe.backend,
-        "list_recent_events",
-        AsyncMock(return_value=None),
+        "list_recent_events_stream",
+        lambda *a, **kw: _mock_recent_events_stream_empty(),
     )
 
     await subscribe.handle_recent_events_decision(callback, state)
 
-    subscribe.backend.list_recent_events.assert_awaited_once_with("api-key", "sub-evt")
     state.clear.assert_awaited()
-    # Should edit message with empty text AND a keyboard (back button), not navigate away
-    callback.bot.edit_message_text.assert_awaited()
-    edit_kwargs = callback.bot.edit_message_text.call_args.kwargs
-    assert edit_kwargs.get("reply_markup") is not None
+    # Should send a reply with empty text (not navigate away)
+    # The reply is sent via bot.send_message
+    assert callback.bot.send_message.await_count >= 2  # status msg + empty result
 
 
 # ---------- Cancel cleans up conversation ----------

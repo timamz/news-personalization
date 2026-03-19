@@ -150,34 +150,49 @@ async def handle_recent_events_decision(callback: CallbackQuery, state: FSMConte
         await state.clear()
         return
 
-    await edit_menu(callback, state, t(ui_language, "recent_events_loading"))
+    # Remove the buttons from the original message
+    if callback.message:
+        with contextlib.suppress(TelegramBadRequest):
+            await callback.message.edit_reply_markup(reply_markup=None)
+
+    status_msg = await _send_status(callback, t(ui_language, "recent_events_loading"))
+
+    preview: dict | None = None
     try:
-        recent_events = await backend.list_recent_events(api_key, subscription_id)
+        async for event_data in backend.list_recent_events_stream(api_key, subscription_id):
+            match event_data.get("event"):
+                case "status":
+                    await _edit_status(status_msg, event_data.get("status_message", ""))
+                case "done":
+                    preview = event_data.get("preview")
     except Exception:
         logger.exception(
             "Failed to load recent events for telegram_id=%d subscription=%s",
             telegram_id,
             subscription_id,
         )
-        await edit_menu(callback, state, t(ui_language, "recent_events_failed"))
-        await state.clear()
-        return
-
-    if recent_events is None:
+        await _delete_status(status_msg)
         await state.clear()
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[[back_button(ui_language, M_SUBS)]],
         )
-        await edit_menu(
-            callback, state, t(ui_language, "recent_events_empty"), keyboard
-        )
+        await edit_menu(callback, state, t(ui_language, "recent_events_failed"), keyboard)
         return
 
-    if callback.message:
-        await callback.message.answer(f"{recent_events.subject}\n\n{recent_events.body}")
+    await _delete_status(status_msg)
+
+    if preview is None:
+        await state.clear()
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[back_button(ui_language, M_SUBS)]],
+        )
+        await _reply(callback, t(ui_language, "recent_events_empty"), keyboard)
+        return
+
+    await _reply(callback, f"{preview['subject']}\n\n{preview['body']}")
     try:
         await backend.acknowledge_recent_events(
-            api_key, subscription_id, recent_events.news_item_ids
+            api_key, subscription_id, preview["news_item_ids"]
         )
     except Exception:
         logger.exception(
