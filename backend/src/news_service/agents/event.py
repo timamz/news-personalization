@@ -15,43 +15,24 @@ _client = openai_client
 MAX_EVENT_TEXT_CHARS = 4000
 
 ASSESS_AND_COMPOSE_PROMPT = """\
-You assess whether a news item describes an upcoming real-world event that is relevant to a
-user's subscription and, if so, compose a notification message.
+You decide whether to deliver a post to the user based on their subscription request.
 
-Step 1 — Event detection:
-Return is_relevant_event=false unless the text clearly announces something expected to happen
-in the future, such as:
-- a new episode, season, film, album, or product release
-- a concert, tour date, festival, conference, or livestream
-- a launch, premiere, match, or scheduled public appearance
-Ignore general news without a concrete future event.
-Ignore events that have already happened.
+The subscription request defines exactly what the user wants. Only deliver posts that \
+directly match the request. Being in the same general topic or category is NOT enough — \
+the post must be about something the user specifically asked for.
 
-Step 2 — Relevance matching:
-The original subscription request is the source of truth.
-Return is_relevant_event=false if the event does not match what the user asked for.
-Respect exclusions like "only", "not", "except", and exact-person requirements.
-Match by meaning, not by exact wording.
+If the user listed specific titles, names, people, or entities, the post must be about \
+one of those. For example, if the user asked for "One Piece, Jujutsu Kaisen", a post \
+about Naruto is NOT a match.
 
-Step 3 — Deduplication:
-Compare the new candidate event against the recent notification history provided.
-If the user has already been notified about substantially the same event (including reposts,
-reminders, and differently worded announcements of the same underlying event), return
-is_relevant_event=false.
-The same event announced by a different source can still count as already notified.
-If the new event is a different occurrence, date, speaker, episode, release, or otherwise
-materially new, it is NOT a duplicate.
+If the user has already been notified about the same thing (see notification history), \
+return is_relevant_event=false.
 
-Step 4 — Composition (only if is_relevant_event=true):
-Compose notification_body in the target language. Include:
-- A concise event title
-- Timing if known
-- 1-2 sentence summary
-- The source URL
-Do not include source labels like "Telegram @channel" before the link.
+If is_relevant_event=true, compose a short notification_body in the target language: \
+a concise title, timing if known, 1-2 sentence summary, and the source URL. \
 Keep it suitable for a chat message.
 
-Always fill in the reason field with a short explanation for your decision.
+Always fill in the reason field explaining your decision.
 """
 
 RECENT_EVENTS_PREVIEW_PROMPT = """\
@@ -113,6 +94,7 @@ async def assess_and_compose_event_notification(
     published_at: datetime | None,
     raw_prompt: str,
     target_language: str,
+    event_matching_mode: str = "basic",
     recent_notification_history: list[str],
     max_history_chars: int,
 ) -> EventAssessmentResult:
@@ -125,6 +107,13 @@ async def assess_and_compose_event_notification(
 
     history_block = history_text if history_text else "No recent notification history."
 
+    matching_note = ""
+    if event_matching_mode == "strict_with_prefilter":
+        matching_note = (
+            "\nMatching mode: STRICT — only match posts that explicitly mention "
+            "items named in the subscription request. Reject anything tangential.\n"
+        )
+
     completion = await _client.beta.chat.completions.parse(
         model=settings.llm_model,
         messages=[
@@ -132,13 +121,12 @@ async def assess_and_compose_event_notification(
             {
                 "role": "user",
                 "content": (
-                    f"Target language: {target_language}\n\n"
-                    "Reference timestamp: "
-                    f"{published_at.isoformat() if published_at else 'unknown'}\n\n"
-                    f"Original subscription request:\n{_trim_text(raw_prompt)}\n\n"
-                    f"Headline:\n{_trim_text(headline)}\n\n"
-                    f"Body:\n{_trim_text(body)}\n\n"
-                    "Recent notification history:\n"
+                    f"Target language: {target_language}\n"
+                    f"{matching_note}\n"
+                    f"Subscription request:\n{_trim_text(raw_prompt)}\n\n"
+                    f"Post headline:\n{_trim_text(headline)}\n\n"
+                    f"Post body:\n{_trim_text(body)}\n\n"
+                    "Notification history:\n"
                     f"{history_block}"
                 ),
             },
