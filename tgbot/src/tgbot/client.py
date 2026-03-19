@@ -163,34 +163,22 @@ class BackendClient:
         format_instructions: str | None = None,
         event_matching_mode: str | None = None,
     ) -> SubscriptionInfo:
-        payload: dict[str, object] = {
-            "prompt": prompt,
-            "delivery_webhook_url": delivery_webhook_url,
-        }
-        if fixed_telegram_channels is not None:
-            payload["fixed_telegram_channels"] = fixed_telegram_channels
-        if fixed_reddit_subreddits is not None:
-            payload["fixed_reddit_subreddits"] = fixed_reddit_subreddits
-        if fixed_twitter_accounts is not None:
-            payload["fixed_twitter_accounts"] = fixed_twitter_accounts
-        if include_discovered_sources is not None:
-            payload["include_discovered_sources"] = include_discovered_sources
-        if schedule_cron_override is not None:
-            payload["schedule_cron_override"] = schedule_cron_override
-        if manual_only is not None:
-            payload["manual_only"] = manual_only
-        if delivery_mode is not None:
-            payload["delivery_mode"] = delivery_mode
-        if digest_language is not None:
-            payload["digest_language_override"] = digest_language
-        if prompt_summary is not None:
-            payload["prompt_summary"] = prompt_summary
-        if short_label is not None:
-            payload["short_label"] = short_label
-        if format_instructions is not None:
-            payload["format_instructions"] = format_instructions
-        if event_matching_mode is not None:
-            payload["event_matching_mode"] = event_matching_mode
+        payload = self._build_create_payload(
+            prompt,
+            delivery_webhook_url,
+            fixed_telegram_channels=fixed_telegram_channels,
+            fixed_reddit_subreddits=fixed_reddit_subreddits,
+            fixed_twitter_accounts=fixed_twitter_accounts,
+            include_discovered_sources=include_discovered_sources,
+            schedule_cron_override=schedule_cron_override,
+            manual_only=manual_only,
+            delivery_mode=delivery_mode,
+            digest_language=digest_language,
+            prompt_summary=prompt_summary,
+            short_label=short_label,
+            format_instructions=format_instructions,
+            event_matching_mode=event_matching_mode,
+        )
 
         async with httpx.AsyncClient(
             timeout=settings.backend_create_subscription_timeout_seconds
@@ -202,17 +190,63 @@ class BackendClient:
             )
             response.raise_for_status()
             data = response.json()
-            return SubscriptionInfo(
-                id=data["id"],
-                prompt_summary=data["prompt_summary"],
-                delivery_mode=data["delivery_mode"],
-                schedule_cron=data["schedule_cron"],
-                format_instructions=data["format_instructions"],
-                digest_language=data["digest_language"],
-                short_label=data.get("short_label", ""),
-                raw_prompt=data.get("raw_prompt"),
-                canonical_prompt=data.get("canonical_prompt"),
-            )
+            return self._parse_subscription(data)
+
+    async def create_subscription_stream(
+        self,
+        api_key: str,
+        prompt: str,
+        delivery_webhook_url: str,
+        **kwargs: object,
+    ) -> AsyncGenerator[dict, None]:
+        payload = self._build_create_payload(prompt, delivery_webhook_url, **kwargs)
+        async with (
+            httpx.AsyncClient(
+                timeout=httpx.Timeout(
+                    settings.backend_create_subscription_timeout_seconds, connect=10.0
+                ),
+            ) as client,
+            client.stream(
+                "POST",
+                f"{self.base_url}/subscriptions/stream",
+                headers={"X-API-Key": api_key},
+                json=payload,
+            ) as response,
+        ):
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line.strip():
+                    yield json.loads(line)
+
+    @staticmethod
+    def _build_create_payload(
+        prompt: str,
+        delivery_webhook_url: str,
+        **kwargs: object,
+    ) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "prompt": prompt,
+            "delivery_webhook_url": delivery_webhook_url,
+        }
+        key_map = {"digest_language": "digest_language_override"}
+        for key, value in kwargs.items():
+            if value is not None:
+                payload[key_map.get(key, key)] = value
+        return payload
+
+    @staticmethod
+    def _parse_subscription(data: dict) -> SubscriptionInfo:
+        return SubscriptionInfo(
+            id=data["id"],
+            prompt_summary=data["prompt_summary"],
+            delivery_mode=data["delivery_mode"],
+            schedule_cron=data["schedule_cron"],
+            format_instructions=data["format_instructions"],
+            digest_language=data["digest_language"],
+            short_label=data.get("short_label", ""),
+            raw_prompt=data.get("raw_prompt"),
+            canonical_prompt=data.get("canonical_prompt"),
+        )
 
     async def parse_schedule(self, api_key: str, schedule_text: str) -> str:
         async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:

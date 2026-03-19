@@ -34,6 +34,7 @@ async def ensure_prompt_coverage(
     session: AsyncSession,
     raw_prompt: str,
     raw_prompt_embedding: list[float],
+    hooks: object | None = None,
 ) -> list[RssFeed]:
     from news_service.agents.source_discovery import run_source_discovery
 
@@ -42,6 +43,7 @@ async def ensure_prompt_coverage(
             session=session,
             raw_prompt=raw_prompt,
             prompt_embedding=raw_prompt_embedding,
+            hooks=hooks,
         )
     except Exception:
         logger.exception("Source discovery agent failed for prompt: %s", raw_prompt)

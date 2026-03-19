@@ -1,7 +1,12 @@
+import asyncio
+import json
 import logging
 import uuid
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -171,6 +176,154 @@ async def parse_schedule(
     if validated_schedule is None:
         raise RuntimeError("Schedule parser returned an empty cron expression")
     return ScheduleParseResponse(schedule_cron=validated_schedule)
+
+
+async def _create_subscription_streaming(
+    payload: SubscriptionCreate,
+    user: User,
+    session: AsyncSession,
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Run subscription creation and yield NDJSON status events."""
+    # --- validation (same as create_subscription) ---
+    prompt_channels = extract_telegram_channels(payload.prompt)
+    prompt_subreddits = extract_reddit_subreddits(payload.prompt)
+    prompt_twitter_accounts = extract_twitter_accounts(payload.prompt)
+    explicit_channels, explicit_subreddits, explicit_twitter_accounts = _normalize_fixed_sources(
+        payload.fixed_telegram_channels,
+        payload.fixed_reddit_subreddits,
+        payload.fixed_twitter_accounts,
+    )
+    telegram_channels = explicit_channels or prompt_channels
+    reddit_subreddits = explicit_subreddits or prompt_subreddits
+    twitter_accounts = explicit_twitter_accounts or prompt_twitter_accounts
+    include_discovered_sources = (
+        payload.include_discovered_sources
+        if payload.include_discovered_sources is not None
+        else not bool(telegram_channels or reddit_subreddits or twitter_accounts)
+    )
+    delivery_mode = payload.delivery_mode or "digest"
+    event_matching_mode = (
+        (payload.event_matching_mode or "basic") if delivery_mode == "event" else "basic"
+    )
+    schedule_cron = payload.schedule_cron_override
+    if delivery_mode == "event" or payload.manual_only:
+        schedule_cron = None
+    schedule_cron = _validated_schedule_or_422(schedule_cron)
+    _ensure_user_timezone_for_schedule(user, schedule_cron)
+    digest_language = _normalized_digest_language(payload.digest_language_override) or "en"
+
+    # --- embedding ---
+    yield {"event": "status", "status_message": "Analyzing your request..."}
+    raw_prompt_embedding = await _subscription_prompt_embedding(payload.prompt)
+    canonical_prompt_embedding = list(raw_prompt_embedding)
+    prompt_summary = payload.prompt_summary or build_prompt_summary(payload.prompt)
+    short_label = payload.short_label or prompt_summary[:30]
+
+    subscription = Subscription(
+        user_id=user.id,
+        raw_prompt=payload.prompt,
+        raw_prompt_embedding=raw_prompt_embedding,
+        canonical_prompt=payload.prompt,
+        canonical_prompt_embedding=canonical_prompt_embedding,
+        prompt_summary=prompt_summary,
+        short_label=short_label,
+        delivery_mode=delivery_mode,
+        event_matching_mode=event_matching_mode,
+        event_constraints=[],
+        schedule_cron=schedule_cron,
+        format_instructions=payload.format_instructions or "brief summary",
+        digest_language=digest_language,
+        delivery_webhook_url=payload.delivery_webhook_url,
+    )
+    session.add(subscription)
+    await session.flush()
+
+    # --- fixed sources ---
+    selected_sources: dict[uuid.UUID, RssFeed] = {}
+    has_fixed = bool(telegram_channels or reddit_subreddits or twitter_accounts)
+    if has_fixed:
+        yield {"event": "status", "status_message": "Registering sources..."}
+    for identifiers, kind in [
+        (telegram_channels, "telegram_channel"),
+        (reddit_subreddits, "reddit_subreddit"),
+        (twitter_accounts, "twitter_account"),
+    ]:
+        if identifiers:
+            for source in await ensure_source_coverage(session, identifiers, kind):
+                selected_sources[source.id] = source
+
+    # --- source discovery (the slow part) ---
+    if include_discovered_sources:
+        yield {"event": "status", "status_message": "Discovering sources..."}
+
+        from news_service.agents.source_discovery import StatusRunHooks
+
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        hooks = StatusRunHooks(queue)
+
+        discovery_task = asyncio.create_task(
+            ensure_prompt_coverage(session, payload.prompt, canonical_prompt_embedding, hooks=hooks)
+        )
+
+        # Drain status events from the queue while discovery runs
+        while not discovery_task.done():
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=0.5)
+                yield event
+            except TimeoutError:
+                continue
+
+        # Drain remaining events
+        while not queue.empty():
+            yield queue.get_nowait()
+
+        # Get result (re-raises on failure)
+        try:
+            discovered_sources = await discovery_task
+        except Exception:
+            logger.exception("Source discovery failed during streaming creation")
+            yield {"event": "error", "detail": "Source discovery failed"}
+            return
+
+        for source in discovered_sources:
+            selected_sources[source.id] = source
+
+    # --- finalize ---
+    if not selected_sources:
+        yield {"event": "error", "detail": "No sources were resolved for this subscription"}
+        return
+
+    for feed_id in selected_sources:
+        session.add(SubscriptionSource(subscription_id=subscription.id, feed_id=feed_id))
+
+    await session.commit()
+    await session.refresh(subscription)
+
+    logger.info(
+        "Created subscription %s for user %s (streaming)",
+        subscription.id,
+        user.id,
+        extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
+    )
+    yield {
+        "event": "done",
+        "subscription": SubscriptionResponse.model_validate(subscription).model_dump(mode="json"),
+    }
+
+
+@router.post("/stream")
+async def create_subscription_stream(
+    payload: SubscriptionCreate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    """Create a subscription with streaming status updates (NDJSON)."""
+
+    async def generate() -> AsyncGenerator[str, None]:
+        async for event in _create_subscription_streaming(payload, user, session):
+            yield json.dumps(event) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.post("", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)

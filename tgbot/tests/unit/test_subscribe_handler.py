@@ -87,6 +87,23 @@ async def _mock_stream_with_tools(agent_message="Verified!", conv_id="conv-123")
     }
 
 
+async def _mock_create_stream(sub_id="sub-new", prompt_summary="AI news digest", **extra):
+    """Async generator that yields status then done for subscription creation."""
+    yield {"event": "status", "status_message": "Analyzing your request..."}
+    yield {
+        "event": "done",
+        "subscription": {
+            "id": sub_id,
+            "prompt_summary": prompt_summary,
+            "delivery_mode": extra.get("delivery_mode", "digest"),
+            "schedule_cron": extra.get("schedule_cron"),
+            "format_instructions": extra.get("format_instructions", "brief summary"),
+            "digest_language": extra.get("digest_language", "en"),
+            "short_label": extra.get("short_label", ""),
+        },
+    }
+
+
 @pytest.fixture(autouse=True)
 def _mock_ui_language(monkeypatch) -> None:
     monkeypatch.setattr(subscribe, "get_ui_language", AsyncMock(return_value="en"))
@@ -241,18 +258,21 @@ async def test_finalized_config_creates_digest_subscription(monkeypatch):
         ),
     )
 
-    create_sub = AsyncMock(
-        return_value=SimpleNamespace(id="sub-new", prompt_summary="AI news digest")
-    )
-    monkeypatch.setattr(subscribe.backend, "create_subscription", create_sub)
+    create_calls = []
+
+    async def mock_create_stream(*a, **kw):
+        create_calls.append(kw)
+        async for ev in _mock_create_stream(prompt_summary="AI news digest"):
+            yield ev
+
+    monkeypatch.setattr(subscribe.backend, "create_subscription_stream", mock_create_stream)
 
     await subscribe.process_chat_message(message, state)
 
-    create_sub.assert_awaited_once()
-    call_kwargs = create_sub.await_args.kwargs
-    assert call_kwargs["delivery_mode"] == "digest"
-    assert call_kwargs["schedule_cron_override"] == "0 8 * * *"
-    assert call_kwargs["include_discovered_sources"] is True
+    assert len(create_calls) == 1
+    assert create_calls[0]["delivery_mode"] == "digest"
+    assert create_calls[0]["schedule_cron_override"] == "0 8 * * *"
+    assert create_calls[0]["include_discovered_sources"] is True
 
 
 # ---------- Event subscription shows recent events prompt ----------
@@ -290,8 +310,10 @@ async def test_finalized_event_subscription_offers_recent_events(monkeypatch):
     )
     monkeypatch.setattr(
         subscribe.backend,
-        "create_subscription",
-        AsyncMock(return_value=SimpleNamespace(id="sub-evt", prompt_summary="Concerts")),
+        "create_subscription_stream",
+        lambda *a, **kw: _mock_create_stream(
+            sub_id="sub-evt", prompt_summary="Concerts", delivery_mode="event"
+        ),
     )
 
     await subscribe.process_chat_message(message, state)
@@ -330,6 +352,32 @@ async def test_handle_recent_events_decision_yes_sends_backfill(monkeypatch):
     subscribe.backend.list_recent_events.assert_awaited_once_with("api-key", "sub-evt")
     subscribe.backend.acknowledge_recent_events.assert_awaited_once()
     state.clear.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handle_recent_events_empty_shows_message_with_back_button(monkeypatch):
+    """When no recent events, show the empty message with a back button instead of navigating."""
+    callback = _mock_callback(telegram_id=111, data=subscribe.RECENT_EVENTS_YES)
+    state = _mock_state(data={"created_subscription_id": "sub-evt", "_menu_msg_id": 42})
+    state.get_state = AsyncMock(
+        return_value=subscribe.SubscribeFlow.waiting_for_recent_events_decision.state
+    )
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+    monkeypatch.setattr(
+        subscribe.backend,
+        "list_recent_events",
+        AsyncMock(return_value=None),
+    )
+
+    await subscribe.handle_recent_events_decision(callback, state)
+
+    subscribe.backend.list_recent_events.assert_awaited_once_with("api-key", "sub-evt")
+    state.clear.assert_awaited()
+    # Should edit message with empty text AND a keyboard (back button), not navigate away
+    callback.bot.edit_message_text.assert_awaited()
+    edit_kwargs = callback.bot.edit_message_text.call_args.kwargs
+    assert edit_kwargs.get("reply_markup") is not None
 
 
 # ---------- Cancel cleans up conversation ----------
@@ -399,18 +447,23 @@ async def test_fixed_sources_forwarded_to_create(monkeypatch):
         ),
     )
 
-    create_sub = AsyncMock(return_value=SimpleNamespace(id="sub-1", prompt_summary="Tech news"))
-    monkeypatch.setattr(subscribe.backend, "create_subscription", create_sub)
+    create_calls = []
+
+    async def mock_create_stream(*a, **kw):
+        create_calls.append(kw)
+        async for ev in _mock_create_stream(sub_id="sub-1", prompt_summary="Tech news"):
+            yield ev
+
+    monkeypatch.setattr(subscribe.backend, "create_subscription_stream", mock_create_stream)
 
     await subscribe.process_chat_message(message, state)
 
-    create_sub.assert_awaited_once()
-    call_kwargs = create_sub.await_args.kwargs
-    assert call_kwargs["fixed_telegram_channels"] == ["durov"]
-    assert call_kwargs["fixed_reddit_subreddits"] == ["technology"]
-    assert call_kwargs["fixed_twitter_accounts"] == ["openai"]
-    assert call_kwargs["include_discovered_sources"] is False
-    assert call_kwargs["manual_only"] is True
+    assert len(create_calls) == 1
+    assert create_calls[0]["fixed_telegram_channels"] == ["durov"]
+    assert create_calls[0]["fixed_reddit_subreddits"] == ["technology"]
+    assert create_calls[0]["fixed_twitter_accounts"] == ["openai"]
+    assert create_calls[0]["include_discovered_sources"] is False
+    assert create_calls[0]["manual_only"] is True
 
 
 # ---------- Error event shows failure ----------

@@ -164,20 +164,27 @@ async def handle_recent_events_decision(callback: CallbackQuery, state: FSMConte
         return
 
     if recent_events is None:
-        await edit_menu(callback, state, t(ui_language, "recent_events_empty"))
-    else:
-        if callback.message:
-            await callback.message.answer(f"{recent_events.subject}\n\n{recent_events.body}")
-        try:
-            await backend.acknowledge_recent_events(
-                api_key, subscription_id, recent_events.news_item_ids
-            )
-        except Exception:
-            logger.exception(
-                "Failed to acknowledge recent events for telegram_id=%d subscription=%s",
-                telegram_id,
-                subscription_id,
-            )
+        await state.clear()
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[back_button(ui_language, M_SUBS)]],
+        )
+        await edit_menu(
+            callback, state, t(ui_language, "recent_events_empty"), keyboard
+        )
+        return
+
+    if callback.message:
+        await callback.message.answer(f"{recent_events.subject}\n\n{recent_events.body}")
+    try:
+        await backend.acknowledge_recent_events(
+            api_key, subscription_id, recent_events.news_item_ids
+        )
+    except Exception:
+        logger.exception(
+            "Failed to acknowledge recent events for telegram_id=%d subscription=%s",
+            telegram_id,
+            subscription_id,
+        )
 
     await state.clear()
     from tgbot.handlers.menu import show_subscription_list
@@ -295,9 +302,6 @@ async def _create_subscription_from_config(
     config = turn.finalized_config
     webhook_url = delivery_webhook_url(telegram_id)
 
-    # Reuse the animated status message if available
-    await _edit_status(status_msg, t(ui_language, "status_creating"))
-
     create_kwargs: dict[str, object | None] = {
         "include_discovered_sources": config.get("include_discovered_sources", True),
         "schedule_cron_override": config.get("schedule_cron"),
@@ -322,10 +326,18 @@ async def _create_subscription_from_config(
         create_kwargs["fixed_twitter_accounts"] = twitter_accounts
 
     prompt = config.get("prompt_summary", "")
+    subscription_data: dict | None = None
     try:
-        subscription = await backend.create_subscription(
+        async for event_data in backend.create_subscription_stream(
             api_key, prompt, webhook_url, **create_kwargs
-        )
+        ):
+            match event_data.get("event"):
+                case "status":
+                    await _edit_status(status_msg, event_data.get("status_message", ""))
+                case "done":
+                    subscription_data = event_data["subscription"]
+                case "error":
+                    raise RuntimeError(event_data.get("detail", "Unknown error"))
     except Exception:
         logger.exception("Failed to create subscription for telegram_id=%d", telegram_id)
         await _delete_status(status_msg)
@@ -338,6 +350,13 @@ async def _create_subscription_from_config(
         await state.clear()
         return
 
+    if subscription_data is None:
+        await _delete_status(status_msg)
+        await _reply(event, t(ui_language, "create_subscription_failed"))
+        await state.clear()
+        return
+
+    subscription = backend._parse_subscription(subscription_data)
     delivery_mode = config.get("delivery_mode", "digest")
     completion_key = (
         "subscription_created_event" if delivery_mode == "event" else "subscription_created_digest"

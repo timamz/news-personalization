@@ -1,8 +1,19 @@
 """Agentic source discovery using OpenAI Agents SDK with tool-calling."""
 
+import asyncio
 import logging
+from typing import Any
 
-from agents import Agent, ModelSettings, RunConfig, Runner, function_tool
+from agents import (
+    Agent,
+    ModelSettings,
+    RunConfig,
+    RunContextWrapper,
+    RunHooks,
+    Runner,
+    Tool,
+    function_tool,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -180,11 +191,38 @@ def _create_source_discovery_agent(
     )
 
 
+_TOOL_STATUS: dict[str, str] = {
+    "search_existing_sources": "Searching known sources...",
+    "tool_discover_rss_feeds": "Discovering RSS feeds...",
+    "tool_discover_telegram_channels": "Discovering Telegram channels...",
+    "tool_discover_reddit_subreddits": "Discovering Reddit communities...",
+    "tool_discover_twitter_accounts": "Discovering X/Twitter accounts...",
+    "validate_and_score_source": "Validating source...",
+}
+
+
+class StatusRunHooks(RunHooks[None]):
+    """Pushes status events to a queue on each tool invocation."""
+
+    def __init__(self, queue: asyncio.Queue[dict[str, Any]]) -> None:
+        self._queue = queue
+
+    async def on_tool_start(
+        self,
+        context: RunContextWrapper[None],
+        agent: Agent[None],
+        tool: Tool,
+    ) -> None:
+        message = _TOOL_STATUS.get(tool.name, f"Running {tool.name}...")
+        await self._queue.put({"event": "status", "status_message": message})
+
+
 async def run_source_discovery(
     *,
     session: AsyncSession,
     raw_prompt: str,
     prompt_embedding: list[float],
+    hooks: RunHooks[None] | None = None,
 ) -> SourceDiscoveryResult:
     """Run the agentic source discovery flow.
 
@@ -196,5 +234,6 @@ async def run_source_discovery(
         input=f"Find the best news sources for this subscription request: {raw_prompt}",
         run_config=RunConfig(tracing_disabled=True),
         max_turns=40,
+        hooks=hooks,
     )
     return result.final_output  # type: ignore[return-value]
