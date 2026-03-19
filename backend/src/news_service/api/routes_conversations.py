@@ -1,16 +1,23 @@
 """Conversation-based subscription setup endpoints."""
 
+import json
 import logging
 import uuid
+from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 
-from news_service.agents.subscription_parser import run_conversation_turn
+from news_service.agents.subscription_parser import (
+    run_conversation_turn,
+    run_conversation_turn_streaming,
+)
 from news_service.api.dependencies import get_current_user
 from news_service.core.config import get_settings
 from news_service.core.redis import get_redis_client
 from news_service.models.user import User
 from news_service.schemas.conversation import (
+    AgentTurnOutput,
     ConversationMessageRequest,
     ConversationStartRequest,
     ConversationState,
@@ -142,6 +149,106 @@ async def continue_conversation(
         status=agent_output.status,
         finalized_config=agent_output.finalized_config,
     )
+
+
+@router.post("/stream")
+async def start_conversation_stream(
+    payload: ConversationStartRequest,
+    user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Start a new conversation with streaming status updates (NDJSON)."""
+    conversation_id = uuid.uuid4().hex
+    messages: list[dict] = [{"role": "user", "content": payload.message}]
+
+    async def generate() -> AsyncGenerator[str, None]:
+        async for event in run_conversation_turn_streaming(
+            messages,
+            user_language=payload.user_language,
+            user_timezone=payload.user_timezone,
+        ):
+            if event["event"] == "done":
+                output = AgentTurnOutput.model_validate(event["output"])
+                messages.extend(event["new_messages"])
+                state = ConversationState(
+                    user_id=str(user.id),
+                    messages=messages,
+                    status=output.status,
+                    finalized_config=output.finalized_config,
+                    user_language=payload.user_language,
+                    user_timezone=payload.user_timezone,
+                )
+                await _save_state(conversation_id, state)
+                yield (
+                    json.dumps(
+                        {
+                            "event": "done",
+                            "conversation_id": conversation_id,
+                            "agent_message": output.message,
+                            "status": output.status,
+                            "finalized_config": (
+                                output.finalized_config.model_dump()
+                                if output.finalized_config
+                                else None
+                            ),
+                        }
+                    )
+                    + "\n"
+                )
+            else:
+                yield json.dumps(event) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
+
+
+@router.post("/{conversation_id}/messages/stream")
+async def continue_conversation_stream(
+    conversation_id: str,
+    payload: ConversationMessageRequest,
+    user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Continue a conversation with streaming status updates (NDJSON)."""
+    conv_state = await _load_state(conversation_id, str(user.id))
+
+    if conv_state.status == "ready":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conversation already finalized",
+        )
+
+    conv_state.messages.append({"role": "user", "content": payload.message})
+
+    async def generate() -> AsyncGenerator[str, None]:
+        async for event in run_conversation_turn_streaming(
+            conv_state.messages,
+            user_language=conv_state.user_language,
+            user_timezone=conv_state.user_timezone,
+        ):
+            if event["event"] == "done":
+                output = AgentTurnOutput.model_validate(event["output"])
+                conv_state.messages.extend(event["new_messages"])
+                conv_state.status = output.status
+                conv_state.finalized_config = output.finalized_config
+                await _save_state(conversation_id, conv_state)
+                yield (
+                    json.dumps(
+                        {
+                            "event": "done",
+                            "conversation_id": conversation_id,
+                            "agent_message": output.message,
+                            "status": output.status,
+                            "finalized_config": (
+                                output.finalized_config.model_dump()
+                                if output.finalized_config
+                                else None
+                            ),
+                        }
+                    )
+                    + "\n"
+                )
+            else:
+                yield json.dumps(event) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)

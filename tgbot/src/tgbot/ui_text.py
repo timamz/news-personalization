@@ -95,6 +95,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "recent_events_header": ("Here's what you might have missed in the last 7 days:"),
         "back_not_available": "Back is not available here.",
         "processing_request": "⏳ Processing your request...",
+        "status_thinking": "Thinking...",
+        "status_checking_source": "Checking {source}...",
+        "status_creating": "Setting up your subscription...",
         "create_subscription_failed": ("Failed to create subscription. Please try again."),
         "subscription_created_digest": (
             "✅ Subscription created!\n\n"
@@ -345,6 +348,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "recent_events_header": ("Вот что вы могли пропустить за последние 7 дней:"),
         "back_not_available": "Здесь нельзя вернуться назад.",
         "processing_request": "⏳ Обрабатываю ваш запрос...",
+        "status_thinking": "Думаю...",
+        "status_checking_source": "Проверяю {source}...",
+        "status_creating": "Создаю подписку...",
         "create_subscription_failed": ("Не удалось создать подписку. Попробуйте ещё раз."),
         "subscription_created_digest": (
             "✅ Подписка создана!\n\n"

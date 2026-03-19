@@ -1,3 +1,5 @@
+import json
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -479,6 +481,57 @@ class BackendClient:
                 headers={"X-API-Key": api_key},
             )
             response.raise_for_status()
+
+    async def start_subscription_conversation_stream(
+        self,
+        api_key: str,
+        message: str,
+        user_language: str | None = None,
+        user_timezone: str | None = None,
+    ) -> AsyncGenerator[dict, None]:
+        payload: dict[str, object] = {"message": message}
+        if user_language is not None:
+            payload["user_language"] = user_language
+        if user_timezone is not None:
+            payload["user_timezone"] = user_timezone
+
+        async with (
+            httpx.AsyncClient(
+                timeout=httpx.Timeout(self._slow_request_timeout(), connect=10.0),
+            ) as client,
+            client.stream(
+                "POST",
+                f"{self.base_url}/subscriptions/conversations/stream",
+                headers={"X-API-Key": api_key},
+                json=payload,
+            ) as response,
+        ):
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line.strip():
+                    yield json.loads(line)
+
+    async def continue_subscription_conversation_stream(
+        self,
+        api_key: str,
+        conversation_id: str,
+        message: str,
+    ) -> AsyncGenerator[dict, None]:
+        async with (
+            httpx.AsyncClient(
+                timeout=httpx.Timeout(self._slow_request_timeout(), connect=10.0),
+            ) as client,
+            client.stream(
+                "POST",
+                f"{self.base_url}/subscriptions/conversations/{conversation_id}/messages/stream",
+                headers={"X-API-Key": api_key},
+                json={"message": message},
+            ) as response,
+        ):
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line.strip():
+                    yield json.loads(line)
 
     @staticmethod
     def _parse_conversation_turn(data: dict) -> ConversationTurnInfo:

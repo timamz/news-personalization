@@ -1,7 +1,13 @@
 """Conversational subscription parser using Chat Completions API."""
 
+import asyncio
 import json
 import logging
+import random
+from collections.abc import AsyncGenerator
+from typing import Any
+
+from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
 
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
@@ -198,3 +204,124 @@ async def run_conversation_turn(
             )
 
     raise ValueError("Conversation turn exceeded maximum tool rounds")
+
+
+_RETRYABLE = (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)
+_MAX_RETRY = 3
+
+
+async def _parse_with_retry(system_msg: dict, all_messages: list[dict]) -> object:
+    """Single LLM parse call with retry logic (for use inside async generators)."""
+    last_error: Exception | None = None
+    for attempt in range(1, _MAX_RETRY + 1):
+        try:
+            return await _client.beta.chat.completions.parse(
+                model=settings.llm_model,
+                messages=[system_msg, *all_messages],
+                tools=TOOL_DEFINITIONS,
+                response_format=AgentTurnOutput,
+                temperature=0.2,
+            )
+        except _RETRYABLE as exc:
+            last_error = exc
+            if attempt == _MAX_RETRY:
+                break
+            delay = min(1.0 * (2 ** (attempt - 1)) + random.uniform(0, 0.5), 30.0)
+            logger.warning(
+                "LLM call failed (attempt %d/%d): %s. Retrying in %.1fs",
+                attempt,
+                _MAX_RETRY,
+                exc,
+                delay,
+            )
+            await asyncio.sleep(delay)
+    raise last_error  # type: ignore[misc]
+
+
+def _source_display_name(url: str, source_kind: str) -> str:
+    """Extract a user-friendly name from a source URL."""
+    if source_kind == "telegram_channel":
+        # https://t.me/s/channel → @channel
+        name = url.rstrip("/").split("/")[-1]
+        return f"@{name}"
+    if source_kind == "reddit_subreddit":
+        # https://www.reddit.com/r/sub/new/ → r/sub
+        parts = url.rstrip("/").split("/")
+        for i, p in enumerate(parts):
+            if p == "r" and i + 1 < len(parts):
+                return f"r/{parts[i + 1]}"
+        return url
+    if source_kind == "twitter_account":
+        # https://x.com/handle → @handle
+        name = url.rstrip("/").split("/")[-1]
+        return f"@{name}"
+    return url
+
+
+async def run_conversation_turn_streaming(
+    messages: list[dict],
+    *,
+    user_language: str | None = None,
+    user_timezone: str | None = None,
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Streaming variant that yields status events and a final done event.
+
+    Events:
+      {"event": "status", "status_message": "..."}
+      {"event": "done", "output": {...}, "new_messages": [...]}
+      {"event": "error", "detail": "..."}
+    """
+    system_msg: dict = {
+        "role": "system",
+        "content": _build_system_prompt(user_language, user_timezone),
+    }
+    new_messages: list[dict] = []
+
+    for _ in range(_MAX_TOOL_ROUNDS + 1):
+        response = await _parse_with_retry(system_msg, [*messages, *new_messages])
+        msg = response.choices[0].message
+
+        if not msg.tool_calls:
+            output = msg.parsed
+            if output is None:
+                yield {"event": "error", "detail": "LLM returned empty response"}
+                return
+            new_messages.append({"role": "assistant", "content": output.message})
+            yield {
+                "event": "done",
+                "output": output.model_dump(),
+                "new_messages": new_messages,
+            }
+            return
+
+        # Store assistant message with tool calls
+        tool_calls_data = [
+            {
+                "id": tc.id,
+                "type": "function",
+                "function": {
+                    "name": tc.function.name,
+                    "arguments": tc.function.arguments,
+                },
+            }
+            for tc in msg.tool_calls
+        ]
+        new_messages.append(
+            {
+                "role": "assistant",
+                "content": msg.content,
+                "tool_calls": tool_calls_data,
+            }
+        )
+
+        for tc in msg.tool_calls:
+            # Emit status before tool execution
+            if tc.function.name == "validate_source_url":
+                args = json.loads(tc.function.arguments)
+                display = _source_display_name(args.get("url", ""), args.get("source_kind", ""))
+                yield {"event": "status", "status_message": display}
+
+            result = await _execute_tool(tc.function.name, tc.function.arguments)
+            new_messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
+
+    yield {"event": "error", "detail": "Conversation turn exceeded maximum tool rounds"}

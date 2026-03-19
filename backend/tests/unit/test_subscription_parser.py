@@ -241,3 +241,81 @@ def test_tool_definitions_has_validate_source_url():
 
     names = [t["function"]["name"] for t in TOOL_DEFINITIONS]
     assert names == ["validate_source_url"]
+
+
+@pytest.mark.asyncio
+async def test_streaming_yields_done_event(mocker):
+    """Streaming variant yields a done event with output and new_messages."""
+    expected = AgentTurnOutput(
+        message="What kind of news?",
+        status="in_progress",
+    )
+
+    mock_client = AsyncMock()
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parsed_response(expected),
+    )
+
+    with patch("news_service.agents.subscription_parser._client", mock_client):
+        from news_service.agents.subscription_parser import run_conversation_turn_streaming
+
+        events = []
+        async for ev in run_conversation_turn_streaming(
+            [{"role": "user", "content": "AI news"}], user_language="en"
+        ):
+            events.append(ev)
+
+    assert len(events) == 1
+    assert events[0]["event"] == "done"
+    assert events[0]["output"]["message"] == "What kind of news?"
+    assert len(events[0]["new_messages"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_streaming_yields_status_events_for_tool_calls(mocker):
+    """Streaming variant yields status events before each tool call."""
+    mocker.patch(
+        "news_service.agents.subscription_parser._validate_source_url",
+        new=AsyncMock(return_value=True),
+    )
+
+    final_output = AgentTurnOutput(
+        message="Channel verified!",
+        status="in_progress",
+    )
+
+    tool_response = _mock_tool_call_response(
+        "validate_source_url",
+        '{"url": "https://t.me/s/durov", "source_kind": "telegram_channel"}',
+    )
+    final_response = _mock_parsed_response(final_output)
+
+    mock_client = AsyncMock()
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        side_effect=[tool_response, final_response],
+    )
+
+    with patch("news_service.agents.subscription_parser._client", mock_client):
+        from news_service.agents.subscription_parser import run_conversation_turn_streaming
+
+        events = []
+        async for ev in run_conversation_turn_streaming(
+            [{"role": "user", "content": "Add @durov"}], user_language="en"
+        ):
+            events.append(ev)
+
+    assert len(events) == 2
+    assert events[0]["event"] == "status"
+    assert events[0]["status_message"] == "@durov"
+    assert events[1]["event"] == "done"
+    assert events[1]["output"]["message"] == "Channel verified!"
+
+
+def test_source_display_name():
+    from news_service.agents.subscription_parser import _source_display_name
+
+    assert _source_display_name("https://t.me/s/durov", "telegram_channel") == "@durov"
+    assert (
+        _source_display_name("https://www.reddit.com/r/tech/new/", "reddit_subreddit") == "r/tech"
+    )
+    assert _source_display_name("https://x.com/openai", "twitter_account") == "@openai"

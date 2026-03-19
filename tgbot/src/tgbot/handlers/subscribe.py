@@ -1,11 +1,13 @@
-"""New subscription flow — fully conversational agent relay."""
+"""New subscription flow — fully conversational agent relay with live status."""
 
+import contextlib
 import logging
 
 from aiogram import Router, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, MessageEntity
 
 from tgbot.client import BackendClient, ConversationTurnInfo
 from tgbot.handlers import start as start_handler
@@ -32,6 +34,8 @@ backend = BackendClient()
 
 RECENT_EVENTS_YES = "subscribe:recent_events:yes"
 RECENT_EVENTS_NO = "subscribe:recent_events:no"
+
+_SPINNER_EMOJI_ID = "5386367538735104399"
 
 
 class SubscribeFlow(StatesGroup):
@@ -204,27 +208,44 @@ async def _send_user_message(
     state_data = await state.get_data()
     conversation_id = state_data.get("conversation_id")
 
+    # Send initial status message with animated emoji
+    status_msg = await _send_status(event, t(ui_language, "status_thinking"))
+
     try:
         if conversation_id:
-            turn = await backend.continue_subscription_conversation(api_key, conversation_id, text)
+            stream = backend.continue_subscription_conversation_stream(
+                api_key, conversation_id, text
+            )
         else:
-            # First message — start a new conversation
             user_info = await backend.get_current_user(api_key)
             language_pref = await get_language_preference(telegram_id)
             user_language = language_pref.code if language_pref else None
-
-            turn = await backend.start_subscription_conversation(
-                api_key,
-                text,
-                user_language=user_language,
-                user_timezone=user_info.timezone,
+            stream = backend.start_subscription_conversation_stream(
+                api_key, text, user_language=user_language, user_timezone=user_info.timezone
             )
-            await state.update_data(conversation_id=turn.conversation_id)
+
+        turn_data: dict | None = None
+        async for event_data in stream:
+            match event_data.get("event"):
+                case "status":
+                    source = event_data.get("status_message", "")
+                    status_text = t(ui_language, "status_checking_source", source=source)
+                    await _edit_status(status_msg, status_text)
+                case "done":
+                    turn_data = event_data
+                    if not conversation_id:
+                        await state.update_data(conversation_id=turn_data["conversation_id"])
+                case "error":
+                    await _delete_status(status_msg)
+                    await _reply(
+                        event,
+                        t(ui_language, "failed_process_request"),
+                        _cancel_keyboard(ui_language),
+                    )
+                    return
     except Exception:
-        logger.exception(
-            "Conversation API call failed for telegram_id=%d",
-            telegram_id,
-        )
+        logger.exception("Conversation API call failed for telegram_id=%d", telegram_id)
+        await _delete_status(status_msg)
         await _reply(
             event,
             t(ui_language, "failed_process_request"),
@@ -232,18 +253,31 @@ async def _send_user_message(
         )
         return
 
-    if turn.status == "ready" and turn.finalized_config:
-        await _create_subscription_from_config(event, state, turn)
+    if turn_data is None:
+        await _delete_status(status_msg)
+        await _reply(event, t(ui_language, "failed_process_request"), _cancel_keyboard(ui_language))
         return
 
-    # Send agent response as a new message in the chat
-    await _reply(event, turn.agent_message, _cancel_keyboard(ui_language))
+    turn = ConversationTurnInfo(
+        conversation_id=turn_data["conversation_id"],
+        agent_message=turn_data["agent_message"],
+        status=turn_data["status"],
+        finalized_config=turn_data.get("finalized_config"),
+    )
+
+    if turn.status == "ready" and turn.finalized_config:
+        await _create_subscription_from_config(event, state, turn, status_msg)
+        return
+
+    # Edit the status message into the final agent response
+    await _edit_to_final(status_msg, turn.agent_message, _cancel_keyboard(ui_language))
 
 
 async def _create_subscription_from_config(
     event: types.Message | CallbackQuery,
     state: FSMContext,
     turn: ConversationTurnInfo,
+    status_msg: types.Message | None = None,
 ) -> None:
     """Create the subscription using the finalized config from the conversation agent."""
     telegram_id = _telegram_id_from_event(event)
@@ -253,6 +287,7 @@ async def _create_subscription_from_config(
         api_key = await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await _delete_status(status_msg)
         await _reply(event, t(ui_language, "registration_failed"))
         await state.clear()
         return
@@ -260,7 +295,8 @@ async def _create_subscription_from_config(
     config = turn.finalized_config
     webhook_url = delivery_webhook_url(telegram_id)
 
-    await _reply(event, t(ui_language, "processing_request"))
+    # Reuse the animated status message if available
+    await _edit_status(status_msg, t(ui_language, "status_creating"))
 
     create_kwargs: dict[str, object | None] = {
         "include_discovered_sources": config.get("include_discovered_sources", True),
@@ -292,6 +328,7 @@ async def _create_subscription_from_config(
         )
     except Exception:
         logger.exception("Failed to create subscription for telegram_id=%d", telegram_id)
+        await _delete_status(status_msg)
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [back_button(ui_language, M_MAIN)],
@@ -305,6 +342,8 @@ async def _create_subscription_from_config(
     completion_key = (
         "subscription_created_event" if delivery_mode == "event" else "subscription_created_digest"
     )
+
+    await _delete_status(status_msg)
 
     if delivery_mode == "event":
         await state.update_data(created_subscription_id=subscription.id)
@@ -349,6 +388,66 @@ def _recent_events_choice_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+# ---------- Status message helpers ----------
+
+
+def _build_status_text(text: str) -> tuple[str, list[MessageEntity]]:
+    """Build text with custom animated emoji prepended."""
+    placeholder = "\u2b50"
+    full_text = f"{placeholder} {text}"
+    entity = MessageEntity(
+        type="custom_emoji",
+        offset=0,
+        length=len(placeholder),
+        custom_emoji_id=_SPINNER_EMOJI_ID,
+    )
+    return full_text, [entity]
+
+
+async def _send_status(event: types.Message | CallbackQuery, text: str) -> types.Message | None:
+    """Send a status message with animated custom emoji."""
+    chat_id, bot = _resolve_chat(event)
+    if not chat_id or not bot:
+        return None
+    full_text, entities = _build_status_text(text)
+    try:
+        return await bot.send_message(chat_id=chat_id, text=full_text, entities=entities)
+    except TelegramBadRequest:
+        # Custom emoji not available — fall back to plain text
+        return await bot.send_message(chat_id=chat_id, text=f"\u23f3 {text}")
+
+
+async def _edit_status(msg: types.Message | None, text: str) -> None:
+    """Edit the status message, keeping the custom emoji."""
+    if msg is None:
+        return
+    full_text, entities = _build_status_text(text)
+    with contextlib.suppress(TelegramBadRequest):
+        await msg.edit_text(text=full_text, entities=entities)
+
+
+async def _edit_to_final(
+    msg: types.Message | None,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """Edit the status message into the final agent response (no emoji)."""
+    if msg is None:
+        return
+    try:
+        await msg.edit_text(text=text, reply_markup=reply_markup)
+    except TelegramBadRequest:
+        logger.debug("Failed to edit status message to final response")
+
+
+async def _delete_status(msg: types.Message | None) -> None:
+    """Delete the status message."""
+    if msg is None:
+        return
+    with contextlib.suppress(Exception):
+        await msg.delete()
 
 
 # ---------- Helpers ----------

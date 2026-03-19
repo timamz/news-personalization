@@ -3,12 +3,22 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from tgbot.client import ConversationTurnInfo
 from tgbot.handlers import subscribe
 from tgbot.language import LanguagePreference
 
 
+def _mock_status_msg():
+    """A mock message object that supports edit_text and delete."""
+    return SimpleNamespace(
+        message_id=100,
+        edit_text=AsyncMock(),
+        delete=AsyncMock(),
+        chat=SimpleNamespace(id=111),
+    )
+
+
 def _mock_message(telegram_id: int, text: str) -> SimpleNamespace:
+    status_msg = _mock_status_msg()
     return SimpleNamespace(
         from_user=SimpleNamespace(id=telegram_id),
         chat=SimpleNamespace(id=telegram_id),
@@ -17,7 +27,7 @@ def _mock_message(telegram_id: int, text: str) -> SimpleNamespace:
         bot=SimpleNamespace(
             edit_message_text=AsyncMock(),
             delete_message=AsyncMock(),
-            send_message=AsyncMock(return_value=SimpleNamespace(message_id=99)),
+            send_message=AsyncMock(return_value=status_msg),
         ),
     )
 
@@ -55,19 +65,26 @@ def _mock_state(data=None):
     )
 
 
-def _conversation_turn(
-    *,
-    conversation_id: str = "conv-123",
-    agent_message: str = "What schedule?",
-    status: str = "in_progress",
-    finalized_config: dict | None = None,
-) -> ConversationTurnInfo:
-    return ConversationTurnInfo(
-        conversation_id=conversation_id,
-        agent_message=agent_message,
-        status=status,
-        finalized_config=finalized_config,
-    )
+async def _mock_stream_simple(agent_message="What schedule?", conv_id="conv-123", **kwargs):
+    """Async generator that yields a simple done event (no tool calls)."""
+    yield {
+        "event": "done",
+        "conversation_id": conv_id,
+        "agent_message": agent_message,
+        "status": kwargs.get("status", "in_progress"),
+        "finalized_config": kwargs.get("finalized_config"),
+    }
+
+
+async def _mock_stream_with_tools(agent_message="Verified!", conv_id="conv-123"):
+    """Async generator that yields status events then done."""
+    yield {"event": "status", "status_message": "@durov"}
+    yield {
+        "event": "done",
+        "conversation_id": conv_id,
+        "agent_message": agent_message,
+        "status": "in_progress",
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -75,7 +92,7 @@ def _mock_ui_language(monkeypatch) -> None:
     monkeypatch.setattr(subscribe, "get_ui_language", AsyncMock(return_value="en"))
 
 
-# ---------- First message starts conversation ----------
+# ---------- First message starts conversation via stream ----------
 
 
 @pytest.mark.asyncio
@@ -95,71 +112,99 @@ async def test_first_message_starts_conversation(monkeypatch):
         AsyncMock(return_value=SimpleNamespace(timezone="UTC")),
     )
 
-    turn = _conversation_turn(
-        agent_message="How often would you like to receive the digest?",
-    )
     monkeypatch.setattr(
         subscribe.backend,
-        "start_subscription_conversation",
-        AsyncMock(return_value=turn),
+        "start_subscription_conversation_stream",
+        lambda *a, **kw: _mock_stream_simple(
+            agent_message="How often would you like updates?",
+        ),
     )
 
     await subscribe.process_chat_message(message, state)
 
-    subscribe.backend.start_subscription_conversation.assert_awaited_once()
     state.update_data.assert_awaited()
 
 
-# ---------- Agent response is sent as a new message ----------
+# ---------- Status message is sent and edited to final response ----------
 
 
 @pytest.mark.asyncio
-async def test_agent_response_sent_as_new_message(monkeypatch):
-    """Verify the bot sends a new message rather than editing an existing one."""
+async def test_status_message_edited_to_final(monkeypatch):
+    """Verify: status message sent first, then edited to agent response."""
     message = _mock_message(telegram_id=111, text="every morning")
     state = _mock_state(data={"conversation_id": "conv-123"})
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
 
-    turn = _conversation_turn(agent_message="Great, I'll send you updates every morning!")
     monkeypatch.setattr(
         subscribe.backend,
-        "continue_subscription_conversation",
-        AsyncMock(return_value=turn),
+        "continue_subscription_conversation_stream",
+        lambda *a, **kw: _mock_stream_simple(
+            agent_message="Great, updates every morning!",
+        ),
     )
 
     await subscribe.process_chat_message(message, state)
 
-    # Bot should send a new message, not edit
+    # First call: status message
     message.bot.send_message.assert_awaited_once()
-    call_kwargs = message.bot.send_message.await_args.kwargs
-    assert call_kwargs["text"] == "Great, I'll send you updates every morning!"
-    # Should NOT have tried to edit
-    message.bot.edit_message_text.assert_not_awaited()
+    # Status message was edited to final response
+    status_msg = message.bot.send_message.return_value
+    status_msg.edit_text.assert_awaited_once()
+    edit_kwargs = status_msg.edit_text.await_args.kwargs
+    assert edit_kwargs["text"] == "Great, updates every morning!"
 
 
-# ---------- Continued message relays to backend ----------
+# ---------- Status edits during tool calls ----------
 
 
 @pytest.mark.asyncio
-async def test_continued_message_relays_to_backend(monkeypatch):
+async def test_status_updates_during_tool_calls(monkeypatch):
+    """Verify status message is edited when tool call events arrive."""
+    message = _mock_message(telegram_id=111, text="add @durov")
+    state = _mock_state(data={"conversation_id": "conv-123"})
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    monkeypatch.setattr(
+        subscribe.backend,
+        "continue_subscription_conversation_stream",
+        lambda *a, **kw: _mock_stream_with_tools(),
+    )
+
+    await subscribe.process_chat_message(message, state)
+
+    status_msg = message.bot.send_message.return_value
+    # edit_text called at least twice: once for status update, once for final
+    assert status_msg.edit_text.await_count >= 2
+
+
+# ---------- Continued message uses stream endpoint ----------
+
+
+@pytest.mark.asyncio
+async def test_continued_message_uses_stream(monkeypatch):
     message = _mock_message(telegram_id=111, text="every morning")
     state = _mock_state(data={"conversation_id": "conv-123"})
 
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
 
-    turn = _conversation_turn(agent_message="Do you know specific sources?")
+    stream_calls = []
+
+    async def mock_stream(api_key, conv_id, msg):
+        stream_calls.append((api_key, conv_id, msg))
+        async for ev in _mock_stream_simple():
+            yield ev
+
     monkeypatch.setattr(
         subscribe.backend,
-        "continue_subscription_conversation",
-        AsyncMock(return_value=turn),
+        "continue_subscription_conversation_stream",
+        mock_stream,
     )
 
     await subscribe.process_chat_message(message, state)
 
-    subscribe.backend.continue_subscription_conversation.assert_awaited_once_with(
-        "api-key", "conv-123", "every morning"
-    )
+    assert stream_calls == [("api-key", "conv-123", "every morning")]
 
 
 # ---------- Finalized config triggers subscription creation ----------
@@ -185,15 +230,15 @@ async def test_finalized_config_creates_digest_subscription(monkeypatch):
         "fixed_twitter_accounts": [],
         "include_discovered_sources": True,
     }
-    turn = _conversation_turn(
-        agent_message="Your subscription is ready!",
-        status="ready",
-        finalized_config=config,
-    )
+
     monkeypatch.setattr(
         subscribe.backend,
-        "continue_subscription_conversation",
-        AsyncMock(return_value=turn),
+        "continue_subscription_conversation_stream",
+        lambda *a, **kw: _mock_stream_simple(
+            agent_message="Ready!",
+            status="ready",
+            finalized_config=config,
+        ),
     )
 
     create_sub = AsyncMock(
@@ -234,15 +279,14 @@ async def test_finalized_event_subscription_offers_recent_events(monkeypatch):
         "fixed_twitter_accounts": [],
         "include_discovered_sources": True,
     }
-    turn = _conversation_turn(
-        agent_message="Ready!",
-        status="ready",
-        finalized_config=config,
-    )
     monkeypatch.setattr(
         subscribe.backend,
-        "continue_subscription_conversation",
-        AsyncMock(return_value=turn),
+        "continue_subscription_conversation_stream",
+        lambda *a, **kw: _mock_stream_simple(
+            agent_message="Ready!",
+            status="ready",
+            finalized_config=config,
+        ),
     )
     monkeypatch.setattr(
         subscribe.backend,
@@ -345,15 +389,14 @@ async def test_fixed_sources_forwarded_to_create(monkeypatch):
         "fixed_twitter_accounts": ["openai"],
         "include_discovered_sources": False,
     }
-    turn = _conversation_turn(
-        agent_message="Ready!",
-        status="ready",
-        finalized_config=config,
-    )
     monkeypatch.setattr(
         subscribe.backend,
-        "continue_subscription_conversation",
-        AsyncMock(return_value=turn),
+        "continue_subscription_conversation_stream",
+        lambda *a, **kw: _mock_stream_simple(
+            agent_message="Ready!",
+            status="ready",
+            finalized_config=config,
+        ),
     )
 
     create_sub = AsyncMock(return_value=SimpleNamespace(id="sub-1", prompt_summary="Tech news"))
@@ -368,3 +411,31 @@ async def test_fixed_sources_forwarded_to_create(monkeypatch):
     assert call_kwargs["fixed_twitter_accounts"] == ["openai"]
     assert call_kwargs["include_discovered_sources"] is False
     assert call_kwargs["manual_only"] is True
+
+
+# ---------- Error event shows failure ----------
+
+
+@pytest.mark.asyncio
+async def test_stream_error_event_shows_failure(monkeypatch):
+    message = _mock_message(telegram_id=111, text="test")
+    state = _mock_state(data={"conversation_id": "conv-123"})
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    async def mock_error_stream(*a, **kw):
+        yield {"event": "error", "detail": "something went wrong"}
+
+    monkeypatch.setattr(
+        subscribe.backend,
+        "continue_subscription_conversation_stream",
+        mock_error_stream,
+    )
+
+    await subscribe.process_chat_message(message, state)
+
+    # Status message should be deleted
+    status_msg = message.bot.send_message.return_value
+    status_msg.delete.assert_awaited_once()
+    # Error reply should be sent
+    assert message.bot.send_message.await_count == 2  # status + error reply
