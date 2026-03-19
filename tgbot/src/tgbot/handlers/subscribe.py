@@ -1,4 +1,4 @@
-"""New subscription flow — conversational agent relay with inline buttons."""
+"""New subscription flow — fully conversational agent relay."""
 
 import logging
 
@@ -18,6 +18,7 @@ from tgbot.menu_utils import (
     back_button,
     cancel_button,
     edit_menu,
+    send_new_menu,
 )
 from tgbot.storage import get_language_preference, get_ui_language
 from tgbot.ui_text import t
@@ -31,7 +32,6 @@ backend = BackendClient()
 
 RECENT_EVENTS_YES = "subscribe:recent_events:yes"
 RECENT_EVENTS_NO = "subscribe:recent_events:no"
-CONV_CHOICE_PREFIX = "subscribe:conv_choice:"
 
 
 class SubscribeFlow(StatesGroup):
@@ -73,12 +73,7 @@ async def start_subscribe_flow(
     await state.clear()
     await state.set_state(SubscribeFlow.chatting)
     lang = await _ui_language_for_event(event)
-    await edit_menu(
-        event,
-        state,
-        t(lang, "subscription_prompt"),
-        _cancel_keyboard(lang),
-    )
+    await _reply(event, t(lang, "subscription_prompt"))
 
 
 # ---------- Cancel ----------
@@ -102,20 +97,6 @@ async def handle_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     from tgbot.handlers.menu import show_main_menu
 
     await show_main_menu(callback, state)
-
-
-# ---------- Conversation choice callback ----------
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(CONV_CHOICE_PREFIX))
-async def handle_conversation_choice(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    current_state = await state.get_state()
-    if current_state != SubscribeFlow.chatting.state:
-        return
-
-    choice_value = callback.data[len(CONV_CHOICE_PREFIX) :]  # noqa: E203
-    await _send_user_message(callback, state, choice_value)
 
 
 # ---------- Free text message ----------
@@ -216,7 +197,7 @@ async def _send_user_message(
         api_key = await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
-        await edit_menu(event, state, t(ui_language, "registration_failed"))
+        await _reply(event, t(ui_language, "registration_failed"))
         await state.clear()
         return
 
@@ -244,9 +225,8 @@ async def _send_user_message(
             "Conversation API call failed for telegram_id=%d",
             telegram_id,
         )
-        await edit_menu(
+        await _reply(
             event,
-            state,
             t(ui_language, "failed_process_request"),
             _cancel_keyboard(ui_language),
         )
@@ -256,9 +236,8 @@ async def _send_user_message(
         await _create_subscription_from_config(event, state, turn)
         return
 
-    # Show agent response with optional choice buttons
-    keyboard = _build_conversation_keyboard(ui_language, turn)
-    await edit_menu(event, state, turn.agent_message, keyboard)
+    # Send agent response as a new message in the chat
+    await _reply(event, turn.agent_message, _cancel_keyboard(ui_language))
 
 
 async def _create_subscription_from_config(
@@ -274,14 +253,14 @@ async def _create_subscription_from_config(
         api_key = await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
-        await edit_menu(event, state, t(ui_language, "registration_failed"))
+        await _reply(event, t(ui_language, "registration_failed"))
         await state.clear()
         return
 
     config = turn.finalized_config
     webhook_url = delivery_webhook_url(telegram_id)
 
-    await edit_menu(event, state, t(ui_language, "processing_request"))
+    await _reply(event, t(ui_language, "processing_request"))
 
     create_kwargs: dict[str, object | None] = {
         "include_discovered_sources": config.get("include_discovered_sources", True),
@@ -318,12 +297,7 @@ async def _create_subscription_from_config(
                 [back_button(ui_language, M_MAIN)],
             ]
         )
-        await edit_menu(
-            event,
-            state,
-            t(ui_language, "create_subscription_failed"),
-            keyboard,
-        )
+        await _reply(event, t(ui_language, "create_subscription_failed"), keyboard)
         await state.clear()
         return
 
@@ -340,7 +314,7 @@ async def _create_subscription_from_config(
             + "\n\n"
             + t(ui_language, "show_recent_events_prompt")
         )
-        await edit_menu(event, state, text, _recent_events_choice_keyboard(ui_language))
+        await _reply(event, text, _recent_events_choice_keyboard(ui_language))
         return
 
     await state.clear()
@@ -350,7 +324,7 @@ async def _create_subscription_from_config(
             [back_button(ui_language, M_SUBS)],
         ]
     )
-    await edit_menu(event, state, text, keyboard)
+    await send_new_menu(event, state, text, keyboard)
 
 
 # ---------- Keyboards ----------
@@ -358,32 +332,6 @@ async def _create_subscription_from_config(
 
 def _cancel_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[cancel_button(lang)]])
-
-
-def _build_conversation_keyboard(
-    lang: UILanguage,
-    turn: ConversationTurnInfo,
-) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = []
-
-    if turn.choices:
-        choice_row: list[InlineKeyboardButton] = []
-        for choice in turn.choices:
-            choice_row.append(
-                InlineKeyboardButton(
-                    text=choice.label,
-                    callback_data=f"{CONV_CHOICE_PREFIX}{choice.value}",
-                )
-            )
-            # Max 2 buttons per row
-            if len(choice_row) == 2:
-                rows.append(choice_row)
-                choice_row = []
-        if choice_row:
-            rows.append(choice_row)
-
-    rows.append([cancel_button(lang)])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _recent_events_choice_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
@@ -404,6 +352,27 @@ def _recent_events_choice_keyboard(lang: UILanguage) -> InlineKeyboardMarkup:
 
 
 # ---------- Helpers ----------
+
+
+async def _reply(
+    event: types.Message | CallbackQuery,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """Send a new message in the chat (real conversation, no editing)."""
+    chat_id, bot = _resolve_chat(event)
+    if chat_id and bot:
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+
+
+def _resolve_chat(
+    event: types.Message | CallbackQuery,
+) -> tuple[int | None, object | None]:
+    if hasattr(event, "chat"):
+        return event.chat.id, event.bot
+    if hasattr(event, "message") and event.message:
+        return event.message.chat.id, event.bot
+    return None, None
 
 
 def _telegram_id_from_event(event: types.Message | CallbackQuery) -> int:

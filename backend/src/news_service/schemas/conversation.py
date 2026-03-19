@@ -5,11 +5,6 @@ from pydantic import BaseModel, Field
 from news_service.schemas.subscription import DeliveryMode, EventMatchingMode
 
 
-class ConversationChoice(BaseModel):
-    label: str = Field(..., description="Button text to display")
-    value: str = Field(..., description="Value to send back as user message if chosen")
-
-
 class ConversationStartRequest(BaseModel):
     message: str = Field(..., min_length=1, description="Initial user message")
     user_language: str | None = Field(
@@ -41,9 +36,6 @@ class ConversationTurnResponse(BaseModel):
     conversation_id: str = Field(..., description="Unique conversation identifier")
     agent_message: str = Field(..., description="Agent response text to display")
     status: Literal["in_progress", "ready"] = Field(...)
-    choices: list[ConversationChoice] | None = Field(
-        default=None, description="Optional buttons to render"
-    )
     finalized_config: FinalizedSubscriptionConfig | None = Field(
         default=None, description="Populated only when status is ready"
     )
@@ -54,9 +46,6 @@ class AgentTurnOutput(BaseModel):
 
     message: str = Field(..., description="What to show the user")
     status: Literal["in_progress", "ready"] = Field(...)
-    choices: list[ConversationChoice] | None = Field(
-        default=None, description="Optional choices for button rendering"
-    )
     finalized_config: FinalizedSubscriptionConfig | None = Field(
         default=None, description="Populated only when status is ready"
     )

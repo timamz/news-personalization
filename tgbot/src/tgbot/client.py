@@ -67,17 +67,10 @@ class SubscriptionEditProposalInfo:
 
 
 @dataclass
-class ConversationChoiceInfo:
-    label: str
-    value: str
-
-
-@dataclass
 class ConversationTurnInfo:
     conversation_id: str
     agent_message: str
     status: str  # "in_progress" or "ready"
-    choices: list[ConversationChoiceInfo] | None
     finalized_config: dict | None
 
 
@@ -489,16 +482,10 @@ class BackendClient:
 
     @staticmethod
     def _parse_conversation_turn(data: dict) -> ConversationTurnInfo:
-        choices = None
-        if data.get("choices"):
-            choices = [
-                ConversationChoiceInfo(label=c["label"], value=c["value"]) for c in data["choices"]
-            ]
         return ConversationTurnInfo(
             conversation_id=data["conversation_id"],
             agent_message=data["agent_message"],
             status=data["status"],
-            choices=choices,
             finalized_config=data.get("finalized_config"),
         )
 

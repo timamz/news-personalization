@@ -6,7 +6,6 @@ import pytest
 
 from news_service.schemas.conversation import (
     AgentTurnOutput,
-    ConversationChoice,
     FinalizedSubscriptionConfig,
 )
 
@@ -84,10 +83,6 @@ async def test_run_conversation_turn_returns_output(mocker):
     expected = AgentTurnOutput(
         message="What kind of news are you interested in?",
         status="in_progress",
-        choices=[
-            ConversationChoice(label="Digest", value="digest"),
-            ConversationChoice(label="Events", value="events"),
-        ],
     )
 
     mock_client = AsyncMock()

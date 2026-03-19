@@ -6,7 +6,6 @@ import pytest
 
 from news_service.schemas.conversation import (
     AgentTurnOutput,
-    ConversationChoice,
     ConversationState,
     FinalizedSubscriptionConfig,
 )
@@ -55,10 +54,6 @@ async def test_start_conversation(mocker):
     agent_output = AgentTurnOutput(
         message="What schedule do you prefer?",
         status="in_progress",
-        choices=[
-            ConversationChoice(label="Every morning", value="every morning"),
-            ConversationChoice(label="Manual only", value="manual only"),
-        ],
     )
     mocker.patch(
         f"{MODULE}.run_conversation_turn",
@@ -87,7 +82,6 @@ async def test_start_conversation(mocker):
     assert response.status == "in_progress"
     assert response.agent_message == "What schedule do you prefer?"
     assert response.conversation_id
-    assert len(response.choices) == 2
     assert response.finalized_config is None
 
     # Verify state was saved

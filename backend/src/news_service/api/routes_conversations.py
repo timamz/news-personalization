@@ -104,7 +104,6 @@ async def start_conversation(
         conversation_id=conversation_id,
         agent_message=agent_output.message,
         status=agent_output.status,
-        choices=agent_output.choices,
         finalized_config=agent_output.finalized_config,
     )
 
@@ -141,7 +140,6 @@ async def continue_conversation(
         conversation_id=conversation_id,
         agent_message=agent_output.message,
         status=agent_output.status,
-        choices=agent_output.choices,
         finalized_config=agent_output.finalized_config,
     )
 

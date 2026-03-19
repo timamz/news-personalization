@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from tgbot.client import ConversationChoiceInfo, ConversationTurnInfo
+from tgbot.client import ConversationTurnInfo
 from tgbot.handlers import subscribe
 from tgbot.language import LanguagePreference
 
@@ -60,14 +60,12 @@ def _conversation_turn(
     conversation_id: str = "conv-123",
     agent_message: str = "What schedule?",
     status: str = "in_progress",
-    choices: list[ConversationChoiceInfo] | None = None,
     finalized_config: dict | None = None,
 ) -> ConversationTurnInfo:
     return ConversationTurnInfo(
         conversation_id=conversation_id,
         agent_message=agent_message,
         status=status,
-        choices=choices,
         finalized_config=finalized_config,
     )
 
@@ -99,10 +97,6 @@ async def test_first_message_starts_conversation(monkeypatch):
 
     turn = _conversation_turn(
         agent_message="How often would you like to receive the digest?",
-        choices=[
-            ConversationChoiceInfo(label="Every morning", value="every morning"),
-            ConversationChoiceInfo(label="Manual only", value="manual only"),
-        ],
     )
     monkeypatch.setattr(
         subscribe.backend,
@@ -114,6 +108,34 @@ async def test_first_message_starts_conversation(monkeypatch):
 
     subscribe.backend.start_subscription_conversation.assert_awaited_once()
     state.update_data.assert_awaited()
+
+
+# ---------- Agent response is sent as a new message ----------
+
+
+@pytest.mark.asyncio
+async def test_agent_response_sent_as_new_message(monkeypatch):
+    """Verify the bot sends a new message rather than editing an existing one."""
+    message = _mock_message(telegram_id=111, text="every morning")
+    state = _mock_state(data={"conversation_id": "conv-123"})
+
+    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
+
+    turn = _conversation_turn(agent_message="Great, I'll send you updates every morning!")
+    monkeypatch.setattr(
+        subscribe.backend,
+        "continue_subscription_conversation",
+        AsyncMock(return_value=turn),
+    )
+
+    await subscribe.process_chat_message(message, state)
+
+    # Bot should send a new message, not edit
+    message.bot.send_message.assert_awaited_once()
+    call_kwargs = message.bot.send_message.await_args.kwargs
+    assert call_kwargs["text"] == "Great, I'll send you updates every morning!"
+    # Should NOT have tried to edit
+    message.bot.edit_message_text.assert_not_awaited()
 
 
 # ---------- Continued message relays to backend ----------
@@ -231,31 +253,6 @@ async def test_finalized_event_subscription_offers_recent_events(monkeypatch):
     await subscribe.process_chat_message(message, state)
 
     state.set_state.assert_awaited_with(subscribe.SubscribeFlow.waiting_for_recent_events_decision)
-
-
-# ---------- Choice callback sends value as message ----------
-
-
-@pytest.mark.asyncio
-async def test_choice_callback_relays_value(monkeypatch):
-    callback = _mock_callback(telegram_id=111, data=f"{subscribe.CONV_CHOICE_PREFIX}every morning")
-    state = _mock_state(data={"conversation_id": "conv-123"})
-    state.get_state = AsyncMock(return_value=subscribe.SubscribeFlow.chatting.state)
-
-    monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
-
-    turn = _conversation_turn(agent_message="Got it, every morning!")
-    monkeypatch.setattr(
-        subscribe.backend,
-        "continue_subscription_conversation",
-        AsyncMock(return_value=turn),
-    )
-
-    await subscribe.handle_conversation_choice(callback, state)
-
-    subscribe.backend.continue_subscription_conversation.assert_awaited_once_with(
-        "api-key", "conv-123", "every morning"
-    )
 
 
 # ---------- Recent events flow ----------
