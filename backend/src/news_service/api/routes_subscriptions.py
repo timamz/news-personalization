@@ -327,91 +327,23 @@ async def create_subscription(
     payload: SubscriptionCreate,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
-) -> Subscription:
-    prompt_channels = extract_telegram_channels(payload.prompt)
-    prompt_subreddits = extract_reddit_subreddits(payload.prompt)
-    prompt_twitter_accounts = extract_twitter_accounts(payload.prompt)
-    explicit_channels, explicit_subreddits, explicit_twitter_accounts = _normalize_fixed_sources(
-        payload.fixed_telegram_channels,
-        payload.fixed_reddit_subreddits,
-        payload.fixed_twitter_accounts,
-    )
-    # For backward compatibility with older clients that only send a prompt.
-    telegram_channels = explicit_channels or prompt_channels
-    reddit_subreddits = explicit_subreddits or prompt_subreddits
-    twitter_accounts = explicit_twitter_accounts or prompt_twitter_accounts
-    include_discovered_sources = (
-        payload.include_discovered_sources
-        if payload.include_discovered_sources is not None
-        else not bool(telegram_channels or reddit_subreddits or twitter_accounts)
-    )
-    delivery_mode = payload.delivery_mode or "digest"
-    schedule_cron = payload.schedule_cron_override
-    if delivery_mode == "event" or payload.manual_only:
-        schedule_cron = None
-    schedule_cron = _validated_schedule_or_422(schedule_cron)
-    _ensure_user_timezone_for_schedule(user, schedule_cron)
-    digest_language = _normalized_digest_language(payload.digest_language_override) or "en"
-    raw_prompt_embedding = await _subscription_prompt_embedding(payload.prompt)
-    canonical_prompt_embedding = list(raw_prompt_embedding)
-    prompt_summary = payload.prompt_summary or build_prompt_summary(payload.prompt)
-    short_label = payload.short_label or prompt_summary[:30]
-
-    subscription = Subscription(
-        user_id=user.id,
-        raw_prompt=payload.prompt,
-        raw_prompt_embedding=raw_prompt_embedding,
-        canonical_prompt=payload.prompt,
-        canonical_prompt_embedding=canonical_prompt_embedding,
-        prompt_summary=prompt_summary,
-        short_label=short_label,
-        delivery_mode=delivery_mode,
-        schedule_cron=schedule_cron,
-        format_instructions=payload.format_instructions or "brief summary",
-        digest_language=digest_language,
-        delivery_webhook_url=payload.delivery_webhook_url,
-    )
-    session.add(subscription)
-    await session.flush()
-
-    selected_sources: dict[uuid.UUID, RssFeed] = {}
-    for identifiers, kind in [
-        (telegram_channels, "telegram_channel"),
-        (reddit_subreddits, "reddit_subreddit"),
-        (twitter_accounts, "twitter_account"),
-    ]:
-        if identifiers:
-            for source in await ensure_source_coverage(session, identifiers, kind):
-                selected_sources[source.id] = source
-
-    if include_discovered_sources:
-        discovered_sources = await ensure_prompt_coverage(
-            session,
-            payload.prompt,
-            canonical_prompt_embedding,
-        )
-        for source in discovered_sources:
-            selected_sources[source.id] = source
-
-    if not selected_sources:
+) -> SubscriptionResponse:
+    """Non-streaming subscription creation — reuses the streaming generator."""
+    result: dict[str, Any] | None = None
+    async for event in _create_subscription_streaming(payload, user, session):
+        if event.get("event") == "done":
+            result = event.get("subscription")
+        elif event.get("event") == "error":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=event.get("detail", "Subscription creation failed"),
+            )
+    if result is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="No sources were resolved for this subscription",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Subscription creation produced no result",
         )
-
-    for feed_id in selected_sources:
-        session.add(SubscriptionSource(subscription_id=subscription.id, feed_id=feed_id))
-
-    await session.commit()
-    await session.refresh(subscription)
-
-    logger.info(
-        "Created subscription %s for user %s",
-        subscription.id,
-        user.id,
-        extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
-    )
-    return subscription
+    return SubscriptionResponse.model_validate(result)
 
 
 @router.post(

@@ -301,37 +301,6 @@ async def test_list_subscriptions(client: BackendClient):
 
 
 @pytest.mark.asyncio
-async def test_list_recent_events(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "news_item_ids": ["news-1", "news-2"],
-        "subject": "Recent events you may have missed",
-        "body": "- Demo concert\n- Another concert",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.get = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http) as patched_client:
-        events = await client.list_recent_events("my-key", "sub-1")
-
-    assert events is not None
-    assert events.news_item_ids == ["news-1", "news-2"]
-    assert events.subject == "Recent events you may have missed"
-    patched_client.assert_called_once_with(
-        timeout=get_settings().backend_slow_request_timeout_seconds
-    )
-    mock_http.get.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/sub-1/recent-events",
-        headers={"X-API-Key": "my-key"},
-    )
-
-
-@pytest.mark.asyncio
 async def test_acknowledge_recent_events(client: BackendClient):
     mock_response = MagicMock()
     mock_response.status_code = 204

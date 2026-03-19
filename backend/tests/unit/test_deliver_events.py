@@ -107,9 +107,6 @@ async def test_deliver_event_notifications_sends_and_marks_sent(mocker) -> None:
         new=AsyncMock(
             return_value=EventAssessmentResult(
                 is_relevant_event=True,
-                title="World tour announced",
-                summary="The artist confirmed a new world tour.",
-                when="Summer 2026",
                 notification_body="World tour announced\nSummer 2026\nThe artist confirmed.",
                 reason="Matches the subscription about Drobyshevsky lectures.",
             )
@@ -164,9 +161,6 @@ async def test_deliver_event_notifications_skips_when_assessment_not_relevant(mo
         new=AsyncMock(
             return_value=EventAssessmentResult(
                 is_relevant_event=False,
-                title=None,
-                summary=None,
-                when=None,
                 notification_body="",
                 reason="The event does not match the subscription.",
             )

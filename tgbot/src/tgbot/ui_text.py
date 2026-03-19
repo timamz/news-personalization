@@ -42,6 +42,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "I couldn't update existing subscriptions right now. "
             "Try again from ⚙️ Settings."
         ),
+        "summary_not_set": "Not configured yet",
+        "summary_ask": "Ask every time",
+        "summary_fixed": "Always {language}",
         "timezone_initial": (
             "🕐 What city are you in?\n\n"
             "This lets me deliver digests at your local time.\n"
@@ -73,18 +76,12 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "timezone_save_failed": ("I couldn't save the time zone. Please try again."),
         "timezone_retry": "Send another city or time zone.",
-        "choose_subscription_request": "Please describe your subscription request.",
         "failed_process_request": ("Failed to process your request. Please try again."),
-        "subscription_setup_expired": ("Subscription setup expired. Start again from the menu."),
         "describe_schedule": "Please describe the schedule.",
-        "schedule_parse_failed": ("Couldn't parse this schedule. Please try another wording."),
         "sources_parse_failed": (
             "I couldn't parse sources. Send Telegram handles like @channel_one, "
             "links like t.me/channel or x.com/OpenAI, "
             "or Reddit names like r/python."
-        ),
-        "recent_events_future_only": (
-            "Okay. I will only send new event notifications from now on."
         ),
         "recent_events_expired": (
             "This preview expired. Please create a new subscription if needed."
@@ -92,9 +89,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "recent_events_loading": ("Checking what you might have missed in the last 7 days..."),
         "recent_events_failed": "Couldn't load recent events right now.",
         "recent_events_empty": ("No matching events were found in the last 7 days."),
-        "recent_events_header": ("Here's what you might have missed in the last 7 days:"),
-        "back_not_available": "Back is not available here.",
-        "processing_request": "⏳ Processing your request...",
         "status_thinking": "Thinking...",
         "status_checking_source": "Checking {source}...",
         "create_subscription_failed": ("Failed to create subscription. Please try again."),
@@ -117,34 +111,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             '- "I want AI and tech news every morning as a brief summary"\n'
             '- "Notify me when a new episode of Severance is announced"'
         ),
-        "subscription_language_choose": (
-            "🌐 Choose the language for this subscription's digests and event notifications."
-        ),
-        "schedule_choice": (
-            "📅 Do you want this digest to be delivered automatically "
-            "on a schedule?\nYou can always use the Send now button."
-        ),
-        "schedule_input_prompt": (
-            '📅 Describe the schedule in natural language.\nExample: "every weekday at 9:00"'
-        ),
-        "source_question_digest": (
-            "📡 Do you already have specific sources for this digest "
-            "(Telegram channels, Reddit subreddits, or X accounts)?"
-        ),
-        "source_question_event": (
-            "📡 Do you already have specific sources for these notifications "
-            "(Telegram channels, Reddit subreddits, or X accounts)?"
-        ),
-        "channels_input_prompt": (
-            "📡 Send sources you want to include "
-            "(for example: @channel_one r/python t.me/channel x.com/OpenAI)."
-        ),
-        "scope_prompt_found": ("I found these sources in your request:\n{channels}\n\n{question}"),
-        "scope_prompt_manual": "Got it. {question}\n{channels}",
-        "scope_question_digest": ("Should this digest be limited only to these sources?"),
-        "scope_question_event": ("Should these notifications be limited only to these sources?"),
-        "undo_recent_events_failed": ("Couldn't go back right now. Please try again."),
-        "undo_recent_events_expired": "This step can no longer be undone.",
         # Menu
         "menu_title": "📋 Menu",
         "subscriptions_title": "📰 My Subscriptions",
@@ -161,14 +127,10 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "⚙️ Change settings\n\n"
             "Press 📋 Menu anytime to return."
         ),
-        "flow_cancelled": "Cancelled.",
         # Subscription management
-        "no_subscriptions": "You have no active subscriptions.",
         "failed_load_subscriptions": ("Failed to load subscriptions. Please try again."),
-        "subscription_card": ("📰 {prompt_summary}\n\n📋 {type}  •  🌐 {language}"),
         "type_digest": "Digest",
         "type_event": "Event notifications",
-        "edit_menu_prompt": "What do you want to change?",
         "edit_subscription_language_prompt": ("🌐 Choose the language for this subscription."),
         "subscription_language_updated": "Language updated to {language}.",
         "subscription_language_update_failed": ("Failed to update language. Try again."),
@@ -198,9 +160,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "Sources, schedule, and language stay unchanged."
         ),
         "edit_request_failed": ("Failed to prepare the update. Please try again."),
-        "edit_request_applied": ("✅ Subscription updated.\n\n📝 {prompt_summary}"),
         "edit_request_apply_failed": ("Failed to save the update. Please try again."),
-        "edit_request_cancelled": "Update cancelled.",
         "edit_sources_prompt": (
             "📡 Send sources to add (for example: @channel_one r/python t.me/channel x.com/OpenAI)."
         ),
@@ -208,7 +168,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "sources_already_added": "Those sources are already included.",
         "sources_add_failed": "Failed to add sources. Please try again.",
         "confirm_delete_prompt": ("🗑 Are you sure you want to delete this subscription?"),
-        "delete_cancelled": "Deletion cancelled.",
         "subscription_deleted": "🗑 Subscription deleted.",
         "subscription_delete_failed": "Failed to delete. Try again.",
         # Buttons
@@ -236,18 +195,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_revise": "🔄 Revise",
         "button_cancel": "❌ Cancel",
         "button_try_another_city": "🏙 Another city",
-        "button_yes_set_schedule": "📅 Set schedule",
-        "button_no_button_only": "❌ Manual only",
-        "button_yes_have_channels": "✅ Yes, I have sources",
-        "button_no_find_sources": "🔍 Find for me",
-        "button_only_channels": "📌 Only these",
-        "button_add_sources": "🔍 Discover more",
         "button_yes_show_recent": "✅ Show missed",
         "button_no_future_only": "❌ Future only",
         "button_back": "◀️ Back",
-        "summary_not_set": "Not set yet",
-        "summary_ask": "Ask for each new subscription",
-        "summary_fixed": "{language} for all subscriptions",
     },
     "ru": {
         "welcome": (
@@ -291,6 +241,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "Сейчас не удалось обновить существующие подписки. "
             "Попробуйте снова из ⚙️ Настроек."
         ),
+        "summary_not_set": "Ещё не настроено",
+        "summary_ask": "Спрашивать каждый раз",
+        "summary_fixed": "Всегда {language}",
         "timezone_initial": (
             "🕐 В каком вы городе?\n\n"
             "Это нужно, чтобы присылать дайджесты по вашему местному времени.\n"
@@ -322,21 +275,13 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "timezone_save_failed": ("Не удалось сохранить часовой пояс. Попробуйте ещё раз."),
         "timezone_retry": "Отправьте другой город или часовой пояс.",
-        "choose_subscription_request": ("Опишите, какую подписку вы хотите."),
         "failed_process_request": ("Не удалось обработать запрос. Попробуйте ещё раз."),
-        "subscription_setup_expired": ("Сценарий создания подписки истёк. Начните заново из меню."),
         "describe_schedule": "Опишите расписание.",
-        "schedule_parse_failed": (
-            "Не удалось распознать это расписание. Попробуйте другую формулировку."
-        ),
         "sources_parse_failed": (
             "Не удалось распознать источники. "
             "Отправьте Telegram-хэндлы вроде @channel_one, "
             "ссылки вроде t.me/channel или x.com/OpenAI, "
             "или сабреддиты вроде r/python."
-        ),
-        "recent_events_future_only": (
-            "Хорошо. Я буду отправлять только новые уведомления о событиях."
         ),
         "recent_events_expired": (
             "Предпросмотр устарел. При необходимости создайте новую подписку."
@@ -344,9 +289,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "recent_events_loading": ("Проверяю, что вы могли пропустить за последние 7 дней..."),
         "recent_events_failed": ("Сейчас не удалось загрузить недавние события."),
         "recent_events_empty": ("За последние 7 дней подходящих событий не найдено."),
-        "recent_events_header": ("Вот что вы могли пропустить за последние 7 дней:"),
-        "back_not_available": "Здесь нельзя вернуться назад.",
-        "processing_request": "⏳ Обрабатываю ваш запрос...",
         "status_thinking": "Думаю...",
         "status_checking_source": "Проверяю {source}...",
         "create_subscription_failed": ("Не удалось создать подписку. Попробуйте ещё раз."),
@@ -368,36 +310,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             'в виде краткой сводки"\n'
             '- "Сообщай, когда анонсируют новый эпизод Severance"'
         ),
-        "subscription_language_choose": (
-            "🌐 Выберите язык дайджестов и уведомлений для этой подписки."
-        ),
-        "schedule_choice": (
-            "📅 Хотите получать этот дайджест автоматически по расписанию?\n"
-            "Кнопка отправки вручную всегда останется доступной."
-        ),
-        "schedule_input_prompt": (
-            '📅 Опишите расписание естественным языком.\nПример: "каждый будний день в 9:00"'
-        ),
-        "source_question_digest": (
-            "📡 У вас уже есть конкретные источники для этого дайджеста "
-            "(Telegram-каналы, Reddit-сабреддиты или аккаунты X)?"
-        ),
-        "source_question_event": (
-            "📡 У вас уже есть конкретные источники для этих уведомлений "
-            "(Telegram-каналы, Reddit-сабреддиты или аккаунты X)?"
-        ),
-        "channels_input_prompt": (
-            "📡 Отправьте источники, которые хотите включить "
-            "(например: @channel_one r/python t.me/channel x.com/OpenAI)."
-        ),
-        "scope_prompt_found": (
-            "Я нашёл в вашем запросе такие источники:\n{channels}\n\n{question}"
-        ),
-        "scope_prompt_manual": "Понял. {question}\n{channels}",
-        "scope_question_digest": ("Ограничить этот дайджест только этими источниками?"),
-        "scope_question_event": ("Ограничить эти уведомления только этими источниками?"),
-        "undo_recent_events_failed": ("Сейчас не удалось вернуться назад. Попробуйте ещё раз."),
-        "undo_recent_events_expired": ("На этот шаг уже нельзя вернуться."),
         # Menu
         "menu_title": "📋 Меню",
         "subscriptions_title": "📰 Мои подписки",
@@ -415,14 +327,10 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "⚙️ Менять настройки\n\n"
             "Нажмите 📋 Меню, чтобы вернуться."
         ),
-        "flow_cancelled": "Отменено.",
         # Subscription management
-        "no_subscriptions": "У вас нет активных подписок.",
         "failed_load_subscriptions": ("Не удалось загрузить подписки. Попробуйте ещё раз."),
-        "subscription_card": ("📰 {prompt_summary}\n\n📋 {type}  •  🌐 {language}"),
         "type_digest": "Дайджест",
         "type_event": "Уведомления о событиях",
-        "edit_menu_prompt": "Что вы хотите изменить?",
         "edit_subscription_language_prompt": ("🌐 Выберите язык для этой подписки."),
         "subscription_language_updated": ("Язык подписки изменён на {language}."),
         "subscription_language_update_failed": (
@@ -453,9 +361,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
             "Источники, расписание и язык не изменятся."
         ),
         "edit_request_failed": ("Не удалось подготовить обновление. Попробуйте ещё раз."),
-        "edit_request_applied": ("✅ Подписка обновлена.\n\n📝 {prompt_summary}"),
         "edit_request_apply_failed": ("Не удалось сохранить обновление. Попробуйте ещё раз."),
-        "edit_request_cancelled": "Обновление отменено.",
         "edit_sources_prompt": (
             "📡 Отправьте источники, которые хотите добавить "
             "(например: @channel_one r/python t.me/channel x.com/OpenAI)."
@@ -464,7 +370,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "sources_already_added": "Эти источники уже добавлены.",
         "sources_add_failed": ("Не удалось добавить источники. Попробуйте ещё раз."),
         "confirm_delete_prompt": ("🗑 Вы уверены, что хотите удалить эту подписку?"),
-        "delete_cancelled": "Удаление отменено.",
         "subscription_deleted": "🗑 Подписка удалена.",
         "subscription_delete_failed": ("Не удалось удалить подписку. Попробуйте ещё раз."),
         # Buttons
@@ -492,18 +397,9 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_revise": "🔄 Уточнить",
         "button_cancel": "❌ Отмена",
         "button_try_another_city": "🏙 Другой город",
-        "button_yes_set_schedule": "📅 Настроить расписание",
-        "button_no_button_only": "❌ Только вручную",
-        "button_yes_have_channels": "✅ Да, есть источники",
-        "button_no_find_sources": "🔍 Найти за меня",
-        "button_only_channels": "📌 Только эти",
-        "button_add_sources": "🔍 Найти ещё",
         "button_yes_show_recent": "✅ Показать",
         "button_no_future_only": "❌ Только будущие",
         "button_back": "◀️ Назад",
-        "summary_not_set": "Ещё не настроено",
-        "summary_ask": "Спрашивать для каждой новой подписки",
-        "summary_fixed": "{language} для всех подписок",
     },
 }
 

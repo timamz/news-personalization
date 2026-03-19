@@ -25,13 +25,6 @@ class SubscriptionInfo:
 
 
 @dataclass
-class RecentEventsPreviewInfo:
-    news_item_ids: list[str]
-    subject: str
-    body: str
-
-
-@dataclass
 class UserInfo:
     id: str
     api_key: str

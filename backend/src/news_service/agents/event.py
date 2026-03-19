@@ -61,11 +61,8 @@ Rules:
 
 class EventAssessmentResult(BaseModel):
     is_relevant_event: bool = Field(
-        ..., description="Whether this item is a relevant upcoming event for notification"
+        ..., description="Whether this post matches the subscription request"
     )
-    title: str | None = Field(default=None, description="Short event title")
-    summary: str | None = Field(default=None, description="Short description of the event")
-    when: str | None = Field(default=None, description="Human-readable timing")
     notification_body: str = Field(
         default="", description="Formatted notification text ready to send"
     )

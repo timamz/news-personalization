@@ -78,9 +78,6 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
         new=AsyncMock(
             return_value=EventAssessmentResult(
                 is_relevant_event=True,
-                title="Severance season finale",
-                summary="Apple confirmed the new episode release date.",
-                when="April 2026",
                 notification_body=(
                     "Severance season finale\n"
                     "When: April 2026\n"
@@ -170,9 +167,6 @@ async def test_event_notification_skips_non_relevant_event(mocker) -> None:
         new=AsyncMock(
             return_value=EventAssessmentResult(
                 is_relevant_event=False,
-                title=None,
-                summary=None,
-                when=None,
                 notification_body="",
                 reason="The post is about another speaker, not Drobyshevsky himself.",
             )
@@ -281,9 +275,6 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         new=AsyncMock(
             return_value=EventAssessmentResult(
                 is_relevant_event=True,
-                title="Lecture reminder",
-                summary="Reminder: Stanislav Drobyshevsky will lecture next week.",
-                when=None,
                 notification_body=(
                     "Lecture reminder\n"
                     "Reminder: Stanislav Drobyshevsky will lecture next week.\n"

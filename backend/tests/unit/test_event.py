@@ -13,9 +13,6 @@ from news_service.agents.event import (
 async def test_assess_and_compose_event_notification_returns_relevant() -> None:
     parsed = EventAssessmentResult(
         is_relevant_event=True,
-        title="Severance season finale",
-        summary="Apple confirmed the finale release date.",
-        when="2026-03-20",
         notification_body="Severance season finale\n2026-03-20\nApple confirmed the finale.",
         reason="The article announces an upcoming TV event matching the subscription.",
     )
@@ -45,7 +42,6 @@ async def test_assess_and_compose_event_notification_returns_relevant() -> None:
         )
 
     assert result.is_relevant_event is True
-    assert result.title == "Severance season finale"
     assert result.notification_body != ""
     assert "announced" not in result.reason or len(result.reason) >= 3
 
@@ -54,9 +50,6 @@ async def test_assess_and_compose_event_notification_returns_relevant() -> None:
 async def test_assess_and_compose_event_notification_returns_not_relevant() -> None:
     parsed = EventAssessmentResult(
         is_relevant_event=False,
-        title=None,
-        summary=None,
-        when=None,
         notification_body="",
         reason="The article is general news, not an upcoming event.",
     )
@@ -93,9 +86,6 @@ async def test_assess_and_compose_event_notification_returns_not_relevant() -> N
 async def test_assess_and_compose_event_notification_detects_duplicate() -> None:
     parsed = EventAssessmentResult(
         is_relevant_event=False,
-        title="Severance finale",
-        summary="Apple confirmed the finale release date.",
-        when=None,
         notification_body="",
         reason="The user was already notified about this event.",
     )

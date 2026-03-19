@@ -49,6 +49,15 @@ def _make_state(user_id: str = "user-123", **kwargs) -> ConversationState:
     )
 
 
+async def _mock_streaming_turn(output: AgentTurnOutput):
+    """Mock async generator for run_conversation_turn_streaming."""
+    yield {
+        "event": "done",
+        "output": output.model_dump(),
+        "new_messages": [{"role": "assistant", "content": output.message}],
+    }
+
+
 @pytest.mark.asyncio
 async def test_start_conversation(mocker):
     agent_output = AgentTurnOutput(
@@ -56,13 +65,8 @@ async def test_start_conversation(mocker):
         status="in_progress",
     )
     mocker.patch(
-        f"{MODULE}.run_conversation_turn",
-        new=AsyncMock(
-            return_value=(
-                agent_output,
-                [{"role": "assistant", "content": agent_output.message}],
-            )
-        ),
+        f"{MODULE}.run_conversation_turn_streaming",
+        return_value=_mock_streaming_turn(agent_output),
     )
 
     redis_mock = _mock_redis()
@@ -110,13 +114,8 @@ async def test_continue_conversation(mocker):
         ),
     )
     mocker.patch(
-        f"{MODULE}.run_conversation_turn",
-        new=AsyncMock(
-            return_value=(
-                agent_output,
-                [{"role": "assistant", "content": agent_output.message}],
-            )
-        ),
+        f"{MODULE}.run_conversation_turn_streaming",
+        return_value=_mock_streaming_turn(agent_output),
     )
 
     mock_user = MagicMock()
