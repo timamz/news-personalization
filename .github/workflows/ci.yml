@@ -123,7 +123,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Connect to Tailscale
-        uses: tailscale/tailscale-action@v2
+        uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
