@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -26,7 +26,7 @@ async def test_poll_single_feed_handles_twitter_account(mocker) -> None:
             url="https://x.com/openai/status/2032045283488473242",
             title="GPT-5.4 is rolling out now in ChatGPT.",
             body="GPT-5.4 is rolling out now in ChatGPT.",
-            published_at=datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC),
+            published_at=datetime.now(UTC) - timedelta(hours=1),
         )
     ]
 

@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -25,7 +25,7 @@ async def test_poll_single_feed_handles_telegram_channel(mocker) -> None:
         TelegramPost(
             url="https://t.me/fondnauk/1",
             body="First line\nSecond line",
-            published_at=datetime(2026, 3, 12, 8, 0, tzinfo=UTC),
+            published_at=datetime.now(UTC) - timedelta(hours=1),
         )
     ]
 

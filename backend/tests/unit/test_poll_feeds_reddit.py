@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -26,7 +26,7 @@ async def test_poll_single_feed_handles_reddit_subreddit(mocker) -> None:
             url="https://www.reddit.com/r/badminton/comments/abc123/thread/",
             title="Swiss Open discussion",
             body="What did you think about the final?",
-            published_at=datetime(2026, 3, 12, 10, 47, 32, tzinfo=UTC),
+            published_at=datetime.now(UTC) - timedelta(hours=1),
         )
     ]
 
