@@ -4,14 +4,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.services.telegram import TelegramPost
 from news_service.tasks import poll_feeds
 
 
 @pytest.mark.asyncio
-async def test_poll_single_feed_handles_telegram_channel(mocker) -> None:
-    feed = RssFeed(
+async def test_poll_single_source_handles_telegram_channel(mocker) -> None:
+    src = Source(
         id=uuid.uuid4(),
         url="https://t.me/s/fondnauk",
         title="Telegram @fondnauk",
@@ -34,7 +34,7 @@ async def test_poll_single_feed_handles_telegram_channel(mocker) -> None:
     upsert_news_item = AsyncMock(return_value=object())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert_news_item)
 
-    count = await poll_feeds._poll_single_feed(session=AsyncMock(), feed=feed)
+    count = await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
 
     assert count == 1
     upsert_news_item.assert_awaited_once()

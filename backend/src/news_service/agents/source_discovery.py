@@ -17,17 +17,10 @@ from agents import (
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.discovery import (
-    DiscoveredSourceItem,
-    SourceKind,
-    discover_reddit_subreddits,
-    discover_rss_feeds,
-    discover_telegram_channels,
-    discover_twitter_accounts,
-)
+from news_service.agents.discovery import SourceKind, search_web
 from news_service.core.config import get_settings
 from news_service.core.openai_client import agents_model
-from news_service.db.vector_store import embed_text, find_similar_feeds
+from news_service.db.vector_store import embed_text, find_similar_sources
 from news_service.services.relevance import score_candidate
 
 logger = logging.getLogger(__name__)
@@ -53,14 +46,15 @@ find the best sources to cover their interests.
 
 Strategy:
 1. First, search the existing source database for relevant matches.
-2. Discover new sources across multiple source types: RSS feeds, Telegram channels, \
-and Reddit subreddits. Call several discovery tools to get broad coverage.
+2. Search the web for new sources across multiple source types: RSS feeds, Telegram channels, \
+and Reddit subreddits. Use targeted search queries like "best RSS feeds about [topic]", \
+"Telegram channels for [topic] news", "Reddit subreddits for [topic]", etc.
 3. Validate and score the most promising candidates to measure content relevance.
 4. Select the top {target_count} sources by relevance score.
 
 Efficiency rules:
-- Do NOT call the same discovery tool twice with the same query.
-- Validate and score only your top candidates, not every single discovery result.
+- Use web search with varied, specific queries to find different source types.
+- Validate and score only your top candidates, not every single search result.
 - Once you have {target_count} validated sources with scores above 0.5, stop and return.
 
 Quality criteria:
@@ -72,57 +66,18 @@ and scored. If no sources could be validated, return an empty list.
 """
 
 
-def _format_discovered_sources(items: list[DiscoveredSourceItem]) -> str:
-    if not items:
-        return "No sources found."
-    lines: list[str] = []
-    for item in items:
-        lines.append(f"- {item.url} ({item.source_kind}, title: {item.title or 'unknown'})")
-    return "\n".join(lines)
-
-
 @function_tool
-async def tool_discover_rss_feeds(query: str) -> str:
-    """Discover RSS/Atom feeds relevant to the query from the web.
+async def tool_search_web(query: str) -> str:
+    """Search the web for news sources relevant to the query. Returns search results \
+with URLs and descriptions.
+
+    Use this to find RSS feeds, Telegram channels, Reddit subreddits, and Twitter/X accounts.
+    Try queries like "best RSS feeds about [topic]", "Telegram channels for [topic] news", etc.
 
     Args:
-        query: The user's news subscription request describing their interests.
+        query: Search query to find relevant news sources.
     """
-    items = await discover_rss_feeds(query)
-    return f"Discovered RSS feeds:\n{_format_discovered_sources(items)}"
-
-
-@function_tool
-async def tool_discover_telegram_channels(query: str) -> str:
-    """Discover public Telegram channels relevant to the query.
-
-    Args:
-        query: The user's news subscription request describing their interests.
-    """
-    items = await discover_telegram_channels(query)
-    return f"Discovered Telegram channels:\n{_format_discovered_sources(items)}"
-
-
-@function_tool
-async def tool_discover_reddit_subreddits(query: str) -> str:
-    """Discover Reddit subreddits relevant to the query.
-
-    Args:
-        query: The user's news subscription request describing their interests.
-    """
-    items = await discover_reddit_subreddits(query)
-    return f"Discovered subreddits:\n{_format_discovered_sources(items)}"
-
-
-@function_tool
-async def tool_discover_twitter_accounts(query: str) -> str:
-    """Discover Twitter/X accounts relevant to the query.
-
-    Args:
-        query: The user's news subscription request describing their interests.
-    """
-    items = await discover_twitter_accounts(query)
-    return f"Discovered Twitter accounts:\n{_format_discovered_sources(items)}"
+    return await search_web(query)
 
 
 def _create_source_discovery_agent(
@@ -137,18 +92,18 @@ def _create_source_discovery_agent(
             query: The search query to find relevant existing sources.
         """
         query_embedding = await embed_text(query)
-        feeds = await find_similar_feeds(
+        sources = await find_similar_sources(
             session,
             query_embedding,
             threshold=settings.content_db_candidate_threshold,
             limit=settings.source_target_count * 2,
         )
-        if not feeds:
+        if not sources:
             return "No existing sources found in database."
         lines: list[str] = []
-        for feed in feeds:
-            desc = (feed.source_description or "")[:120]
-            lines.append(f"- {feed.url} (title: {feed.title}, description: {desc})")
+        for src in sources:
+            desc = (src.source_description or "")[:120]
+            lines.append(f"- {src.url} (title: {src.title}, description: {desc})")
         return f"Existing sources in database:\n{'\n'.join(lines)}"
 
     @function_tool
@@ -179,10 +134,7 @@ def _create_source_discovery_agent(
         instructions=instructions,
         tools=[
             search_existing_sources,
-            tool_discover_rss_feeds,
-            tool_discover_telegram_channels,
-            tool_discover_reddit_subreddits,
-            # tool_discover_twitter_accounts,  # disabled until Twitter rate limits stabilize
+            tool_search_web,
             validate_and_score_source,
         ],
         model=agents_model,
@@ -193,10 +145,7 @@ def _create_source_discovery_agent(
 
 _TOOL_STATUS: dict[str, str] = {
     "search_existing_sources": "Searching known sources...",
-    "tool_discover_rss_feeds": "Discovering RSS feeds...",
-    "tool_discover_telegram_channels": "Discovering Telegram channels...",
-    "tool_discover_reddit_subreddits": "Discovering Reddit communities...",
-    "tool_discover_twitter_accounts": "Discovering X/Twitter accounts...",
+    "tool_search_web": "Searching the web...",
     "validate_and_score_source": "Validating source...",
 }
 

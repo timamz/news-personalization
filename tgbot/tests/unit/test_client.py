@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from tgbot.client import BackendClient
-from tgbot.core.config import get_settings
 
 
 @pytest.fixture
@@ -119,129 +118,6 @@ async def test_update_user_timezone(client: BackendClient):
         "http://test-backend:8000/users/me",
         headers={"X-API-Key": "api-key"},
         json={"timezone": "Europe/Berlin"},
-    )
-
-
-@pytest.mark.asyncio
-async def test_create_subscription(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 201
-    mock_response.json.return_value = {
-        "id": "sub-456",
-        "raw_prompt": "AI news every morning",
-        "prompt_summary": "AI news every morning",
-        "delivery_mode": "digest",
-        "schedule_cron": "0 8 * * *",
-        "format_instructions": "brief summary",
-        "digest_language": "en",
-        "delivery_webhook_url": "http://bot:8001/deliver/123",
-        "is_active": True,
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        sub = await client.create_subscription(
-            "my-key", "AI news every morning", "http://bot:8001/deliver/123"
-        )
-
-    assert sub.id == "sub-456"
-    assert sub.prompt_summary == "AI news every morning"
-    assert sub.delivery_mode == "digest"
-    assert sub.digest_language == "en"
-
-
-@pytest.mark.asyncio
-async def test_create_subscription_uses_configured_timeout(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 201
-    mock_response.json.return_value = {
-        "id": "sub-789",
-        "raw_prompt": "AI news every morning",
-        "prompt_summary": "AI news every morning",
-        "delivery_mode": "digest",
-        "schedule_cron": "0 8 * * *",
-        "format_instructions": "brief summary",
-        "digest_language": "en",
-        "delivery_webhook_url": "http://bot:8001/deliver/123",
-        "is_active": True,
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http) as patched_client:
-        await client.create_subscription(
-            "my-key", "AI news every morning", "http://bot:8001/deliver/123"
-        )
-
-    patched_client.assert_called_once_with(
-        timeout=get_settings().backend_create_subscription_timeout_seconds
-    )
-
-
-@pytest.mark.asyncio
-async def test_create_subscription_sends_source_preferences(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 201
-    mock_response.json.return_value = {
-        "id": "sub-999",
-        "raw_prompt": "ML news",
-        "prompt_summary": "ML news",
-        "delivery_mode": "digest",
-        "schedule_cron": "0 8 * * *",
-        "format_instructions": "brief summary",
-        "digest_language": "ru",
-        "delivery_webhook_url": "http://bot:8001/deliver/123",
-        "is_active": True,
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        await client.create_subscription(
-            "my-key",
-            "ML news",
-            "http://bot:8001/deliver/123",
-            fixed_telegram_channels=["gonzo_ml"],
-            fixed_reddit_subreddits=["machinelearning"],
-            fixed_twitter_accounts=["openai"],
-            include_discovered_sources=True,
-            schedule_cron_override="0 9 * * *",
-            manual_only=False,
-            delivery_mode="digest",
-            digest_language="ru",
-        )
-
-    mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions",
-        headers={"X-API-Key": "my-key"},
-        json={
-            "prompt": "ML news",
-            "delivery_webhook_url": "http://bot:8001/deliver/123",
-            "fixed_telegram_channels": ["gonzo_ml"],
-            "fixed_reddit_subreddits": ["machinelearning"],
-            "fixed_twitter_accounts": ["openai"],
-            "include_discovered_sources": True,
-            "schedule_cron_override": "0 9 * * *",
-            "manual_only": False,
-            "delivery_mode": "digest",
-            "digest_language_override": "ru",
-        },
     )
 
 

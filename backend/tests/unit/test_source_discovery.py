@@ -5,64 +5,26 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from news_service.agents.discovery import DiscoveredSourceItem
 from news_service.agents.source_discovery import (
     ScoredSource,
     SourceDiscoveryResult,
     _create_source_discovery_agent,
-    _format_discovered_sources,
     run_source_discovery,
-    tool_discover_rss_feeds,
-    tool_discover_telegram_channels,
+    tool_search_web,
 )
 
 
-def test_format_discovered_sources_empty():
-    assert _format_discovered_sources([]) == "No sources found."
-
-
-def test_format_discovered_sources_formats_items():
-    items = [
-        DiscoveredSourceItem(url="https://a.com/feed", title="Feed A", source_kind="rss"),
-        DiscoveredSourceItem(
-            url="https://t.me/s/chan", title="Chan", source_kind="telegram_channel"
-        ),
-    ]
-    result = _format_discovered_sources(items)
-    assert "https://a.com/feed" in result
-    assert "rss" in result
-    assert "https://t.me/s/chan" in result
-    assert "telegram_channel" in result
-
-
 @pytest.mark.asyncio
-async def test_tool_discover_rss_feeds_wraps_discovery(mocker):
-    items = [DiscoveredSourceItem(url="https://a.com/rss", title="A", source_kind="rss")]
+async def test_tool_search_web_wraps_search(mocker):
     mocker.patch(
-        "news_service.agents.source_discovery.discover_rss_feeds",
-        new=AsyncMock(return_value=items),
+        "news_service.agents.source_discovery.search_web",
+        new=AsyncMock(return_value="Found: https://a.com/rss - AI news feed"),
     )
 
-    result = await tool_discover_rss_feeds.on_invoke_tool(MagicMock(), '{"query": "AI news"}')
+    result = await tool_search_web.on_invoke_tool(
+        MagicMock(), '{"query": "best RSS feeds about AI"}'
+    )
     assert "https://a.com/rss" in result
-
-
-@pytest.mark.asyncio
-async def test_tool_discover_telegram_channels_wraps_discovery(mocker):
-    items = [
-        DiscoveredSourceItem(
-            url="https://t.me/s/aichan", title="AI Chan", source_kind="telegram_channel"
-        )
-    ]
-    mocker.patch(
-        "news_service.agents.source_discovery.discover_telegram_channels",
-        new=AsyncMock(return_value=items),
-    )
-
-    result = await tool_discover_telegram_channels.on_invoke_tool(
-        MagicMock(), '{"query": "AI news"}'
-    )
-    assert "https://t.me/s/aichan" in result
 
 
 @pytest.mark.asyncio
@@ -72,12 +34,9 @@ async def test_create_agent_has_correct_tools():
 
     tool_names = {t.name for t in agent.tools}
     assert "search_existing_sources" in tool_names
-    assert "tool_discover_rss_feeds" in tool_names
-    assert "tool_discover_telegram_channels" in tool_names
-    assert "tool_discover_reddit_subreddits" in tool_names
-    # tool_discover_twitter_accounts disabled until Twitter rate limits stabilize
+    assert "tool_search_web" in tool_names
     assert "validate_and_score_source" in tool_names
-    assert len(agent.tools) == 5
+    assert len(agent.tools) == 3
 
 
 @pytest.mark.asyncio
@@ -117,11 +76,11 @@ async def test_run_source_discovery_returns_agent_result(mocker):
 
 @pytest.mark.asyncio
 async def test_search_existing_sources_tool(mocker):
-    """The closure-based search tool calls find_similar_feeds."""
+    """The closure-based search tool calls find_similar_sources."""
     session = AsyncMock()
     prompt_embedding = [0.1] * 10
 
-    mock_feed = SimpleNamespace(
+    mock_source = SimpleNamespace(
         url="https://existing.com/feed",
         title="Existing",
         source_description="Covers AI news",
@@ -131,8 +90,8 @@ async def test_search_existing_sources_tool(mocker):
         new=AsyncMock(return_value=[0.2] * 10),
     )
     mocker.patch(
-        "news_service.agents.source_discovery.find_similar_feeds",
-        new=AsyncMock(return_value=[mock_feed]),
+        "news_service.agents.source_discovery.find_similar_sources",
+        new=AsyncMock(return_value=[mock_source]),
     )
 
     agent = _create_source_discovery_agent(session, prompt_embedding)

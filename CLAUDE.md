@@ -37,20 +37,28 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 
 | Agent | File | Trigger | Input | Output |
 |---|---|---|---|---|
-| **Subscription Parser** | `agents/subscription_parser.py` | Conversational subscription setup | Multi-turn message history | `AgentTurnOutput` with agent message, choices, and `FinalizedSubscriptionConfig` when ready |
+| **Subscription Parser** | `agents/subscription_parser.py` | Conversational subscription setup | Multi-turn message history | `AgentTurnOutput` with agent message, choices, and `FinalizedSubscriptionConfig` (including `canonical_prompt`) when ready |
 | **Schedule Parser** | `agents/schedule_parser.py` | Schedule editing | Natural language schedule text | Cron expression |
-| **Source Discovery** | `agents/source_discovery.py` | New subscription (no explicit sources) | User prompt + prompt embedding | Scored list of validated source URLs via tool-calling agent |
-| **Discovery Tools** | `agents/discovery.py` | Called by Source Discovery agent | User prompt | Valid RSS feed URLs, public Telegram channel URLs, Reddit subreddit URLs, and public X/Twitter account URLs |
-| **Source Poller** | `tasks/poll_feeds.py` | Celery Beat (every 30 min) | All active source rows (`rss_feeds`) | New `NewsItem` rows + embeddings; queues event notifications for feeds with event subscriptions |
+| **Source Discovery** | `agents/source_discovery.py` | New subscription (no explicit sources) | User prompt + prompt embedding | Scored list of validated source URLs via tool-calling agent with web search |
+| **Web Search + Validation** | `agents/discovery.py` | Called by Source Discovery agent | Search queries | Real web search results via OpenAI Responses API `web_search` tool; URL validation and normalization |
+| **Source Poller** | `tasks/poll_feeds.py` | Celery Beat (every 30 min) | All active source rows (`sources`) | New `NewsItem` rows + embeddings; queues event notifications for sources with event subscriptions |
 | **Event Assessor** | `agents/event.py` | Event notification delivery | News item + subscription prompt + notification history | `EventAssessmentResult`: detects event, judges relevance, checks dedup, composes notification — all in one LLM call |
-| **Event Notifier** | `tasks/deliver_events.py` | New item from a feed with event subscriptions | `NewsItem` + matching subscriptions | Immediate webhook notifications via single-shot Event Assessor |
+| **Event Notifier** | `tasks/deliver_events.py` | New item from a source with event subscriptions | `NewsItem` + matching subscriptions | Immediate webhook notifications via Event Assessor (concurrent, bounded by `recent_event_match_concurrency`) |
 | **Digest Dispatcher** | `tasks/schedule_digests.py` | Celery Beat (every 1 min) | Active subscriptions with schedule set | Queued digest delivery tasks |
 | **Digest Curator** | `agents/digest_curator.py` | Digest delivery task | Subscription context (embedding, sources, exclusions) | Pre-fetches candidates by relevance + recency, ranks by cosine similarity, single LLM call for selection + composition |
 | **Digest Orchestrator** | `agents/digest.py` + `tasks/deliver_digest.py` | Dispatcher task | Subscription + unseen news from fixed subscription sources | Delegates to Digest Curator, marks items sent, delivers via webhook |
 
-Source Discovery uses the OpenAI Agents SDK (`openai-agents`) with tool-calling: the SDK manages the agent loop (LLM call → tool execution → result feedback → repeat) while the tools wrap existing functions (discovery, scoring, vector search). Source Discovery autonomously searches the existing DB, discovers new sources across RSS/Telegram/Reddit, validates URLs, and scores content relevance. Subscription Parser uses the Chat Completions API with manual tool dispatch for multi-turn subscription setup conversations; it asks clarifying questions, validates sources via tools, and returns a finalized config when done. Conversation state is stored in Redis with a configurable TTL (`conversation_ttl_seconds`). Digest Curator uses a single-shot Chat Completions call: it pre-fetches candidates from the DB (by relevance and recency), ranks by cosine similarity, fills up to a configurable context budget (`llm_max_context_chars`), and passes them to one LLM call for selection and composition. Event Assessor combines event detection, subscription relevance matching, dedup against notification history, and notification composition into a single LLM call per (item, subscription) pair — no pre-detection during polling. The Source Discovery agent uses `OpenAIChatCompletionsModel` for compatibility with the custom API proxy. All LLM calls are wrapped with `@with_llm_retry()` for exponential backoff on transient errors.
+Source Discovery uses the OpenAI Agents SDK (`openai-agents`) with tool-calling: the SDK manages the agent loop (LLM call → tool execution → result feedback → repeat). The agent has three tools: `search_existing_sources` (vector search in DB), `tool_search_web` (real web search via OpenAI Responses API with `web_search` tool), and `validate_and_score_source` (fetches real posts, embeds, scores cosine similarity). Source Discovery autonomously searches the existing DB, searches the web for new sources across RSS/Telegram/Reddit, validates URLs, and scores content relevance.
 
-Each fixed source stores a short LLM-generated source description plus an embedding, and prompt-to-source matching uses the raw-prompt embedding against those source-description embeddings. Source Poller ingests RSS feeds (`feedparser`), public Telegram channels (`t.me/s/<channel>` HTML parsing), Reddit subreddits (`/r/<subreddit>/new/` via headless Firefox + same-origin JSON fetch), and public X/Twitter accounts (`syndication.twitter.com` server-rendered timelines with rate-limit-aware retries). Scheduled digests are evaluated in each user's stored IANA timezone.
+Subscription Parser uses the Chat Completions API with manual tool dispatch for multi-turn subscription setup conversations; it asks clarifying questions, validates sources via tools, produces a `canonical_prompt` (user's prompt with orthographical mistakes corrected), and returns a finalized config when done. Conversation state is stored in Redis with a configurable TTL (`conversation_ttl_seconds`).
+
+Digest Curator uses a single-shot Chat Completions call: it pre-fetches candidates from the DB (by relevance and recency), ranks by cosine similarity, fills up to a configurable context budget (`llm_max_context_chars`), and passes them to one LLM call for selection and composition.
+
+Event Assessor combines event detection, subscription relevance matching, dedup against notification history, and notification composition into a single LLM call per (item, subscription) pair — no pre-detection during polling. Event assessments run concurrently (bounded by `recent_event_match_concurrency`, default 8). Pre-LLM dedup uses Jaccard token overlap (≥0.85) and SequenceMatcher similarity (≥0.96) against recent notification history.
+
+All LLM calls use the direct OpenAI API (`gpt-5.4-nano` by default) and are wrapped with `@with_llm_retry()` for exponential backoff on transient errors. Each subscription stores only a `canonical_prompt_embedding` (no separate `raw_prompt_embedding`).
+
+Each fixed source stores a short LLM-generated source description plus an embedding, and prompt-to-source matching uses the canonical-prompt embedding against those source-description embeddings. Source Poller ingests RSS feeds (`feedparser`), public Telegram channels (`t.me/s/<channel>` HTML parsing), Reddit subreddits (`/r/<subreddit>/new/` via headless Firefox + same-origin JSON fetch), and public X/Twitter accounts (`syndication.twitter.com` server-rendered timelines with rate-limit-aware retries). Scheduled digests are evaluated in each user's stored IANA timezone.
 
 ---
 
@@ -63,6 +71,12 @@ The system is composed of independent services that communicate over HTTP:
 - **Future frontends** — web app, mobile app, email service, etc. Each is a sibling directory with the same pattern: call the backend API, expose a webhook endpoint for deliveries.
 
 The backend never imports from or depends on any frontend. Frontends depend only on the backend's public REST API.
+
+---
+
+## API Design
+
+All endpoints that involve LLM processing use **NDJSON streaming** (`application/x-ndjson`). There are no non-streaming variants — callers that don't need progress updates consume the stream and use the final `"done"` event.
 
 ---
 
@@ -186,7 +200,7 @@ uv run pytest             # run in managed environment
 - Async SQLAlchemy with `asyncpg`. No synchronous DB calls in async context.
 - All schema changes via Alembic migrations. Never modify the DB schema manually.
 - `pgvector` for embeddings. Use `text-embedding-3-small` (1536 dimensions).
-- Each subscription stores a fixed set of source links in `subscription_sources`; digest retrieval must use only those sources.
+- The `sources` table (model: `Source`) stores all source types (RSS, Telegram, Reddit, Twitter). The `subscription_sources` join table links subscriptions to their fixed sources; digest/event retrieval must use only those sources.
 
 ---
 
@@ -194,7 +208,7 @@ uv run pytest             # run in managed environment
 
 - Structured JSON logs via the standard `logging` module configured in `core/logging.py`.
 - Log levels: `DEBUG` locally, `INFO` in production.
-- Always include context: `subscription_id`, `feed_id`, `user_id` where relevant.
+- Always include context: `subscription_id`, `source_id`, `user_id` where relevant.
 - Never log secrets or PII.
 
 ---

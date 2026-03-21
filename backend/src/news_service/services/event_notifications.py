@@ -68,29 +68,8 @@ def notification_history_entry_from_item(
         sent_at=sent_at,
         source=item.source,
         title=item.headline,
-        summary=item.body[:200],
+        summary=item.body,
     )
-
-
-async def list_recent_subscription_events(
-    session: AsyncSession,
-    subscription: Subscription,
-    *,
-    lookback_days: int = 7,
-    now: datetime | None = None,
-) -> list[NewsItem]:
-    items = await load_recent_event_candidates(
-        session,
-        subscription.id,
-        lookback_days=lookback_days,
-        now=now,
-    )
-    if not items:
-        return []
-
-    history = await load_recent_notification_history(session, subscription.id)
-    reference_now = now or datetime.now(UTC)
-    return _filter_obvious_duplicates(items, history, sent_at=reference_now)
 
 
 async def load_recent_event_candidates(
@@ -106,30 +85,15 @@ async def load_recent_event_candidates(
 
     result = await session.execute(
         select(NewsItem)
-        .join(SubscriptionSource, SubscriptionSource.feed_id == NewsItem.feed_id)
+        .join(SubscriptionSource, SubscriptionSource.source_id == NewsItem.source_id)
         .where(
             SubscriptionSource.subscription_id == subscription_id,
             recent_marker >= cutoff,
         )
         .order_by(recent_marker.desc(), NewsItem.fetched_at.desc())
-        .limit(50)
+        .limit(200)
     )
     return list(result.scalars().all())
-
-
-async def build_recent_events_preview(
-    digest_language: str,
-    items: list[NewsItem],
-    *,
-    lookback_days: int,
-) -> RecentEventsPreview:
-    news_item_ids = [item.id for item in items]
-    subject, body = _fallback_recent_events_preview(digest_language, items, lookback_days)
-    return RecentEventsPreview(
-        news_item_ids=news_item_ids,
-        subject=subject,
-        body=body,
-    )
 
 
 async def build_recent_events_preview_for_subscription(
@@ -148,14 +112,13 @@ async def build_recent_events_preview_for_subscription(
     if not items:
         return None
 
-    deduplicated_items = _deduplicate_preview_candidates(items)
     history = await load_recent_notification_history(session, subscription.id)
     try:
         decision = await render_recent_events_preview(
-            raw_prompt=(getattr(subscription, "canonical_prompt", "") or subscription.raw_prompt),
+            raw_prompt=subscription.canonical_prompt,
             target_language=subscription.digest_language,
             lookback_days=lookback_days,
-            candidate_events=[_format_preview_candidate(item) for item in deduplicated_items],
+            candidate_events=[_format_preview_candidate(item) for item in items],
             recent_notifications=[_format_history_entry(entry) for entry in history],
         )
     except Exception:
@@ -164,24 +127,12 @@ async def build_recent_events_preview_for_subscription(
             subscription.id,
             extra={"subscription_id": str(subscription.id)},
         )
-        fallback_items = await list_recent_subscription_events(
-            session,
-            subscription,
-            lookback_days=lookback_days,
-            now=now,
-        )
-        if not fallback_items:
-            return None
-        return await build_recent_events_preview(
-            subscription.digest_language,
-            fallback_items,
-            lookback_days=lookback_days,
-        )
+        return None
 
     if not decision.selected_item_ids:
         return None
 
-    items_by_id = {str(item.id): item for item in deduplicated_items}
+    items_by_id = {str(item.id): item for item in items}
     selected_items = [
         items_by_id[item_id] for item_id in decision.selected_item_ids if item_id in items_by_id
     ]
@@ -191,49 +142,13 @@ async def build_recent_events_preview_for_subscription(
     subject = decision.subject.strip()
     body = decision.body.strip()
     if not subject or not body:
-        return await build_recent_events_preview(
-            subscription.digest_language,
-            selected_items,
-            lookback_days=lookback_days,
-        )
+        return None
 
     return RecentEventsPreview(
         news_item_ids=[item.id for item in selected_items],
         subject=subject,
         body=body,
     )
-
-
-def _filter_obvious_duplicates(
-    items: list[NewsItem],
-    history: list[RecentNotificationEntry],
-    *,
-    sent_at: datetime,
-) -> list[NewsItem]:
-    rolling_history = list(history)
-    filtered: list[NewsItem] = []
-    for item in items:
-        candidate_title = _normalize_event_text(item.headline)
-        is_dup = False
-        for entry in rolling_history:
-            history_title = _normalize_event_text(entry.title)
-            if (
-                candidate_title
-                and history_title
-                and (
-                    _token_overlap(candidate_title, history_title) >= 0.85
-                    or _text_similarity(candidate_title, history_title) >= 0.96
-                )
-            ):
-                is_dup = True
-                break
-        if is_dup:
-            continue
-
-        filtered.append(item)
-        rolling_history.insert(0, notification_history_entry_from_item(item, sent_at=sent_at))
-
-    return filtered
 
 
 def _format_history_entry(entry: RecentNotificationEntry) -> str:
@@ -251,68 +166,14 @@ def _format_preview_candidate(item: NewsItem) -> str:
         f"ID: {item.id}",
         f"Title: {item.headline}",
     ]
-    body_preview = item.body[:200] if item.body else ""
+    body_preview = item.body or ""
     if body_preview:
         lines.append(f"Summary: {body_preview}")
     lines.append(f"URL: {item.url}")
     return "\n".join(lines)
 
 
-def _fallback_recent_events_preview(
-    digest_language: str,
-    items: list[NewsItem],
-    lookback_days: int,
-) -> tuple[str, str]:
-    if digest_language.strip().lower().split("-", maxsplit=1)[0] == "ru":
-        subject = "Что вы могли пропустить"
-        intro = f"Вот релевантные события за последние {lookback_days} дней:"
-    else:
-        subject = "Recent events you may have missed"
-        intro = f"Here are the relevant events from the last {lookback_days} days:"
-
-    bullets = []
-    for item in items:
-        title = item.headline
-        summary = item.body[:200] if item.body else item.headline
-        bullet_parts = [title]
-        if summary and summary != title:
-            bullet_parts.append(summary)
-        bullets.append(f"- {' | '.join(bullet_parts)}\n{item.url}")
-    return subject, f"{intro}\n\n" + "\n\n".join(bullets)
-
-
-def _deduplicate_preview_candidates(items: list[NewsItem]) -> list[NewsItem]:
-    deduplicated: list[NewsItem] = []
-    preview_history: list[RecentNotificationEntry] = []
-    for item in items:
-        candidate_title = _normalize_event_text(item.headline)
-        is_dup = False
-        for entry in preview_history:
-            history_title = _normalize_event_text(entry.title)
-            if (
-                candidate_title
-                and history_title
-                and (
-                    _token_overlap(candidate_title, history_title) >= 0.85
-                    or _text_similarity(candidate_title, history_title) >= 0.96
-                )
-            ):
-                is_dup = True
-                break
-        if is_dup:
-            continue
-        deduplicated.append(item)
-        preview_history.insert(
-            0,
-            notification_history_entry_from_item(
-                item,
-                sent_at=item.published_at or item.fetched_at,
-            ),
-        )
-    return deduplicated
-
-
-def _normalize_event_text(*parts: str | None) -> str:
+def normalize_event_text(*parts: str | None) -> str:
     values = [part for part in parts if part]
     if not values:
         return ""
@@ -321,7 +182,7 @@ def _normalize_event_text(*parts: str | None) -> str:
     return " ".join(tokens)
 
 
-def _token_overlap(left: str, right: str) -> float:
+def token_overlap(left: str, right: str) -> float:
     left_tokens = {token for token in left.split() if len(token) >= 4}
     right_tokens = {token for token in right.split() if len(token) >= 4}
     if not left_tokens or not right_tokens:
@@ -329,5 +190,5 @@ def _token_overlap(left: str, right: str) -> float:
     return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
 
 
-def _text_similarity(left: str, right: str) -> float:
+def text_similarity(left: str, right: str) -> float:
     return SequenceMatcher(a=left, b=right).ratio()

@@ -4,11 +4,10 @@ from typing import Literal
 
 import feedparser
 import httpx
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
-from news_service.core.llm_retry import with_llm_retry
-from news_service.core.openai_client import openai_client
 from news_service.services.reddit import (
     build_reddit_subreddit_url,
     extract_reddit_subreddit_from_url,
@@ -31,53 +30,8 @@ from news_service.services.twitter import (
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
-_client = openai_client
 
 type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
-
-RSS_SYSTEM_PROMPT = """\
-You are an RSS source discovery agent. Given a user's original news request, find real, working \
-RSS or Atom feeds that are relevant to it.
-
-Rules:
-- Return only RSS/Atom feed URLs, never homepages.
-- Prefer high-signal, active sources from established publishers or niche experts.
-- Find 3-6 good feeds per topic when possible.
-- Do not return Telegram URLs or social profiles.
-"""
-
-TELEGRAM_SYSTEM_PROMPT = """\
-You are a Telegram source discovery agent. Given a user's original news request, find real, \
-working public Telegram channels that are relevant to it.
-
-Rules:
-- Return only public Telegram channel archive URLs in the format https://t.me/s/<channel>.
-- Prefer high-signal, active channels with frequent news or analysis posts.
-- Find 3-6 good channels per topic when possible.
-- Do not return RSS feeds, websites, invite links, group chats, or private channels.
-"""
-
-REDDIT_SYSTEM_PROMPT = """\
-You are a Reddit source discovery agent. Given a user's original news request, find real, active \
-public Reddit subreddits that are relevant to it.
-
-Rules:
-- Return only subreddit URLs in the format https://www.reddit.com/r/<subreddit>/new/.
-- Prefer active communities where new topical posts appear regularly.
-- Find 3-6 good subreddits per topic when possible.
-- Do not return Reddit post URLs, users, or non-Reddit websites.
-"""
-
-TWITTER_SYSTEM_PROMPT = """\
-You are a Twitter/X source discovery agent. Given a user's original news request, find real, \
-active public Twitter/X accounts that are relevant to it.
-
-Rules:
-- Return only profile URLs in the format https://x.com/<account>.
-- Prefer active accounts that post original news, announcements, or analysis.
-- Find 3-6 good accounts per topic when possible.
-- Do not return tweet URLs, lists, hashtags, or non-X websites.
-"""
 
 
 class DiscoveredSourceItem(BaseModel):
@@ -90,112 +44,29 @@ class DiscoveredSourceList(BaseModel):
     sources: list[DiscoveredSourceItem] = Field(..., description="List of discovered sources")
 
 
-# Backward-compatible aliases for older imports.
-DiscoveredFeedItem = DiscoveredSourceItem
-DiscoveredFeedList = DiscoveredSourceList
+_sync_client: OpenAI | None = None
 
 
-async def discover_sources(raw_prompt: str) -> list[DiscoveredSourceItem]:
-    rss_sources, telegram_sources, reddit_sources, twitter_sources = await asyncio.gather(
-        discover_rss_feeds(raw_prompt),
-        discover_telegram_channels(raw_prompt),
-        discover_reddit_subreddits(raw_prompt),
-        discover_twitter_accounts(raw_prompt),
-    )
-    merged: dict[str, DiscoveredSourceItem] = {}
-    for source in [*rss_sources, *telegram_sources, *reddit_sources, *twitter_sources]:
-        merged.setdefault(source.url, source)
-    return list(merged.values())
+def _get_sync_client() -> OpenAI:
+    global _sync_client  # noqa: PLW0603
+    if _sync_client is None:
+        _sync_client = OpenAI(api_key=settings.openai_api_key)
+    return _sync_client
 
 
-async def discover_feeds(raw_prompt: str) -> list[DiscoveredSourceItem]:
-    return await discover_sources(raw_prompt)
+async def search_web(query: str) -> str:
+    """Search the web using OpenAI's web_search tool and return results."""
 
+    def _search() -> str:
+        client = _get_sync_client()
+        response = client.responses.create(
+            model=settings.llm_model,
+            tools=[{"type": "web_search"}],
+            input=query,
+        )
+        return response.output_text
 
-async def discover_rss_feeds(raw_prompt: str) -> list[DiscoveredSourceItem]:
-    return await _discover_sources_for_kind(
-        raw_prompt,
-        source_kind="rss",
-        system_prompt=RSS_SYSTEM_PROMPT,
-        user_prompt_prefix="The user wants to get:",
-    )
-
-
-async def discover_telegram_channels(raw_prompt: str) -> list[DiscoveredSourceItem]:
-    return await _discover_sources_for_kind(
-        raw_prompt,
-        source_kind="telegram_channel",
-        system_prompt=TELEGRAM_SYSTEM_PROMPT,
-        user_prompt_prefix="The user wants to get:",
-    )
-
-
-async def discover_reddit_subreddits(raw_prompt: str) -> list[DiscoveredSourceItem]:
-    return await _discover_sources_for_kind(
-        raw_prompt,
-        source_kind="reddit_subreddit",
-        system_prompt=REDDIT_SYSTEM_PROMPT,
-        user_prompt_prefix="The user wants to get:",
-    )
-
-
-async def discover_twitter_accounts(raw_prompt: str) -> list[DiscoveredSourceItem]:
-    return await _discover_sources_for_kind(
-        raw_prompt,
-        source_kind="twitter_account",
-        system_prompt=TWITTER_SYSTEM_PROMPT,
-        user_prompt_prefix="The user wants to get:",
-    )
-
-
-@with_llm_retry()
-async def _discover_sources_for_kind(
-    raw_prompt: str,
-    *,
-    source_kind: SourceKind,
-    system_prompt: str,
-    user_prompt_prefix: str,
-) -> list[DiscoveredSourceItem]:
-    completion = await _client.beta.chat.completions.parse(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"{user_prompt_prefix} {raw_prompt}"},
-        ],
-        response_format=DiscoveredSourceList,
-        temperature=0.1,
-    )
-    result = completion.choices[0].message.parsed
-    if result is None:
-        raise ValueError(f"LLM returned empty response for prompt: {raw_prompt}")
-
-    validated: list[DiscoveredSourceItem] = []
-    seen_urls: set[str] = set()
-    for source in result.sources:
-        if source.source_kind != source_kind:
-            logger.warning(
-                "Discarded source with mismatched kind %s for requested kind %s: %s",
-                source.source_kind,
-                source_kind,
-                source.url,
-            )
-            continue
-
-        normalized_url = normalize_source_url(source.url, source_kind=source_kind)
-        if normalized_url is None or normalized_url in seen_urls:
-            logger.warning("Invalid source URL discarded: %s", source.url)
-            continue
-
-        is_valid = await validate_source_url(normalized_url, source_kind=source_kind)
-        if not is_valid:
-            logger.warning("Invalid source URL discarded: %s", normalized_url)
-            continue
-
-        seen_urls.add(normalized_url)
-        validated.append(source.model_copy(update={"url": normalized_url}))
-        logger.info("Validated %s source: %s (%s)", source_kind, normalized_url, source.title)
-
-    return validated
+    return await asyncio.to_thread(_search)
 
 
 def normalize_source_url(url: str, *, source_kind: SourceKind) -> str | None:

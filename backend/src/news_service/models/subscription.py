@@ -16,7 +16,6 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     raw_prompt: Mapped[str] = mapped_column(Text, nullable=False)
-    raw_prompt_embedding = mapped_column(Vector(1536), nullable=True)
     canonical_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
     canonical_prompt_embedding = mapped_column(Vector(1536), nullable=True)
     prompt_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")

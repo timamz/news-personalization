@@ -1,5 +1,6 @@
 """Tests for conversation-based subscription setup endpoints."""
 
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -58,8 +59,20 @@ async def _mock_streaming_turn(output: AgentTurnOutput):
     }
 
 
+async def _collect_streaming_response(response) -> list[dict]:
+    """Consume a StreamingResponse and return parsed NDJSON events."""
+    chunks: list[bytes] = []
+    async for chunk in response.body_iterator:
+        if isinstance(chunk, str):
+            chunks.append(chunk.encode())
+        else:
+            chunks.append(chunk)
+    raw = b"".join(chunks).decode()
+    return [json.loads(line) for line in raw.strip().splitlines() if line.strip()]
+
+
 @pytest.mark.asyncio
-async def test_start_conversation(mocker):
+async def test_start_conversation_stream(mocker):
     agent_output = AgentTurnOutput(
         message="What schedule do you prefer?",
         status="in_progress",
@@ -75,25 +88,29 @@ async def test_start_conversation(mocker):
     mock_user = MagicMock()
     mock_user.id = "user-123"
 
-    from news_service.api.routes_conversations import start_conversation
+    from news_service.api.routes_conversations import start_conversation_stream
     from news_service.schemas.conversation import ConversationStartRequest
 
     request = ConversationStartRequest(message="AI news", user_language="en")
 
     with patch(f"{MODULE}.get_current_user", return_value=mock_user):
-        response = await start_conversation(request, user=mock_user)
+        response = await start_conversation_stream(request, user=mock_user)
 
-    assert response.status == "in_progress"
-    assert response.agent_message == "What schedule do you prefer?"
-    assert response.conversation_id
-    assert response.finalized_config is None
+    events = await _collect_streaming_response(response)
+    done_events = [e for e in events if e.get("event") == "done"]
+    assert len(done_events) == 1
+    done = done_events[0]
+    assert done["status"] == "in_progress"
+    assert done["agent_message"] == "What schedule do you prefer?"
+    assert done["conversation_id"]
+    assert done["finalized_config"] is None
 
     # Verify state was saved
     assert len(redis_mock._storage) == 1
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation(mocker):
+async def test_continue_conversation_stream(mocker):
     state = _make_state(
         messages=[
             {"role": "user", "content": "AI news"},
@@ -121,20 +138,24 @@ async def test_continue_conversation(mocker):
     mock_user = MagicMock()
     mock_user.id = "user-123"
 
-    from news_service.api.routes_conversations import continue_conversation
+    from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
     request = ConversationMessageRequest(message="every morning")
 
-    response = await continue_conversation(conv_id, request, user=mock_user)
+    response = await continue_conversation_stream(conv_id, request, user=mock_user)
 
-    assert response.status == "ready"
-    assert response.finalized_config is not None
-    assert response.finalized_config.prompt_summary == "AI news digest"
+    events = await _collect_streaming_response(response)
+    done_events = [e for e in events if e.get("event") == "done"]
+    assert len(done_events) == 1
+    done = done_events[0]
+    assert done["status"] == "ready"
+    assert done["finalized_config"] is not None
+    assert done["finalized_config"]["prompt_summary"] == "AI news digest"
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation_not_found(mocker):
+async def test_continue_conversation_stream_not_found(mocker):
     redis_mock = _mock_redis()
     mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
 
@@ -143,18 +164,18 @@ async def test_continue_conversation_not_found(mocker):
 
     from fastapi import HTTPException
 
-    from news_service.api.routes_conversations import continue_conversation
+    from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
     request = ConversationMessageRequest(message="hello")
 
     with pytest.raises(HTTPException) as exc_info:
-        await continue_conversation("nonexistent", request, user=mock_user)
+        await continue_conversation_stream("nonexistent", request, user=mock_user)
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation_wrong_user(mocker):
+async def test_continue_conversation_stream_wrong_user(mocker):
     state = _make_state(user_id="other-user")
     conv_id = "abc123"
     redis_mock = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
@@ -165,18 +186,18 @@ async def test_continue_conversation_wrong_user(mocker):
 
     from fastapi import HTTPException
 
-    from news_service.api.routes_conversations import continue_conversation
+    from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
     request = ConversationMessageRequest(message="hello")
 
     with pytest.raises(HTTPException) as exc_info:
-        await continue_conversation(conv_id, request, user=mock_user)
+        await continue_conversation_stream(conv_id, request, user=mock_user)
     assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation_already_finalized(mocker):
+async def test_continue_conversation_stream_already_finalized(mocker):
     state = _make_state(status="ready")
     conv_id = "abc123"
     redis_mock = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
@@ -187,13 +208,13 @@ async def test_continue_conversation_already_finalized(mocker):
 
     from fastapi import HTTPException
 
-    from news_service.api.routes_conversations import continue_conversation
+    from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
     request = ConversationMessageRequest(message="hello")
 
     with pytest.raises(HTTPException) as exc_info:
-        await continue_conversation(conv_id, request, user=mock_user)
+        await continue_conversation_stream(conv_id, request, user=mock_user)
     assert exc_info.value.status_code == 409
 
 

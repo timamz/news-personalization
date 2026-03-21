@@ -7,8 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from news_service.models.base import Base, TimestampMixin, UUIDPrimaryKey
 
 
-class RssFeed(UUIDPrimaryKey, TimestampMixin, Base):
-    __tablename__ = "rss_feeds"
+class Source(UUIDPrimaryKey, TimestampMixin, Base):
+    __tablename__ = "sources"
 
     url: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False, default="")
@@ -19,9 +19,9 @@ class RssFeed(UUIDPrimaryKey, TimestampMixin, Base):
     subscriber_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     news_items: Mapped[list["NewsItem"]] = relationship(  # noqa: F821
-        back_populates="feed", cascade="all, delete-orphan"
+        back_populates="news_source", cascade="all, delete-orphan"
     )
     subscription_links: Mapped[list["SubscriptionSource"]] = relationship(  # noqa: F821
-        back_populates="feed",
+        back_populates="source",
         cascade="all, delete-orphan",
     )

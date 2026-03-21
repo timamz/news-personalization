@@ -14,7 +14,7 @@ class JSONFormatter(logging.Formatter):
         }
         if record.exc_info and record.exc_info[1]:
             log_record["exception"] = self.formatException(record.exc_info)
-        for key in ("user_id", "subscription_id", "feed_id"):
+        for key in ("user_id", "subscription_id", "source_id"):
             value = getattr(record, key, None)
             if value is not None:
                 log_record[key] = value

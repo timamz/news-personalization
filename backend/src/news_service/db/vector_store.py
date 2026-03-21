@@ -10,7 +10,7 @@ from news_service.core.config import get_settings
 from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
 from news_service.models.news_item import NewsItem
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 
 settings = get_settings()
 _client = openai_client
@@ -62,13 +62,13 @@ async def embed_texts(contents: list[str]) -> list[list[float]]:
     return embeddings
 
 
-async def find_similar_feeds(
+async def find_similar_sources(
     session: AsyncSession,
     query_embedding: list[float],
     threshold: float | None = None,
     limit: int = 5,
-) -> list[RssFeed]:
-    """Find feeds whose topic embedding is within cosine similarity threshold.
+) -> list[Source]:
+    """Find sources whose topic embedding is within cosine similarity threshold.
 
     pgvector cosine_distance = 1 - cosine_similarity,
     so similarity >= threshold  ⟺  distance <= (1 - threshold).
@@ -79,13 +79,13 @@ async def find_similar_feeds(
     max_distance = 1.0 - threshold
 
     stmt = (
-        select(RssFeed)
+        select(Source)
         .where(
-            RssFeed.source_description_embedding.isnot(None),
-            RssFeed.is_active.is_(True),
-            RssFeed.source_description_embedding.cosine_distance(query_embedding) <= max_distance,
+            Source.source_description_embedding.isnot(None),
+            Source.is_active.is_(True),
+            Source.source_description_embedding.cosine_distance(query_embedding) <= max_distance,
         )
-        .order_by(RssFeed.source_description_embedding.cosine_distance(query_embedding))
+        .order_by(Source.source_description_embedding.cosine_distance(query_embedding))
         .limit(limit)
     )
     result = await session.execute(stmt)
@@ -96,11 +96,11 @@ async def find_similar_news(
     session: AsyncSession,
     query_embedding: list[float],
     exclude_ids: set[uuid.UUID],
-    allowed_feed_ids: set[uuid.UUID] | None = None,
+    allowed_source_ids: set[uuid.UUID] | None = None,
     published_after: datetime | None = None,
     limit: int = 20,
 ) -> list[NewsItem]:
-    if allowed_feed_ids is not None and not allowed_feed_ids:
+    if allowed_source_ids is not None and not allowed_source_ids:
         return []
 
     exclude_list = list(exclude_ids) if exclude_ids else [uuid.uuid4()]
@@ -109,8 +109,8 @@ async def find_similar_news(
         NewsItem.embedding.isnot(None),
         NewsItem.id.notin_(exclude_list),
     ]
-    if allowed_feed_ids is not None:
-        where_clauses.append(NewsItem.feed_id.in_(list(allowed_feed_ids)))
+    if allowed_source_ids is not None:
+        where_clauses.append(NewsItem.source_id.in_(list(allowed_source_ids)))
     if published_after is not None:
         where_clauses.append(recent_marker >= published_after)
 
@@ -131,7 +131,7 @@ async def find_similar_news(
 async def upsert_news_item(
     session: AsyncSession,
     *,
-    feed_id: uuid.UUID,
+    source_id: uuid.UUID,
     headline: str,
     body: str,
     url: str,
@@ -145,7 +145,7 @@ async def upsert_news_item(
         return None
 
     item = NewsItem(
-        feed_id=feed_id,
+        source_id=source_id,
         headline=headline,
         body=body,
         url=url,

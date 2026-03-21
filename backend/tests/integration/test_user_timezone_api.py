@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from tests.integration.helpers import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -45,10 +45,10 @@ async def test_create_subscription_rejects_schedule_without_timezone(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "AI updates every morning"
-        assert raw_prompt_embedding == [2.0] * 1536
-        feed = RssFeed(
+        assert prompt_embedding == [2.0] * 1536
+        src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
             source_description=f"Example Feed ({raw_prompt})",
@@ -56,9 +56,9 @@ async def test_create_subscription_rejects_schedule_without_timezone(
             is_active=True,
             subscriber_count=1,
         )
-        session.add(feed)
+        session.add(src)
         await session.flush()
-        return [feed]
+        return [src]
 
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_prompt_coverage",
@@ -69,7 +69,7 @@ async def test_create_subscription_rejects_schedule_without_timezone(
     api_key = user["api_key"]
 
     response = await api_client.post(
-        "/subscriptions",
+        "/subscriptions/stream",
         headers={"X-API-Key": api_key},
         json={
             "prompt": "AI updates every morning",

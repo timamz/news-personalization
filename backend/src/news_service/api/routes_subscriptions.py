@@ -16,15 +16,13 @@ from news_service.agents.subscription_edit import propose_subscription_edit
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
 from news_service.db.vector_store import embed_text
-from news_service.models.news_item import NewsItem
-from news_service.models.rss_feed import RssFeed
 from news_service.models.sent_item import SentItem
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
 from news_service.schemas.subscription import (
     RecentEventAcknowledgeRequest,
-    RecentEventsPreviewResponse,
     ScheduleParseRequest,
     ScheduleParseResponse,
     SubscriptionCreate,
@@ -43,7 +41,6 @@ from news_service.services.coverage import (
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
 )
-from news_service.services.feed_display import feed_display_name
 from news_service.services.prompt_summaries import build_prompt_summary
 from news_service.services.reddit import (
     build_reddit_subreddit_url,
@@ -51,6 +48,7 @@ from news_service.services.reddit import (
     normalize_reddit_subreddit,
 )
 from news_service.services.scheduler import parse_cron_to_celery
+from news_service.services.source_display import source_display_name
 from news_service.services.telegram import (
     build_telegram_channel_url,
     extract_telegram_channels,
@@ -115,8 +113,8 @@ async def _existing_subscription_source_urls(
     subscription_id: uuid.UUID,
 ) -> set[str]:
     result = await session.execute(
-        select(RssFeed.url)
-        .join(SubscriptionSource, SubscriptionSource.feed_id == RssFeed.id)
+        select(Source.url)
+        .join(SubscriptionSource, SubscriptionSource.source_id == Source.id)
         .where(SubscriptionSource.subscription_id == subscription_id)
     )
     return {url for url in result.scalars().all()}
@@ -179,13 +177,15 @@ async def parse_schedule(
     return ScheduleParseResponse(schedule_cron=validated_schedule)
 
 
-async def _create_subscription_streaming(
+def _validate_create_payload(
     payload: SubscriptionCreate,
     user: User,
-    session: AsyncSession,
-) -> AsyncGenerator[dict[str, Any], None]:
-    """Run subscription creation and yield NDJSON status events."""
-    # --- validation (same as create_subscription) ---
+) -> dict[str, Any]:
+    """Validate subscription creation payload and return resolved parameters.
+
+    Raises HTTPException on validation failure so errors are returned as proper
+    HTTP status codes *before* the streaming response starts.
+    """
     prompt_channels = extract_telegram_channels(payload.prompt)
     prompt_subreddits = extract_reddit_subreddits(payload.prompt)
     prompt_twitter_accounts = extract_twitter_accounts(payload.prompt)
@@ -209,19 +209,43 @@ async def _create_subscription_streaming(
     schedule_cron = _validated_schedule_or_422(schedule_cron)
     _ensure_user_timezone_for_schedule(user, schedule_cron)
     digest_language = _normalized_digest_language(payload.digest_language_override) or "en"
+    return {
+        "telegram_channels": telegram_channels,
+        "reddit_subreddits": reddit_subreddits,
+        "twitter_accounts": twitter_accounts,
+        "include_discovered_sources": include_discovered_sources,
+        "delivery_mode": delivery_mode,
+        "schedule_cron": schedule_cron,
+        "digest_language": digest_language,
+    }
+
+
+async def _create_subscription_streaming(
+    payload: SubscriptionCreate,
+    user: User,
+    session: AsyncSession,
+    validated: dict[str, Any],
+) -> AsyncGenerator[dict[str, Any], None]:
+    """Run subscription creation and yield NDJSON status events."""
+    telegram_channels: list[str] = validated["telegram_channels"]
+    reddit_subreddits: list[str] = validated["reddit_subreddits"]
+    twitter_accounts: list[str] = validated["twitter_accounts"]
+    include_discovered_sources: bool = validated["include_discovered_sources"]
+    delivery_mode: str = validated["delivery_mode"]
+    schedule_cron: str | None = validated["schedule_cron"]
+    digest_language: str = validated["digest_language"]
 
     # --- embedding ---
     yield {"event": "status", "status_message": "Analyzing your request..."}
-    raw_prompt_embedding = await _subscription_prompt_embedding(payload.prompt)
-    canonical_prompt_embedding = list(raw_prompt_embedding)
+    canonical_prompt = payload.canonical_prompt or payload.prompt
+    canonical_prompt_embedding = await _subscription_prompt_embedding(canonical_prompt)
     prompt_summary = payload.prompt_summary or build_prompt_summary(payload.prompt)
     short_label = payload.short_label or prompt_summary[:30]
 
     subscription = Subscription(
         user_id=user.id,
         raw_prompt=payload.prompt,
-        raw_prompt_embedding=raw_prompt_embedding,
-        canonical_prompt=payload.prompt,
+        canonical_prompt=canonical_prompt,
         canonical_prompt_embedding=canonical_prompt_embedding,
         prompt_summary=prompt_summary,
         short_label=short_label,
@@ -235,7 +259,7 @@ async def _create_subscription_streaming(
     await session.flush()
 
     # --- fixed sources ---
-    selected_sources: dict[uuid.UUID, RssFeed] = {}
+    selected_sources: dict[uuid.UUID, Source] = {}
     has_fixed = bool(telegram_channels or reddit_subreddits or twitter_accounts)
     if has_fixed:
         yield {"event": "status", "status_message": "Registering sources..."}
@@ -289,8 +313,8 @@ async def _create_subscription_streaming(
         yield {"event": "error", "detail": "No sources were resolved for this subscription"}
         return
 
-    for feed_id in selected_sources:
-        session.add(SubscriptionSource(subscription_id=subscription.id, feed_id=feed_id))
+    for source_id in selected_sources:
+        session.add(SubscriptionSource(subscription_id=subscription.id, source_id=source_id))
 
     await session.commit()
     await session.refresh(subscription)
@@ -314,36 +338,13 @@ async def create_subscription_stream(
     session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
     """Create a subscription with streaming status updates (NDJSON)."""
+    validated = _validate_create_payload(payload, user)
 
     async def generate() -> AsyncGenerator[str, None]:
-        async for event in _create_subscription_streaming(payload, user, session):
+        async for event in _create_subscription_streaming(payload, user, session, validated):
             yield json.dumps(event) + "\n"
 
     return StreamingResponse(generate(), media_type="application/x-ndjson")
-
-
-@router.post("", response_model=SubscriptionResponse, status_code=status.HTTP_201_CREATED)
-async def create_subscription(
-    payload: SubscriptionCreate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-) -> SubscriptionResponse:
-    """Non-streaming subscription creation — reuses the streaming generator."""
-    result: dict[str, Any] | None = None
-    async for event in _create_subscription_streaming(payload, user, session):
-        if event.get("event") == "done":
-            result = event.get("subscription")
-        elif event.get("event") == "error":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=event.get("detail", "Subscription creation failed"),
-            )
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Subscription creation produced no result",
-        )
-    return SubscriptionResponse.model_validate(result)
 
 
 @router.post(
@@ -394,7 +395,7 @@ async def append_subscription_sources(
         if build_twitter_account_url(account) not in existing_urls
     ]
 
-    selected_sources: dict[uuid.UUID, RssFeed] = {}
+    selected_sources: dict[uuid.UUID, Source] = {}
     for identifiers, kind in [
         (added_telegram_channels, "telegram_channel"),
         (added_reddit_subreddits, "reddit_subreddit"),
@@ -404,8 +405,8 @@ async def append_subscription_sources(
             for source in await ensure_source_coverage(session, identifiers, kind):
                 selected_sources[source.id] = source
 
-    for feed_id in selected_sources:
-        session.add(SubscriptionSource(subscription_id=subscription.id, feed_id=feed_id))
+    for source_id in selected_sources:
+        session.add(SubscriptionSource(subscription_id=subscription.id, source_id=source_id))
 
     await session.commit()
 
@@ -518,36 +519,36 @@ async def _recent_events_preview_streaming(
     session: AsyncSession,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Poll subscription sources, then build a recent events preview. Yields NDJSON."""
-    from news_service.tasks.poll_feeds import _poll_single_feed
+    from news_service.tasks.poll_feeds import _poll_single_source
 
-    # Load feeds for this subscription
-    feed_result = await session.execute(
-        select(RssFeed)
-        .join(SubscriptionSource, SubscriptionSource.feed_id == RssFeed.id)
+    # Load sources for this subscription
+    source_result = await session.execute(
+        select(Source)
+        .join(SubscriptionSource, SubscriptionSource.source_id == Source.id)
         .where(SubscriptionSource.subscription_id == subscription.id)
     )
-    feeds = list(feed_result.scalars().all())
+    sources = list(source_result.scalars().all())
 
-    if not feeds:
+    if not sources:
         yield {"event": "done", "preview": None}
         return
 
-    # Pre-initialize session.info keys that _poll_single_feed reads/writes
-    session.info["event_feed_ids"] = set()
+    # Pre-initialize session.info keys that _poll_single_source reads/writes
+    session.info["event_source_ids"] = set()
     session.info["event_item_ids"] = []
 
-    for feed in feeds:
-        display = feed_display_name(feed)
+    for src in sources:
+        display = source_display_name(src)
         yield {"event": "status", "status_message": f"Checking {display}..."}
         try:
-            await _poll_single_feed(session, feed)
+            await _poll_single_source(session, src)
             await session.commit()
         except Exception:
             await session.rollback()
             logger.exception(
-                "Failed to poll feed %s during recent events preview",
-                feed.url,
-                extra={"feed_id": str(feed.id)},
+                "Failed to poll source %s during recent events preview",
+                src.url,
+                extra={"source_id": str(src.id)},
             )
 
     yield {"event": "status", "status_message": "Looking for events..."}
@@ -611,49 +612,6 @@ async def recent_events_preview_stream(
     return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
-@router.get(
-    "/{subscription_id}/recent-events",
-    response_model=RecentEventsPreviewResponse | None,
-)
-async def list_recent_events(
-    subscription_id: str,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-) -> RecentEventsPreviewResponse | None:
-    result = await session.execute(
-        select(Subscription).where(
-            Subscription.id == subscription_id,
-            Subscription.user_id == user.id,
-        )
-    )
-    subscription = result.scalar_one_or_none()
-    if subscription is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
-    if not subscription.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Subscription is inactive",
-        )
-    if subscription.delivery_mode != "event":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Recent events preview is available only for event subscriptions",
-        )
-
-    preview = await build_recent_events_preview_for_subscription(
-        session,
-        subscription,
-        lookback_days=7,
-    )
-    if preview is None:
-        return None
-    return RecentEventsPreviewResponse(
-        news_item_ids=preview.news_item_ids,
-        subject=preview.subject,
-        body=preview.body,
-    )
-
-
 @router.post("/{subscription_id}/recent-events/acknowledge", status_code=status.HTTP_204_NO_CONTENT)
 async def acknowledge_recent_events(
     subscription_id: str,
@@ -681,47 +639,25 @@ async def acknowledge_recent_events(
             detail="Recent events preview is available only for event subscriptions",
         )
     requested_item_ids = list(dict.fromkeys(payload.news_item_ids))
-
-    link_result = await session.execute(
-        select(SubscriptionSource.feed_id).where(
-            SubscriptionSource.subscription_id == subscription.id
+    try:
+        await session.execute(
+            insert(SentItem)
+            .values(
+                [
+                    {
+                        "subscription_id": subscription.id,
+                        "news_item_id": item_id,
+                    }
+                    for item_id in requested_item_ids
+                ]
+            )
+            .on_conflict_do_nothing(
+                index_elements=["subscription_id", "news_item_id"],
+            )
         )
-    )
-    allowed_feed_ids = set(link_result.scalars().all())
-    if not allowed_feed_ids:
-        return
-
-    items_result = await session.execute(
-        select(NewsItem).where(
-            NewsItem.id.in_(requested_item_ids),
-            NewsItem.feed_id.in_(allowed_feed_ids),
-        )
-    )
-    items = list(items_result.scalars().all())
-    valid_item_ids = {item.id for item in items}
-    if valid_item_ids != set(requested_item_ids):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="One or more recent event items are invalid for this subscription",
-        )
-
-    await session.execute(
-        insert(SentItem)
-        .values(
-            [
-                {
-                    "subscription_id": subscription.id,
-                    "news_item_id": item_id,
-                }
-                for item_id in requested_item_ids
-            ]
-        )
-        .on_conflict_do_nothing(
-            index_elements=["subscription_id", "news_item_id"],
-        )
-    )
-
-    await session.commit()
+        await session.commit()
+    except Exception:
+        await session.rollback()
 
 
 @router.patch("/{subscription_id}", response_model=SubscriptionResponse)
@@ -807,12 +743,14 @@ async def deactivate_subscription(
     )
     source_links = list(links_result.scalars().all())
     if source_links:
-        feed_ids = [link.feed_id for link in source_links]
-        feeds_result = await session.execute(select(RssFeed).where(RssFeed.id.in_(feed_ids)))
-        for feed in feeds_result.scalars().all():
-            feed.subscriber_count = max(feed.subscriber_count - 1, 0)
-            if feed.subscriber_count == 0:
-                feed.is_active = False
+        linked_source_ids = [link.source_id for link in source_links]
+        sources_result = await session.execute(
+            select(Source).where(Source.id.in_(linked_source_ids))
+        )
+        for src in sources_result.scalars().all():
+            src.subscriber_count = max(src.subscriber_count - 1, 0)
+            if src.subscriber_count == 0:
+                src.is_active = False
 
         for link in source_links:
             await session.delete(link)

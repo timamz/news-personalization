@@ -6,10 +6,10 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from news_service.db.session import async_session_factory
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
-from tests.integration.helpers import create_user
+from tests.integration.helpers import create_subscription_via_stream, create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -18,10 +18,10 @@ async def test_deactivate_subscription_removes_fixed_source_links(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "AI updates every morning"
-        assert raw_prompt_embedding == [2.0] * 1536
-        feed = RssFeed(
+        assert prompt_embedding == [2.0] * 1536
+        src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
             source_description=f"Example Feed ({raw_prompt})",
@@ -29,9 +29,9 @@ async def test_deactivate_subscription_removes_fixed_source_links(
             is_active=True,
             subscriber_count=1,
         )
-        session.add(feed)
+        session.add(src)
         await session.flush()
-        return [feed]
+        return [src]
 
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_prompt_coverage",
@@ -41,10 +41,10 @@ async def test_deactivate_subscription_removes_fixed_source_links(
     user = await create_user(api_client, timezone="UTC")
     api_key = user["api_key"]
 
-    create_response = await api_client.post(
-        "/subscriptions",
-        headers={"X-API-Key": api_key},
-        json={
+    sub = await create_subscription_via_stream(
+        api_client,
+        api_key,
+        {
             "prompt": "AI updates every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "prompt_summary": "AI updates",
@@ -53,8 +53,7 @@ async def test_deactivate_subscription_removes_fixed_source_links(
             "digest_language_override": "en",
         },
     )
-    assert create_response.status_code == 201
-    subscription_id = uuid.UUID(create_response.json()["id"])
+    subscription_id = uuid.UUID(sub["id"])
 
     async with async_session_factory() as session:
         link_result = await session.execute(
@@ -63,10 +62,10 @@ async def test_deactivate_subscription_removes_fixed_source_links(
         links = list(link_result.scalars().all())
         assert len(links) == 1
 
-        feed = await session.get(RssFeed, links[0].feed_id)
-        assert feed is not None
-        assert feed.subscriber_count == 1
-        assert feed.is_active is True
+        source = await session.get(Source, links[0].source_id)
+        assert source is not None
+        assert source.subscriber_count == 1
+        assert source.is_active is True
 
     delete_response = await api_client.delete(
         f"/subscriptions/{subscription_id}",
@@ -84,13 +83,13 @@ async def test_deactivate_subscription_removes_fixed_source_links(
         )
         assert link_result.scalars().all() == []
 
-        feed_result = await session.execute(
-            select(RssFeed).where(RssFeed.url == "https://example.com/rss.xml")
+        source_result = await session.execute(
+            select(Source).where(Source.url == "https://example.com/rss.xml")
         )
-        feed = feed_result.scalar_one_or_none()
-        assert feed is not None
-        assert feed.subscriber_count == 0
-        assert feed.is_active is False
+        source = source_result.scalar_one_or_none()
+        assert source is not None
+        assert source.subscriber_count == 0
+        assert source.is_active is False
 
 
 async def test_create_event_subscription_forces_schedule_off(
@@ -100,7 +99,7 @@ async def test_create_event_subscription_forces_schedule_off(
     async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "Notify me when the next episode is announced"
         assert raw_prompt_embedding == [2.0] * 1536
-        feed = RssFeed(
+        src = Source(
             url="https://example.com/shows.xml",
             title="Shows Feed",
             source_description=f"Shows Feed ({raw_prompt})",
@@ -108,9 +107,9 @@ async def test_create_event_subscription_forces_schedule_off(
             is_active=True,
             subscriber_count=1,
         )
-        session.add(feed)
+        session.add(src)
         await session.flush()
-        return [feed]
+        return [src]
 
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_prompt_coverage",
@@ -120,10 +119,10 @@ async def test_create_event_subscription_forces_schedule_off(
     user = await create_user(api_client)
     api_key = user["api_key"]
 
-    create_response = await api_client.post(
-        "/subscriptions",
-        headers={"X-API-Key": api_key},
-        json={
+    sub = await create_subscription_via_stream(
+        api_client,
+        api_key,
+        {
             "prompt": "Notify me when the next episode is announced",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
@@ -134,11 +133,10 @@ async def test_create_event_subscription_forces_schedule_off(
         },
     )
 
-    assert create_response.status_code == 201
-    assert create_response.json()["delivery_mode"] == "event"
-    assert create_response.json()["schedule_cron"] is None
+    assert sub["delivery_mode"] == "event"
+    assert sub["schedule_cron"] is None
 
-    subscription_id = uuid.UUID(create_response.json()["id"])
+    subscription_id = uuid.UUID(sub["id"])
     async with async_session_factory() as session:
         subscription = await session.get(Subscription, subscription_id)
         assert subscription is not None
@@ -159,10 +157,10 @@ async def test_append_subscription_sources_adds_only_new_links(
     user = await create_user(api_client, timezone="UTC")
     api_key = user["api_key"]
 
-    create_response = await api_client.post(
-        "/subscriptions",
-        headers={"X-API-Key": api_key},
-        json={
+    sub = await create_subscription_via_stream(
+        api_client,
+        api_key,
+        {
             "prompt": "Track @fondnauk every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "fixed_telegram_channels": ["fondnauk"],
@@ -173,8 +171,7 @@ async def test_append_subscription_sources_adds_only_new_links(
             "digest_language_override": "en",
         },
     )
-    assert create_response.status_code == 201
-    subscription_id = uuid.UUID(create_response.json()["id"])
+    subscription_id = uuid.UUID(sub["id"])
 
     append_response = await api_client.post(
         f"/subscriptions/{subscription_id}/sources",
@@ -201,16 +198,16 @@ async def test_append_subscription_sources_adds_only_new_links(
         assert len(links) == 2
 
         telegram_result = await session.execute(
-            select(RssFeed).where(RssFeed.url == "https://t.me/s/fondnauk")
+            select(Source).where(Source.url == "https://t.me/s/fondnauk")
         )
-        telegram_feed = telegram_result.scalar_one_or_none()
+        telegram_source = telegram_result.scalar_one_or_none()
         reddit_result = await session.execute(
-            select(RssFeed).where(RssFeed.url == "https://www.reddit.com/r/badminton/new/")
+            select(Source).where(Source.url == "https://www.reddit.com/r/badminton/new/")
         )
-        reddit_feed = reddit_result.scalar_one_or_none()
+        reddit_source = reddit_result.scalar_one_or_none()
 
-        assert telegram_feed is not None
-        assert reddit_feed is not None
-        assert telegram_feed.subscriber_count == 1
-        assert reddit_feed.subscriber_count == 1
+        assert telegram_source is not None
+        assert reddit_source is not None
+        assert telegram_source.subscriber_count == 1
+        assert reddit_source.subscriber_count == 1
         assert ensure_prompt_coverage.await_count == 0

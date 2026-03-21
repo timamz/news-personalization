@@ -12,8 +12,8 @@ class SubscriptionSource(UUIDPrimaryKey, TimestampMixin, Base):
     __table_args__ = (
         UniqueConstraint(
             "subscription_id",
-            "feed_id",
-            name="uq_subscription_source_subscription_feed",
+            "source_id",
+            name="uq_subscription_source_subscription_source",
         ),
     )
 
@@ -22,11 +22,11 @@ class SubscriptionSource(UUIDPrimaryKey, TimestampMixin, Base):
         ForeignKey("subscriptions.id", ondelete="CASCADE"),
         nullable=False,
     )
-    feed_id: Mapped[uuid.UUID] = mapped_column(
+    source_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("rss_feeds.id", ondelete="CASCADE"),
+        ForeignKey("sources.id", ondelete="CASCADE"),
         nullable=False,
     )
 
     subscription: Mapped["Subscription"] = relationship(back_populates="source_links")  # noqa: F821
-    feed: Mapped["RssFeed"] = relationship(back_populates="subscription_links")  # noqa: F821
+    source: Mapped["Source"] = relationship(back_populates="subscription_links")  # noqa: F821

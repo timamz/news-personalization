@@ -25,7 +25,7 @@ def _make_news_item(
 ) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
-        feed_id=uuid.uuid4(),
+        source_id=uuid.uuid4(),
         headline=headline,
         body=body,
         url=url,
@@ -106,7 +106,7 @@ async def test_run_digest_curator_returns_result(mocker):
         session=mock_session,
         query_embedding=[0.1] * 10,
         exclude_ids=set(),
-        allowed_feed_ids={uuid.uuid4()},
+        allowed_source_ids={uuid.uuid4()},
         published_after=datetime.now(UTC),
         format_instructions="brief summary",
         digest_language="en",
@@ -134,7 +134,7 @@ async def test_run_digest_curator_returns_none_when_no_candidates(mocker):
         session=mock_session,
         query_embedding=[0.1] * 10,
         exclude_ids=set(),
-        allowed_feed_ids={uuid.uuid4()},
+        allowed_source_ids={uuid.uuid4()},
         published_after=datetime.now(UTC),
         format_instructions="brief summary",
         digest_language="en",

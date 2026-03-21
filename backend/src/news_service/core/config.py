@@ -5,7 +5,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     openai_api_key: str
-    openai_base_url: str = "https://api.vsellm.ru/v1"
     llm_timeout_seconds: float = 300.0
     database_url: str = "postgresql+asyncpg://news:news@localhost:5432/news"
     redis_url: str = "redis://localhost:6379/0"
@@ -24,7 +23,7 @@ class Settings(BaseSettings):
 
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
-    llm_model: str = "gpt-5-mini"
+    llm_model: str = "gpt-5.4-nano"
     recent_event_match_concurrency: int = 8
 
     llm_retry_max_attempts: int = 3

@@ -138,51 +138,6 @@ class BackendClient:
                 created_at=datetime.fromisoformat(data["created_at"].replace("Z", "+00:00")),
             )
 
-    async def create_subscription(
-        self,
-        api_key: str,
-        prompt: str,
-        delivery_webhook_url: str,
-        fixed_telegram_channels: list[str] | None = None,
-        fixed_reddit_subreddits: list[str] | None = None,
-        fixed_twitter_accounts: list[str] | None = None,
-        include_discovered_sources: bool | None = None,
-        schedule_cron_override: str | None = None,
-        manual_only: bool | None = None,
-        delivery_mode: str | None = None,
-        digest_language: str | None = None,
-        prompt_summary: str | None = None,
-        short_label: str | None = None,
-        format_instructions: str | None = None,
-    ) -> SubscriptionInfo:
-        payload = self._build_create_payload(
-            prompt,
-            delivery_webhook_url,
-            fixed_telegram_channels=fixed_telegram_channels,
-            fixed_reddit_subreddits=fixed_reddit_subreddits,
-            fixed_twitter_accounts=fixed_twitter_accounts,
-            include_discovered_sources=include_discovered_sources,
-            schedule_cron_override=schedule_cron_override,
-            manual_only=manual_only,
-            delivery_mode=delivery_mode,
-            digest_language=digest_language,
-            prompt_summary=prompt_summary,
-            short_label=short_label,
-            format_instructions=format_instructions,
-        )
-
-        async with httpx.AsyncClient(
-            timeout=settings.backend_create_subscription_timeout_seconds
-        ) as client:
-            response = await client.post(
-                f"{self.base_url}/subscriptions",
-                headers={"X-API-Key": api_key},
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return self._parse_subscription(data)
-
     async def create_subscription_stream(
         self,
         api_key: str,
@@ -461,43 +416,6 @@ class BackendClient:
             )
             response.raise_for_status()
 
-    async def start_subscription_conversation(
-        self,
-        api_key: str,
-        message: str,
-        user_language: str | None = None,
-        user_timezone: str | None = None,
-    ) -> ConversationTurnInfo:
-        payload: dict[str, object] = {"message": message}
-        if user_language is not None:
-            payload["user_language"] = user_language
-        if user_timezone is not None:
-            payload["user_timezone"] = user_timezone
-
-        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
-            response = await client.post(
-                f"{self.base_url}/subscriptions/conversations",
-                headers={"X-API-Key": api_key},
-                json=payload,
-            )
-            response.raise_for_status()
-            return self._parse_conversation_turn(response.json())
-
-    async def continue_subscription_conversation(
-        self,
-        api_key: str,
-        conversation_id: str,
-        message: str,
-    ) -> ConversationTurnInfo:
-        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
-            response = await client.post(
-                f"{self.base_url}/subscriptions/conversations/{conversation_id}/messages",
-                headers={"X-API-Key": api_key},
-                json={"message": message},
-            )
-            response.raise_for_status()
-            return self._parse_conversation_turn(response.json())
-
     async def cancel_subscription_conversation(
         self,
         api_key: str,
@@ -560,15 +478,6 @@ class BackendClient:
             async for line in response.aiter_lines():
                 if line.strip():
                     yield json.loads(line)
-
-    @staticmethod
-    def _parse_conversation_turn(data: dict) -> ConversationTurnInfo:
-        return ConversationTurnInfo(
-            conversation_id=data["conversation_id"],
-            agent_message=data["agent_message"],
-            status=data["status"],
-            finalized_config=data.get("finalized_config"),
-        )
 
     async def send_now(self, api_key: str, subscription_id: str) -> dict[str, str]:
         async with httpx.AsyncClient(timeout=self._request_timeout()) as client:

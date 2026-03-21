@@ -100,6 +100,8 @@ Behavior rules:
 - Accommodate mid-conversation changes (e.g. "actually make it weekly").
 - For short_label: ultra-short 2-3 word category name in the user's language.
 - For prompt_summary: concise 3-8 word description in the user's language.
+- For canonical_prompt: copy the user's topic/request text with orthographical mistakes \
+corrected. Do not rephrase or change wording — only fix spelling and grammar errors.
 
 {context_section}\
 """

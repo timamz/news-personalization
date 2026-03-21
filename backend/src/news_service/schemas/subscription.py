@@ -9,6 +9,10 @@ type DeliveryMode = Literal["digest", "event"]
 
 class SubscriptionCreate(BaseModel):
     prompt: str = Field(..., min_length=5, description="Natural language news preference")
+    canonical_prompt: str | None = Field(
+        default=None,
+        description="Prompt with orthographical mistakes corrected; defaults to prompt if omitted",
+    )
     delivery_webhook_url: str | None = Field(
         default=None, description="URL where digest will be POSTed"
     )

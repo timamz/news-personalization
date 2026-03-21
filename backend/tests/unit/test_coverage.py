@@ -8,7 +8,7 @@ from news_service.agents.source_discovery import ScoredSource, SourceDiscoveryRe
 from news_service.services import coverage
 
 
-def _make_db_feed(url: str = "https://example.com/rss.xml") -> SimpleNamespace:
+def _make_db_source(url: str = "https://example.com/rss.xml") -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
         url=url,
@@ -42,16 +42,16 @@ async def test_ensure_prompt_coverage_registers_agent_results(mocker) -> None:
         new=AsyncMock(return_value=agent_result),
     )
 
-    feed_a = _make_db_feed("https://a.com/feed")
-    feed_b = _make_db_feed("https://b.com/feed")
-    register_mock = AsyncMock(side_effect=[feed_a, feed_b])
+    db_source_a = _make_db_source("https://a.com/feed")
+    db_source_b = _make_db_source("https://b.com/feed")
+    register_mock = AsyncMock(side_effect=[db_source_a, db_source_b])
     mocker.patch.object(coverage, "_register_or_reuse_source", register_mock)
 
     result = await coverage.ensure_prompt_coverage(session, "test", [0.1])
 
     assert len(result) == 2
-    assert result[0] == feed_a
-    assert result[1] == feed_b
+    assert result[0] == db_source_a
+    assert result[1] == db_source_b
     assert register_mock.await_count == 2
 
 
@@ -85,28 +85,28 @@ async def test_ensure_prompt_coverage_returns_empty_on_no_sources(mocker) -> Non
 
 
 @pytest.mark.asyncio
-async def test_register_or_reuse_source_reuses_existing_feed(mocker) -> None:
-    """Existing feed is reused with incremented subscriber count."""
+async def test_register_or_reuse_source_reuses_existing_source(mocker) -> None:
+    """Existing source is reused with incremented subscriber count."""
     session = AsyncMock()
-    existing = _make_db_feed("https://example.com/feed")
+    existing = _make_db_source("https://example.com/feed")
     existing.subscriber_count = 2
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = existing
     session.execute = AsyncMock(return_value=mock_result)
-    mocker.patch.object(coverage, "_ensure_feed_profile", new=AsyncMock())
+    mocker.patch.object(coverage, "_ensure_source_profile", new=AsyncMock())
 
     source = _make_scored_source("https://example.com/feed")
-    feed = await coverage._register_or_reuse_source(session, source)
+    result = await coverage._register_or_reuse_source(session, source)
 
-    assert feed == existing
+    assert result == existing
     assert existing.subscriber_count == 3
     assert existing.is_active is True
 
 
 @pytest.mark.asyncio
-async def test_register_or_reuse_source_creates_new_feed(mocker) -> None:
-    """New feed is created when URL not in DB."""
+async def test_register_or_reuse_source_creates_new_source(mocker) -> None:
+    """New source is created when URL not in DB."""
     session = AsyncMock()
 
     mock_result = MagicMock()
@@ -116,12 +116,12 @@ async def test_register_or_reuse_source_creates_new_feed(mocker) -> None:
     session.flush = AsyncMock()
 
     mocker.patch.object(
-        coverage, "_build_feed_profile", new=AsyncMock(return_value=("desc", [0.1] * 10))
+        coverage, "_build_source_profile", new=AsyncMock(return_value=("desc", [0.1] * 10))
     )
 
     source = _make_scored_source("https://new.com/feed", title="New Feed")
-    feed = await coverage._register_or_reuse_source(session, source)
+    result = await coverage._register_or_reuse_source(session, source)
 
-    assert feed is not None
+    assert result is not None
     session.add.assert_called_once()
     session.flush.assert_awaited_once()

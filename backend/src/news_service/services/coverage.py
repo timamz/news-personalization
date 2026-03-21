@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.discovery import SourceKind
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_text
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.source_descriptions import describe_source
 from news_service.services.telegram import build_telegram_channel_url
@@ -33,27 +33,27 @@ _SOURCE_TYPE_CONFIG: dict[SourceKind, tuple[Callable[[str], str], str]] = {
 async def ensure_prompt_coverage(
     session: AsyncSession,
     raw_prompt: str,
-    raw_prompt_embedding: list[float],
+    prompt_embedding: list[float],
     hooks: object | None = None,
-) -> list[RssFeed]:
+) -> list[Source]:
     from news_service.agents.source_discovery import run_source_discovery
 
     try:
         result = await run_source_discovery(
             session=session,
             raw_prompt=raw_prompt,
-            prompt_embedding=raw_prompt_embedding,
+            prompt_embedding=prompt_embedding,
             hooks=hooks,
         )
     except Exception:
         logger.exception("Source discovery agent failed for prompt: %s", raw_prompt)
         return []
 
-    selected: list[RssFeed] = []
-    for source in result.sources:
-        feed = await _register_or_reuse_source(session, source)
-        if feed is not None:
-            selected.append(feed)
+    selected: list[Source] = []
+    for scored in result.sources:
+        source_obj = await _register_or_reuse_source(session, scored)
+        if source_obj is not None:
+            selected.append(source_obj)
 
     logger.info(
         "Selected %d sources for prompt (scores: %s)",
@@ -65,73 +65,73 @@ async def ensure_prompt_coverage(
 
 async def _register_or_reuse_source(
     session: AsyncSession,
-    source: ScoredSource,
-) -> RssFeed | None:
-    existing_result = await session.execute(select(RssFeed).where(RssFeed.url == source.url))
-    existing_feed = existing_result.scalar_one_or_none()
-    if existing_feed is not None:
-        existing_feed.subscriber_count += 1
-        existing_feed.is_active = True
-        await _ensure_feed_profile(
-            existing_feed,
-            source_kind=source.source_kind,
-            fallback_title=source.title or source.url,
+    scored: ScoredSource,
+) -> Source | None:
+    existing_result = await session.execute(select(Source).where(Source.url == scored.url))
+    existing_source = existing_result.scalar_one_or_none()
+    if existing_source is not None:
+        existing_source.subscriber_count += 1
+        existing_source.is_active = True
+        await _ensure_source_profile(
+            existing_source,
+            source_kind=scored.source_kind,
+            fallback_title=scored.title or scored.url,
         )
-        return existing_feed
+        return existing_source
 
-    description, embedding = await _build_feed_profile(
-        source_kind=source.source_kind,
-        title=source.title or source.url,
-        url=source.url,
+    description, embedding = await _build_source_profile(
+        source_kind=scored.source_kind,
+        title=scored.title or scored.url,
+        url=scored.url,
     )
-    feed = RssFeed(
-        url=source.url,
-        title=source.title or source.url,
+    source_obj = Source(
+        url=scored.url,
+        title=scored.title or scored.url,
         source_description=description,
         source_description_embedding=embedding,
         is_active=True,
         subscriber_count=1,
     )
-    session.add(feed)
+    session.add(source_obj)
     await session.flush()
-    logger.info("Registered new source: %s (%s)", source.url, source.title)
-    return feed
+    logger.info("Registered new source: %s (%s)", scored.url, scored.title)
+    return source_obj
 
 
 async def ensure_source_coverage(
     session: AsyncSession,
     identifiers: list[str],
     source_kind: SourceKind,
-) -> list[RssFeed]:
+) -> list[Source]:
     if not identifiers:
         return []
 
     url_builder, title_template = _SOURCE_TYPE_CONFIG[source_kind]
 
-    resolved: dict[uuid.UUID, RssFeed] = {}
+    resolved: dict[uuid.UUID, Source] = {}
     for identifier in identifiers:
         source_url = url_builder(identifier)
-        result = await session.execute(select(RssFeed).where(RssFeed.url == source_url))
-        existing_feed = result.scalar_one_or_none()
-        if existing_feed is not None:
-            existing_feed.subscriber_count += 1
-            existing_feed.is_active = True
-            await _ensure_feed_profile(
-                existing_feed,
+        result = await session.execute(select(Source).where(Source.url == source_url))
+        existing_source = result.scalar_one_or_none()
+        if existing_source is not None:
+            existing_source.subscriber_count += 1
+            existing_source.is_active = True
+            await _ensure_source_profile(
+                existing_source,
                 source_kind=source_kind,
                 fallback_title=title_template.format(identifier),
             )
-            resolved[existing_feed.id] = existing_feed
+            resolved[existing_source.id] = existing_source
             logger.info("Source already exists: %s", source_url)
             continue
 
         title = title_template.format(identifier)
-        description, embedding = await _build_feed_profile(
+        description, embedding = await _build_source_profile(
             source_kind=source_kind,
             title=title,
             url=source_url,
         )
-        feed = RssFeed(
+        source_obj = Source(
             url=source_url,
             title=title,
             source_description=description,
@@ -139,39 +139,39 @@ async def ensure_source_coverage(
             is_active=True,
             subscriber_count=1,
         )
-        session.add(feed)
+        session.add(source_obj)
         await session.flush()
-        resolved[feed.id] = feed
+        resolved[source_obj.id] = source_obj
         logger.info("Registered %s source: %s", source_kind, source_url)
 
     return list(resolved.values())
 
 
-async def _ensure_feed_profile(
-    feed: RssFeed,
+async def _ensure_source_profile(
+    source_obj: Source,
     *,
     source_kind: SourceKind,
     fallback_title: str,
     sample_content: list[str] | None = None,
 ) -> None:
-    if feed.source_description and feed.source_description_embedding is not None:
-        if not feed.title:
-            feed.title = fallback_title
+    if source_obj.source_description and source_obj.source_description_embedding is not None:
+        if not source_obj.title:
+            source_obj.title = fallback_title
         return
 
-    title = feed.title or fallback_title
-    description, embedding = await _build_feed_profile(
+    title = source_obj.title or fallback_title
+    description, embedding = await _build_source_profile(
         source_kind=source_kind,
         title=title,
-        url=feed.url,
+        url=source_obj.url,
         sample_content=sample_content,
     )
-    feed.title = title
-    feed.source_description = description
-    feed.source_description_embedding = embedding
+    source_obj.title = title
+    source_obj.source_description = description
+    source_obj.source_description_embedding = embedding
 
 
-async def _build_feed_profile(
+async def _build_source_profile(
     *,
     source_kind: SourceKind,
     title: str,

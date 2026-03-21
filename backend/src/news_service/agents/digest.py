@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_text
-from news_service.models.rss_feed import RssFeed
 from news_service.models.sent_item import SentItem
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 
@@ -18,8 +18,7 @@ settings = get_settings()
 
 
 def _effective_prompt(subscription: Subscription) -> str:
-    canonical_prompt = getattr(subscription, "canonical_prompt", "")
-    return canonical_prompt.strip() or subscription.raw_prompt
+    return subscription.canonical_prompt or subscription.raw_prompt
 
 
 async def generate_digest(session: AsyncSession, subscription: Subscription) -> str | None:
@@ -32,8 +31,8 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     sent_ids: set[uuid.UUID] = {news_item_id for news_item_id, _ in sent_rows}
     last_sent_at = max((sent_at for _, sent_at in sent_rows), default=None)
 
-    source_feed_ids = await _source_feed_ids_for_digest(session, subscription)
-    if not source_feed_ids:
+    source_ids = await _source_ids_for_digest(session, subscription)
+    if not source_ids:
         logger.warning(
             "No fixed sources configured for subscription %s",
             subscription.id,
@@ -54,7 +53,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
             session=session,
             query_embedding=query_embedding,
             exclude_ids=sent_ids,
-            allowed_feed_ids=source_feed_ids,
+            allowed_source_ids=source_ids,
             published_after=_published_after_for_digest(last_sent_at),
             format_instructions=subscription.format_instructions,
             digest_language=subscription.digest_language,
@@ -93,13 +92,13 @@ def _published_after_for_digest(last_sent_at: datetime | None) -> datetime:
     return datetime.now(UTC) - timedelta(days=settings.news_item_max_age_days)
 
 
-async def _source_feed_ids_for_digest(
+async def _source_ids_for_digest(
     session: AsyncSession,
     subscription: Subscription,
 ) -> set[uuid.UUID]:
     source_result = await session.execute(
-        select(RssFeed.id)
-        .join(SubscriptionSource, SubscriptionSource.feed_id == RssFeed.id)
+        select(Source.id)
+        .join(SubscriptionSource, SubscriptionSource.source_id == Source.id)
         .where(SubscriptionSource.subscription_id == subscription.id)
     )
     return {row[0] for row in source_result.all()}

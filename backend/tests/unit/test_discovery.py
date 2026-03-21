@@ -1,267 +1,49 @@
-from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 
 import pytest
 
 from news_service.agents import discovery
-from news_service.agents.discovery import (
-    DiscoveredSourceItem,
-    DiscoveredSourceList,
-)
+from news_service.agents.discovery import search_web
 
 
 @pytest.mark.asyncio
-async def test_discover_sources_merges_rss_telegram_and_reddit_results(mocker) -> None:
-    rss_discovery = mocker.patch.object(
-        discovery,
-        "discover_rss_feeds",
-        new=AsyncMock(
-            return_value=[
-                DiscoveredSourceItem(
-                    url="https://example.com/rss.xml",
-                    title="Example RSS",
-                    source_kind="rss",
-                )
-            ]
-        ),
-    )
-    telegram_discovery = mocker.patch.object(
-        discovery,
-        "discover_telegram_channels",
-        new=AsyncMock(
-            return_value=[
-                DiscoveredSourceItem(
-                    url="https://t.me/s/ainews",
-                    title="Telegram @ainews",
-                    source_kind="telegram_channel",
-                )
-            ]
-        ),
-    )
-    reddit_discovery = mocker.patch.object(
-        discovery,
-        "discover_reddit_subreddits",
-        new=AsyncMock(
-            return_value=[
-                DiscoveredSourceItem(
-                    url="https://www.reddit.com/r/ainews/new/",
-                    title="Reddit r/ainews",
-                    source_kind="reddit_subreddit",
-                )
-            ]
-        ),
-    )
-    twitter_discovery = mocker.patch.object(
-        discovery,
-        "discover_twitter_accounts",
-        new=AsyncMock(
-            return_value=[
-                DiscoveredSourceItem(
-                    url="https://x.com/openai",
-                    title="X @openai",
-                    source_kind="twitter_account",
-                )
-            ]
-        ),
-    )
+async def test_search_web_returns_output_text(mocker) -> None:
+    mock_response = MagicMock()
+    mock_response.output_text = "Here are some RSS feeds about AI: https://example.com/rss.xml"
 
-    result = await discovery.discover_sources("AI research updates")
+    mock_client = MagicMock()
+    mock_client.responses.create.return_value = mock_response
 
-    assert [item.url for item in result] == [
-        "https://example.com/rss.xml",
-        "https://t.me/s/ainews",
-        "https://www.reddit.com/r/ainews/new/",
-        "https://x.com/openai",
-    ]
-    rss_discovery.assert_awaited_once_with("AI research updates")
-    telegram_discovery.assert_awaited_once_with("AI research updates")
-    reddit_discovery.assert_awaited_once_with("AI research updates")
-    twitter_discovery.assert_awaited_once_with("AI research updates")
+    mocker.patch.object(discovery, "_sync_client", mock_client)
+
+    result = await search_web("best RSS feeds about AI")
+
+    assert result == "Here are some RSS feeds about AI: https://example.com/rss.xml"
+    mock_client.responses.create.assert_called_once_with(
+        model=discovery.settings.llm_model,
+        tools=[{"type": "web_search"}],
+        input="best RSS feeds about AI",
+    )
 
 
 @pytest.mark.asyncio
-async def test_discover_rss_feeds_filters_to_valid_rss_sources(mocker) -> None:
-    completion = SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(
-                    parsed=DiscoveredSourceList(
-                        sources=[
-                            DiscoveredSourceItem(
-                                url=" https://example.com/rss.xml ",
-                                title="Example RSS",
-                                source_kind="rss",
-                            ),
-                            DiscoveredSourceItem(
-                                url="https://t.me/s/not-rss",
-                                title="Wrong kind",
-                                source_kind="telegram_channel",
-                            ),
-                        ]
-                    )
-                )
-            )
-        ]
-    )
-    mocker.patch.object(
-        discovery._client.beta.chat.completions,
-        "parse",
-        new=AsyncMock(return_value=completion),
-    )
-    validate_feed = mocker.patch.object(
-        discovery,
-        "validate_feed_url",
-        new=AsyncMock(side_effect=[True]),
+async def test_search_web_initializes_client_when_none(mocker) -> None:
+    mock_response = MagicMock()
+    mock_response.output_text = "Search results"
+
+    mock_client_instance = MagicMock()
+    mock_client_instance.responses.create.return_value = mock_response
+
+    mocker.patch.object(discovery, "_sync_client", None)
+    mock_openai_cls = mocker.patch(
+        "news_service.agents.discovery.OpenAI",
+        return_value=mock_client_instance,
     )
 
-    result = await discovery.discover_rss_feeds("AI research updates")
+    result = await search_web("test query")
 
-    assert result == [
-        DiscoveredSourceItem(
-            url="https://example.com/rss.xml",
-            title="Example RSS",
-            source_kind="rss",
-        )
-    ]
-    validate_feed.assert_awaited_once_with("https://example.com/rss.xml")
+    assert result == "Search results"
+    mock_openai_cls.assert_called_once_with(api_key=discovery.settings.openai_api_key)
 
-
-@pytest.mark.asyncio
-async def test_discover_telegram_channels_normalizes_and_validates_channels(mocker) -> None:
-    completion = SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(
-                    parsed=DiscoveredSourceList(
-                        sources=[
-                            DiscoveredSourceItem(
-                                url="https://t.me/AINews",
-                                title="AI News",
-                                source_kind="telegram_channel",
-                            ),
-                            DiscoveredSourceItem(
-                                url="https://example.com/rss.xml",
-                                title="Wrong kind",
-                                source_kind="rss",
-                            ),
-                        ]
-                    )
-                )
-            )
-        ]
-    )
-    mocker.patch.object(
-        discovery._client.beta.chat.completions,
-        "parse",
-        new=AsyncMock(return_value=completion),
-    )
-    validate_channel = mocker.patch.object(
-        discovery,
-        "validate_telegram_channel",
-        new=AsyncMock(return_value=True),
-    )
-
-    result = await discovery.discover_telegram_channels("AI research updates")
-
-    assert result == [
-        DiscoveredSourceItem(
-            url="https://t.me/s/ainews",
-            title="AI News",
-            source_kind="telegram_channel",
-        )
-    ]
-    validate_channel.assert_awaited_once_with("ainews")
-
-
-@pytest.mark.asyncio
-async def test_discover_reddit_subreddits_normalizes_and_validates_subreddits(mocker) -> None:
-    completion = SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(
-                    parsed=DiscoveredSourceList(
-                        sources=[
-                            DiscoveredSourceItem(
-                                url="r/AINews",
-                                title="AI News",
-                                source_kind="reddit_subreddit",
-                            ),
-                            DiscoveredSourceItem(
-                                url="https://example.com/rss.xml",
-                                title="Wrong kind",
-                                source_kind="rss",
-                            ),
-                        ]
-                    )
-                )
-            )
-        ]
-    )
-    mocker.patch.object(
-        discovery._client.beta.chat.completions,
-        "parse",
-        new=AsyncMock(return_value=completion),
-    )
-    validate_subreddit = mocker.patch.object(
-        discovery,
-        "validate_reddit_subreddit",
-        new=AsyncMock(return_value=True),
-    )
-
-    result = await discovery.discover_reddit_subreddits("AI research updates")
-
-    assert result == [
-        DiscoveredSourceItem(
-            url="https://www.reddit.com/r/ainews/new/",
-            title="AI News",
-            source_kind="reddit_subreddit",
-        )
-    ]
-    validate_subreddit.assert_awaited_once_with("ainews")
-
-
-@pytest.mark.asyncio
-async def test_discover_twitter_accounts_normalizes_and_validates_accounts(mocker) -> None:
-    completion = SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(
-                    parsed=DiscoveredSourceList(
-                        sources=[
-                            DiscoveredSourceItem(
-                                url="https://twitter.com/OpenAI",
-                                title="OpenAI",
-                                source_kind="twitter_account",
-                            ),
-                            DiscoveredSourceItem(
-                                url="https://example.com/rss.xml",
-                                title="Wrong kind",
-                                source_kind="rss",
-                            ),
-                        ]
-                    )
-                )
-            )
-        ]
-    )
-    mocker.patch.object(
-        discovery._client.beta.chat.completions,
-        "parse",
-        new=AsyncMock(return_value=completion),
-    )
-    validate_account = mocker.patch.object(
-        discovery,
-        "validate_twitter_account",
-        new=AsyncMock(return_value=True),
-    )
-
-    result = await discovery.discover_twitter_accounts("AI research updates")
-
-    assert result == [
-        DiscoveredSourceItem(
-            url="https://x.com/openai",
-            title="OpenAI",
-            source_kind="twitter_account",
-        )
-    ]
-    validate_account.assert_awaited_once_with("openai")
+    # Reset the global so other tests are not affected.
+    discovery._sync_client = None

@@ -28,7 +28,7 @@ class DigestCurationResult(BaseModel):
 def _format_news_item(item: NewsItem) -> str:
     published = getattr(item, "published_at", None) or getattr(item, "fetched_at", None)
     pub_str = published.isoformat() if published else "unknown"
-    body_preview = (item.body or "")[:500]
+    body_preview = item.body or ""
     return (
         f"[ID: {item.id}]\n"
         f"Headline: {item.headline}\n"
@@ -55,7 +55,7 @@ async def _fetch_candidate_items(
     session: AsyncSession,
     query_embedding: list[float],
     exclude_ids: set[uuid.UUID],
-    allowed_feed_ids: set[uuid.UUID],
+    allowed_source_ids: set[uuid.UUID],
     published_after: datetime,
 ) -> list[NewsItem]:
     """Fetch candidates by relevance and recency, merge, sort by cosine similarity."""
@@ -63,7 +63,7 @@ async def _fetch_candidate_items(
         session,
         query_embedding,
         exclude_ids=exclude_ids,
-        allowed_feed_ids=allowed_feed_ids,
+        allowed_source_ids=allowed_source_ids,
         published_after=published_after,
         limit=50,
     )
@@ -75,7 +75,7 @@ async def _fetch_candidate_items(
         .where(
             NewsItem.embedding.isnot(None),
             NewsItem.id.notin_(exclude_list),
-            NewsItem.feed_id.in_(list(allowed_feed_ids)),
+            NewsItem.source_id.in_(list(allowed_source_ids)),
             recent_marker >= published_after,
         )
         .order_by(recent_marker.desc(), NewsItem.fetched_at.desc())
@@ -121,7 +121,7 @@ async def run_digest_curator(
     session: AsyncSession,
     query_embedding: list[float],
     exclude_ids: set[uuid.UUID],
-    allowed_feed_ids: set[uuid.UUID],
+    allowed_source_ids: set[uuid.UUID],
     published_after: datetime,
     format_instructions: str,
     digest_language: str,
@@ -138,7 +138,7 @@ async def run_digest_curator(
         session,
         query_embedding,
         exclude_ids=exclude_ids,
-        allowed_feed_ids=allowed_feed_ids,
+        allowed_source_ids=allowed_source_ids,
         published_after=published_after,
     )
     if not candidates:
@@ -151,7 +151,7 @@ async def run_digest_curator(
         "You are a news digest curator. Create a well-structured, readable digest "
         "by selecting the best items from the candidates below.\n\n"
         "Quality criteria:\n"
-        "- Prioritize the newest and most substantive items.\n"
+        "- Prioritize the most substantive items.\n"
         "- Skip stale items, low-signal community chatter, personal requests, "
         "endorsement requests, generic questions, and self-promotional posts.\n"
         "- If multiple items cover the same story, include only the most informative one.\n\n"

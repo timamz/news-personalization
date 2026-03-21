@@ -21,8 +21,8 @@ def _make_curator_result(
 @pytest.mark.asyncio
 async def test_generate_digest_passes_params_to_curator(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
-    source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
+    source_id = uuid.uuid4()
+    source_result = SimpleNamespace(all=lambda: [(source_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription_id = uuid.uuid4()
@@ -51,7 +51,7 @@ async def test_generate_digest_passes_params_to_curator(mocker) -> None:
     call_kwargs = run_curator.await_args.kwargs
     assert call_kwargs["query_embedding"] == [0.0] * 1536
     assert call_kwargs["exclude_ids"] == set()
-    assert call_kwargs["allowed_feed_ids"] == {source_feed_id}
+    assert call_kwargs["allowed_source_ids"] == {source_id}
     assert call_kwargs["format_instructions"] == "brief summary"
     assert call_kwargs["digest_language"] == "ru"
     mark_as_sent.assert_awaited_once()
@@ -78,10 +78,10 @@ async def test_generate_digest_returns_none_without_fixed_sources(mocker) -> Non
 
 
 @pytest.mark.asyncio
-async def test_generate_digest_falls_back_to_raw_prompt_embedding_when_missing(mocker) -> None:
+async def test_generate_digest_computes_embedding_when_missing(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
-    source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
+    source_id = uuid.uuid4()
+    source_result = SimpleNamespace(all=lambda: [(source_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(
@@ -115,8 +115,8 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
     last_sent_at = datetime(2026, 3, 11, 9, 30, tzinfo=UTC)
     sent_news_id = uuid.uuid4()
     sent_result = SimpleNamespace(all=lambda: [(sent_news_id, last_sent_at)])
-    source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
+    source_id = uuid.uuid4()
+    source_result = SimpleNamespace(all=lambda: [(source_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(
@@ -147,8 +147,8 @@ async def test_generate_digest_uses_last_sent_at_as_cutoff(mocker) -> None:
 @pytest.mark.asyncio
 async def test_generate_digest_returns_none_on_curator_failure(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
-    source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
+    source_id = uuid.uuid4()
+    source_result = SimpleNamespace(all=lambda: [(source_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(
@@ -174,8 +174,8 @@ async def test_generate_digest_returns_none_on_curator_failure(mocker) -> None:
 @pytest.mark.asyncio
 async def test_generate_digest_returns_none_when_curator_finds_no_items(mocker) -> None:
     sent_result = SimpleNamespace(all=lambda: [])
-    source_feed_id = uuid.uuid4()
-    source_result = SimpleNamespace(all=lambda: [(source_feed_id,)])
+    source_id = uuid.uuid4()
+    source_result = SimpleNamespace(all=lambda: [(source_id,)])
     session = SimpleNamespace(execute=AsyncMock(side_effect=[sent_result, source_result]))
 
     subscription = SimpleNamespace(

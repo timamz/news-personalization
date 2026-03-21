@@ -5,10 +5,10 @@ import pytest
 from httpx import AsyncClient
 
 from news_service.db.session import async_session_factory
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.tasks import schedule_digests
-from tests.integration.helpers import create_user
+from tests.integration.helpers import create_subscription_via_stream, create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -17,10 +17,10 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "AI updates every morning in a brief summary"
-        assert raw_prompt_embedding == [2.0] * 1536
-        feed = RssFeed(
+        assert prompt_embedding == [2.0] * 1536
+        src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
             source_description=f"Example Feed ({raw_prompt})",
@@ -28,9 +28,9 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
             is_active=True,
             subscriber_count=1,
         )
-        session.add(feed)
+        session.add(src)
         await session.flush()
-        return [feed]
+        return [src]
 
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_prompt_coverage",
@@ -40,10 +40,10 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
     user = await create_user(api_client, timezone="UTC")
     api_key = user["api_key"]
 
-    create_response = await api_client.post(
-        "/subscriptions",
-        headers={"X-API-Key": api_key},
-        json={
+    sub = await create_subscription_via_stream(
+        api_client,
+        api_key,
+        {
             "prompt": "AI updates every morning in a brief summary",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "prompt_summary": "AI updates",
@@ -52,8 +52,7 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
             "digest_language_override": "en",
         },
     )
-    assert create_response.status_code == 201
-    subscription_id = uuid.UUID(create_response.json()["id"])
+    subscription_id = uuid.UUID(sub["id"])
 
     due_time = datetime(2026, 2, 26, 8, 0, tzinfo=UTC)
     previous_run = datetime(2026, 2, 25, 8, 0, tzinfo=UTC)

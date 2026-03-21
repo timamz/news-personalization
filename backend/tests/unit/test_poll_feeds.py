@@ -6,30 +6,30 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.tasks import poll_feeds
 
 
 class _FakeResult:
-    def __init__(self, feeds: list[RssFeed]) -> None:
-        self._feeds = feeds
+    def __init__(self, sources: list[Source]) -> None:
+        self._sources = sources
 
     def scalars(self) -> "_FakeResult":
         return self
 
-    def all(self) -> list[RssFeed]:
-        return self._feeds
+    def all(self) -> list[Source]:
+        return self._sources
 
 
 class _FakeSession:
-    def __init__(self, feeds: list[RssFeed]) -> None:
-        self._feeds = feeds
+    def __init__(self, sources: list[Source]) -> None:
+        self._sources = sources
         self.info: dict[str, list[uuid.UUID]] = {}
         self.commits = 0
         self.rollbacks = 0
 
     async def execute(self, _statement) -> _FakeResult:  # noqa: ANN001
-        return _FakeResult(self._feeds)
+        return _FakeResult(self._sources)
 
     async def commit(self) -> None:
         self.commits += 1
@@ -68,8 +68,8 @@ async def test_fetch_rss_feed_content_retries_before_succeeding() -> None:
 
 
 @pytest.mark.asyncio
-async def test_poll_single_feed_fetches_rss_with_helper(mocker) -> None:
-    feed = RssFeed(
+async def test_poll_single_source_fetches_rss_with_helper(mocker) -> None:
+    src = Source(
         id=uuid.uuid4(),
         url="https://example.com/rss.xml",
         title="Example Feed",
@@ -102,20 +102,20 @@ async def test_poll_single_feed_fetches_rss_with_helper(mocker) -> None:
     upsert_news_item = AsyncMock(return_value=object())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert_news_item)
 
-    count = await poll_feeds._poll_single_feed(session=AsyncMock(), feed=feed)
+    count = await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
 
     assert count == 1
     fetch_content.assert_awaited_once_with("https://example.com/rss.xml")
     parse_feed.assert_called_once_with(b"<rss />")
     upsert_news_item.assert_awaited_once()
-    assert feed.last_polled_at is not None
-    assert feed.last_polled_at.tzinfo == UTC
+    assert src.last_polled_at is not None
+    assert src.last_polled_at.tzinfo == UTC
 
 
 @pytest.mark.asyncio
 async def test_poll_all_feeds_commits_after_each_feed(mocker) -> None:
-    feeds = [
-        RssFeed(
+    sources = [
+        Source(
             id=uuid.uuid4(),
             url="https://example.com/1.xml",
             title="Feed 1",
@@ -125,7 +125,7 @@ async def test_poll_all_feeds_commits_after_each_feed(mocker) -> None:
             last_polled_at=None,
             subscriber_count=1,
         ),
-        RssFeed(
+        Source(
             id=uuid.uuid4(),
             url="https://example.com/2.xml",
             title="Feed 2",
@@ -136,7 +136,7 @@ async def test_poll_all_feeds_commits_after_each_feed(mocker) -> None:
             subscriber_count=1,
         ),
     ]
-    session = _FakeSession(feeds)
+    session = _FakeSession(sources)
     mocker.patch.object(
         poll_feeds,
         "get_task_session",
@@ -144,7 +144,7 @@ async def test_poll_all_feeds_commits_after_each_feed(mocker) -> None:
     )
     mocker.patch.object(
         poll_feeds,
-        "_poll_single_feed",
+        "_poll_single_source",
         new=AsyncMock(side_effect=[1, 2]),
     )
     send_task = mocker.patch.object(poll_feeds.celery_app, "send_task")

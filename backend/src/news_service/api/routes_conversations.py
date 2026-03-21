@@ -18,7 +18,6 @@ from news_service.schemas.conversation import (
     ConversationMessageRequest,
     ConversationStartRequest,
     ConversationState,
-    ConversationTurnResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,68 +112,6 @@ async def _run_turn_streaming(
             )
         else:
             yield json.dumps(event) + "\n"
-
-
-@router.post("", response_model=ConversationTurnResponse)
-async def start_conversation(
-    payload: ConversationStartRequest,
-    user: User = Depends(get_current_user),
-) -> ConversationTurnResponse:
-    """Non-streaming conversation start — reuses the streaming generator."""
-    conversation_id = uuid.uuid4().hex
-    messages: list[dict] = [{"role": "user", "content": payload.message}]
-    conv_state = ConversationState(
-        user_id=str(user.id),
-        messages=messages,
-        user_language=payload.user_language,
-        user_timezone=payload.user_timezone,
-    )
-
-    result: dict | None = None
-    async for line in _run_turn_streaming(conversation_id, messages, conv_state):
-        event = json.loads(line)
-        if event.get("event") == "done":
-            result = event
-
-    if result is None:
-        raise HTTPException(status_code=500, detail="Conversation turn produced no result")
-    return ConversationTurnResponse(
-        conversation_id=result["conversation_id"],
-        agent_message=result["agent_message"],
-        status=result["status"],
-        finalized_config=(conv_state.finalized_config),
-    )
-
-
-@router.post("/{conversation_id}/messages", response_model=ConversationTurnResponse)
-async def continue_conversation(
-    conversation_id: str,
-    payload: ConversationMessageRequest,
-    user: User = Depends(get_current_user),
-) -> ConversationTurnResponse:
-    """Non-streaming conversation continue — reuses the streaming generator."""
-    conv_state = await _load_state(conversation_id, str(user.id))
-    if conv_state.status == "ready":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Conversation already finalized",
-        )
-    conv_state.messages.append({"role": "user", "content": payload.message})
-
-    result: dict | None = None
-    async for line in _run_turn_streaming(conversation_id, conv_state.messages, conv_state):
-        event = json.loads(line)
-        if event.get("event") == "done":
-            result = event
-
-    if result is None:
-        raise HTTPException(status_code=500, detail="Conversation turn produced no result")
-    return ConversationTurnResponse(
-        conversation_id=result["conversation_id"],
-        agent_message=result["agent_message"],
-        status=result["status"],
-        finalized_config=conv_state.finalized_config,
-    )
 
 
 @router.post("/stream")

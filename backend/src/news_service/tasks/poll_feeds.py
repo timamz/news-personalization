@@ -11,7 +11,7 @@ from news_service.core.config import get_settings
 from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
 from news_service.models.news_item import NewsItem
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.reddit import extract_reddit_subreddit_from_url, fetch_reddit_posts
@@ -36,27 +36,27 @@ async def _poll_all_feeds() -> dict:
     async with get_task_session() as session:
         session.info["event_item_ids"] = []
 
-        event_feed_result = await session.execute(
-            select(SubscriptionSource.feed_id)
+        event_source_result = await session.execute(
+            select(SubscriptionSource.source_id)
             .join(Subscription, Subscription.id == SubscriptionSource.subscription_id)
             .where(Subscription.is_active.is_(True), Subscription.delivery_mode == "event")
             .distinct()
         )
-        session.info["event_feed_ids"] = set(event_feed_result.scalars().all())
+        session.info["event_source_ids"] = set(event_source_result.scalars().all())
 
-        result = await session.execute(select(RssFeed).where(RssFeed.is_active.is_(True)))
-        feeds = list(result.scalars().all())
+        result = await session.execute(select(Source).where(Source.is_active.is_(True)))
+        all_sources = list(result.scalars().all())
 
         total_new = 0
-        for feed in feeds:
+        for src in all_sources:
             try:
-                count = await _poll_single_feed(session, feed)
+                count = await _poll_single_source(session, src)
             except Exception:
                 await session.rollback()
                 logger.exception(
-                    "Unexpected failure while polling feed %s",
-                    feed.url,
-                    extra={"feed_id": str(feed.id)},
+                    "Unexpected failure while polling source %s",
+                    src.url,
+                    extra={"source_id": str(src.id)},
                 )
                 continue
             await session.commit()
@@ -68,30 +68,30 @@ async def _poll_all_feeds() -> dict:
         celery_app.send_task(DELIVER_EVENTS_TASK, args=[str(item_id)])
 
     return {
-        "feeds_polled": len(feeds),
+        "feeds_polled": len(all_sources),
         "new_items": total_new,
         "event_notifications_queued": len(event_item_ids),
     }
 
 
-async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
-    channel_handle = extract_telegram_channel_from_url(feed.url)
+async def _poll_single_source(session: AsyncSession, src: Source) -> int:
+    channel_handle = extract_telegram_channel_from_url(src.url)
     if channel_handle is not None:
-        return await _poll_single_telegram_channel(session, feed, channel_handle)
+        return await _poll_single_telegram_channel(session, src, channel_handle)
 
-    subreddit = extract_reddit_subreddit_from_url(feed.url)
+    subreddit = extract_reddit_subreddit_from_url(src.url)
     if subreddit is not None:
-        return await _poll_single_reddit_subreddit(session, feed, subreddit)
+        return await _poll_single_reddit_subreddit(session, src, subreddit)
 
-    twitter_account = extract_twitter_account_from_url(feed.url)
+    twitter_account = extract_twitter_account_from_url(src.url)
     if twitter_account is not None:
-        return await _poll_single_twitter_account(session, feed, twitter_account)
+        return await _poll_single_twitter_account(session, src, twitter_account)
 
     try:
-        content = await _fetch_rss_feed_content(feed.url)
+        content = await _fetch_rss_feed_content(src.url)
         parsed = feedparser.parse(content)
     except Exception:
-        logger.exception("Failed to parse feed %s", feed.url, extra={"feed_id": str(feed.id)})
+        logger.exception("Failed to parse feed %s", src.url, extra={"source_id": str(src.id)})
         return 0
 
     entries = parsed.entries
@@ -108,12 +108,12 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
             continue
         recent_entries.append((entry, headline, body, published_at))
     if not recent_entries:
-        feed.last_polled_at = now
+        src.last_polled_at = now
         logger.info(
             "Polled feed %s: 0 new items from %d recent entries",
-            feed.url,
+            src.url,
             len(entries),
-            extra={"feed_id": str(feed.id)},
+            extra={"source_id": str(src.id)},
         )
         return 0
 
@@ -123,8 +123,8 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
     except Exception:
         logger.exception(
             "Failed to embed entries for feed %s",
-            feed.url,
-            extra={"feed_id": str(feed.id)},
+            src.url,
+            extra={"source_id": str(src.id)},
         )
         return 0
 
@@ -140,36 +140,36 @@ async def _poll_single_feed(session: AsyncSession, feed: RssFeed) -> int:
 
         item = await upsert_news_item(
             session,
-            feed_id=feed.id,
+            source_id=src.id,
             headline=headline or "Untitled",
             body=body,
             url=url,
-            source=feed.title or feed.url,
+            source=src.title or src.url,
             published_at=published_at,
             fetched_at=now,
             embedding=embedding,
         )
         if item is not None:
             new_count += 1
-            if isinstance(item, NewsItem) and item.feed_id in session.info.get(
-                "event_feed_ids", set()
+            if isinstance(item, NewsItem) and item.source_id in session.info.get(
+                "event_source_ids", set()
             ):
                 session.info.setdefault("event_item_ids", []).append(item.id)
 
-    feed.last_polled_at = now
+    src.last_polled_at = now
     logger.info(
         "Polled feed %s: %d new items from %d recent entries",
-        feed.url,
+        src.url,
         new_count,
         len(recent_entries),
-        extra={"feed_id": str(feed.id)},
+        extra={"source_id": str(src.id)},
     )
     return new_count
 
 
 async def _poll_single_telegram_channel(
     session: AsyncSession,
-    feed: RssFeed,
+    src: Source,
     channel_handle: str,
 ) -> int:
     try:
@@ -178,14 +178,14 @@ async def _poll_single_telegram_channel(
         logger.exception(
             "Failed to parse Telegram channel @%s",
             channel_handle,
-            extra={"feed_id": str(feed.id)},
+            extra={"source_id": str(src.id)},
         )
         return 0
 
     now = datetime.now(UTC)
     fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
     if not fresh_posts:
-        feed.last_polled_at = now
+        src.last_polled_at = now
         return 0
 
     texts_to_embed = [post.body for post in fresh_posts]
@@ -195,17 +195,17 @@ async def _poll_single_telegram_channel(
         logger.exception(
             "Failed to embed Telegram posts for @%s",
             channel_handle,
-            extra={"feed_id": str(feed.id)},
+            extra={"source_id": str(src.id)},
         )
         return 0
 
-    source_name = feed.title or f"Telegram @{channel_handle}"
+    source_name = src.title or f"Telegram @{channel_handle}"
     new_count = 0
     for post, embedding in zip(fresh_posts, embeddings, strict=True):
         headline = post.body.splitlines()[0][:200]
         item = await upsert_news_item(
             session,
-            feed_id=feed.id,
+            source_id=src.id,
             headline=headline or f"Telegram post from @{channel_handle}",
             body=post.body,
             url=post.url,
@@ -216,25 +216,25 @@ async def _poll_single_telegram_channel(
         )
         if item is not None:
             new_count += 1
-            if isinstance(item, NewsItem) and item.feed_id in session.info.get(
-                "event_feed_ids", set()
+            if isinstance(item, NewsItem) and item.source_id in session.info.get(
+                "event_source_ids", set()
             ):
                 session.info.setdefault("event_item_ids", []).append(item.id)
 
-    feed.last_polled_at = now
+    src.last_polled_at = now
     logger.info(
         "Polled Telegram channel @%s: %d new items from %d posts",
         channel_handle,
         new_count,
         len(fresh_posts),
-        extra={"feed_id": str(feed.id)},
+        extra={"source_id": str(src.id)},
     )
     return new_count
 
 
 async def _poll_single_reddit_subreddit(
     session: AsyncSession,
-    feed: RssFeed,
+    src: Source,
     subreddit: str,
 ) -> int:
     try:
@@ -243,14 +243,14 @@ async def _poll_single_reddit_subreddit(
         logger.exception(
             "Failed to parse Reddit subreddit r/%s",
             subreddit,
-            extra={"feed_id": str(feed.id)},
+            extra={"source_id": str(src.id)},
         )
         return 0
 
     now = datetime.now(UTC)
     fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
     if not fresh_posts:
-        feed.last_polled_at = now
+        src.last_polled_at = now
         return 0
 
     texts_to_embed = [
@@ -263,16 +263,16 @@ async def _poll_single_reddit_subreddit(
         logger.exception(
             "Failed to embed Reddit posts for r/%s",
             subreddit,
-            extra={"feed_id": str(feed.id)},
+            extra={"source_id": str(src.id)},
         )
         return 0
 
-    source_name = feed.title or f"Reddit r/{subreddit}"
+    source_name = src.title or f"Reddit r/{subreddit}"
     new_count = 0
     for post, embedding in zip(fresh_posts, embeddings, strict=True):
         item = await upsert_news_item(
             session,
-            feed_id=feed.id,
+            source_id=src.id,
             headline=post.title[:200] or f"Reddit post from r/{subreddit}",
             body=post.body,
             url=post.url,
@@ -283,25 +283,25 @@ async def _poll_single_reddit_subreddit(
         )
         if item is not None:
             new_count += 1
-            if isinstance(item, NewsItem) and item.feed_id in session.info.get(
-                "event_feed_ids", set()
+            if isinstance(item, NewsItem) and item.source_id in session.info.get(
+                "event_source_ids", set()
             ):
                 session.info.setdefault("event_item_ids", []).append(item.id)
 
-    feed.last_polled_at = now
+    src.last_polled_at = now
     logger.info(
         "Polled Reddit subreddit r/%s: %d new items from %d posts",
         subreddit,
         new_count,
         len(fresh_posts),
-        extra={"feed_id": str(feed.id)},
+        extra={"source_id": str(src.id)},
     )
     return new_count
 
 
 async def _poll_single_twitter_account(
     session: AsyncSession,
-    feed: RssFeed,
+    src: Source,
     account: str,
 ) -> int:
     try:
@@ -310,14 +310,14 @@ async def _poll_single_twitter_account(
         logger.exception(
             "Failed to parse Twitter/X account @%s",
             account,
-            extra={"feed_id": str(feed.id)},
+            extra={"source_id": str(src.id)},
         )
         return 0
 
     now = datetime.now(UTC)
     fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
     if not fresh_posts:
-        feed.last_polled_at = now
+        src.last_polled_at = now
         return 0
 
     texts_to_embed = [post.body for post in fresh_posts]
@@ -327,17 +327,17 @@ async def _poll_single_twitter_account(
         logger.exception(
             "Failed to embed Twitter/X posts for @%s",
             account,
-            extra={"feed_id": str(feed.id)},
+            extra={"source_id": str(src.id)},
         )
         return 0
 
-    source_name = feed.title or f"X @{account}"
+    source_name = src.title or f"X @{account}"
     new_count = 0
     for post, embedding in zip(fresh_posts, embeddings, strict=True):
         headline = post.body.splitlines()[0][:200]
         item = await upsert_news_item(
             session,
-            feed_id=feed.id,
+            source_id=src.id,
             headline=headline or f"Post from @{account}",
             body=post.body,
             url=post.url,
@@ -348,18 +348,18 @@ async def _poll_single_twitter_account(
         )
         if item is not None:
             new_count += 1
-            if isinstance(item, NewsItem) and item.feed_id in session.info.get(
-                "event_feed_ids", set()
+            if isinstance(item, NewsItem) and item.source_id in session.info.get(
+                "event_source_ids", set()
             ):
                 session.info.setdefault("event_item_ids", []).append(item.id)
 
-    feed.last_polled_at = now
+    src.last_polled_at = now
     logger.info(
         "Polled Twitter/X account @%s: %d new items from %d posts",
         account,
         new_count,
         len(fresh_posts),
-        extra={"feed_id": str(feed.id)},
+        extra={"source_id": str(src.id)},
     )
     return new_count
 

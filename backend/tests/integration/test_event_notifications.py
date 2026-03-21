@@ -8,8 +8,8 @@ from sqlalchemy import select
 from news_service.agents.event import EventAssessmentResult
 from news_service.db.session import async_session_factory
 from news_service.models.news_item import NewsItem
-from news_service.models.rss_feed import RssFeed
 from news_service.models.sent_item import SentItem
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
@@ -24,7 +24,7 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
 
     async with async_session_factory() as session:
         user = User(api_key="event-test-api-key")
-        feed = RssFeed(
+        src = Source(
             url="https://example.com/events.xml",
             title="Events Feed",
             source_description="Television events feed",
@@ -32,7 +32,7 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
             subscriber_count=1,
         )
         session.add(user)
-        session.add(feed)
+        session.add(src)
         await session.flush()
 
         subscription = Subscription(
@@ -53,13 +53,13 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
         session.add(
             SubscriptionSource(
                 subscription_id=subscription.id,
-                feed_id=feed.id,
+                source_id=src.id,
             )
         )
         session.add(
             NewsItem(
                 id=news_item_id,
-                feed_id=feed.id,
+                source_id=src.id,
                 headline="Severance season finale release announced",
                 body="Apple confirmed the finale release date for next month.",
                 url=f"https://example.com/events/{news_item_id}",
@@ -118,7 +118,7 @@ async def test_event_notification_skips_non_relevant_event(mocker) -> None:
 
     async with async_session_factory() as session:
         user = User(api_key="strict-event-test-api-key")
-        feed = RssFeed(
+        src = Source(
             url="https://example.com/strict-events.xml",
             title="Strict Events Feed",
             source_description="Science events feed",
@@ -126,7 +126,7 @@ async def test_event_notification_skips_non_relevant_event(mocker) -> None:
             subscriber_count=1,
         )
         session.add(user)
-        session.add(feed)
+        session.add(src)
         await session.flush()
 
         subscription = Subscription(
@@ -144,11 +144,11 @@ async def test_event_notification_skips_non_relevant_event(mocker) -> None:
         await session.flush()
 
         subscription_id = subscription.id
-        session.add(SubscriptionSource(subscription_id=subscription.id, feed_id=feed.id))
+        session.add(SubscriptionSource(subscription_id=subscription.id, source_id=src.id))
         session.add(
             NewsItem(
                 id=news_item_id,
-                feed_id=feed.id,
+                source_id=src.id,
                 headline="Лекция Александра Очередного в центре Дробышевского",
                 body="Приглашаем на лекцию Александра Очередного в центре популяризации науки.",
                 url=f"https://example.com/strict-events/{news_item_id}",
@@ -195,21 +195,21 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
 
     async with async_session_factory() as session:
         user = User(api_key="duplicate-history-test-api-key")
-        old_feed = RssFeed(
+        old_source = Source(
             url="https://example.com/old-events.xml",
             title="Old Events Feed",
             source_description="Science events feed",
             is_active=True,
             subscriber_count=0,
         )
-        current_feed = RssFeed(
+        current_source = Source(
             url="https://example.com/current-events.xml",
             title="Current Events Feed",
             source_description="Science events feed",
             is_active=True,
             subscriber_count=1,
         )
-        session.add_all([user, old_feed, current_feed])
+        session.add_all([user, old_source, current_source])
         await session.flush()
 
         old_subscription = Subscription(
@@ -238,7 +238,7 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         await session.flush()
 
         old_news_item = NewsItem(
-            feed_id=old_feed.id,
+            source_id=old_source.id,
             headline="Lecture announced",
             body="Stanislav Drobyshevsky will lecture next week.",
             url="https://example.com/old-events/1",
@@ -248,7 +248,7 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         )
         current_news_item = NewsItem(
             id=current_news_item_id,
-            feed_id=current_feed.id,
+            source_id=current_source.id,
             headline="Reminder about the lecture",
             body="Reminder: Stanislav Drobyshevsky will lecture next week.",
             url="https://example.com/current-events/1",
@@ -260,7 +260,7 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         session.add(
             SubscriptionSource(
                 subscription_id=current_subscription.id,
-                feed_id=current_feed.id,
+                source_id=current_source.id,
             )
         )
         await session.flush()

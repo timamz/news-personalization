@@ -4,14 +4,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.services.reddit import RedditPost
 from news_service.tasks import poll_feeds
 
 
 @pytest.mark.asyncio
-async def test_poll_single_feed_handles_reddit_subreddit(mocker) -> None:
-    feed = RssFeed(
+async def test_poll_single_source_handles_reddit_subreddit(mocker) -> None:
+    src = Source(
         id=uuid.uuid4(),
         url="https://www.reddit.com/r/badminton/new/",
         title="Reddit r/badminton",
@@ -35,15 +35,15 @@ async def test_poll_single_feed_handles_reddit_subreddit(mocker) -> None:
     upsert_news_item = AsyncMock(return_value=object())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert_news_item)
 
-    count = await poll_feeds._poll_single_feed(session=AsyncMock(), feed=feed)
+    count = await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
 
     assert count == 1
     upsert_news_item.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_poll_single_feed_skips_stale_reddit_posts(mocker) -> None:
-    feed = RssFeed(
+async def test_poll_single_source_skips_stale_reddit_posts(mocker) -> None:
+    src = Source(
         id=uuid.uuid4(),
         url="https://www.reddit.com/r/arxiv/new/",
         title="Reddit r/arxiv",
@@ -66,7 +66,7 @@ async def test_poll_single_feed_skips_stale_reddit_posts(mocker) -> None:
     embed_texts = mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock())
     upsert_news_item = mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock())
 
-    count = await poll_feeds._poll_single_feed(session=AsyncMock(), feed=feed)
+    count = await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
 
     assert count == 0
     embed_texts.assert_not_awaited()

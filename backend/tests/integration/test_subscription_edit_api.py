@@ -5,19 +5,19 @@ import pytest
 from httpx import AsyncClient
 
 from news_service.db.session import async_session_factory
-from news_service.models.rss_feed import RssFeed
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.schemas.subscription import SubscriptionEditProposalResponse
-from tests.integration.helpers import create_user
+from tests.integration.helpers import create_subscription_via_stream, create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uuid.UUID]:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
+    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
         assert raw_prompt == "Notify me when new episodes of Apothecary Diaries air."
-        assert raw_prompt_embedding == [2.0] * 1536
-        feed = RssFeed(
+        assert prompt_embedding == [2.0] * 1536
+        src = Source(
             url="https://example.com/anime.xml",
             title="Anime Feed",
             source_description=f"Anime Feed ({raw_prompt})",
@@ -25,9 +25,9 @@ async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uu
             is_active=True,
             subscriber_count=1,
         )
-        session.add(feed)
+        session.add(src)
         await session.flush()
-        return [feed]
+        return [src]
 
     mocker.patch(
         "news_service.api.routes_subscriptions.ensure_prompt_coverage",
@@ -37,10 +37,10 @@ async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uu
     user = await create_user(api_client)
     api_key = user["api_key"]
 
-    create_response = await api_client.post(
-        "/subscriptions",
-        headers={"X-API-Key": api_key},
-        json={
+    sub = await create_subscription_via_stream(
+        api_client,
+        api_key,
+        {
             "prompt": "Notify me when new episodes of Apothecary Diaries air.",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
@@ -49,8 +49,7 @@ async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uu
             "digest_language_override": "en",
         },
     )
-    assert create_response.status_code == 201
-    return api_key, uuid.UUID(create_response.json()["id"])
+    return api_key, uuid.UUID(sub["id"])
 
 
 async def test_subscription_edit_proposal_and_apply_updates_canonical_prompt(

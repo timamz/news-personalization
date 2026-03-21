@@ -63,7 +63,7 @@ class _FakeSessionFactory:
 def _make_item() -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
-        feed_id=uuid.uuid4(),
+        source_id=uuid.uuid4(),
         headline="Artist announces tour",
         body="The artist confirmed a new world tour for this summer.",
         published_at=datetime(2026, 3, 1, 12, 0, tzinfo=UTC),

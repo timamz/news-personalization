@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 _client = openai_client
 
-MAX_EVENT_TEXT_CHARS = 4000
-
 ASSESS_AND_COMPOSE_PROMPT = """\
 You decide whether to deliver a post to the user based on their subscription request.
 
@@ -78,11 +76,6 @@ class RecentEventsPreviewDecision(BaseModel):
     body: str = Field(default="", description="Single body covering all missed events")
 
 
-def _trim_text(value: str) -> str:
-    normalized = " ".join(value.split())
-    return normalized[:MAX_EVENT_TEXT_CHARS]
-
-
 @with_llm_retry()
 async def assess_and_compose_event_notification(
     *,
@@ -95,7 +88,7 @@ async def assess_and_compose_event_notification(
     max_history_chars: int,
 ) -> EventAssessmentResult:
     history_text = "\n\n".join(
-        f"Notification {index}:\n{_trim_text(entry)}"
+        f"Notification {index}:\n{entry}"
         for index, entry in enumerate(recent_notification_history, start=1)
     )
     if len(history_text) > max_history_chars:
@@ -111,9 +104,9 @@ async def assess_and_compose_event_notification(
                 "role": "user",
                 "content": (
                     f"Target language: {target_language}\n\n"
-                    f"Subscription request:\n{_trim_text(raw_prompt)}\n\n"
-                    f"Post headline:\n{_trim_text(headline)}\n\n"
-                    f"Post body:\n{_trim_text(body)}\n\n"
+                    f"Subscription request:\n{raw_prompt}\n\n"
+                    f"Post headline:\n{headline}\n\n"
+                    f"Post body:\n{body}\n\n"
                     "Notification history:\n"
                     f"{history_block}"
                 ),
@@ -149,14 +142,14 @@ async def render_recent_events_preview(
 
     history_block = (
         "\n\n".join(
-            f"Notification {index}:\n{_trim_text(entry)}"
+            f"Notification {index}:\n{entry}"
             for index, entry in enumerate(recent_notifications, start=1)
         )
         if recent_notifications
         else "No recent notification history."
     )
     candidates_block = "\n\n".join(
-        f"Candidate event {index}:\n{_trim_text(summary)}"
+        f"Candidate event {index}:\n{summary}"
         for index, summary in enumerate(candidate_events, start=1)
     )
     completion = await _client.beta.chat.completions.parse(
@@ -168,7 +161,7 @@ async def render_recent_events_preview(
                 "content": (
                     f"Target language: {normalized_language}\n"
                     f"Lookback window: last {lookback_days} days\n\n"
-                    f"Original subscription request:\n{_trim_text(raw_prompt)}\n\n"
+                    f"Original subscription request:\n{raw_prompt}\n\n"
                     "Recent notification history:\n"
                     f"{history_block}\n\n"
                     "Candidate events:\n"

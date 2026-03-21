@@ -12,38 +12,16 @@ from news_service.models.sent_item import SentItem
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.delivery import get_delivery_channel
-from news_service.services.event_notifications import load_recent_notification_history
+from news_service.services.event_notifications import (
+    load_recent_notification_history,
+    normalize_event_text,
+    text_similarity,
+    token_overlap,
+)
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-
-_HEADLINE_DUPLICATE_THRESHOLD = 0.95
-
-
-def _headline_is_obvious_duplicate(
-    headline: str,
-    history: list[str],
-) -> bool:
-    normalized = headline.strip().casefold()
-    if not normalized:
-        return False
-    for entry in history:
-        entry_normalized = entry.strip().casefold()
-        if not entry_normalized:
-            continue
-        shorter = min(len(normalized), len(entry_normalized))
-        longer = max(len(normalized), len(entry_normalized))
-        if shorter == 0:
-            continue
-        common = 0
-        for a, b in zip(normalized, entry_normalized, strict=False):
-            if a == b:
-                common += 1
-        overlap = common / longer
-        if overlap >= _HEADLINE_DUPLICATE_THRESHOLD:
-            return True
-    return False
 
 
 @celery_app.task(name="news_service.tasks.deliver_events.deliver_event_notifications")
@@ -67,7 +45,7 @@ async def _deliver_event_notifications(news_item_id: uuid.UUID) -> dict:
             .where(
                 Subscription.is_active.is_(True),
                 Subscription.delivery_mode == "event",
-                SubscriptionSource.feed_id == item.feed_id,
+                SubscriptionSource.source_id == item.source_id,
             )
         )
         subscriptions = list(result.scalars().all())
@@ -83,85 +61,117 @@ async def _deliver_event_notifications(news_item_id: uuid.UUID) -> dict:
         )
         sent_subscription_ids = set(sent_result.scalars().all())
 
+        pending = [s for s in subscriptions if s.id not in sent_subscription_ids]
+        if not pending:
+            return {"status": "skipped", "reason": "already_sent"}
+
+        sem = asyncio.Semaphore(settings.recent_event_match_concurrency)
+
+        async def _process_subscription(
+            subscription: Subscription,
+        ) -> str:
+            """Process a single subscription. Returns 'delivered', 'failed', or 'skipped'."""
+            async with sem:
+                history = await load_recent_notification_history(session, subscription.id)
+                normalized_headline = normalize_event_text(item.headline)
+                is_dup = False
+                for entry in history:
+                    normalized_entry = normalize_event_text(entry.title)
+                    if (
+                        normalized_headline
+                        and normalized_entry
+                        and (
+                            token_overlap(normalized_headline, normalized_entry) >= 0.85
+                            or text_similarity(normalized_headline, normalized_entry) >= 0.96
+                        )
+                    ):
+                        is_dup = True
+                        break
+                if is_dup:
+                    logger.info(
+                        "Event %s skipped for subscription %s: deterministic headline duplicate",
+                        item.id,
+                        subscription.id,
+                        extra={
+                            "subscription_id": str(subscription.id),
+                            "news_item_id": str(item.id),
+                        },
+                    )
+                    return "skipped"
+
+                history_strings = [
+                    f"Title: {entry.title}\nSummary: {entry.summary}\n"
+                    f"Source: {entry.source}\nShown at: {entry.sent_at.isoformat()}"
+                    for entry in history
+                ]
+
+                raw_prompt = subscription.canonical_prompt
+                try:
+                    assessment = await assess_and_compose_event_notification(
+                        headline=item.headline,
+                        body=item.body,
+                        published_at=item.published_at,
+                        raw_prompt=raw_prompt,
+                        target_language=subscription.digest_language,
+                        recent_notification_history=history_strings,
+                        max_history_chars=settings.llm_max_context_chars,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to assess event for subscription %s",
+                        subscription.id,
+                        extra={
+                            "subscription_id": str(subscription.id),
+                            "news_item_id": str(item.id),
+                        },
+                    )
+                    return "failed"
+
+                if not assessment.is_relevant_event:
+                    logger.info(
+                        "Event %s not relevant for subscription %s: %s",
+                        item.id,
+                        subscription.id,
+                        assessment.reason,
+                        extra={
+                            "subscription_id": str(subscription.id),
+                            "news_item_id": str(item.id),
+                        },
+                    )
+                    return "skipped"
+
+                channel = get_delivery_channel(subscription.delivery_webhook_url)
+                try:
+                    await channel.send("", assessment.notification_body)
+                except Exception:
+                    logger.exception(
+                        "Failed to deliver event notification for subscription %s",
+                        subscription.id,
+                        extra={
+                            "subscription_id": str(subscription.id),
+                            "news_item_id": str(item.id),
+                        },
+                    )
+                    return "failed"
+
+                session.add(SentItem(subscription_id=subscription.id, news_item_id=item.id))
+                await session.commit()
+                return "delivered"
+
+        results = await asyncio.gather(
+            *[_process_subscription(s) for s in pending],
+            return_exceptions=True,
+        )
+
         delivered = 0
         failed = 0
-        for subscription in subscriptions:
-            if subscription.id in sent_subscription_ids:
-                continue
-
-            history = await load_recent_notification_history(session, subscription.id)
-            history_headlines = [entry.title for entry in history]
-            if _headline_is_obvious_duplicate(item.headline, history_headlines):
-                logger.info(
-                    "Event %s skipped for subscription %s: deterministic headline duplicate",
-                    item.id,
-                    subscription.id,
-                    extra={
-                        "subscription_id": str(subscription.id),
-                        "news_item_id": str(item.id),
-                    },
-                )
-                continue
-
-            history_strings = [
-                f"Title: {entry.title}\nSummary: {entry.summary}\n"
-                f"Source: {entry.source}\nShown at: {entry.sent_at.isoformat()}"
-                for entry in history
-            ]
-
-            raw_prompt = getattr(subscription, "canonical_prompt", "") or subscription.raw_prompt
-            try:
-                assessment = await assess_and_compose_event_notification(
-                    headline=item.headline,
-                    body=item.body,
-                    published_at=item.published_at,
-                    raw_prompt=raw_prompt,
-                    target_language=subscription.digest_language,
-                    recent_notification_history=history_strings,
-                    max_history_chars=settings.llm_max_context_chars,
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to assess event for subscription %s",
-                    subscription.id,
-                    extra={
-                        "subscription_id": str(subscription.id),
-                        "news_item_id": str(item.id),
-                    },
-                )
-                continue
-
-            if not assessment.is_relevant_event:
-                logger.info(
-                    "Event %s not relevant for subscription %s: %s",
-                    item.id,
-                    subscription.id,
-                    assessment.reason,
-                    extra={
-                        "subscription_id": str(subscription.id),
-                        "news_item_id": str(item.id),
-                    },
-                )
-                continue
-
-            channel = get_delivery_channel(subscription.delivery_webhook_url)
-            try:
-                await channel.send("", assessment.notification_body)
-            except Exception:
+        for r in results:
+            if isinstance(r, BaseException):
                 failed += 1
-                logger.exception(
-                    "Failed to deliver event notification for subscription %s",
-                    subscription.id,
-                    extra={
-                        "subscription_id": str(subscription.id),
-                        "news_item_id": str(item.id),
-                    },
-                )
-                continue
-
-            session.add(SentItem(subscription_id=subscription.id, news_item_id=item.id))
-            await session.commit()
-            delivered += 1
+            elif r == "delivered":
+                delivered += 1
+            elif r == "failed":
+                failed += 1
 
         if delivered == 0 and failed == 0:
             return {"status": "skipped", "reason": "already_sent"}

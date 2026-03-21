@@ -28,6 +28,10 @@ class ConversationMessageRequest(BaseModel):
 
 
 class FinalizedSubscriptionConfig(BaseModel):
+    canonical_prompt: str = Field(
+        default="",
+        description="User prompt with orthographical mistakes corrected",
+    )
     prompt_summary: str = Field(..., description="Short human-readable summary")
     short_label: str = Field(..., description="Ultra-short 2-3 word label")
     delivery_mode: DeliveryMode = Field(default="digest")
