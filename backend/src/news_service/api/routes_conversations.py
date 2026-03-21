@@ -142,9 +142,7 @@ async def start_conversation(
         conversation_id=result["conversation_id"],
         agent_message=result["agent_message"],
         status=result["status"],
-        finalized_config=(
-            conv_state.finalized_config
-        ),
+        finalized_config=(conv_state.finalized_config),
     )
 
 

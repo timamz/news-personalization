@@ -116,3 +116,25 @@ jobs:
 
       - name: Build tgbot image
         run: docker build -t news-tgbot:ci ./tgbot
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Connect to Tailscale
+        uses: tailscale/tailscale-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Deploy to devbox
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ~/dev/news-personalization
+            git pull origin main
+            docker compose up --build -d
+            docker image prune -f

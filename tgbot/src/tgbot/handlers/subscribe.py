@@ -191,9 +191,7 @@ async def handle_recent_events_decision(callback: CallbackQuery, state: FSMConte
 
     await _reply(callback, f"{preview['subject']}\n\n{preview['body']}")
     try:
-        await backend.acknowledge_recent_events(
-            api_key, subscription_id, preview["news_item_ids"]
-        )
+        await backend.acknowledge_recent_events(api_key, subscription_id, preview["news_item_ids"])
     except Exception:
         logger.exception(
             "Failed to acknowledge recent events for telegram_id=%d subscription=%s",

@@ -40,10 +40,10 @@ from news_service.services.coverage import (
     ensure_prompt_coverage,
     ensure_source_coverage,
 )
-from news_service.services.feed_display import feed_display_name
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
 )
+from news_service.services.feed_display import feed_display_name
 from news_service.services.prompt_summaries import build_prompt_summary
 from news_service.services.reddit import (
     build_reddit_subreddit_url,
@@ -553,7 +553,9 @@ async def _recent_events_preview_streaming(
     yield {"event": "status", "status_message": "Looking for events..."}
     try:
         preview = await build_recent_events_preview_for_subscription(
-            session, subscription, lookback_days=7,
+            session,
+            subscription,
+            lookback_days=7,
         )
     except Exception:
         logger.exception(
@@ -593,7 +595,8 @@ async def recent_events_preview_stream(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
     if not subscription.is_active:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Subscription is inactive",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Subscription is inactive",
         )
     if subscription.delivery_mode != "event":
         raise HTTPException(

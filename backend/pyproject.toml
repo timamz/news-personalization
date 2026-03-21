@@ -42,6 +42,7 @@ packages = ["src/news_service"]
 target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
