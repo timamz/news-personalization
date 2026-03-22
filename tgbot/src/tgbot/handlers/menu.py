@@ -175,14 +175,6 @@ async def show_subscription_list(event: types.Message | CallbackQuery, state: FS
         await edit_menu(event, state, text, keyboard)
         return
 
-    # Backfill short labels if any are missing
-    if any(not sub.short_label for sub in subs):
-        try:
-            await backend.backfill_short_labels(api_key)
-            subs = await backend.list_subscriptions(api_key)
-        except Exception:
-            logger.debug("Failed to backfill short labels")
-
     buttons: list[list[InlineKeyboardButton]] = []
     for sub in subs:
         label = sub.short_label or sub.prompt_summary

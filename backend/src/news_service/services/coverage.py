@@ -72,11 +72,6 @@ async def _register_or_reuse_source(
     if existing_source is not None:
         existing_source.subscriber_count += 1
         existing_source.is_active = True
-        await _ensure_source_profile(
-            existing_source,
-            source_kind=scored.source_kind,
-            fallback_title=scored.title or scored.url,
-        )
         return existing_source
 
     description, embedding = await _build_source_profile(
@@ -116,11 +111,6 @@ async def ensure_source_coverage(
         if existing_source is not None:
             existing_source.subscriber_count += 1
             existing_source.is_active = True
-            await _ensure_source_profile(
-                existing_source,
-                source_kind=source_kind,
-                fallback_title=title_template.format(identifier),
-            )
             resolved[existing_source.id] = existing_source
             logger.info("Source already exists: %s", source_url)
             continue
@@ -146,29 +136,6 @@ async def ensure_source_coverage(
 
     return list(resolved.values())
 
-
-async def _ensure_source_profile(
-    source_obj: Source,
-    *,
-    source_kind: SourceKind,
-    fallback_title: str,
-    sample_content: list[str] | None = None,
-) -> None:
-    if source_obj.source_description and source_obj.source_description_embedding is not None:
-        if not source_obj.title:
-            source_obj.title = fallback_title
-        return
-
-    title = source_obj.title or fallback_title
-    description, embedding = await _build_source_profile(
-        source_kind=source_kind,
-        title=title,
-        url=source_obj.url,
-        sample_content=sample_content,
-    )
-    source_obj.title = title
-    source_obj.source_description = description
-    source_obj.source_description_embedding = embedding
 
 
 async def _build_source_profile(

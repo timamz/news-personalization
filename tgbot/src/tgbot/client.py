@@ -227,15 +227,6 @@ class BackendClient:
                 for s in response.json()
             ]
 
-    async def backfill_short_labels(self, api_key: str) -> int:
-        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
-            response = await client.post(
-                f"{self.base_url}/subscriptions/backfill-labels",
-                headers={"X-API-Key": api_key},
-            )
-            response.raise_for_status()
-            return response.json().get("updated", 0)
-
     async def delete_subscription(self, api_key: str, subscription_id: str) -> None:
         async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
             response = await client.delete(

@@ -70,12 +70,6 @@ async def _subscription_prompt_embedding(raw_prompt: str) -> list[float]:
     return await embed_text(raw_prompt)
 
 
-def _canonical_prompt(subscription: Subscription) -> str:
-    prompt = subscription.canonical_prompt.strip()
-    if prompt:
-        return prompt
-    return subscription.raw_prompt
-
 
 def _normalize_fixed_sources(
     telegram_channels: list[str],
@@ -156,12 +150,6 @@ def _ensure_user_timezone_for_schedule(user: User, schedule_cron: str | None) ->
         detail="Set your timezone before enabling automatic schedules",
     )
 
-
-def _ensure_prompt_summary(subscription: Subscription) -> str:
-    if subscription.prompt_summary.strip():
-        return subscription.prompt_summary
-    subscription.prompt_summary = build_prompt_summary(_canonical_prompt(subscription))
-    return subscription.prompt_summary
 
 
 @router.post("/parse-schedule", response_model=ScheduleParseResponse)
@@ -432,15 +420,7 @@ async def list_subscriptions(
             Subscription.is_active.is_(True),
         )
     )
-    subscriptions = list(result.scalars().all())
-    updated = False
-    for subscription in subscriptions:
-        previous = subscription.prompt_summary
-        _ensure_prompt_summary(subscription)
-        updated = updated or previous != subscription.prompt_summary
-    if updated:
-        await session.commit()
-    return subscriptions
+    return list(result.scalars().all())
 
 
 @router.post(
@@ -468,7 +448,7 @@ async def propose_subscription_edit_for_subscription(
             detail="Subscription is inactive",
         )
 
-    canonical_prompt = payload.draft_canonical_prompt or _canonical_prompt(subscription)
+    canonical_prompt = payload.draft_canonical_prompt or subscription.canonical_prompt
     format_instructions = payload.draft_format_instructions or subscription.format_instructions
     return await propose_subscription_edit(
         canonical_prompt=canonical_prompt,
@@ -794,32 +774,3 @@ async def send_subscription_now(
     return {"task_id": task.id, "status": "queued"}
 
 
-@router.post("/backfill-labels", status_code=status.HTTP_200_OK)
-async def backfill_short_labels(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-) -> dict[str, int]:
-    """Generate short_label for all active subscriptions that don't have one."""
-    from news_service.agents.short_label import generate_short_label
-
-    result = await session.execute(
-        select(Subscription).where(
-            Subscription.user_id == user.id,
-            Subscription.is_active.is_(True),
-            Subscription.short_label == "",
-        )
-    )
-    subscriptions = list(result.scalars().all())
-    updated = 0
-    for subscription in subscriptions:
-        try:
-            label = await generate_short_label(subscription.prompt_summary)
-            subscription.short_label = label[:30]
-            updated += 1
-        except Exception:
-            logger.exception(
-                "Failed to generate short label for subscription %s",
-                subscription.id,
-            )
-    await session.commit()
-    return {"updated": updated}

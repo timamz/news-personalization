@@ -55,15 +55,8 @@ async def handle_deliver(request: web.Request) -> web.Response:
         return web.json_response({"error": "delivery failed"}, status=500)
 
 
-async def handle_legacy_deliver(request: web.Request) -> web.Response:
-    chat_id = request.match_info["chat_id"]
-    logger.warning("Rejected legacy unauthenticated delivery for chat_id=%s", chat_id)
-    return web.json_response({"error": "forbidden"}, status=403)
-
-
 def create_webhook_app() -> web.Application:
     app = web.Application()
-    app.router.add_post("/deliver/{chat_id}", handle_legacy_deliver)
     app.router.add_post("/deliver/{token}/{chat_id}", handle_deliver)
     return app
 

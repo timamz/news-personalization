@@ -192,22 +192,6 @@ async def test_deliver_splits_long_message_into_multiple_sends() -> None:
         await client.close()
 
 
-@pytest.mark.asyncio
-async def test_deliver_rejects_legacy_unauthenticated_path() -> None:
-    client = await _make_webhook_client()
-    try:
-        set_bot(AsyncMock())
-
-        chat_id = random.randint(10000, 99999)
-        response = await client.post(
-            f"/deliver/{chat_id}",
-            json={"subject": "Test", "body": "Body"},
-        )
-
-        assert response.status == 403, "deliver did not reject legacy unauthenticated path"
-    finally:
-        await client.close()
-
 
 @pytest.mark.asyncio
 async def test_deliver_rejects_invalid_token() -> None:
