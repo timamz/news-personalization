@@ -110,6 +110,7 @@ async def _deliver_event_notifications(news_item_id: uuid.UUID) -> dict:
                     assessment = await assess_and_compose_event_notification(
                         headline=item.headline,
                         body=item.body,
+                        url=item.url,
                         published_at=item.published_at,
                         raw_prompt=raw_prompt,
                         target_language=subscription.digest_language,

@@ -81,6 +81,7 @@ async def assess_and_compose_event_notification(
     *,
     headline: str,
     body: str,
+    url: str,
     published_at: datetime | None,
     raw_prompt: str,
     target_language: str,
@@ -107,6 +108,7 @@ async def assess_and_compose_event_notification(
                     f"Subscription request:\n{raw_prompt}\n\n"
                     f"Post headline:\n{headline}\n\n"
                     f"Post body:\n{body}\n\n"
+                    f"Post URL:\n{url}\n\n"
                     "Notification history:\n"
                     f"{history_block}"
                 ),

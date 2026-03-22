@@ -34,6 +34,7 @@ async def test_assess_and_compose_event_notification_returns_relevant() -> None:
         result = await assess_and_compose_event_notification(
             headline="Severance finale announced",
             body="The new episode arrives next Friday.",
+            url="https://example.com/severance-finale",
             published_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
             raw_prompt="Notify me when new Severance episodes are announced",
             target_language="en",
@@ -71,6 +72,7 @@ async def test_assess_and_compose_event_notification_returns_not_relevant() -> N
         result = await assess_and_compose_event_notification(
             headline="Quarterly earnings",
             body="The company reported higher revenue this quarter.",
+            url="https://example.com/quarterly-earnings",
             published_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
             raw_prompt="Notify me when new Severance episodes are announced",
             target_language="en",
@@ -107,6 +109,7 @@ async def test_assess_and_compose_event_notification_detects_duplicate() -> None
         result = await assess_and_compose_event_notification(
             headline="Severance finale reminder",
             body="Reminder: the finale airs next Friday.",
+            url="https://example.com/severance-reminder",
             published_at=datetime(2026, 3, 14, 10, 0, tzinfo=UTC),
             raw_prompt="Notify me when new Severance episodes are announced",
             target_language="en",
