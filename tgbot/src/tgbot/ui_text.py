@@ -91,6 +91,13 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "recent_events_empty": ("No matching events were found in the last 7 days."),
         "status_thinking": "Thinking...",
         "status_checking_source": "Checking {source}...",
+        "status_analyzing": "Analyzing your request...",
+        "status_registering_sources": "Registering sources...",
+        "status_discovering_sources": "Discovering sources...",
+        "status_searching_known_sources": "Searching known sources...",
+        "status_searching_web": "Searching the web...",
+        "status_validating_source": "Validating source...",
+        "status_looking_for_events": "Looking for events...",
         "create_subscription_failed": ("Failed to create subscription. Please try again."),
         "subscription_created_digest": (
             "✅ Subscription created!\n\n"
@@ -291,6 +298,13 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "recent_events_empty": ("За последние 7 дней подходящих событий не найдено."),
         "status_thinking": "Думаю...",
         "status_checking_source": "Проверяю {source}...",
+        "status_analyzing": "Анализирую запрос...",
+        "status_registering_sources": "Регистрирую источники...",
+        "status_discovering_sources": "Ищу источники...",
+        "status_searching_known_sources": "Ищу среди известных источников...",
+        "status_searching_web": "Ищу в интернете...",
+        "status_validating_source": "Проверяю источник...",
+        "status_looking_for_events": "Ищу события...",
         "create_subscription_failed": ("Не удалось создать подписку. Попробуйте ещё раз."),
         "subscription_created_digest": (
             "✅ Подписка создана!\n\n"

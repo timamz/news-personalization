@@ -143,10 +143,10 @@ def _create_source_discovery_agent(
     )
 
 
-_TOOL_STATUS: dict[str, str] = {
-    "search_existing_sources": "Searching known sources...",
-    "tool_search_web": "Searching the web...",
-    "validate_and_score_source": "Validating source...",
+_TOOL_STATUS_KEYS: dict[str, str] = {
+    "search_existing_sources": "status_searching_known_sources",
+    "tool_search_web": "status_searching_web",
+    "validate_and_score_source": "status_validating_source",
 }
 
 
@@ -162,8 +162,8 @@ class StatusRunHooks(RunHooks[None]):
         agent: Agent[None],
         tool: Tool,
     ) -> None:
-        message = _TOOL_STATUS.get(tool.name, f"Running {tool.name}...")
-        await self._queue.put({"event": "status", "status_message": message})
+        key = _TOOL_STATUS_KEYS.get(tool.name, "status_thinking")
+        await self._queue.put({"event": "status", "status_key": key})
 
 
 async def run_source_discovery(

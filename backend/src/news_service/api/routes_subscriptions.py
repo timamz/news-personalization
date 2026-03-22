@@ -236,7 +236,7 @@ async def _create_subscription_streaming(
     digest_language: str = validated["digest_language"]
 
     # --- embedding ---
-    yield {"event": "status", "status_message": "Analyzing your request..."}
+    yield {"event": "status", "status_key": "status_analyzing"}
     canonical_prompt = payload.canonical_prompt or payload.prompt
     canonical_prompt_embedding = await _subscription_prompt_embedding(canonical_prompt)
     prompt_summary = payload.prompt_summary or build_prompt_summary(payload.prompt)
@@ -262,7 +262,7 @@ async def _create_subscription_streaming(
     selected_sources: dict[uuid.UUID, Source] = {}
     has_fixed = bool(telegram_channels or reddit_subreddits or twitter_accounts)
     if has_fixed:
-        yield {"event": "status", "status_message": "Registering sources..."}
+        yield {"event": "status", "status_key": "status_registering_sources"}
     for identifiers, kind in [
         (telegram_channels, "telegram_channel"),
         (reddit_subreddits, "reddit_subreddit"),
@@ -274,7 +274,7 @@ async def _create_subscription_streaming(
 
     # --- source discovery (the slow part) ---
     if include_discovered_sources:
-        yield {"event": "status", "status_message": "Discovering sources..."}
+        yield {"event": "status", "status_key": "status_discovering_sources"}
 
         from news_service.agents.source_discovery import StatusRunHooks
 
@@ -539,7 +539,7 @@ async def _recent_events_preview_streaming(
 
     for src in sources:
         display = source_display_name(src)
-        yield {"event": "status", "status_message": f"Checking {display}..."}
+        yield {"event": "status", "status_key": "status_checking_source", "source": display}
         try:
             await _poll_single_source(session, src)
             await session.commit()
@@ -551,7 +551,7 @@ async def _recent_events_preview_streaming(
                 extra={"source_id": str(src.id)},
             )
 
-    yield {"event": "status", "status_message": "Looking for events..."}
+    yield {"event": "status", "status_key": "status_looking_for_events"}
     try:
         preview = await build_recent_events_preview_for_subscription(
             session,

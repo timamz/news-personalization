@@ -162,7 +162,10 @@ async def handle_recent_events_decision(callback: CallbackQuery, state: FSMConte
         async for event_data in backend.list_recent_events_stream(api_key, subscription_id):
             match event_data.get("event"):
                 case "status":
-                    await _edit_status(status_msg, event_data.get("status_message", ""))
+                    key = event_data.get("status_key", "status_thinking")
+                    skip = {"event", "status_key"}
+                    kwargs = {k: v for k, v in event_data.items() if k not in skip}
+                    await _edit_status(status_msg, t(ui_language, key, **kwargs))
                 case "done":
                     preview = event_data.get("preview")
     except Exception:
@@ -248,9 +251,10 @@ async def _send_user_message(
         async for event_data in stream:
             match event_data.get("event"):
                 case "status":
-                    source = event_data.get("status_message", "")
-                    status_text = t(ui_language, "status_checking_source", source=source)
-                    await _edit_status(status_msg, status_text)
+                    key = event_data.get("status_key", "status_thinking")
+                    skip = {"event", "status_key"}
+                    kwargs = {k: v for k, v in event_data.items() if k not in skip}
+                    await _edit_status(status_msg, t(ui_language, key, **kwargs))
                 case "done":
                     turn_data = event_data
                     if not conversation_id:
@@ -345,7 +349,10 @@ async def _create_subscription_from_config(
         ):
             match event_data.get("event"):
                 case "status":
-                    await _edit_status(status_msg, event_data.get("status_message", ""))
+                    key = event_data.get("status_key", "status_thinking")
+                    skip = {"event", "status_key"}
+                    kwargs = {k: v for k, v in event_data.items() if k not in skip}
+                    await _edit_status(status_msg, t(ui_language, key, **kwargs))
                 case "done":
                     subscription_data = event_data["subscription"]
                 case "error":

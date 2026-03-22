@@ -82,7 +82,9 @@ provided. Only ask if ambiguous (e.g. user writes in English about Russian-langu
 X/Twitter accounts on this topic. Extract source identifiers:
    - Telegram channels: @channel or t.me/channel → store as "channel" (no @ prefix)
    - Reddit subreddits: r/sub or reddit.com/r/sub → store as "sub" (no r/ prefix)
-   - Twitter/X accounts: @handle or x.com/handle → store as "handle" (no @ prefix)
+   - Twitter/X accounts: x.com/handle → store as "handle" (no @ prefix)
+   When asking the user about sources, tell them to use @channel for Telegram and x.com/handle \
+for X/Twitter to avoid ambiguity.
    Use the validate_source_url tool to verify sources are reachable when the user provides them. \
 Build the full URL for validation: https://t.me/s/channel, https://www.reddit.com/r/sub/new/, \
 https://x.com/handle.
@@ -252,9 +254,9 @@ def _source_display_name(url: str, source_kind: str) -> str:
                 return f"r/{parts[i + 1]}"
         return url
     if source_kind == "twitter_account":
-        # https://x.com/handle → @handle
+        # https://x.com/handle → x.com/handle
         name = url.rstrip("/").split("/")[-1]
-        return f"@{name}"
+        return f"x.com/{name}"
     return url
 
 
@@ -267,7 +269,7 @@ async def run_conversation_turn_streaming(
     """Streaming variant that yields status events and a final done event.
 
     Events:
-      {"event": "status", "status_message": "..."}
+      {"event": "status", "status_key": "...", ...optional kwargs}
       {"event": "done", "output": {...}, "new_messages": [...]}
       {"event": "error", "detail": "..."}
     """
@@ -319,7 +321,7 @@ async def run_conversation_turn_streaming(
             if tc.function.name == "validate_source_url":
                 args = json.loads(tc.function.arguments)
                 display = _source_display_name(args.get("url", ""), args.get("source_kind", ""))
-                yield {"event": "status", "status_message": display}
+                yield {"event": "status", "status_key": "status_checking_source", "source": display}
 
             result = await _execute_tool(tc.function.name, tc.function.arguments)
             new_messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})

@@ -101,4 +101,8 @@ services:
 
 volumes:
   pgdata:
+    name: news-personalization_pgdata
+    external: true
   tgbot_home:
+    name: news-personalization_tgbot_home
+    external: true

@@ -9,7 +9,7 @@ class StreamEvent(BaseModel):
     """A single event in the NDJSON conversation stream."""
 
     event: Literal["status", "done", "error"] = Field(...)
-    status_message: str | None = Field(default=None, description="User-facing status text")
+    status_key: str | None = Field(default=None, description="Translation key for status text")
     data: dict[str, Any] | None = Field(
         default=None, description="Final result payload (for done events)"
     )

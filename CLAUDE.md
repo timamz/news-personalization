@@ -102,22 +102,62 @@ All endpoints that involve LLM processing use **NDJSON streaming** (`application
 
 ## Testing (TDD)
 
-Write the test before or alongside the implementation — never after.
+Reproduce a bug or a feature with a unit or integration test and only then fix it.
 
-```
-backend/tests/
-├── unit/         # Pure logic, no I/O. Mock all external calls (LLM, DB, HTTP).
-└── integration/  # Real Postgres + Redis via Docker. Mock OpenAI API only.
+Be verbose and direct in README.md and code documentation.
+Don't use inline code comments, only codeblocks on top of classes and methods.
+Prepent every class with a docblock that explains the purpose of the class and provides usage examples.
+Use English only to write doclbocks, using only ASCII.
 
-tgbot/tests/
-└── unit/         # Mock backend API calls, bot interactions, and storage.
-```
+Respect the DDD paradigm.
+Respect the principles of testing in the "Angry Tests" book of Yegor Bugayenko.
+Favor "fail fast" paradigm over "fail safe": throw exception earlier.
 
-- Unit tests must be fast (<1s per test) and require no running services.
-- Every agent function must have a unit test with a mocked LLM response.
-- Every API endpoint must have an integration test.
-- Aim for meaningful coverage, not 100% line coverage for its own sake.
-- Use `pytest`, `pytest-asyncio`, `httpx` for async API tests, `pytest-mock` for mocking.
+Include as much context as possible in exception messages.
+
+Cover every change with a unit test to guarantee repeatability.
+Put only one assertion in every test case.
+Place the assertion as the last statement in every test.
+Assert at least once in every test.
+Keep test cases as short as possible.
+Aim for tests that consist of a single statement.
+Verify only one specific behavioral pattern per test.
+Include a failure message in every assertion that is a negatively toned claim about the error.
+
+Map each test file one-to-one with the feature file it tests.
+Name tests as full English sentences, stating what the object under test does.
+Spell "cannot" and "dont" without apostrophes in test method names.
+
+Don't share object attributes between tests.
+Don't use setUp() or tearDown() idioms in tests.
+Don't use static literals or other shared constants in tests.
+Prepare a clean state at the start of tests instead of cleaning up after themselves.
+Don't rely on default configurations of the objects under test, provide custom arguments.
+
+Don't test functionality irrelevant to the test's stated purpose.
+Don't provide functionality in objects used only by tests.
+Don't assert on side effects such as logging output in tests.
+Don't check the behavior of setters, getters, or constructors in tests.
+Don't assert on error messages or codes in tests.
+Favor fake objects and stubs over mocks in tests.
+Use Hamcrest matchers in tests if available.
+
+Use irregular inputs in tests, such as non-ASCII strings.
+Use random values as inputs in tests.
+Inline small fixtures in tests instead of loading them from files.
+Create large fixtures at runtime rather than store them in files.
+Create supplementary fixture objects to avoid code duplication in tests.
+
+Close resources in tests, such as file handlers, sockets, and database connections.
+Store temporary files in temporary directories, not in the codebase directory.
+Don't mock the file system, sockets, or memory managers in tests.
+Don't print any log messages in tests.
+Configure the testing framework to disable logging from the objects under test.
+Never wait indefinitely for any event in tests; always stop waiting on a timeout.
+Verify object behavior in multi-threaded, concurrent environments in tests.
+Retry potentially flaky code blocks in tests.
+Assume the absence of an Internet connection in tests.
+Use ephemeral TCP ports in tests, generated using appropriate library functions.
 
 ---
 
@@ -156,6 +196,16 @@ Merging to `main` additionally runs:
 **PRs cannot be merged if CI fails.**
 
 Branch strategy: `main` is always deployable. Feature work happens on short-lived branches merged via PR.
+
+### Deployment
+
+All deployment targets the **`devbox`** Docker context (`ssh://timamz@100.73.138.67`). Never run `docker compose up` locally with production bot tokens — it will conflict with the remote instance.
+
+```bash
+docker --context devbox compose up --build -d          # deploy full stack
+docker --context devbox compose up --build -d tgbot     # deploy single service
+docker --context devbox logs -f tgbot                   # check logs
+```
 
 ---
 

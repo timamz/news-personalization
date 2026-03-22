@@ -306,7 +306,8 @@ async def test_streaming_yields_status_events_for_tool_calls(mocker):
 
     assert len(events) == 2
     assert events[0]["event"] == "status"
-    assert events[0]["status_message"] == "@durov"
+    assert events[0]["status_key"] == "status_checking_source"
+    assert events[0]["source"] == "@durov"
     assert events[1]["event"] == "done"
     assert events[1]["output"]["message"] == "Channel verified!"
 
@@ -318,4 +319,4 @@ def test_source_display_name():
     assert (
         _source_display_name("https://www.reddit.com/r/tech/new/", "reddit_subreddit") == "r/tech"
     )
-    assert _source_display_name("https://x.com/openai", "twitter_account") == "@openai"
+    assert _source_display_name("https://x.com/openai", "twitter_account") == "x.com/openai"
