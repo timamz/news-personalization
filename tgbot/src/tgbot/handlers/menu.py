@@ -10,6 +10,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from tgbot.client import BackendClient
 from tgbot.language import UILanguage
 from tgbot.menu_utils import (
+    E_LANGUAGE,
     M_HELP,
     M_MAIN,
     M_NEW,
@@ -257,6 +258,14 @@ async def show_subscription_detail(
                 text=t(lang, "button_edit"),
                 callback_data=f"{S_EDIT}{sub.id}",
             ),
+            InlineKeyboardButton(
+                text=t(lang, "button_change_language"),
+                callback_data=f"{E_LANGUAGE}{sub.id}",
+            ),
+        ]
+    )
+    buttons.append(
+        [
             InlineKeyboardButton(
                 text=t(lang, "button_delete"),
                 callback_data=f"{S_DELETE}{sub.id}",

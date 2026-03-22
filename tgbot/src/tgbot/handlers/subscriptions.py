@@ -7,20 +7,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
-from tgbot.client import BackendClient
+from tgbot.client import BackendClient, ConversationTurnInfo
+from tgbot.handlers.subscribe import _delete_status, _edit_status, _edit_to_final, _send_status
 from tgbot.language import UILanguage
 from tgbot.menu_utils import (
-    E_CANCEL_EDIT,
-    E_CONFIRM,
-    E_DISABLE_SCHED,
     E_LANGUAGE,
-    E_REQUEST,
-    E_REVISE,
-    E_SCHEDULE,
     E_SET_LANG,
-    E_SOURCES,
+    EDIT_CANCEL,
     M_SUB,
-    M_SUBS,
     S_CANCEL_DEL,
     S_CONFIRM_DEL,
     S_DELETE,
@@ -29,8 +23,7 @@ from tgbot.menu_utils import (
     back_button,
     edit_menu,
 )
-from tgbot.source_parser import parse_source_tokens
-from tgbot.storage import get_ui_language
+from tgbot.storage import get_language_preference, get_ui_language
 from tgbot.ui_text import interface_language_name, t
 from tgbot.user_registry import ensure_api_key
 
@@ -40,10 +33,8 @@ router = Router()
 backend = BackendClient()
 
 
-class EditFlow(StatesGroup):
-    waiting_for_schedule = State()
-    waiting_for_request = State()
-    waiting_for_sources = State()
+class EditConversation(StatesGroup):
+    chatting = State()
 
 
 # ---------- Send now ----------
@@ -70,82 +61,200 @@ async def handle_send_now(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer(t(lang, "digest_queue_failed"))
 
 
-# ---------- Edit menu ----------
+# ---------- Edit (conversational) ----------
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(S_EDIT))
 async def handle_edit_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     subscription_id = callback.data[len(S_EDIT) :]
-    await _show_edit_menu(callback, state, subscription_id)
+    lang = await _ui_lang(callback.from_user.id)
+
+    await state.set_state(EditConversation.chatting)
+    await state.update_data(subscription_id=subscription_id, conversation_id=None)
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t(lang, "button_cancel"),
+                    callback_data=f"{EDIT_CANCEL}{subscription_id}",
+                ),
+                InlineKeyboardButton(
+                    text=t(lang, "button_change_language"),
+                    callback_data=f"{E_LANGUAGE}{subscription_id}",
+                ),
+            ],
+        ]
+    )
+    await edit_menu(callback, state, t(lang, "edit_prompt"), keyboard)
 
 
-async def _show_edit_menu(
-    event: types.Message | CallbackQuery,
-    state: FSMContext,
-    subscription_id: str,
-) -> None:
-    lang = await _ui_lang(_telegram_id(event))
-    telegram_id = _telegram_id(event)
+@router.message(EditConversation.chatting)
+async def process_edit_message(message: types.Message, state: FSMContext) -> None:
+    text = (message.text or "").strip()
+    if text == "\U0001f4cb Menu":
+        return
+    if not text:
+        return
+
+    telegram_id = message.from_user.id
+    lang = await _ui_lang(telegram_id)
 
     try:
         api_key = await ensure_api_key(telegram_id, backend)
-        subs = await backend.list_subscriptions(api_key)
     except Exception:
-        logger.exception("Failed to load subscription %s", subscription_id)
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_button(lang, M_SUBS)]])
-        await edit_menu(event, state, t(lang, "failed_load_subscriptions"), keyboard)
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        await _reply(message, t(lang, "registration_failed"))
+        await state.clear()
         return
 
-    sub = next((s for s in subs if s.id == subscription_id), None)
-    if sub is None:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[back_button(lang, M_SUBS)]])
-        await edit_menu(event, state, t(lang, "subscription_deleted"), keyboard)
+    state_data = await state.get_data()
+    subscription_id = state_data.get("subscription_id")
+    if not isinstance(subscription_id, str):
+        await state.clear()
         return
 
-    text = t(
-        lang,
-        "edit_menu_header",
-        prompt_summary=sub.prompt_summary,
-        canonical_prompt=sub.canonical_prompt or sub.raw_prompt or "",
+    conversation_id = state_data.get("conversation_id")
+    status_msg = await _send_status(message, t(lang, "status_thinking"))
+
+    try:
+        if conversation_id:
+            stream = backend.continue_subscription_conversation_stream(
+                api_key, conversation_id, text
+            )
+        else:
+            user_info = await backend.get_current_user(api_key)
+            language_pref = await get_language_preference(telegram_id)
+            user_language = language_pref.code if language_pref else None
+            stream = backend.start_subscription_conversation_stream(
+                api_key,
+                text,
+                user_language=user_language,
+                user_timezone=user_info.timezone,
+                mode="edit",
+                subscription_id=subscription_id,
+            )
+
+        turn_data: dict | None = None
+        async for event_data in stream:
+            match event_data.get("event"):
+                case "status":
+                    key = event_data.get("status_key", "status_thinking")
+                    skip = {"event", "status_key"}
+                    kwargs = {k: v for k, v in event_data.items() if k not in skip}
+                    await _edit_status(status_msg, t(lang, key, **kwargs))
+                case "done":
+                    turn_data = event_data
+                    if not conversation_id:
+                        await state.update_data(conversation_id=turn_data["conversation_id"])
+                case "error":
+                    await _delete_status(status_msg)
+                    await _show_edit_error(message, state, lang, subscription_id)
+                    return
+    except Exception:
+        logger.exception(
+            "Edit conversation API call failed for telegram_id=%d subscription=%s",
+            telegram_id,
+            subscription_id,
+        )
+        await _delete_status(status_msg)
+        await _show_edit_error(message, state, lang, subscription_id)
+        return
+
+    if turn_data is None:
+        await _delete_status(status_msg)
+        await _show_edit_error(message, state, lang, subscription_id)
+        return
+
+    turn = ConversationTurnInfo(
+        conversation_id=turn_data["conversation_id"],
+        agent_message=turn_data["agent_message"],
+        status=turn_data["status"],
+        finalized_config=turn_data.get("finalized_config"),
     )
 
-    buttons: list[list[InlineKeyboardButton]] = []
-    if sub.delivery_mode == "digest":
-        buttons.append(
+    if turn.status == "ready" and turn.finalized_config:
+        await _apply_edit_config(
+            message, state, lang, subscription_id, turn.finalized_config, status_msg
+        )
+        return
+
+    cancel_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=t(lang, "button_change_schedule"),
-                    callback_data=f"{E_SCHEDULE}{subscription_id}",
+                    text=t(lang, "button_cancel"),
+                    callback_data=f"{EDIT_CANCEL}{subscription_id}",
                 ),
-                InlineKeyboardButton(
-                    text=t(lang, "button_disable_schedule"),
-                    callback_data=f"{E_DISABLE_SCHED}{subscription_id}",
-                ),
-            ]
+            ],
+        ]
+    )
+    await _edit_to_final(status_msg, turn.agent_message, cancel_keyboard)
+
+
+async def _apply_edit_config(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+    lang: UILanguage,
+    subscription_id: str,
+    config: dict,
+    status_msg: types.Message | None,
+) -> None:
+    telegram_id = _telegram_id(event)
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+        await backend.apply_subscription_edit_config(api_key, subscription_id, config)
+    except Exception:
+        logger.exception(
+            "Failed to apply edit config for subscription %s",
+            subscription_id,
         )
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                text=t(lang, "button_change_language"),
-                callback_data=f"{E_LANGUAGE}{subscription_id}",
-            ),
-            InlineKeyboardButton(
-                text=t(lang, "button_edit_request"),
-                callback_data=f"{E_REQUEST}{subscription_id}",
-            ),
-        ]
+        await _delete_status(status_msg)
+        await _show_edit_error(event, state, lang, subscription_id)
+        return
+
+    await _delete_status(status_msg)
+    await state.clear()
+
+    from tgbot.handlers.menu import show_subscription_detail
+
+    await _reply(event, t(lang, "edit_subscription_updated"))
+    await show_subscription_detail(event, state, subscription_id)
+
+
+async def _show_edit_error(
+    event: types.Message | CallbackQuery,
+    state: FSMContext,
+    lang: UILanguage,
+    subscription_id: str,
+) -> None:
+    await state.clear()
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[back_button(lang, f"{M_SUB}{subscription_id}")]],
     )
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                text=t(lang, "button_add_edit_sources"),
-                callback_data=f"{E_SOURCES}{subscription_id}",
-            ),
-        ]
-    )
-    buttons.append([back_button(lang, f"{M_SUB}{subscription_id}")])
-    await edit_menu(event, state, text, InlineKeyboardMarkup(inline_keyboard=buttons))
+    await edit_menu(event, state, t(lang, "edit_subscription_failed"), keyboard)
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith(EDIT_CANCEL))
+async def handle_edit_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    subscription_id = callback.data[len(EDIT_CANCEL) :]
+
+    state_data = await state.get_data()
+    conversation_id = state_data.get("conversation_id")
+    if conversation_id:
+        try:
+            api_key = await ensure_api_key(callback.from_user.id, backend)
+            await backend.cancel_subscription_conversation(api_key, conversation_id)
+        except Exception:
+            logger.debug("Failed to cancel edit conversation %s", conversation_id)
+
+    await state.clear()
+
+    from tgbot.handlers.menu import show_subscription_detail
+
+    await show_subscription_detail(callback, state, subscription_id)
 
 
 # ---------- Edit language ----------
@@ -168,7 +277,7 @@ async def handle_edit_language(callback: CallbackQuery, state: FSMContext) -> No
                     callback_data=f"{E_SET_LANG}{subscription_id}:en",
                 ),
             ],
-            [back_button(lang, f"{S_EDIT}{subscription_id}")],
+            [back_button(lang, f"{M_SUB}{subscription_id}")],
         ]
     )
     await edit_menu(
@@ -201,313 +310,9 @@ async def handle_set_language(callback: CallbackQuery, state: FSMContext) -> Non
         await callback.answer(t(lang, "subscription_language_update_failed"))
         return
 
-    # Return to edit menu
-    await _show_edit_menu(callback, state, subscription_id)
-
-
-# ---------- Edit schedule ----------
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(E_SCHEDULE))
-async def handle_edit_schedule(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    subscription_id = callback.data[len(E_SCHEDULE) :]
-    await state.set_state(EditFlow.waiting_for_schedule)
-    await state.update_data(subscription_id=subscription_id)
-    lang = await _ui_lang(callback.from_user.id)
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [back_button(lang, f"{S_EDIT}{subscription_id}")],
-        ]
-    )
-    await edit_menu(callback, state, t(lang, "edit_schedule_prompt"), keyboard)
-
-
-@router.message(EditFlow.waiting_for_schedule)
-async def process_schedule_edit(message: types.Message, state: FSMContext) -> None:
-    schedule_text = (message.text or "").strip()
-    lang = await _ui_lang(message.from_user.id)
-
-    if schedule_text == "📋 Menu":
-        return
-
-    if not schedule_text:
-        await edit_menu(message, state, t(lang, "describe_schedule"))
-        return
-
-    state_data = await state.get_data()
-    subscription_id = state_data.get("subscription_id")
-    if not isinstance(subscription_id, str):
-        await edit_menu(message, state, t(lang, "edit_session_expired"))
-        await state.clear()
-        return
-
-    telegram_id = message.from_user.id
-    try:
-        api_key = await ensure_api_key(telegram_id, backend)
-        schedule_cron = await backend.parse_schedule(api_key, schedule_text)
-        await backend.update_subscription(api_key, subscription_id, schedule_cron=schedule_cron)
-    except Exception:
-        logger.exception("Failed to update schedule for subscription %s", subscription_id)
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [back_button(lang, f"{S_EDIT}{subscription_id}")],
-            ]
-        )
-        await edit_menu(message, state, t(lang, "schedule_update_failed"), keyboard)
-        await state.clear()
-        return
-
-    await state.clear()
-    await callback_answer_via_edit(message, state, t(lang, "schedule_updated"), subscription_id)
-
-
-# ---------- Disable schedule ----------
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(E_DISABLE_SCHED))
-async def handle_disable_schedule(callback: CallbackQuery, state: FSMContext) -> None:
-    subscription_id = callback.data[len(E_DISABLE_SCHED) :]
-    telegram_id = callback.from_user.id
-    lang = await _ui_lang(telegram_id)
-
-    try:
-        api_key = await ensure_api_key(telegram_id, backend)
-        await backend.update_subscription(api_key, subscription_id, schedule_cron=None)
-        await callback.answer(t(lang, "schedule_disabled"))
-    except Exception:
-        logger.exception("Failed to disable schedule for subscription %s", subscription_id)
-        await callback.answer(t(lang, "schedule_disable_failed"))
-        return
-
-    await _show_edit_menu(callback, state, subscription_id)
-
-
-# ---------- Edit request ----------
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(E_REQUEST))
-async def handle_edit_request(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    subscription_id = callback.data[len(E_REQUEST) :]
-    await state.set_state(EditFlow.waiting_for_request)
-    await state.update_data(
-        subscription_id=subscription_id,
-        draft_canonical_prompt=None,
-        draft_format_instructions=None,
-        proposed_canonical_prompt=None,
-        proposed_prompt_summary=None,
-        proposed_format_instructions=None,
-    )
-    lang = await _ui_lang(callback.from_user.id)
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [back_button(lang, f"{S_EDIT}{subscription_id}")],
-        ]
-    )
-    await edit_menu(callback, state, t(lang, "edit_request_prompt"), keyboard)
-
-
-@router.message(EditFlow.waiting_for_request)
-async def process_request_edit(message: types.Message, state: FSMContext) -> None:
-    change_request = (message.text or "").strip()
-    lang = await _ui_lang(message.from_user.id)
-
-    if change_request == "📋 Menu":
-        return
-
-    if not change_request:
-        await edit_menu(message, state, t(lang, "edit_request_empty"))
-        return
-
-    state_data = await state.get_data()
-    subscription_id = state_data.get("subscription_id")
-    if not isinstance(subscription_id, str):
-        await edit_menu(message, state, t(lang, "edit_session_expired"))
-        await state.clear()
-        return
-
-    telegram_id = message.from_user.id
-    try:
-        api_key = await ensure_api_key(telegram_id, backend)
-        proposal = await backend.propose_subscription_edit(
-            api_key,
-            subscription_id,
-            change_request=change_request,
-            draft_canonical_prompt=state_data.get("draft_canonical_prompt"),
-            draft_format_instructions=state_data.get("draft_format_instructions"),
-        )
-        await state.update_data(
-            proposed_canonical_prompt=proposal.canonical_prompt,
-            proposed_prompt_summary=proposal.prompt_summary,
-            proposed_format_instructions=proposal.format_instructions,
-            draft_canonical_prompt=proposal.canonical_prompt,
-            draft_format_instructions=proposal.format_instructions,
-        )
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text=t(lang, "button_confirm"),
-                        callback_data=f"{E_CONFIRM}{subscription_id}",
-                    ),
-                    InlineKeyboardButton(
-                        text=t(lang, "button_revise"),
-                        callback_data=f"{E_REVISE}{subscription_id}",
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        text=t(lang, "button_cancel"),
-                        callback_data=f"{E_CANCEL_EDIT}{subscription_id}",
-                    )
-                ],
-            ]
-        )
-        await edit_menu(
-            message,
-            state,
-            t(
-                lang,
-                "edit_request_preview",
-                prompt_summary=proposal.prompt_summary,
-                format_instructions=proposal.format_instructions,
-                change_summary=proposal.change_summary,
-            ),
-            keyboard,
-        )
-    except Exception:
-        logger.exception(
-            "Failed to propose request edit for subscription %s",
-            subscription_id,
-        )
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [back_button(lang, f"{S_EDIT}{subscription_id}")],
-            ]
-        )
-        await edit_menu(message, state, t(lang, "edit_request_failed"), keyboard)
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(E_CONFIRM))
-async def handle_confirm_request_edit(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    subscription_id = callback.data[len(E_CONFIRM) :]
-    state_data = await state.get_data()
-    lang = await _ui_lang(callback.from_user.id)
-
-    canonical_prompt = state_data.get("proposed_canonical_prompt")
-    prompt_summary = state_data.get("proposed_prompt_summary")
-    format_instructions = state_data.get("proposed_format_instructions")
-    if not all(
-        isinstance(v, str) and v for v in (canonical_prompt, prompt_summary, format_instructions)
-    ):
-        await callback.answer(t(lang, "edit_session_expired"))
-        await state.clear()
-        return
-
-    try:
-        api_key = await ensure_api_key(callback.from_user.id, backend)
-        await backend.apply_subscription_edit(
-            api_key,
-            subscription_id,
-            canonical_prompt=canonical_prompt,
-            prompt_summary=prompt_summary,
-            format_instructions=format_instructions,
-        )
-    except Exception:
-        logger.exception(
-            "Failed to apply request edit for subscription %s",
-            subscription_id,
-        )
-        await callback.answer(t(lang, "edit_request_apply_failed"))
-        return
-
-    await state.clear()
-    # Show success and return to detail
     from tgbot.handlers.menu import show_subscription_detail
 
     await show_subscription_detail(callback, state, subscription_id)
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(E_REVISE))
-async def handle_revise_request_edit(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    subscription_id = callback.data[len(E_REVISE) :]
-    await state.set_state(EditFlow.waiting_for_request)
-    lang = await _ui_lang(callback.from_user.id)
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [back_button(lang, f"{S_EDIT}{subscription_id}")],
-        ]
-    )
-    await edit_menu(callback, state, t(lang, "edit_request_prompt"), keyboard)
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(E_CANCEL_EDIT))
-async def handle_cancel_request_edit(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    subscription_id = callback.data[len(E_CANCEL_EDIT) :]
-    await state.clear()
-    await _show_edit_menu(callback, state, subscription_id)
-
-
-# ---------- Add sources ----------
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(E_SOURCES))
-async def handle_add_sources(callback: CallbackQuery, state: FSMContext) -> None:
-    await callback.answer()
-    subscription_id = callback.data[len(E_SOURCES) :]
-    await state.set_state(EditFlow.waiting_for_sources)
-    await state.update_data(subscription_id=subscription_id)
-    lang = await _ui_lang(callback.from_user.id)
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [back_button(lang, f"{S_EDIT}{subscription_id}")],
-        ]
-    )
-    await edit_menu(callback, state, t(lang, "edit_sources_prompt"), keyboard)
-
-
-@router.message(EditFlow.waiting_for_sources)
-async def process_sources_edit(message: types.Message, state: FSMContext) -> None:
-    if (message.text or "").strip() == "📋 Menu":
-        return
-
-    lang = await _ui_lang(message.from_user.id)
-    channels, subreddits, twitter_accounts = parse_source_tokens(message.text or "")
-    if not channels and not subreddits and not twitter_accounts:
-        await edit_menu(message, state, t(lang, "sources_parse_failed"))
-        return
-
-    state_data = await state.get_data()
-    subscription_id = state_data.get("subscription_id")
-    if not isinstance(subscription_id, str):
-        await edit_menu(message, state, t(lang, "edit_session_expired"))
-        await state.clear()
-        return
-
-    telegram_id = message.from_user.id
-    try:
-        api_key = await ensure_api_key(telegram_id, backend)
-        result = await backend.append_subscription_sources(
-            api_key,
-            subscription_id,
-            fixed_telegram_channels=channels,
-            fixed_reddit_subreddits=subreddits,
-            fixed_twitter_accounts=twitter_accounts,
-        )
-        if result.added_sources_count == 0:
-            text = t(lang, "sources_already_added")
-        else:
-            text = t(lang, "sources_added", count=result.added_sources_count)
-    except Exception:
-        logger.exception("Failed to append sources for subscription %s", subscription_id)
-        text = t(lang, "sources_add_failed")
-
-    await state.clear()
-    await callback_answer_via_edit(message, state, text, subscription_id)
 
 
 # ---------- Delete ----------
@@ -581,11 +386,11 @@ async def callback_answer_via_edit(
     text: str,
     subscription_id: str,
 ) -> None:
-    """Show a brief result then navigate back to the edit menu."""
+    """Show a brief result then navigate back to the subscription detail."""
     lang = await _ui_lang(message.from_user.id)
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [back_button(lang, f"{S_EDIT}{subscription_id}")],
+            [back_button(lang, f"{M_SUB}{subscription_id}")],
         ]
     )
     await edit_menu(message, state, text, keyboard)
@@ -597,3 +402,24 @@ def _telegram_id(event: types.Message | CallbackQuery) -> int:
 
 async def _ui_lang(telegram_id: int) -> UILanguage:
     return await get_ui_language(telegram_id) or "en"
+
+
+async def _reply(
+    event: types.Message | CallbackQuery,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """Send a new message in the chat."""
+    chat_id, bot = _resolve_chat(event)
+    if chat_id and bot:
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+
+
+def _resolve_chat(
+    event: types.Message | CallbackQuery,
+) -> tuple[int | None, object | None]:
+    if hasattr(event, "chat"):
+        return event.chat.id, event.bot
+    if hasattr(event, "message") and event.message:
+        return event.message.chat.id, event.bot
+    return None, None

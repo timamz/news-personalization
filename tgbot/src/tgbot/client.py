@@ -54,14 +54,6 @@ class SubscriptionSourcesAppendInfo:
 
 
 @dataclass
-class SubscriptionEditProposalInfo:
-    canonical_prompt: str
-    prompt_summary: str
-    format_instructions: str
-    change_summary: str
-
-
-@dataclass
 class ConversationTurnInfo:
     conversation_id: str
     agent_message: str
@@ -307,68 +299,18 @@ class BackendClient:
                 added_sources_count=data["added_sources_count"],
             )
 
-    async def propose_subscription_edit(
-        self,
-        api_key: str,
-        subscription_id: str,
-        *,
-        change_request: str,
-        draft_canonical_prompt: str | None = None,
-        draft_format_instructions: str | None = None,
-    ) -> SubscriptionEditProposalInfo:
-        payload: dict[str, object] = {"change_request": change_request}
-        if draft_canonical_prompt is not None:
-            payload["draft_canonical_prompt"] = draft_canonical_prompt
-        if draft_format_instructions is not None:
-            payload["draft_format_instructions"] = draft_format_instructions
-
+    async def apply_subscription_edit_config(
+        self, api_key: str, subscription_id: str, config: dict
+    ) -> SubscriptionInfo:
         async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
             response = await client.post(
-                f"{self.base_url}/subscriptions/{subscription_id}/edit/propose",
+                f"{self.base_url}/subscriptions/{subscription_id}/edit/apply-config",
                 headers={"X-API-Key": api_key},
-                json=payload,
+                json=config,
             )
             response.raise_for_status()
             data = response.json()
-            return SubscriptionEditProposalInfo(
-                canonical_prompt=data["canonical_prompt"],
-                prompt_summary=data["prompt_summary"],
-                format_instructions=data["format_instructions"],
-                change_summary=data["change_summary"],
-            )
-
-    async def apply_subscription_edit(
-        self,
-        api_key: str,
-        subscription_id: str,
-        *,
-        canonical_prompt: str,
-        prompt_summary: str,
-        format_instructions: str,
-    ) -> SubscriptionInfo:
-        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
-            response = await client.post(
-                f"{self.base_url}/subscriptions/{subscription_id}/edit/apply",
-                headers={"X-API-Key": api_key},
-                json={
-                    "canonical_prompt": canonical_prompt,
-                    "prompt_summary": prompt_summary,
-                    "format_instructions": format_instructions,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            return SubscriptionInfo(
-                id=data["id"],
-                prompt_summary=data["prompt_summary"],
-                delivery_mode=data["delivery_mode"],
-                schedule_cron=data["schedule_cron"],
-                format_instructions=data["format_instructions"],
-                digest_language=data["digest_language"],
-                short_label=data.get("short_label", ""),
-                raw_prompt=data.get("raw_prompt"),
-                canonical_prompt=data.get("canonical_prompt"),
-            )
+            return self._parse_subscription(data)
 
     async def list_recent_events_stream(
         self,
@@ -425,12 +367,18 @@ class BackendClient:
         message: str,
         user_language: str | None = None,
         user_timezone: str | None = None,
+        mode: str = "create",
+        subscription_id: str | None = None,
     ) -> AsyncGenerator[dict, None]:
         payload: dict[str, object] = {"message": message}
         if user_language is not None:
             payload["user_language"] = user_language
         if user_timezone is not None:
             payload["user_timezone"] = user_timezone
+        if mode == "edit":
+            payload["mode"] = mode
+            if subscription_id is not None:
+                payload["subscription_id"] = subscription_id
 
         async with (
             httpx.AsyncClient(

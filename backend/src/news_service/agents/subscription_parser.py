@@ -13,7 +13,7 @@ from news_service.agents.discovery import validate_source_url as _validate_sourc
 from news_service.core.config import get_settings
 from news_service.core.llm_retry import with_llm_retry
 from news_service.core.openai_client import openai_client
-from news_service.schemas.conversation import AgentTurnOutput
+from news_service.schemas.conversation import AgentTurnOutput, ExistingSubscriptionContext
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -109,6 +109,33 @@ corrected. Do not rephrase or change wording — only fix spelling and grammar e
 """
 
 
+SUBSCRIPTION_EDIT_CONTEXT = """\
+You are editing an EXISTING subscription, not creating a new one. The user wants to change \
+something about their current subscription.
+
+Current subscription state:
+- Topic/prompt: {canonical_prompt}
+- Delivery mode: {delivery_mode}
+- Schedule: {schedule_cron}
+- Language: {digest_language}
+- Format: {format_instructions}
+- Telegram channels: {telegram_channels}
+- Reddit subreddits: {reddit_subreddits}
+- Twitter/X accounts: {twitter_accounts}
+
+Edit rules:
+- Treat the user's message as an incremental change to the existing subscription.
+- Preserve ALL fields the user does not mention changing.
+- The user can change any aspect: topic, schedule, sources, format, delivery mode.
+- For fields the user does NOT mention, carry forward the current values exactly.
+- When the edit is clear, set status to "ready" with the complete updated config.
+- If the user's request is ambiguous, ask ONE clarifying question.
+- For canonical_prompt: update to reflect the new intent. If user only changes schedule/sources, \
+keep the current canonical_prompt unchanged.
+- short_label and prompt_summary: update only if the topic/intent changed.
+"""
+
+
 async def _execute_tool(name: str, arguments: str) -> str:
     """Execute a tool call and return the result as a string."""
     if name == "validate_source_url":
@@ -128,12 +155,26 @@ async def _execute_tool(name: str, arguments: str) -> str:
 def _build_system_prompt(
     user_language: str | None,
     user_timezone: str | None,
+    existing_config: ExistingSubscriptionContext | None = None,
 ) -> str:
     parts: list[str] = []
     if user_language:
         parts.append(f"User's preferred language: {user_language}.")
     if user_timezone:
         parts.append(f"User's timezone: {user_timezone}.")
+    if existing_config is not None:
+        parts.append(
+            SUBSCRIPTION_EDIT_CONTEXT.format(
+                canonical_prompt=existing_config.canonical_prompt,
+                delivery_mode=existing_config.delivery_mode,
+                schedule_cron=existing_config.schedule_cron or "none (manual only)",
+                digest_language=existing_config.digest_language,
+                format_instructions=existing_config.format_instructions,
+                telegram_channels=", ".join(existing_config.fixed_telegram_channels) or "none",
+                reddit_subreddits=", ".join(existing_config.fixed_reddit_subreddits) or "none",
+                twitter_accounts=", ".join(existing_config.fixed_twitter_accounts) or "none",
+            )
+        )
     context_section = ""
     if parts:
         context_section = "Context:\n" + "\n".join(parts) + "\n"
@@ -146,6 +187,7 @@ async def run_conversation_turn(
     *,
     user_language: str | None = None,
     user_timezone: str | None = None,
+    existing_config: ExistingSubscriptionContext | None = None,
 ) -> tuple[AgentTurnOutput, list[dict]]:
     """Run a single conversation turn with the subscription parser.
 
@@ -154,7 +196,7 @@ async def run_conversation_turn(
     """
     system_msg: dict = {
         "role": "system",
-        "content": _build_system_prompt(user_language, user_timezone),
+        "content": _build_system_prompt(user_language, user_timezone, existing_config),
     }
     new_messages: list[dict] = []
 
@@ -265,6 +307,7 @@ async def run_conversation_turn_streaming(
     *,
     user_language: str | None = None,
     user_timezone: str | None = None,
+    existing_config: ExistingSubscriptionContext | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Streaming variant that yields status events and a final done event.
 
@@ -275,7 +318,7 @@ async def run_conversation_turn_streaming(
     """
     system_msg: dict = {
         "role": "system",
-        "content": _build_system_prompt(user_language, user_timezone),
+        "content": _build_system_prompt(user_language, user_timezone, existing_config),
     }
     new_messages: list[dict] = []
 

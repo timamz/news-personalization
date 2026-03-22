@@ -43,15 +43,11 @@ S_CONFIRM_DEL = "s:cdel:"
 S_CANCEL_DEL = "s:xdel:"
 
 # Edit actions
-E_SCHEDULE = "s:esch:"
-E_DISABLE_SCHED = "s:dsch:"
 E_LANGUAGE = "s:elng:"
 E_SET_LANG = "s:slng:"  # + subscription_id:lang
-E_REQUEST = "s:ereq:"
-E_SOURCES = "s:esrc:"
-E_CONFIRM = "s:ecnf:"
-E_REVISE = "s:erev:"
-E_CANCEL_EDIT = "s:excl:"
+
+# Edit conversation
+EDIT_CANCEL = "edit:cancel"
 
 # Subscribe flow
 SUB_CANCEL = "sub:cancel"

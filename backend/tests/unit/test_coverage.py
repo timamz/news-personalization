@@ -155,7 +155,6 @@ async def test_register_or_reuse_source_reuses_existing_source(mocker) -> None:
     mock_result.scalar_one_or_none.return_value = existing
     session.execute = AsyncMock(return_value=mock_result)
 
-
     scored = _make_scored_source(url, "Существующий фид", "rss", 0.8)
     result = await coverage._register_or_reuse_source(session, scored)
 
@@ -172,7 +171,6 @@ async def test_register_or_reuse_source_increments_subscriber_count(mocker) -> N
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = existing
     session.execute = AsyncMock(return_value=mock_result)
-
 
     scored = _make_scored_source(url, "Счётчик фид", "rss", 0.75)
     await coverage._register_or_reuse_source(session, scored)

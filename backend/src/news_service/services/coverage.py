@@ -137,7 +137,6 @@ async def ensure_source_coverage(
     return list(resolved.values())
 
 
-
 async def _build_source_profile(
     *,
     source_kind: SourceKind,

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from tgbot.handlers import subscriptions
-from tgbot.menu_utils import E_CANCEL_EDIT, E_CONFIRM, S_CONFIRM_DEL, S_DELETE
+from tgbot.menu_utils import EDIT_CANCEL, S_CONFIRM_DEL, S_DELETE, S_EDIT
 
 logging.disable(logging.CRITICAL)
 
@@ -16,7 +16,9 @@ def _make_bot() -> SimpleNamespace:
     return SimpleNamespace(
         edit_message_text=AsyncMock(),
         delete_message=AsyncMock(),
-        send_message=AsyncMock(return_value=SimpleNamespace(message_id=random.randint(50, 200))),
+        send_message=AsyncMock(
+            return_value=SimpleNamespace(message_id=random.randint(50, 200))
+        ),
     )
 
 
@@ -34,16 +36,6 @@ def _make_callback(telegram_id: int, data: str) -> SimpleNamespace:
         data=data,
         answer=AsyncMock(),
         message=msg,
-        bot=bot,
-    )
-
-
-def _make_message(telegram_id: int) -> SimpleNamespace:
-    bot = _make_bot()
-    return SimpleNamespace(
-        from_user=SimpleNamespace(id=telegram_id),
-        chat=SimpleNamespace(id=telegram_id),
-        answer=AsyncMock(),
         bot=bot,
     )
 
@@ -94,7 +86,7 @@ async def test_handle_delete_shows_confirmation(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_delete_confirmation_button_has_correct_callback_data(monkeypatch) -> None:
+async def test_handle_delete_confirmation_button_has_correct_callback(monkeypatch) -> None:
     tid = random.randint(1000, 9999)
     sub_id = f"sub-{uuid.uuid4().hex[:8]}"
     callback = _make_callback(telegram_id=tid, data=f"{S_DELETE}{sub_id}")
@@ -140,123 +132,62 @@ async def test_handle_set_language_updates_subscription(monkeypatch) -> None:
     monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
     update_sub = AsyncMock()
     monkeypatch.setattr(subscriptions.backend, "update_subscription", update_sub)
-    sub = SimpleNamespace(
-        id=sub_id,
-        prompt_summary="Новости ИИ",
-        canonical_prompt="Новости ИИ каждый день",
-        raw_prompt="Новости ИИ каждый день",
-        delivery_mode="digest",
-        digest_language="ru",
-    )
-    monkeypatch.setattr(subscriptions.backend, "list_subscriptions", AsyncMock(return_value=[sub]))
 
-    await subscriptions.handle_set_language(callback, state)
+    with patch("tgbot.handlers.menu.show_subscription_detail", new_callable=AsyncMock):
+        await subscriptions.handle_set_language(callback, state)
 
     update_sub.assert_awaited_once_with("api-key", sub_id, digest_language="ru")
 
 
 @pytest.mark.asyncio
-async def test_handle_disable_schedule_updates_subscription(monkeypatch) -> None:
+async def test_handle_edit_menu_enters_edit_conversation_state(monkeypatch) -> None:
     tid = random.randint(1000, 9999)
     sub_id = f"sub-{uuid.uuid4().hex[:8]}"
-    callback = _make_callback(telegram_id=tid, data=f"s:dsch:{sub_id}")
+    callback = _make_callback(telegram_id=tid, data=f"{S_EDIT}{sub_id}")
+    state = _make_state()
+
+    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="ru"))
+
+    await subscriptions.handle_edit_menu(callback, state)
+
+    state.set_state.assert_awaited_once_with(
+        subscriptions.EditConversation.chatting
+    )
+
+
+@pytest.mark.asyncio
+async def test_handle_edit_menu_stores_subscription_id(monkeypatch) -> None:
+    tid = random.randint(1000, 9999)
+    sub_id = f"sub-{uuid.uuid4().hex[:8]}"
+    callback = _make_callback(telegram_id=tid, data=f"{S_EDIT}{sub_id}")
     state = _make_state()
 
     monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
-    update_sub = AsyncMock()
-    monkeypatch.setattr(subscriptions.backend, "update_subscription", update_sub)
-    sub = SimpleNamespace(
-        id=sub_id,
-        prompt_summary="Новости",
-        canonical_prompt="Новости каждый день",
-        raw_prompt="Новости каждый день",
-        delivery_mode="digest",
-        digest_language="en",
-    )
-    monkeypatch.setattr(subscriptions.backend, "list_subscriptions", AsyncMock(return_value=[sub]))
 
-    await subscriptions.handle_disable_schedule(callback, state)
+    await subscriptions.handle_edit_menu(callback, state)
 
-    update_sub.assert_awaited_once_with("api-key", sub_id, schedule_cron=None)
-
-
-@pytest.mark.asyncio
-async def test_process_sources_edit_appends_subscription_sources(monkeypatch) -> None:
-    tid = random.randint(1000, 9999)
-    sub_id = f"sub-{uuid.uuid4().hex[:8]}"
-    message = _make_message(telegram_id=tid)
-    message.text = "@gonzo_ml r/python"
-    state = _make_state(data={"subscription_id": sub_id})
-
-    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="ru"))
-    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
-    append_sources = AsyncMock(return_value=SimpleNamespace(added_sources_count=2))
-    monkeypatch.setattr(subscriptions.backend, "append_subscription_sources", append_sources)
-
-    await subscriptions.process_sources_edit(message, state)
-
-    append_sources.assert_awaited_once_with(
-        "api-key",
-        sub_id,
-        fixed_telegram_channels=["gonzo_ml"],
-        fixed_reddit_subreddits=["python"],
-        fixed_twitter_accounts=[],
+    call_kwargs = state.update_data.await_args.kwargs
+    assert call_kwargs.get("subscription_id") == sub_id, (
+        "handle_edit_menu did not store subscription_id in state"
     )
 
 
 @pytest.mark.asyncio
-async def test_handle_confirm_request_edit_applies_proposal(monkeypatch) -> None:
+async def test_handle_edit_cancel_clears_state(monkeypatch) -> None:
     tid = random.randint(1000, 9999)
     sub_id = f"sub-{uuid.uuid4().hex[:8]}"
-    canonical = f"\u041f\u0440\u043e\u043c\u043f\u0442-{uuid.uuid4().hex[:6]}"
-    summary = f"\u0420\u0435\u0437\u044e\u043c\u0435-{uuid.uuid4().hex[:6]}"
-    fmt = f"\u0424\u043e\u0440\u043c\u0430\u0442-{uuid.uuid4().hex[:6]}"
-    callback = _make_callback(telegram_id=tid, data=f"{E_CONFIRM}{sub_id}")
-    state = _make_state(
-        data={
-            "proposed_canonical_prompt": canonical,
-            "proposed_prompt_summary": summary,
-            "proposed_format_instructions": fmt,
-        }
-    )
+    callback = _make_callback(telegram_id=tid, data=EDIT_CANCEL)
+    state = _make_state(data={"subscription_id": sub_id, "conversation_id": "conv-123"})
 
-    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="ru"))
+    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="en"))
     monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
-    apply_edit = AsyncMock()
-    monkeypatch.setattr(subscriptions.backend, "apply_subscription_edit", apply_edit)
+    monkeypatch.setattr(
+        subscriptions.backend, "cancel_subscription_conversation", AsyncMock()
+    )
 
     with patch("tgbot.handlers.menu.show_subscription_detail", new_callable=AsyncMock):
-        await subscriptions.handle_confirm_request_edit(callback, state)
+        await subscriptions.handle_edit_cancel(callback, state)
 
-    apply_edit.assert_awaited_once_with(
-        "api-key",
-        sub_id,
-        canonical_prompt=canonical,
-        prompt_summary=summary,
-        format_instructions=fmt,
+    state.clear.assert_awaited_once(), (
+        "handle_edit_cancel did not clear the state"
     )
-
-
-@pytest.mark.asyncio
-async def test_handle_cancel_request_edit_clears_state(monkeypatch) -> None:
-    tid = random.randint(1000, 9999)
-    sub_id = f"sub-{uuid.uuid4().hex[:8]}"
-    callback = _make_callback(telegram_id=tid, data=f"{E_CANCEL_EDIT}{sub_id}")
-    state = _make_state()
-
-    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="en"))
-    sub = SimpleNamespace(
-        id=sub_id,
-        prompt_summary="Новости",
-        canonical_prompt="Новости каждый день",
-        raw_prompt="Новости каждый день",
-        delivery_mode="digest",
-        digest_language="en",
-    )
-    monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
-    monkeypatch.setattr(subscriptions.backend, "list_subscriptions", AsyncMock(return_value=[sub]))
-
-    await subscriptions.handle_cancel_request_edit(callback, state)
-
-    state.clear.assert_awaited_once(), "handle_cancel_request_edit did not clear the state"

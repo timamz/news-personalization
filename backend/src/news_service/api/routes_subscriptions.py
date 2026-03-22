@@ -12,7 +12,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.schedule_parser import parse_schedule_preference
-from news_service.agents.subscription_edit import propose_subscription_edit
 from news_service.api.dependencies import get_current_user
 from news_service.db.session import get_session
 from news_service.db.vector_store import embed_text
@@ -21,14 +20,12 @@ from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
+from news_service.schemas.conversation import FinalizedSubscriptionConfig
 from news_service.schemas.subscription import (
     RecentEventAcknowledgeRequest,
     ScheduleParseRequest,
     ScheduleParseResponse,
     SubscriptionCreate,
-    SubscriptionEditApplyRequest,
-    SubscriptionEditProposalRequest,
-    SubscriptionEditProposalResponse,
     SubscriptionResponse,
     SubscriptionSourcesAppendRequest,
     SubscriptionSourcesAppendResponse,
@@ -68,7 +65,6 @@ router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 async def _subscription_prompt_embedding(raw_prompt: str) -> list[float]:
     return await embed_text(raw_prompt)
-
 
 
 def _normalize_fixed_sources(
@@ -149,7 +145,6 @@ def _ensure_user_timezone_for_schedule(user: User, schedule_cron: str | None) ->
         status_code=status.HTTP_409_CONFLICT,
         detail="Set your timezone before enabling automatic schedules",
     )
-
 
 
 @router.post("/parse-schedule", response_model=ScheduleParseResponse)
@@ -423,50 +418,17 @@ async def list_subscriptions(
     return list(result.scalars().all())
 
 
-@router.post(
-    "/{subscription_id}/edit/propose",
-    response_model=SubscriptionEditProposalResponse,
-)
-async def propose_subscription_edit_for_subscription(
+@router.post("/{subscription_id}/edit/apply-config", response_model=SubscriptionResponse)
+async def apply_subscription_config(
     subscription_id: str,
-    payload: SubscriptionEditProposalRequest,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-) -> SubscriptionEditProposalResponse:
-    result = await session.execute(
-        select(Subscription).where(
-            Subscription.id == subscription_id,
-            Subscription.user_id == user.id,
-        )
-    )
-    subscription = result.scalar_one_or_none()
-    if subscription is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
-    if not subscription.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Subscription is inactive",
-        )
-
-    canonical_prompt = payload.draft_canonical_prompt or subscription.canonical_prompt
-    format_instructions = payload.draft_format_instructions or subscription.format_instructions
-    return await propose_subscription_edit(
-        canonical_prompt=canonical_prompt,
-        format_instructions=format_instructions,
-        change_request=payload.change_request,
-    )
-
-
-@router.post(
-    "/{subscription_id}/edit/apply",
-    response_model=SubscriptionResponse,
-)
-async def apply_subscription_edit(
-    subscription_id: str,
-    payload: SubscriptionEditApplyRequest,
+    payload: FinalizedSubscriptionConfig,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> Subscription:
+    """Apply a complete FinalizedSubscriptionConfig to an existing subscription.
+
+    Updates all subscription fields and reconciles linked sources (adds new, removes old).
+    """
     result = await session.execute(
         select(Subscription).where(
             Subscription.id == subscription_id,
@@ -482,15 +444,90 @@ async def apply_subscription_edit(
             detail="Subscription is inactive",
         )
 
+    # Update prompt and re-embed
     subscription.canonical_prompt = payload.canonical_prompt.strip()
     subscription.canonical_prompt_embedding = await _subscription_prompt_embedding(
         subscription.canonical_prompt
     )
     subscription.prompt_summary = payload.prompt_summary.strip()
+    subscription.short_label = payload.short_label.strip()
     subscription.format_instructions = payload.format_instructions.strip()
+    subscription.digest_language = payload.digest_language
+
+    # Update schedule
+    if payload.delivery_mode == "event" or payload.manual_only:
+        subscription.schedule_cron = None
+    else:
+        subscription.schedule_cron = _validated_schedule_or_422(payload.schedule_cron)
+
+    subscription.delivery_mode = payload.delivery_mode
+
+    # Reconcile sources
+    telegram_channels, reddit_subreddits, twitter_accounts = _normalize_fixed_sources(
+        payload.fixed_telegram_channels,
+        payload.fixed_reddit_subreddits,
+        payload.fixed_twitter_accounts,
+    )
+    desired_urls: set[str] = set()
+    for channel in telegram_channels:
+        desired_urls.add(build_telegram_channel_url(channel))
+    for subreddit in reddit_subreddits:
+        desired_urls.add(build_reddit_subreddit_url(subreddit))
+    for account in twitter_accounts:
+        desired_urls.add(build_twitter_account_url(account))
+
+    current_urls = await _existing_subscription_source_urls(session, subscription.id)
+
+    # Remove sources that are no longer desired
+    urls_to_remove = current_urls - desired_urls
+    if urls_to_remove:
+        source_ids_result = await session.execute(
+            select(Source.id).where(Source.url.in_(urls_to_remove))
+        )
+        source_ids_to_remove = [row[0] for row in source_ids_result.all()]
+        if source_ids_to_remove:
+            links_result = await session.execute(
+                select(SubscriptionSource).where(
+                    SubscriptionSource.subscription_id == subscription.id,
+                    SubscriptionSource.source_id.in_(source_ids_to_remove),
+                )
+            )
+            for link in links_result.scalars().all():
+                await session.delete(link)
+
+    # Add new sources
+    new_telegram = [
+        ch for ch in telegram_channels if build_telegram_channel_url(ch) not in current_urls
+    ]
+    new_reddit = [
+        sub for sub in reddit_subreddits if build_reddit_subreddit_url(sub) not in current_urls
+    ]
+    new_twitter = [
+        acc for acc in twitter_accounts if build_twitter_account_url(acc) not in current_urls
+    ]
+
+    new_sources: dict[uuid.UUID, Source] = {}
+    for identifiers, kind in [
+        (new_telegram, "telegram_channel"),
+        (new_reddit, "reddit_subreddit"),
+        (new_twitter, "twitter_account"),
+    ]:
+        if identifiers:
+            for source in await ensure_source_coverage(session, identifiers, kind):
+                new_sources[source.id] = source
+
+    for source_id in new_sources:
+        session.add(SubscriptionSource(subscription_id=subscription.id, source_id=source_id))
 
     await session.commit()
     await session.refresh(subscription)
+
+    logger.info(
+        "Applied config edit to subscription %s for user %s",
+        subscription.id,
+        user.id,
+        extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
+    )
     return subscription
 
 
@@ -772,5 +809,3 @@ async def send_subscription_now(
         extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
     )
     return {"task_id": task.id, "status": "queued"}
-
-

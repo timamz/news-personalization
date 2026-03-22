@@ -15,12 +15,30 @@ class StreamEvent(BaseModel):
     )
 
 
+class ExistingSubscriptionContext(BaseModel):
+    """Current subscription state provided to the agent in edit mode."""
+
+    subscription_id: str
+    canonical_prompt: str
+    prompt_summary: str
+    short_label: str
+    delivery_mode: DeliveryMode
+    schedule_cron: str | None = None
+    format_instructions: str
+    digest_language: str
+    fixed_telegram_channels: list[str] = Field(default_factory=list)
+    fixed_reddit_subreddits: list[str] = Field(default_factory=list)
+    fixed_twitter_accounts: list[str] = Field(default_factory=list)
+
+
 class ConversationStartRequest(BaseModel):
     message: str = Field(..., min_length=1, description="Initial user message")
     user_language: str | None = Field(
         default=None, description="Frontend-stored language preference (e.g. 'en', 'ru')"
     )
     user_timezone: str | None = Field(default=None, description="User IANA timezone from profile")
+    mode: Literal["create", "edit"] = Field(default="create")
+    subscription_id: str | None = Field(default=None, description="Required when mode is edit")
 
 
 class ConversationMessageRequest(BaseModel):
@@ -71,3 +89,5 @@ class ConversationState(BaseModel):
     finalized_config: FinalizedSubscriptionConfig | None = Field(default=None)
     user_language: str | None = Field(default=None)
     user_timezone: str | None = Field(default=None)
+    mode: Literal["create", "edit"] = Field(default="create")
+    existing_config: ExistingSubscriptionContext | None = Field(default=None)

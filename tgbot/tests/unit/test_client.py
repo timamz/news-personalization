@@ -375,53 +375,23 @@ async def test_append_subscription_sources_returns_added_count() -> None:
 
 
 @pytest.mark.asyncio
-async def test_propose_subscription_edit_returns_prompt_summary() -> None:
+async def test_apply_subscription_edit_config_returns_subscription() -> None:
     base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
     api_key = f"key-{uuid.uuid4().hex}"
     sub_id = f"sub-{uuid.uuid4().hex}"
-    summary = f"\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435-{uuid.uuid4().hex[:6]}"
-    client = BackendClient(base_url=base)
-    resp = _make_response(
-        200,
-        {
-            "canonical_prompt": "some prompt",
-            "prompt_summary": summary,
-            "format_instructions": "brief",
-            "change_summary": "Added something.",
-        },
-    )
-    mock_http = _make_http_mock("post", resp)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        result = await client.propose_subscription_edit(
-            api_key,
-            sub_id,
-            change_request="\u0414\u043e\u0431\u0430\u0432\u044c \u0435\u0449\u0451.",
-        )
-
-    assert result.prompt_summary == summary, (
-        "propose_subscription_edit did not return the expected prompt_summary"
-    )
-
-
-@pytest.mark.asyncio
-async def test_apply_subscription_edit_returns_prompt_summary() -> None:
-    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
-    api_key = f"key-{uuid.uuid4().hex}"
-    sub_id = f"sub-{uuid.uuid4().hex}"
-    summary = f"\u0420\u0435\u0437\u044e\u043c\u0435-{uuid.uuid4().hex[:6]}"
+    summary = f"Резюме-{uuid.uuid4().hex[:6]}"
     client = BackendClient(base_url=base)
     resp = _make_response(
         200,
         {
             "id": sub_id,
             "raw_prompt": "old",
-            "canonical_prompt": "new prompt",
+            "canonical_prompt": "обновлённый промпт",
             "prompt_summary": summary,
             "delivery_mode": "event",
             "schedule_cron": None,
             "format_instructions": "brief",
-            "digest_language": "en",
+            "digest_language": "ru",
             "is_active": True,
             "created_at": "2026-01-01T00:00:00Z",
         },
@@ -429,14 +399,12 @@ async def test_apply_subscription_edit_returns_prompt_summary() -> None:
     mock_http = _make_http_mock("post", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        result = await client.apply_subscription_edit(
+        result = await client.apply_subscription_edit_config(
             api_key,
             sub_id,
-            canonical_prompt="new prompt",
-            prompt_summary=summary,
-            format_instructions="brief",
+            config={"canonical_prompt": "обновлённый промпт", "prompt_summary": summary},
         )
 
     assert result.prompt_summary == summary, (
-        "apply_subscription_edit did not return the expected prompt_summary"
+        "apply_subscription_edit_config did not return the expected prompt_summary"
     )

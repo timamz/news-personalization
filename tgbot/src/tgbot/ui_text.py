@@ -77,12 +77,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "timezone_save_failed": ("I couldn't save the time zone. Please try again."),
         "timezone_retry": "Send another city or time zone.",
         "failed_process_request": ("Failed to process your request. Please try again."),
-        "describe_schedule": "Please describe the schedule.",
-        "sources_parse_failed": (
-            "I couldn't parse sources. Send Telegram handles like @channel_one, "
-            "links like t.me/channel or x.com/OpenAI, "
-            "or Reddit names like r/python."
-        ),
         "recent_events_expired": (
             "This preview expired. Please create a new subscription if needed."
         ),
@@ -125,9 +119,11 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "subscription_detail": (
             "📰 {prompt_summary}\n\n{canonical_prompt}\n\n📋 {type}  •  🌐 {language}"
         ),
-        "edit_menu_header": (
-            "✏️ {prompt_summary}\n\n{canonical_prompt}\n\nWhat do you want to change?"
+        "edit_prompt": (
+            "Describe what you want to change — schedule, sources, format, topic, or anything else."
         ),
+        "edit_subscription_updated": "✅ Subscription updated.",
+        "edit_subscription_failed": "Failed to update subscription. Please try again.",
         "settings_title": "⚙️ Settings\n\nChoose a setting to change:",
         "help_text": (
             "❓ Help\n\n"
@@ -147,37 +143,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "subscription_language_update_failed": ("Failed to update language. Try again."),
         "digest_queued": "📤 Digest queued.",
         "digest_queue_failed": "Failed to queue digest. Try again.",
-        "edit_schedule_prompt": (
-            '📅 Describe the new schedule in natural language.\nExample: "every weekday at 9:00"'
-        ),
-        "edit_session_expired": ("Edit session expired. Open 📰 Subscriptions from the menu."),
-        "schedule_updated": "📅 Schedule updated.",
-        "schedule_update_failed": ("Failed to update schedule. Please try again."),
-        "schedule_disabled": "🚫 Automatic schedule disabled.",
-        "schedule_disable_failed": "Failed to update schedule. Try again.",
-        "edit_request_prompt": (
-            "📝 Describe what should change.\n\n"
-            "Edit is best for small tweaks: format, language details, "
-            "or adding a specific filter.\n"
-            "For a completely different topic, delete this subscription "
-            "and create a new one."
-        ),
-        "edit_request_empty": "Please describe what should change.",
-        "edit_request_preview": (
-            "Proposed update:\n\n"
-            "📝 {prompt_summary}\n"
-            "📋 {format_instructions}\n"
-            "✏️ {change_summary}\n\n"
-            "Sources, schedule, and language stay unchanged."
-        ),
-        "edit_request_failed": ("Failed to prepare the update. Please try again."),
-        "edit_request_apply_failed": ("Failed to save the update. Please try again."),
-        "edit_sources_prompt": (
-            "📡 Send sources to add (for example: @channel_one r/python t.me/channel x.com/OpenAI)."
-        ),
-        "sources_added": "📡 Added {count} sources.",
-        "sources_already_added": "Those sources are already included.",
-        "sources_add_failed": "Failed to add sources. Please try again.",
         "confirm_delete_prompt": ("🗑 Are you sure you want to delete this subscription?"),
         "subscription_deleted": "🗑 Subscription deleted.",
         "subscription_delete_failed": "Failed to delete. Try again.",
@@ -197,13 +162,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_edit": "✏️ Edit",
         "button_delete": "🗑 Delete",
         "button_confirm_delete": "✅ Yes, delete",
-        "button_change_schedule": "📅 Schedule",
-        "button_disable_schedule": "🚫 Disable schedule",
-        "button_edit_request": "📝 Request",
         "button_change_language": "🌐 Language",
-        "button_add_edit_sources": "📡 Sources",
-        "button_confirm": "✅ Confirm",
-        "button_revise": "🔄 Revise",
         "button_cancel": "❌ Cancel",
         "button_try_another_city": "🏙 Another city",
         "button_yes_show_recent": "✅ Show missed",
@@ -287,13 +246,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "timezone_save_failed": ("Не удалось сохранить часовой пояс. Попробуйте ещё раз."),
         "timezone_retry": "Отправьте другой город или часовой пояс.",
         "failed_process_request": ("Не удалось обработать запрос. Попробуйте ещё раз."),
-        "describe_schedule": "Опишите расписание.",
-        "sources_parse_failed": (
-            "Не удалось распознать источники. "
-            "Отправьте Telegram-хэндлы вроде @channel_one, "
-            "ссылки вроде t.me/channel или x.com/OpenAI, "
-            "или сабреддиты вроде r/python."
-        ),
         "recent_events_expired": (
             "Предпросмотр устарел. При необходимости создайте новую подписку."
         ),
@@ -335,7 +287,11 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "subscription_detail": (
             "📰 {prompt_summary}\n\n{canonical_prompt}\n\n📋 {type}  •  🌐 {language}"
         ),
-        "edit_menu_header": ("✏️ {prompt_summary}\n\n{canonical_prompt}\n\nЧто вы хотите изменить?"),
+        "edit_prompt": (
+            "Опишите, что хотите изменить — расписание, источники, формат, тему или что-то другое."
+        ),
+        "edit_subscription_updated": "✅ Подписка обновлена.",
+        "edit_subscription_failed": "Не удалось обновить подписку. Попробуйте ещё раз.",
         "settings_title": "⚙️ Настройки\n\nВыберите, что изменить:",
         "help_text": (
             "❓ Помощь\n\n"
@@ -358,37 +314,6 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         ),
         "digest_queued": "📤 Дайджест поставлен в очередь.",
         "digest_queue_failed": ("Не удалось поставить дайджест в очередь. Попробуйте ещё раз."),
-        "edit_schedule_prompt": (
-            '📅 Опишите новое расписание естественным языком.\nПример: "каждый будний день в 9:00"'
-        ),
-        "edit_session_expired": ("Сессия редактирования истекла. Откройте 📰 Подписки из меню."),
-        "schedule_updated": "📅 Расписание обновлено.",
-        "schedule_update_failed": ("Не удалось обновить расписание. Попробуйте ещё раз."),
-        "schedule_disabled": "🚫 Автоматическое расписание отключено.",
-        "schedule_disable_failed": ("Не удалось обновить расписание. Попробуйте ещё раз."),
-        "edit_request_prompt": (
-            "📝 Опишите, что нужно изменить.\n\n"
-            "Редактирование подходит для мелких правок: формат, детали языка, "
-            "добавление фильтра.\n"
-            "Если нужна совсем другая тема — удалите подписку и создайте новую."
-        ),
-        "edit_request_empty": ("Пожалуйста, опишите, что нужно изменить."),
-        "edit_request_preview": (
-            "Предлагаемое обновление:\n\n"
-            "📝 {prompt_summary}\n"
-            "📋 {format_instructions}\n"
-            "✏️ {change_summary}\n\n"
-            "Источники, расписание и язык не изменятся."
-        ),
-        "edit_request_failed": ("Не удалось подготовить обновление. Попробуйте ещё раз."),
-        "edit_request_apply_failed": ("Не удалось сохранить обновление. Попробуйте ещё раз."),
-        "edit_sources_prompt": (
-            "📡 Отправьте источники, которые хотите добавить "
-            "(например: @channel_one r/python t.me/channel x.com/OpenAI)."
-        ),
-        "sources_added": "📡 Добавлено источников: {count}.",
-        "sources_already_added": "Эти источники уже добавлены.",
-        "sources_add_failed": ("Не удалось добавить источники. Попробуйте ещё раз."),
         "confirm_delete_prompt": ("🗑 Вы уверены, что хотите удалить эту подписку?"),
         "subscription_deleted": "🗑 Подписка удалена.",
         "subscription_delete_failed": ("Не удалось удалить подписку. Попробуйте ещё раз."),
@@ -408,13 +333,7 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "button_edit": "✏️ Изменить",
         "button_delete": "🗑 Удалить",
         "button_confirm_delete": "✅ Да, удалить",
-        "button_change_schedule": "📅 Расписание",
-        "button_disable_schedule": "🚫 Выключить расписание",
-        "button_edit_request": "📝 Запрос",
         "button_change_language": "🌐 Язык",
-        "button_add_edit_sources": "📡 Источники",
-        "button_confirm": "✅ Подтвердить",
-        "button_revise": "🔄 Уточнить",
         "button_cancel": "❌ Отмена",
         "button_try_another_city": "🏙 Другой город",
         "button_yes_show_recent": "✅ Показать",

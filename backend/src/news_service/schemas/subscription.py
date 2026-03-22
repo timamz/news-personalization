@@ -122,37 +122,6 @@ class SubscriptionUpdate(BaseModel):
     )
 
 
-class SubscriptionEditProposalRequest(BaseModel):
-    change_request: str = Field(
-        ...,
-        min_length=3,
-        description="Free-form instruction describing how the subscription should change",
-    )
-    draft_canonical_prompt: str | None = Field(
-        default=None,
-        min_length=3,
-        description="Optional draft prompt to refine further before confirmation",
-    )
-    draft_format_instructions: str | None = Field(
-        default=None,
-        min_length=3,
-        description="Optional draft format instructions to refine further before confirmation",
-    )
-
-
-class SubscriptionEditProposalResponse(BaseModel):
-    canonical_prompt: str
-    prompt_summary: str
-    format_instructions: str
-    change_summary: str
-
-
-class SubscriptionEditApplyRequest(BaseModel):
-    canonical_prompt: str = Field(..., min_length=3)
-    prompt_summary: str = Field(..., min_length=3)
-    format_instructions: str = Field(..., min_length=3)
-
-
 class SubscriptionSourcesAppendRequest(BaseModel):
     fixed_telegram_channels: list[str] = Field(
         default_factory=list,
