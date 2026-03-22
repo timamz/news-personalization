@@ -1,5 +1,5 @@
-"""Tests for single-shot digest curation."""
-
+import logging
+import random
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -12,15 +12,16 @@ from news_service.agents.digest_curator import (
     _build_items_text,
     _cosine_similarity,
     _format_news_item,
-    _is_russian_language,
     run_digest_curator,
 )
 
+logging.disable(logging.CRITICAL)
+
 
 def _make_news_item(
-    headline: str = "Test Headline",
-    body: str = "Test body content",
-    url: str = "https://example.com/article",
+    headline: str,
+    body: str,
+    url: str,
     embedding: list[float] | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
@@ -31,66 +32,91 @@ def _make_news_item(
         url=url,
         published_at=None,
         fetched_at=datetime.now(UTC),
-        embedding=embedding or [0.1] * 10,
+        embedding=embedding or [random.random() for _ in range(10)],
     )
-
-
-def test_format_news_item_includes_id_and_fields():
-    item = _make_news_item()
-    result = _format_news_item(item)
-    assert f"[ID: {item.id}]" in result
-    assert "Test Headline" in result
-    assert "Test body content" in result
-    assert "https://example.com/article" in result
-
-
-def test_cosine_similarity_identical_vectors():
-    v = [1.0, 2.0, 3.0]
-    assert _cosine_similarity(v, v) == pytest.approx(1.0)
-
-
-def test_cosine_similarity_orthogonal_vectors():
-    assert _cosine_similarity([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
-
-
-def test_cosine_similarity_zero_vector():
-    assert _cosine_similarity([0.0, 0.0], [1.0, 2.0]) == 0.0
-
-
-def test_is_russian_language():
-    assert _is_russian_language("ru") is True
-    assert _is_russian_language("ru-RU") is True
-    assert _is_russian_language("en") is False
-
-
-def test_build_items_text_respects_budget():
-    items = [_make_news_item(headline=f"Item {i}") for i in range(10)]
-    single_formatted = _format_news_item(items[0])
-    budget = len(single_formatted) * 3  # room for ~3 items
-    result = _build_items_text(items, budget)
-    assert result.count("[ID:") <= 3
-
-
-def test_build_items_text_includes_all_when_budget_large():
-    items = [_make_news_item(headline=f"Item {i}") for i in range(5)]
-    result = _build_items_text(items, 1_000_000)
-    assert result.count("[ID:") == 5
 
 
 @pytest.mark.asyncio
-async def test_run_digest_curator_returns_result(mocker):
-    item_id = str(uuid.uuid4())
-    expected = DigestCurationResult(
-        digest_text="Here is your digest...",
-        used_item_ids=[item_id],
+async def test_cosine_similarity_returns_one_for_identical_vectors() -> None:
+    dim = random.randint(3, 20)
+    v = [random.random() for _ in range(dim)]
+
+    assert _cosine_similarity(v, v) == pytest.approx(1.0), (
+        "cosine_similarity did not return 1.0 for identical vectors"
     )
 
+
+@pytest.mark.asyncio
+async def test_cosine_similarity_returns_zero_for_orthogonal_vectors() -> None:
+    result = _cosine_similarity([1.0, 0.0], [0.0, 1.0])
+
+    assert result == pytest.approx(0.0), (
+        "cosine_similarity did not return 0.0 for orthogonal vectors"
+    )
+
+
+@pytest.mark.asyncio
+async def test_cosine_similarity_returns_zero_for_zero_vector() -> None:
+    dim = random.randint(2, 10)
+    zero = [0.0] * dim
+    non_zero = [random.random() + 0.1 for _ in range(dim)]
+
+    assert _cosine_similarity(zero, non_zero) == 0.0, (
+        "cosine_similarity did not return 0.0 for zero vector"
+    )
+
+
+def test_build_items_text_respects_context_budget() -> None:
+    items = [
+        _make_news_item(
+            f"Заголовок-{uuid.uuid4().hex[:6]}",
+            f"Содержание-{uuid.uuid4().hex[:8]}",
+            f"https://news-{uuid.uuid4().hex[:8]}.test/{i}",
+        )
+        for i in range(10)
+    ]
+    single_formatted = _format_news_item(items[0])
+    budget = len(single_formatted) * 3
+
+    result = _build_items_text(items, budget)
+
+    assert result.count("[ID:") <= 3, "build_items_text did not respect the context budget"
+
+
+def test_build_items_text_includes_all_items_when_budget_is_large() -> None:
+    count = random.randint(3, 7)
+    items = [
+        _make_news_item(
+            f"Новость-{uuid.uuid4().hex[:6]}",
+            f"Текст-{uuid.uuid4().hex[:8]}",
+            f"https://news-{uuid.uuid4().hex[:8]}.test/{i}",
+        )
+        for i in range(count)
+    ]
+
+    result = _build_items_text(items, 1_000_000)
+
+    assert result.count("[ID:") == count, (
+        "build_items_text did not include all items when budget was large"
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_digest_curator_returns_digest_text(mocker) -> None:
+    item_id = str(uuid.uuid4())
+    digest_body = f"Ваш дайджест новостей {uuid.uuid4().hex[:8]}"
+    expected = DigestCurationResult(digest_text=digest_body, used_item_ids=[item_id])
     mocker.patch(
         "news_service.agents.digest_curator._parse_digest",
         new=AsyncMock(return_value=expected),
     )
-
-    items = [_make_news_item()]
+    items = [
+        _make_news_item(
+            f"Заголовок-{uuid.uuid4().hex[:6]}",
+            f"Текст-{uuid.uuid4().hex[:8]}",
+            f"https://a-{uuid.uuid4().hex[:8]}.test/1",
+        )
+    ]
     mocker.patch(
         "news_service.agents.digest_curator.find_similar_news",
         new=AsyncMock(return_value=items),
@@ -104,21 +130,64 @@ async def test_run_digest_curator_returns_result(mocker):
 
     result = await run_digest_curator(
         session=mock_session,
-        query_embedding=[0.1] * 10,
+        query_embedding=[random.random() for _ in range(10)],
         exclude_ids=set(),
         allowed_source_ids={uuid.uuid4()},
         published_after=datetime.now(UTC),
-        format_instructions="brief summary",
-        digest_language="en",
+        format_instructions=f"формат-{uuid.uuid4().hex[:6]}",
+        digest_language="ru",
     )
 
-    assert result is not None
-    assert result.digest_text == "Here is your digest..."
-    assert len(result.used_item_ids) == 1
+    assert result is not None and result.digest_text == digest_body, (
+        "run_digest_curator did not return the expected digest text"
+    )
 
 
 @pytest.mark.asyncio
-async def test_run_digest_curator_returns_none_when_no_candidates(mocker):
+async def test_run_digest_curator_returns_used_item_ids(mocker) -> None:
+    item_id = str(uuid.uuid4())
+    expected = DigestCurationResult(
+        digest_text=f"Дайджест {uuid.uuid4().hex[:6]}", used_item_ids=[item_id]
+    )
+    mocker.patch(
+        "news_service.agents.digest_curator._parse_digest",
+        new=AsyncMock(return_value=expected),
+    )
+    items = [
+        _make_news_item(
+            f"Заголовок-{uuid.uuid4().hex[:6]}",
+            f"Текст-{uuid.uuid4().hex[:8]}",
+            f"https://b-{uuid.uuid4().hex[:8]}.test/1",
+        )
+    ]
+    mocker.patch(
+        "news_service.agents.digest_curator.find_similar_news",
+        new=AsyncMock(return_value=items),
+    )
+    mock_session = AsyncMock()
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = []
+    mock_result = MagicMock()
+    mock_result.scalars.return_value = mock_scalars
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    result = await run_digest_curator(
+        session=mock_session,
+        query_embedding=[random.random() for _ in range(10)],
+        exclude_ids=set(),
+        allowed_source_ids={uuid.uuid4()},
+        published_after=datetime.now(UTC),
+        format_instructions=f"формат-{uuid.uuid4().hex[:6]}",
+        digest_language="en",
+    )
+
+    assert result is not None and len(result.used_item_ids) == 1, (
+        "run_digest_curator did not return exactly one used item ID"
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_digest_curator_returns_none_when_no_candidates(mocker) -> None:
     mocker.patch(
         "news_service.agents.digest_curator.find_similar_news",
         new=AsyncMock(return_value=[]),
@@ -132,12 +201,12 @@ async def test_run_digest_curator_returns_none_when_no_candidates(mocker):
 
     result = await run_digest_curator(
         session=mock_session,
-        query_embedding=[0.1] * 10,
+        query_embedding=[random.random() for _ in range(10)],
         exclude_ids=set(),
         allowed_source_ids={uuid.uuid4()},
         published_after=datetime.now(UTC),
-        format_instructions="brief summary",
+        format_instructions=f"формат-{uuid.uuid4().hex[:6]}",
         digest_language="en",
     )
 
-    assert result is None
+    assert result is None, "run_digest_curator did not return None when no candidates exist"

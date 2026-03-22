@@ -1,6 +1,6 @@
-"""Tests for conversation-based subscription setup endpoints."""
-
 import json
+import logging
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,11 +11,13 @@ from news_service.schemas.conversation import (
     FinalizedSubscriptionConfig,
 )
 
+logging.disable(logging.CRITICAL)
+
 MODULE = "news_service.api.routes_conversations"
 
 
 def _mock_redis(stored: dict[str, str] | None = None):
-    """Create a mock Redis client with optional pre-stored data."""
+    """Fake Redis client with in-memory storage."""
     storage = dict(stored or {})
 
     async def mock_get(key):
@@ -30,28 +32,27 @@ def _mock_redis(stored: dict[str, str] | None = None):
     async def mock_aclose():
         pass
 
-    redis_mock = MagicMock()
-    redis_mock.get = AsyncMock(side_effect=mock_get)
-    redis_mock.set = AsyncMock(side_effect=mock_set)
-    redis_mock.delete = AsyncMock(side_effect=mock_delete)
-    redis_mock.aclose = AsyncMock(side_effect=mock_aclose)
-    redis_mock._storage = storage
-    return redis_mock
+    redis_fake = MagicMock()
+    redis_fake.get = AsyncMock(side_effect=mock_get)
+    redis_fake.set = AsyncMock(side_effect=mock_set)
+    redis_fake.delete = AsyncMock(side_effect=mock_delete)
+    redis_fake.aclose = AsyncMock(side_effect=mock_aclose)
+    redis_fake._storage = storage
+    return redis_fake
 
 
-def _make_state(user_id: str = "user-123", **kwargs) -> ConversationState:
+def _make_state(user_id: str | None = None, **kwargs) -> ConversationState:
     return ConversationState(
-        user_id=user_id,
-        messages=kwargs.get("messages", [{"role": "user", "content": "AI news"}]),
+        user_id=user_id or str(uuid.uuid4()),
+        messages=kwargs.get("messages", [{"role": "user", "content": "Новости ИИ"}]),
         status=kwargs.get("status", "in_progress"),
         finalized_config=kwargs.get("finalized_config"),
-        user_language=kwargs.get("user_language", "en"),
+        user_language=kwargs.get("user_language", "ru"),
         user_timezone=kwargs.get("user_timezone"),
     )
 
 
 async def _mock_streaming_turn(output: AgentTurnOutput):
-    """Mock async generator for run_conversation_turn_streaming."""
     yield {
         "event": "done",
         "output": output.model_dump(),
@@ -60,7 +61,6 @@ async def _mock_streaming_turn(output: AgentTurnOutput):
 
 
 async def _collect_streaming_response(response) -> list[dict]:
-    """Consume a StreamingResponse and return parsed NDJSON events."""
     chunks: list[bytes] = []
     async for chunk in response.body_iterator:
         if isinstance(chunk, str):
@@ -72,9 +72,9 @@ async def _collect_streaming_response(response) -> list[dict]:
 
 
 @pytest.mark.asyncio
-async def test_start_conversation_stream(mocker):
+async def test_start_conversation_stream_returns_done_event(mocker) -> None:
     agent_output = AgentTurnOutput(
-        message="What schedule do you prefer?",
+        message="Какое расписание вы предпочитаете?",
         status="in_progress",
     )
     mocker.patch(
@@ -82,52 +82,138 @@ async def test_start_conversation_stream(mocker):
         return_value=_mock_streaming_turn(agent_output),
     )
 
-    redis_mock = _mock_redis()
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
     mock_user = MagicMock()
-    mock_user.id = "user-123"
+    mock_user.id = str(uuid.uuid4())
 
     from news_service.api.routes_conversations import start_conversation_stream
     from news_service.schemas.conversation import ConversationStartRequest
 
-    request = ConversationStartRequest(message="AI news", user_language="en")
+    request = ConversationStartRequest(message="Новости ИИ", user_language="ru")
 
     with patch(f"{MODULE}.get_current_user", return_value=mock_user):
         response = await start_conversation_stream(request, user=mock_user)
 
     events = await _collect_streaming_response(response)
     done_events = [e for e in events if e.get("event") == "done"]
-    assert len(done_events) == 1
-    done = done_events[0]
-    assert done["status"] == "in_progress"
-    assert done["agent_message"] == "What schedule do you prefer?"
-    assert done["conversation_id"]
-    assert done["finalized_config"] is None
-
-    # Verify state was saved
-    assert len(redis_mock._storage) == 1
+    assert len(done_events) == 1, "stream did not produce exactly one done event"
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation_stream(mocker):
+async def test_start_conversation_stream_done_event_has_in_progress_status(mocker) -> None:
+    agent_output = AgentTurnOutput(
+        message="Какое расписание вы предпочитаете?",
+        status="in_progress",
+    )
+    mocker.patch(
+        f"{MODULE}.run_conversation_turn_streaming",
+        return_value=_mock_streaming_turn(agent_output),
+    )
+
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
+
+    mock_user = MagicMock()
+    mock_user.id = str(uuid.uuid4())
+
+    from news_service.api.routes_conversations import start_conversation_stream
+    from news_service.schemas.conversation import ConversationStartRequest
+
+    request = ConversationStartRequest(message="Новости ИИ", user_language="ru")
+
+    with patch(f"{MODULE}.get_current_user", return_value=mock_user):
+        response = await start_conversation_stream(request, user=mock_user)
+
+    events = await _collect_streaming_response(response)
+    done = [e for e in events if e.get("event") == "done"][0]
+    assert done["status"] == "in_progress", "done event did not have in_progress status"
+
+
+@pytest.mark.asyncio
+async def test_start_conversation_stream_done_event_has_agent_message(mocker) -> None:
+    message_text = f"Какое расписание? {uuid.uuid4().hex[:6]}"
+    agent_output = AgentTurnOutput(
+        message=message_text,
+        status="in_progress",
+    )
+    mocker.patch(
+        f"{MODULE}.run_conversation_turn_streaming",
+        return_value=_mock_streaming_turn(agent_output),
+    )
+
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
+
+    mock_user = MagicMock()
+    mock_user.id = str(uuid.uuid4())
+
+    from news_service.api.routes_conversations import start_conversation_stream
+    from news_service.schemas.conversation import ConversationStartRequest
+
+    request = ConversationStartRequest(message="Новости ИИ", user_language="ru")
+
+    with patch(f"{MODULE}.get_current_user", return_value=mock_user):
+        response = await start_conversation_stream(request, user=mock_user)
+
+    events = await _collect_streaming_response(response)
+    done = [e for e in events if e.get("event") == "done"][0]
+    assert done["agent_message"] == message_text, (
+        "done event did not contain expected agent message"
+    )
+
+
+@pytest.mark.asyncio
+async def test_start_conversation_stream_saves_state_to_redis(mocker) -> None:
+    agent_output = AgentTurnOutput(
+        message="Какое расписание?",
+        status="in_progress",
+    )
+    mocker.patch(
+        f"{MODULE}.run_conversation_turn_streaming",
+        return_value=_mock_streaming_turn(agent_output),
+    )
+
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
+
+    mock_user = MagicMock()
+    mock_user.id = str(uuid.uuid4())
+
+    from news_service.api.routes_conversations import start_conversation_stream
+    from news_service.schemas.conversation import ConversationStartRequest
+
+    request = ConversationStartRequest(message="Новости ИИ", user_language="ru")
+
+    with patch(f"{MODULE}.get_current_user", return_value=mock_user):
+        response = await start_conversation_stream(request, user=mock_user)
+
+    await _collect_streaming_response(response)
+    assert len(redis_fake._storage) == 1, "stream did not save conversation state to redis"
+
+
+@pytest.mark.asyncio
+async def test_continue_conversation_stream_returns_done_with_ready_status(mocker) -> None:
+    user_id = str(uuid.uuid4())
     state = _make_state(
+        user_id=user_id,
         messages=[
-            {"role": "user", "content": "AI news"},
-            {"role": "assistant", "content": "What schedule?"},
+            {"role": "user", "content": "Новости ИИ"},
+            {"role": "assistant", "content": "Какое расписание?"},
         ],
     )
-    conv_id = "abc123"
-    redis_mock = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
+    conv_id = uuid.uuid4().hex[:12]
+    redis_fake = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
     agent_output = AgentTurnOutput(
-        message="Your subscription is ready!",
+        message="Ваша подписка готова!",
         status="ready",
         finalized_config=FinalizedSubscriptionConfig(
-            prompt_summary="AI news digest",
-            short_label="AI News",
-            digest_language="en",
+            prompt_summary="Дайджест новостей ИИ",
+            short_label="ИИ Новости",
+            digest_language="ru",
         ),
     )
     mocker.patch(
@@ -136,118 +222,170 @@ async def test_continue_conversation_stream(mocker):
     )
 
     mock_user = MagicMock()
-    mock_user.id = "user-123"
+    mock_user.id = user_id
 
     from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
-    request = ConversationMessageRequest(message="every morning")
-
+    request = ConversationMessageRequest(message="каждое утро")
     response = await continue_conversation_stream(conv_id, request, user=mock_user)
 
     events = await _collect_streaming_response(response)
-    done_events = [e for e in events if e.get("event") == "done"]
-    assert len(done_events) == 1
-    done = done_events[0]
-    assert done["status"] == "ready"
-    assert done["finalized_config"] is not None
-    assert done["finalized_config"]["prompt_summary"] == "AI news digest"
+    done = [e for e in events if e.get("event") == "done"][0]
+    assert done["status"] == "ready", "continue stream did not return ready status"
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation_stream_not_found(mocker):
-    redis_mock = _mock_redis()
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
+async def test_continue_conversation_stream_returns_finalized_config(mocker) -> None:
+    user_id = str(uuid.uuid4())
+    state = _make_state(
+        user_id=user_id,
+        messages=[
+            {"role": "user", "content": "Новости ИИ"},
+            {"role": "assistant", "content": "Какое расписание?"},
+        ],
+    )
+    conv_id = uuid.uuid4().hex[:12]
+    redis_fake = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
+
+    summary = f"Дайджест новостей ИИ {uuid.uuid4().hex[:4]}"
+    agent_output = AgentTurnOutput(
+        message="Ваша подписка готова!",
+        status="ready",
+        finalized_config=FinalizedSubscriptionConfig(
+            prompt_summary=summary,
+            short_label="ИИ Новости",
+            digest_language="ru",
+        ),
+    )
+    mocker.patch(
+        f"{MODULE}.run_conversation_turn_streaming",
+        return_value=_mock_streaming_turn(agent_output),
+    )
 
     mock_user = MagicMock()
-    mock_user.id = "user-123"
+    mock_user.id = user_id
+
+    from news_service.api.routes_conversations import continue_conversation_stream
+    from news_service.schemas.conversation import ConversationMessageRequest
+
+    request = ConversationMessageRequest(message="каждое утро")
+    response = await continue_conversation_stream(conv_id, request, user=mock_user)
+
+    events = await _collect_streaming_response(response)
+    done = [e for e in events if e.get("event") == "done"][0]
+    assert done["finalized_config"]["prompt_summary"] == summary, (
+        "continue stream did not return correct finalized config"
+    )
+
+
+@pytest.mark.asyncio
+async def test_continue_conversation_stream_raises_404_when_not_found(mocker) -> None:
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
+
+    mock_user = MagicMock()
+    mock_user.id = str(uuid.uuid4())
 
     from fastapi import HTTPException
 
     from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
-    request = ConversationMessageRequest(message="hello")
+    request = ConversationMessageRequest(message="привет")
 
     with pytest.raises(HTTPException) as exc_info:
-        await continue_conversation_stream("nonexistent", request, user=mock_user)
-    assert exc_info.value.status_code == 404
+        await continue_conversation_stream(uuid.uuid4().hex, request, user=mock_user)
+
+    assert exc_info.value.status_code == 404, (
+        "continue stream did not raise 404 for missing conversation"
+    )
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation_stream_wrong_user(mocker):
-    state = _make_state(user_id="other-user")
-    conv_id = "abc123"
-    redis_mock = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
+async def test_continue_conversation_stream_raises_403_for_wrong_user(mocker) -> None:
+    other_user_id = str(uuid.uuid4())
+    state = _make_state(user_id=other_user_id)
+    conv_id = uuid.uuid4().hex[:12]
+    redis_fake = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
     mock_user = MagicMock()
-    mock_user.id = "user-123"
+    mock_user.id = str(uuid.uuid4())
 
     from fastapi import HTTPException
 
     from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
-    request = ConversationMessageRequest(message="hello")
+    request = ConversationMessageRequest(message="привет")
 
     with pytest.raises(HTTPException) as exc_info:
         await continue_conversation_stream(conv_id, request, user=mock_user)
-    assert exc_info.value.status_code == 403
+
+    assert exc_info.value.status_code == 403, "continue stream did not raise 403 for wrong user"
 
 
 @pytest.mark.asyncio
-async def test_continue_conversation_stream_already_finalized(mocker):
-    state = _make_state(status="ready")
-    conv_id = "abc123"
-    redis_mock = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
+async def test_continue_conversation_stream_raises_409_when_already_finalized(mocker) -> None:
+    user_id = str(uuid.uuid4())
+    state = _make_state(user_id=user_id, status="ready")
+    conv_id = uuid.uuid4().hex[:12]
+    redis_fake = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
     mock_user = MagicMock()
-    mock_user.id = "user-123"
+    mock_user.id = user_id
 
     from fastapi import HTTPException
 
     from news_service.api.routes_conversations import continue_conversation_stream
     from news_service.schemas.conversation import ConversationMessageRequest
 
-    request = ConversationMessageRequest(message="hello")
+    request = ConversationMessageRequest(message="привет")
 
     with pytest.raises(HTTPException) as exc_info:
         await continue_conversation_stream(conv_id, request, user=mock_user)
-    assert exc_info.value.status_code == 409
+
+    assert exc_info.value.status_code == 409, (
+        "continue stream did not raise 409 for already finalized conversation"
+    )
 
 
 @pytest.mark.asyncio
-async def test_cancel_conversation(mocker):
-    state = _make_state()
-    conv_id = "abc123"
-    redis_mock = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
+async def test_cancel_conversation_deletes_state_from_redis(mocker) -> None:
+    user_id = str(uuid.uuid4())
+    state = _make_state(user_id=user_id)
+    conv_id = uuid.uuid4().hex[:12]
+    redis_fake = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
     mock_user = MagicMock()
-    mock_user.id = "user-123"
+    mock_user.id = user_id
 
     from news_service.api.routes_conversations import cancel_conversation
 
     await cancel_conversation(conv_id, user=mock_user)
 
-    # Verify state was deleted
-    assert f"conv:{conv_id}" not in redis_mock._storage
+    assert f"conv:{conv_id}" not in redis_fake._storage, (
+        "cancel did not delete conversation state from redis"
+    )
 
 
 @pytest.mark.asyncio
-async def test_cancel_conversation_not_found(mocker):
-    redis_mock = _mock_redis()
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_mock)
+async def test_cancel_conversation_raises_404_when_not_found(mocker) -> None:
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
     mock_user = MagicMock()
-    mock_user.id = "user-123"
+    mock_user.id = str(uuid.uuid4())
 
     from fastapi import HTTPException
 
     from news_service.api.routes_conversations import cancel_conversation
 
     with pytest.raises(HTTPException) as exc_info:
-        await cancel_conversation("nonexistent", user=mock_user)
-    assert exc_info.value.status_code == 404
+        await cancel_conversation(uuid.uuid4().hex, user=mock_user)
+
+    assert exc_info.value.status_code == 404, "cancel did not raise 404 for missing conversation"

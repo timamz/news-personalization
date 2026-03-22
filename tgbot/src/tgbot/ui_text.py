@@ -122,8 +122,12 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "menu_title": "📋 Menu",
         "subscriptions_title": "📰 My Subscriptions",
         "subscriptions_empty_hint": "You don't have any subscriptions yet.",
-        "subscription_detail": ("📰 {prompt_summary}\n\n📋 {type}  •  🌐 {language}"),
-        "edit_menu_header": ("✏️ {prompt_summary}\n\nWhat do you want to change?"),
+        "subscription_detail": (
+            "📰 {prompt_summary}\n\n{canonical_prompt}\n\n📋 {type}  •  🌐 {language}"
+        ),
+        "edit_menu_header": (
+            "✏️ {prompt_summary}\n\n{canonical_prompt}\n\nWhat do you want to change?"
+        ),
         "settings_title": "⚙️ Settings\n\nChoose a setting to change:",
         "help_text": (
             "❓ Help\n\n"
@@ -328,8 +332,10 @@ _TEXTS: dict[UILanguage, dict[str, str]] = {
         "menu_title": "📋 Меню",
         "subscriptions_title": "📰 Мои подписки",
         "subscriptions_empty_hint": "У вас пока нет подписок.",
-        "subscription_detail": ("📰 {prompt_summary}\n\n📋 {type}  •  🌐 {language}"),
-        "edit_menu_header": ("✏️ {prompt_summary}\n\nЧто вы хотите изменить?"),
+        "subscription_detail": (
+            "📰 {prompt_summary}\n\n{canonical_prompt}\n\n📋 {type}  •  🌐 {language}"
+        ),
+        "edit_menu_header": ("✏️ {prompt_summary}\n\n{canonical_prompt}\n\nЧто вы хотите изменить?"),
         "settings_title": "⚙️ Настройки\n\nВыберите, что изменить:",
         "help_text": (
             "❓ Помощь\n\n"

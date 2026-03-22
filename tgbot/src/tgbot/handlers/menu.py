@@ -244,6 +244,7 @@ async def show_subscription_detail(
         lang,
         "subscription_detail",
         prompt_summary=sub.prompt_summary,
+        canonical_prompt=sub.canonical_prompt or sub.raw_prompt or "",
         type=mode_label,
         language=interface_language_name(lang, sub.digest_language),
     )

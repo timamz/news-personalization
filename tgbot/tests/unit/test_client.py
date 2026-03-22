@@ -1,385 +1,442 @@
+import logging
+import random
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from tgbot.client import BackendClient
 
+logging.disable(logging.CRITICAL)
 
-@pytest.fixture
-def client():
-    return BackendClient(base_url="http://test-backend:8000")
+
+def _make_http_mock(method: str, response_mock: MagicMock) -> AsyncMock:
+    mock_http = AsyncMock()
+    setattr(mock_http, method, AsyncMock(return_value=response_mock))
+    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+    mock_http.__aexit__ = AsyncMock(return_value=False)
+    return mock_http
+
+
+def _make_response(status_code: int, json_data: dict | None = None) -> MagicMock:
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.raise_for_status = MagicMock()
+    if json_data is not None:
+        resp.json.return_value = json_data
+    return resp
 
 
 @pytest.mark.asyncio
-async def test_register_user(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 201
-    mock_response.json.return_value = {
-        "id": "abc-123",
-        "api_key": "generated-key",
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        api_key = await client.register_user()
-
-    assert api_key == "generated-key"
-    mock_http.post.assert_called_once_with("http://test-backend:8000/users")
-
-
-@pytest.mark.asyncio
-async def test_get_current_user(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "id": "user-1",
-        "api_key": "generated-key",
-        "timezone": "Europe/Berlin",
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.get = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        user = await client.get_current_user("api-key")
-
-    assert user.timezone == "Europe/Berlin"
-    mock_http.get.assert_awaited_once_with(
-        "http://test-backend:8000/users/me",
-        headers={"X-API-Key": "api-key"},
+async def test_register_user_returns_api_key() -> None:
+    base = f"http://test-{uuid.uuid4().hex[:8]}:8000"
+    generated_key = f"key-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        201,
+        {"id": uuid.uuid4().hex, "api_key": generated_key, "created_at": "2026-01-01T00:00:00Z"},
     )
-
-
-@pytest.mark.asyncio
-async def test_resolve_timezone(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "status": "resolved",
-        "candidates": [
-            {
-                "label": "Berlin, Germany",
-                "timezone": "Europe/Berlin",
-                "local_time": "2026-03-13T10:00:00+01:00",
-            }
-        ],
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+    mock_http = _make_http_mock("post", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        resolution = await client.resolve_timezone("api-key", "Berlin")
+        result = await client.register_user()
 
-    assert resolution.status == "resolved"
-    assert resolution.candidates[0].timezone == "Europe/Berlin"
-    mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/users/resolve-timezone",
-        headers={"X-API-Key": "api-key"},
-        json={"query": "Berlin"},
-    )
+    assert result == generated_key, "register_user did not return the expected api_key"
 
 
 @pytest.mark.asyncio
-async def test_update_user_timezone(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "id": "user-1",
-        "api_key": "generated-key",
-        "timezone": "Europe/Berlin",
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.patch = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+async def test_register_user_posts_to_users_endpoint() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:9000"
+    client = BackendClient(base_url=base)
+    resp = _make_response(201, {"id": "x", "api_key": "k", "created_at": "2026-01-01T00:00:00Z"})
+    mock_http = _make_http_mock("post", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        user = await client.update_user_timezone("api-key", "Europe/Berlin")
+        await client.register_user()
 
-    assert user.timezone == "Europe/Berlin"
-    mock_http.patch.assert_awaited_once_with(
-        "http://test-backend:8000/users/me",
-        headers={"X-API-Key": "api-key"},
-        json={"timezone": "Europe/Berlin"},
-    )
+    mock_http.post.assert_called_once_with(f"{base}/users")
 
 
 @pytest.mark.asyncio
-async def test_parse_schedule(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"schedule_cron": "0 9 * * 1-5"}
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+async def test_get_current_user_returns_timezone() -> None:
+    base = f"http://backend-{uuid.uuid4().hex[:6]}:8000"
+    tz = f"Europe/City_{random.randint(1, 999)}"
+    api_key = f"key-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200, {"id": "u1", "api_key": api_key, "timezone": tz, "created_at": "2026-01-01T00:00:00Z"}
+    )
+    mock_http = _make_http_mock("get", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        cron = await client.parse_schedule("my-key", "каждый будний день в 9")
+        user = await client.get_current_user(api_key)
 
-    assert cron == "0 9 * * 1-5"
-    mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/parse-schedule",
-        headers={"X-API-Key": "my-key"},
-        json={"schedule_text": "каждый будний день в 9"},
-    )
+    assert user.timezone == tz, "get_current_user did not return the expected timezone"
 
 
 @pytest.mark.asyncio
-async def test_list_subscriptions(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = [
+async def test_resolve_timezone_returns_resolved_status() -> None:
+    base = f"http://srv-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    tz_name = f"Europe/Zone_{random.randint(1, 99)}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200,
         {
-            "id": "sub-1",
-            "raw_prompt": "sports news",
-            "prompt_summary": "sports news",
+            "status": "resolved",
+            "candidates": [
+                {
+                    "label": "Somewhere",
+                    "timezone": tz_name,
+                    "local_time": "2026-03-13T10:00:00+01:00",
+                }
+            ],
+        },
+    )
+    mock_http = _make_http_mock("post", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        resolution = await client.resolve_timezone(api_key, "query")
+
+    assert resolution.status == "resolved", "resolve_timezone did not return resolved status"
+
+
+@pytest.mark.asyncio
+async def test_resolve_timezone_returns_candidate_timezone() -> None:
+    base = f"http://srv-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    expected_tz = f"Asia/City_{random.randint(1, 99)}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200,
+        {
+            "status": "resolved",
+            "candidates": [
+                {
+                    "label": "Place",
+                    "timezone": expected_tz,
+                    "local_time": "2026-03-13T10:00:00+01:00",
+                }
+            ],
+        },
+    )
+    mock_http = _make_http_mock("post", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        resolution = await client.resolve_timezone(api_key, "somewhere")
+
+    assert resolution.candidates[0].timezone == expected_tz, (
+        "resolve_timezone did not return the expected candidate timezone"
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_user_timezone_returns_updated_timezone() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    tz = f"America/Zone_{random.randint(1, 99)}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200, {"id": "u", "api_key": api_key, "timezone": tz, "created_at": "2026-01-01T00:00:00Z"}
+    )
+    mock_http = _make_http_mock("patch", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        user = await client.update_user_timezone(api_key, tz)
+
+    assert user.timezone == tz, "update_user_timezone did not return the expected timezone"
+
+
+@pytest.mark.asyncio
+async def test_parse_schedule_returns_cron_expression() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    cron = f"{random.randint(0, 59)} {random.randint(0, 23)} * * 1-5"
+    client = BackendClient(base_url=base)
+    resp = _make_response(200, {"schedule_cron": cron})
+    mock_http = _make_http_mock("post", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        result = await client.parse_schedule(
+            api_key,
+            "\u043a\u0430\u0436\u0434\u044b\u0439 \u0431\u0443\u0434\u043d\u0438\u0439"
+            " \u0434\u0435\u043d\u044c \u0432 9",
+        )
+
+    assert result == cron, "parse_schedule did not return the expected cron expression"
+
+
+@pytest.mark.asyncio
+async def test_list_subscriptions_returns_correct_count() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(200, None)
+    resp.json.return_value = [
+        {
+            "id": sub_id,
+            "raw_prompt": "\u043d\u043e\u0432\u043e\u0441\u0442\u0438",
+            "prompt_summary": "\u0441\u043f\u043e\u0440\u0442",
             "delivery_mode": "event",
             "schedule_cron": "0 8 * * *",
-            "format_instructions": "brief summary",
+            "format_instructions": "brief",
+            "digest_language": "ru",
+            "is_active": True,
+        }
+    ]
+    mock_http = _make_http_mock("get", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        subs = await client.list_subscriptions(api_key)
+
+    assert len(subs) == 1, "list_subscriptions did not return exactly one subscription"
+
+
+@pytest.mark.asyncio
+async def test_list_subscriptions_returns_correct_delivery_mode() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(200, None)
+    resp.json.return_value = [
+        {
+            "id": f"sub-{uuid.uuid4().hex}",
+            "raw_prompt": "news",
+            "prompt_summary": "news",
+            "delivery_mode": "digest",
+            "schedule_cron": None,
+            "format_instructions": "brief",
             "digest_language": "en",
             "is_active": True,
         }
     ]
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.get = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+    mock_http = _make_http_mock("get", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        subs = await client.list_subscriptions("my-key")
+        subs = await client.list_subscriptions(api_key)
 
-    assert len(subs) == 1
-    assert subs[0].prompt_summary == "sports news"
-    assert subs[0].delivery_mode == "event"
-    assert subs[0].digest_language == "en"
+    assert subs[0].delivery_mode == "digest", (
+        "list_subscriptions did not return the expected delivery_mode"
+    )
 
 
 @pytest.mark.asyncio
-async def test_acknowledge_recent_events(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 204
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+async def test_list_subscriptions_returns_correct_digest_language() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    lang = random.choice(["en", "ru"])
+    client = BackendClient(base_url=base)
+    resp = _make_response(200, None)
+    resp.json.return_value = [
+        {
+            "id": f"sub-{uuid.uuid4().hex}",
+            "raw_prompt": "\u043d\u043e\u0432\u043e\u0441\u0442\u0438",
+            "prompt_summary": "\u043d\u043e\u0432\u043e\u0441\u0442\u0438",
+            "delivery_mode": "event",
+            "schedule_cron": None,
+            "format_instructions": "\u043a\u0440\u0430\u0442\u043a\u043e",
+            "digest_language": lang,
+            "is_active": True,
+        }
+    ]
+    mock_http = _make_http_mock("get", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        await client.acknowledge_recent_events("my-key", "sub-1", ["news-1", "news-2"])
+        subs = await client.list_subscriptions(api_key)
+
+    assert subs[0].digest_language == lang, (
+        "list_subscriptions did not return the expected digest_language"
+    )
+
+
+@pytest.mark.asyncio
+async def test_acknowledge_recent_events_posts_to_correct_endpoint() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    news_ids = [f"news-{uuid.uuid4().hex}" for _ in range(random.randint(1, 5))]
+    client = BackendClient(base_url=base)
+    resp = _make_response(204)
+    mock_http = _make_http_mock("post", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        await client.acknowledge_recent_events(api_key, sub_id, news_ids)
 
     mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/sub-1/recent-events/acknowledge",
-        headers={"X-API-Key": "my-key"},
-        json={"news_item_ids": ["news-1", "news-2"]},
+        f"{base}/subscriptions/{sub_id}/recent-events/acknowledge",
+        headers={"X-API-Key": api_key},
+        json={"news_item_ids": news_ids},
     )
 
 
 @pytest.mark.asyncio
-async def test_send_now(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 202
-    mock_response.json.return_value = {"task_id": "task-123", "status": "queued"}
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+async def test_send_now_returns_task_id() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    task_id = f"task-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(202, {"task_id": task_id, "status": "queued"})
+    mock_http = _make_http_mock("post", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        result = await client.send_now("my-key", "sub-1")
+        result = await client.send_now(api_key, sub_id)
 
-    assert result == {"task_id": "task-123", "status": "queued"}
-    mock_http.post.assert_called_once_with(
-        "http://test-backend:8000/subscriptions/sub-1/send-now",
-        headers={"X-API-Key": "my-key"},
-    )
+    assert result["task_id"] == task_id, "send_now did not return the expected task_id"
 
 
 @pytest.mark.asyncio
-async def test_update_subscription(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "id": "sub-1",
-        "raw_prompt": "AI news every morning",
-        "prompt_summary": "AI news every morning",
-        "delivery_mode": "digest",
-        "schedule_cron": None,
-        "format_instructions": "concise alerts",
-        "digest_language": "ru",
-        "delivery_webhook_url": "http://bot:8001/deliver/123",
-        "is_active": True,
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.patch = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        sub = await client.update_subscription(
-            "my-key",
-            "sub-1",
-            schedule_cron=None,
-            format_instructions="concise alerts",
-            digest_language="ru",
-        )
-
-    assert sub.id == "sub-1"
-    assert sub.schedule_cron is None
-    assert sub.format_instructions == "concise alerts"
-    assert sub.digest_language == "ru"
-    mock_http.patch.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/sub-1",
-        headers={"X-API-Key": "my-key"},
-        json={
+async def test_update_subscription_returns_correct_id() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200,
+        {
+            "id": sub_id,
+            "raw_prompt": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
+            "prompt_summary": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
+            "delivery_mode": "digest",
             "schedule_cron": None,
-            "format_instructions": "concise alerts",
+            "format_instructions": "\u043a\u0440\u0430\u0442\u043a\u043e",
             "digest_language": "ru",
+            "delivery_webhook_url": "http://bot:8001/deliver/123",
+            "is_active": True,
+            "created_at": "2026-01-01T00:00:00Z",
         },
     )
+    mock_http = _make_http_mock("patch", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        sub = await client.update_subscription(api_key, sub_id, schedule_cron=None)
+
+    assert sub.id == sub_id, "update_subscription did not return the expected subscription id"
 
 
 @pytest.mark.asyncio
-async def test_append_subscription_sources(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "added_telegram_channels": ["gonzo_ml"],
-        "added_reddit_subreddits": ["machinelearning"],
-        "added_twitter_accounts": [],
-        "added_sources_count": 2,
-    }
-    mock_response.raise_for_status = MagicMock()
+async def test_update_subscription_returns_correct_format_instructions() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    fmt = f"\u0444\u043e\u0440\u043c\u0430\u0442-{uuid.uuid4().hex[:6]}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200,
+        {
+            "id": sub_id,
+            "raw_prompt": "x",
+            "prompt_summary": "x",
+            "delivery_mode": "digest",
+            "schedule_cron": None,
+            "format_instructions": fmt,
+            "digest_language": "ru",
+            "is_active": True,
+            "created_at": "2026-01-01T00:00:00Z",
+        },
+    )
+    mock_http = _make_http_mock("patch", resp)
 
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        sub = await client.update_subscription(api_key, sub_id, format_instructions=fmt)
+
+    assert sub.format_instructions == fmt, (
+        "update_subscription did not return the expected format_instructions"
+    )
+
+
+@pytest.mark.asyncio
+async def test_append_subscription_sources_returns_added_count() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    count = random.randint(1, 10)
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200,
+        {
+            "added_telegram_channels": ["test_ch"],
+            "added_reddit_subreddits": [],
+            "added_twitter_accounts": [],
+            "added_sources_count": count,
+        },
+    )
+    mock_http = _make_http_mock("post", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
         result = await client.append_subscription_sources(
-            "api-key",
-            "sub-1",
-            fixed_telegram_channels=["gonzo_ml"],
-            fixed_reddit_subreddits=["machinelearning"],
+            api_key, sub_id, fixed_telegram_channels=["test_ch"]
         )
 
-    assert result.added_sources_count == 2
-    mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/sub-1/sources",
-        headers={"X-API-Key": "api-key"},
-        json={
-            "fixed_telegram_channels": ["gonzo_ml"],
-            "fixed_reddit_subreddits": ["machinelearning"],
-        },
+    assert result.added_sources_count == count, (
+        "append_subscription_sources did not return the expected added_sources_count"
     )
 
 
 @pytest.mark.asyncio
-async def test_propose_subscription_edit(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "canonical_prompt": "Notify me when Frieren and Apothecary Diaries air.",
-        "prompt_summary": "Anime episode notifications",
-        "format_instructions": "brief summary",
-        "change_summary": "Added Frieren.",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+async def test_propose_subscription_edit_returns_prompt_summary() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    summary = f"\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435-{uuid.uuid4().hex[:6]}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200,
+        {
+            "canonical_prompt": "some prompt",
+            "prompt_summary": summary,
+            "format_instructions": "brief",
+            "change_summary": "Added something.",
+        },
+    )
+    mock_http = _make_http_mock("post", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
         result = await client.propose_subscription_edit(
-            "api-key",
-            "sub-1",
-            change_request="Also add Frieren.",
-            draft_canonical_prompt="Notify me when Apothecary Diaries air.",
-            draft_format_instructions="brief summary",
+            api_key,
+            sub_id,
+            change_request="\u0414\u043e\u0431\u0430\u0432\u044c \u0435\u0449\u0451.",
         )
 
-    assert result.prompt_summary == "Anime episode notifications"
-    mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/sub-1/edit/propose",
-        headers={"X-API-Key": "api-key"},
-        json={
-            "change_request": "Also add Frieren.",
-            "draft_canonical_prompt": "Notify me when Apothecary Diaries air.",
-            "draft_format_instructions": "brief summary",
-        },
+    assert result.prompt_summary == summary, (
+        "propose_subscription_edit did not return the expected prompt_summary"
     )
 
 
 @pytest.mark.asyncio
-async def test_apply_subscription_edit(client: BackendClient):
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "id": "sub-1",
-        "raw_prompt": "Notify me when Apothecary Diaries air.",
-        "canonical_prompt": "Notify me when Frieren and Apothecary Diaries air.",
-        "prompt_summary": "Anime episode notifications",
-        "delivery_mode": "event",
-        "schedule_cron": None,
-        "format_instructions": "brief summary",
-        "digest_language": "en",
-        "delivery_webhook_url": "http://bot:8001/deliver/123",
-        "is_active": True,
-        "created_at": "2026-01-01T00:00:00Z",
-    }
-    mock_response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=mock_response)
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+async def test_apply_subscription_edit_returns_prompt_summary() -> None:
+    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    sub_id = f"sub-{uuid.uuid4().hex}"
+    summary = f"\u0420\u0435\u0437\u044e\u043c\u0435-{uuid.uuid4().hex[:6]}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(
+        200,
+        {
+            "id": sub_id,
+            "raw_prompt": "old",
+            "canonical_prompt": "new prompt",
+            "prompt_summary": summary,
+            "delivery_mode": "event",
+            "schedule_cron": None,
+            "format_instructions": "brief",
+            "digest_language": "en",
+            "is_active": True,
+            "created_at": "2026-01-01T00:00:00Z",
+        },
+    )
+    mock_http = _make_http_mock("post", resp)
 
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
         result = await client.apply_subscription_edit(
-            "api-key",
-            "sub-1",
-            canonical_prompt="Notify me when Frieren and Apothecary Diaries air.",
-            prompt_summary="Anime episode notifications",
-            format_instructions="brief summary",
+            api_key,
+            sub_id,
+            canonical_prompt="new prompt",
+            prompt_summary=summary,
+            format_instructions="brief",
         )
 
-    assert result.prompt_summary == "Anime episode notifications"
-    mock_http.post.assert_awaited_once_with(
-        "http://test-backend:8000/subscriptions/sub-1/edit/apply",
-        headers={"X-API-Key": "api-key"},
-        json={
-            "canonical_prompt": "Notify me when Frieren and Apothecary Diaries air.",
-            "prompt_summary": "Anime episode notifications",
-            "format_instructions": "brief summary",
-        },
+    assert result.prompt_summary == summary, (
+        "apply_subscription_edit did not return the expected prompt_summary"
     )

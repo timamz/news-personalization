@@ -107,6 +107,7 @@ async def _show_edit_menu(
         lang,
         "edit_menu_header",
         prompt_summary=sub.prompt_summary,
+        canonical_prompt=sub.canonical_prompt or sub.raw_prompt or "",
     )
 
     buttons: list[list[InlineKeyboardButton]] = []

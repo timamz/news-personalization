@@ -1,3 +1,6 @@
+import logging
+import random
+import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -5,31 +8,55 @@ import pytest
 
 from news_service.services import event_notifications
 
+logging.disable(logging.CRITICAL)
+
 
 def _make_item(
     *,
-    item_id: str = "news-1",
+    item_id: str | None = None,
     headline: str = "Станислав Дробышевский выступит с лекцией",
+    body: str = "Лекция Станислава Владимировича Дробышевского пройдет в Москве.",
+    source: str = "Telegram @fondnauk",
 ) -> SimpleNamespace:
+    resolved_id = item_id or str(uuid.uuid4())
     return SimpleNamespace(
-        id=item_id,
-        source_id="feed-1",
-        source="Telegram @fondnauk",
+        id=resolved_id,
+        source_id=str(uuid.uuid4()),
+        source=source,
         headline=headline,
-        body="Лекция Станислава Владимировича Дробышевского пройдет в Москве.",
-        published_at=datetime(2026, 3, 4, 12, 0, tzinfo=UTC),
-        fetched_at=datetime(2026, 3, 4, 12, 1, tzinfo=UTC),
-        url=f"https://example.com/{item_id}",
+        body=body,
+        published_at=datetime(2026, 3, random.randint(1, 28), 12, 0, tzinfo=UTC),
+        fetched_at=datetime(2026, 3, random.randint(1, 28), 12, 1, tzinfo=UTC),
+        url=f"https://example.com/{resolved_id}",
     )
 
 
 @pytest.mark.asyncio
-async def test_notification_history_entry_from_item_uses_headline_and_body() -> None:
-    item = _make_item()
-    entry = event_notifications.notification_history_entry_from_item(
-        item, sent_at=datetime(2026, 3, 4, 12, 0, tzinfo=UTC)
-    )
+async def test_notification_history_entry_from_item_sets_title_to_headline() -> None:
+    item = _make_item(headline="Новая лекция по антропологии")
+    sent_at = datetime(2026, 3, random.randint(1, 28), 14, 0, tzinfo=UTC)
 
-    assert entry.title == item.headline
-    assert entry.summary == item.body
-    assert entry.source == item.source
+    entry = event_notifications.notification_history_entry_from_item(item, sent_at=sent_at)
+
+    assert entry.title == item.headline, "entry title did not match item headline"
+
+
+@pytest.mark.asyncio
+async def test_notification_history_entry_from_item_sets_summary_to_body() -> None:
+    item = _make_item(body="Профессор расскажет о находках в Денисовой пещере.")
+    sent_at = datetime(2026, 3, random.randint(1, 28), 14, 0, tzinfo=UTC)
+
+    entry = event_notifications.notification_history_entry_from_item(item, sent_at=sent_at)
+
+    assert entry.summary == item.body, "entry summary did not match item body"
+
+
+@pytest.mark.asyncio
+async def test_notification_history_entry_from_item_sets_source_to_item_source() -> None:
+    source_name = f"Telegram @канал_{uuid.uuid4().hex[:6]}"
+    item = _make_item(source=source_name)
+    sent_at = datetime(2026, 3, random.randint(1, 28), 14, 0, tzinfo=UTC)
+
+    entry = event_notifications.notification_history_entry_from_item(item, sent_at=sent_at)
+
+    assert entry.source == item.source, "entry source did not match item source"

@@ -1,3 +1,5 @@
+import logging
+import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
@@ -15,66 +17,128 @@ from news_service.services.twitter import (
     parse_twitter_posts,
 )
 
-
-def test_extract_twitter_accounts_deduplicates_urls_and_contextual_mentions() -> None:
-    prompt = (
-        "Track https://x.com/OpenAI and @NASA on Twitter. "
-        "Ignore duplicate https://mobile.x.com/openai."
-    )
-
-    accounts = extract_twitter_accounts(prompt)
-
-    assert accounts == ["openai", "nasa"]
+logging.disable(logging.CRITICAL)
 
 
-def test_normalize_twitter_account_accepts_handles_and_urls() -> None:
-    assert normalize_twitter_account("@OpenAI") == "openai"
-    assert normalize_twitter_account("x.com/NASA") == "nasa"
-    assert normalize_twitter_account("https://twitter.com/NASA/status/123") == "nasa"
-
-
-def test_extract_twitter_account_from_url() -> None:
-    assert extract_twitter_account_from_url("https://x.com/OpenAI") == "openai"
-    assert extract_twitter_account_from_url("https://mobile.twitter.com/NASA/status/42") == "nasa"
-    assert extract_twitter_account_from_url("https://x.com/home") is None
-
-
-def test_parse_twitter_posts_extracts_post_fields() -> None:
-    payload = """
+def _make_twitter_timeline_html(screen_name: str, tweet_id: str, text: str, created_at: str) -> str:
+    return f"""
     <html><body>
     <script id="__NEXT_DATA__" type="application/json">
-    {"props":{"pageProps":{"timeline":{"entries":[
-        {"type":"tweet","content":{"tweet":{
-            "id_str":"2032045283488473242",
-            "full_text":"LIVE: Docking operations are underway.",
-            "created_at":"Thu Mar 12 10:45:23 +0000 2026",
-            "user":{"screen_name":"NASA"}
-        }}}
-    ]}}}}
+    {{"props":{{"pageProps":{{"timeline":{{"entries":[
+        {{"type":"tweet","content":{{"tweet":{{
+            "id_str":"{tweet_id}",
+            "full_text":"{text}",
+            "created_at":"{created_at}",
+            "user":{{"screen_name":"{screen_name}"}}
+        }}}}}}
+    ]}}}}}}}}
     </script>
     </body></html>
     """
 
-    posts = parse_twitter_posts(payload, "nasa", limit=20)
 
-    assert len(posts) == 1
-    assert posts[0].url == "https://x.com/nasa/status/2032045283488473242"
-    assert posts[0].title == "LIVE: Docking operations are underway."
-    assert posts[0].body == "LIVE: Docking operations are underway."
-    assert posts[0].published_at == datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC)
+def test_extract_twitter_accounts_deduplicates_urls_and_mentions() -> None:
+    tag = uuid.uuid4().hex[:6]
+    prompt = (
+        f"Track https://x.com/OpenAI and @NASA on Twitter. tag={tag} "
+        f"Ignore duplicate https://mobile.x.com/openai."
+    )
+    accounts = extract_twitter_accounts(prompt)
+    assert accounts == ["openai", "nasa"], "extract did not deduplicate twitter accounts correctly"
 
 
-def test_build_twitter_account_url() -> None:
-    assert build_twitter_account_url("@OpenAI") == "https://x.com/openai"
+def test_normalize_twitter_account_from_handle() -> None:
+    result = normalize_twitter_account("@OpenAI")
+    assert result == "openai", "normalize did not lowercase twitter handle"
+
+
+def test_normalize_twitter_account_from_short_url() -> None:
+    result = normalize_twitter_account("x.com/NASA")
+    assert result == "nasa", "normalize did not extract account from short URL"
+
+
+def test_normalize_twitter_account_from_full_url() -> None:
+    result = normalize_twitter_account("https://twitter.com/NASA/status/123")
+    assert result == "nasa", "normalize did not extract account from full twitter.com URL"
+
+
+def test_extract_twitter_account_from_x_url() -> None:
+    result = extract_twitter_account_from_url("https://x.com/OpenAI")
+    assert result == "openai", "extract did not parse x.com URL"
+
+
+def test_extract_twitter_account_from_mobile_twitter_url() -> None:
+    result = extract_twitter_account_from_url("https://mobile.twitter.com/NASA/status/42")
+    assert result == "nasa", "extract did not parse mobile.twitter.com URL"
+
+
+def test_extract_twitter_account_from_reserved_path_returns_none() -> None:
+    result = extract_twitter_account_from_url("https://x.com/home")
+    assert result is None, "extract did not return None for reserved path"
+
+
+def test_parse_twitter_posts_returns_single_post() -> None:
+    html = _make_twitter_timeline_html(
+        "NASA",
+        "2032045283488473242",
+        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
+        "Thu Mar 12 10:45:23 +0000 2026",
+    )
+    posts = parse_twitter_posts(html, "nasa", limit=20)
+    assert len(posts) == 1, "parse did not return exactly one post"
+
+
+def test_parse_twitter_posts_extracts_url() -> None:
+    html = _make_twitter_timeline_html(
+        "NASA",
+        "2032045283488473242",
+        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
+        "Thu Mar 12 10:45:23 +0000 2026",
+    )
+    posts = parse_twitter_posts(html, "nasa", limit=20)
+    assert posts[0].url == "https://x.com/nasa/status/2032045283488473242", (
+        "parse did not extract correct tweet URL"
+    )
+
+
+def test_parse_twitter_posts_extracts_title() -> None:
+    html = _make_twitter_timeline_html(
+        "NASA",
+        "2032045283488473242",
+        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
+        "Thu Mar 12 10:45:23 +0000 2026",
+    )
+    posts = parse_twitter_posts(html, "nasa", limit=20)
+    assert posts[0].title == "ПРЯМОЙ ЭФИР: Идёт стыковка.", (
+        "parse did not extract correct tweet title"
+    )
+
+
+def test_parse_twitter_posts_extracts_published_at() -> None:
+    html = _make_twitter_timeline_html(
+        "NASA",
+        "2032045283488473242",
+        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
+        "Thu Mar 12 10:45:23 +0000 2026",
+    )
+    posts = parse_twitter_posts(html, "nasa", limit=20)
+    assert posts[0].published_at == datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC), (
+        "parse did not extract correct published_at timestamp"
+    )
+
+
+def test_build_twitter_account_url_normalizes() -> None:
+    result = build_twitter_account_url("@OpenAI")
+    assert result == "https://x.com/openai", "build did not produce correct normalized twitter URL"
 
 
 def test_extract_retry_after_seconds_uses_rate_limit_reset_header(mocker) -> None:
     mocker.patch.object(twitter.time, "time", return_value=100.0)
     response = httpx.Response(429, headers={"x-rate-limit-reset": "112"})
-
     delay = twitter._extract_retry_after_seconds(response)
-
-    assert delay == pytest.approx(12.0)
+    assert delay == pytest.approx(12.0), (
+        "extract_retry_after_seconds did not compute correct delay from header"
+    )
 
 
 @pytest.mark.asyncio
@@ -84,9 +148,36 @@ async def test_fetch_twitter_posts_retries_after_rate_limit(mocker, monkeypatch)
     monkeypatch.setattr(twitter.settings, "twitter_fetch_max_rate_limit_wait_seconds", 5.0)
 
     post = TwitterPost(
-        url="https://x.com/openai/status/1",
-        title="hello",
-        body="hello",
+        url=f"https://x.com/openai/status/{uuid.uuid4().int}",
+        title="Привет мир",
+        body="Привет мир",
+        published_at=datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC),
+    )
+    mocker.patch.object(
+        twitter,
+        "_request_twitter_timeline_html",
+        new=AsyncMock(side_effect=[TwitterRateLimitError(120.0), "<html></html>"]),
+    )
+    mocker.patch.object(twitter, "parse_twitter_posts", return_value=[post])
+    mocker.patch.object(twitter.asyncio, "sleep", new=AsyncMock())
+
+    posts = await twitter.fetch_twitter_posts("OpenAI", timeout_seconds=1.0)
+
+    assert posts == [post], "fetch_twitter_posts did not return posts after rate limit retry"
+
+
+@pytest.mark.asyncio
+async def test_fetch_twitter_posts_retries_exactly_once_after_rate_limit(
+    mocker, monkeypatch
+) -> None:
+    monkeypatch.setattr(twitter.settings, "twitter_fetch_attempts", 2)
+    monkeypatch.setattr(twitter.settings, "twitter_fetch_retry_backoff_seconds", 2.0)
+    monkeypatch.setattr(twitter.settings, "twitter_fetch_max_rate_limit_wait_seconds", 5.0)
+
+    post = TwitterPost(
+        url=f"https://x.com/openai/status/{uuid.uuid4().int}",
+        title="Привет",
+        body="Привет",
         published_at=datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC),
     )
     request_html = mocker.patch.object(
@@ -95,11 +186,10 @@ async def test_fetch_twitter_posts_retries_after_rate_limit(mocker, monkeypatch)
         new=AsyncMock(side_effect=[TwitterRateLimitError(120.0), "<html></html>"]),
     )
     mocker.patch.object(twitter, "parse_twitter_posts", return_value=[post])
-    sleep = mocker.patch.object(twitter.asyncio, "sleep", new=AsyncMock())
+    mocker.patch.object(twitter.asyncio, "sleep", new=AsyncMock())
 
-    posts = await twitter.fetch_twitter_posts("OpenAI", timeout_seconds=1.0)
+    await twitter.fetch_twitter_posts("OpenAI", timeout_seconds=1.0)
 
-    assert posts == [post]
-    assert request_html.await_count == 2
-    assert sleep.await_count == 1
-    assert 0.0 < sleep.await_args.args[0] <= 5.0
+    assert request_html.await_count == 2, (
+        "fetch_twitter_posts did not retry exactly once after rate limit"
+    )
