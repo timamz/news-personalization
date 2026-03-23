@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     bot_token: str
+    proxy_url: str | None = None
     backend_url: str = "http://app:8000"
     backend_request_timeout_seconds: float = 300.0
     backend_slow_request_timeout_seconds: float = 600.0

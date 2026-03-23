@@ -3,6 +3,7 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp import web
 
 from tgbot.core.config import get_settings
@@ -27,11 +28,14 @@ async def main() -> None:
 
     settings = get_settings()
 
+    session = AiohttpSession(proxy=settings.proxy_url) if settings.proxy_url else None
+
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(
             link_preview_is_disabled=True,
         ),
+        session=session,
     )
     dp = Dispatcher()
 
