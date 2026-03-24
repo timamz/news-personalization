@@ -315,38 +315,6 @@ async def test_deliver_event_notifications_does_not_call_channel_when_not_releva
     )
 
 
-@pytest.mark.asyncio
-async def test_deliver_event_notifications_skips_headline_duplicate(mocker) -> None:
-    dup_headline = f"Артист анонсирует тур {uuid.uuid4().hex[:6]}"
-    item = _make_item(
-        dup_headline, f"Тело {uuid.uuid4().hex[:6]}", f"https://e-{uuid.uuid4().hex[:8]}.test/1"
-    )
-    prompt = f"Подписка {uuid.uuid4().hex[:6]}"
-    webhook = f"http://fe-{uuid.uuid4().hex[:8]}.test/d"
-    subscription = _make_subscription(prompt, webhook)
-    session = _FakeSession(item=item, subscriptions=[subscription])
-    _patch_session(mocker, session)
-    history_entry = SimpleNamespace(
-        sent_at=datetime(2026, 3, 1, 10, 0, tzinfo=UTC),
-        source=f"Источник-{uuid.uuid4().hex[:6]}",
-        title=dup_headline,
-        summary=f"Краткое {uuid.uuid4().hex[:6]}",
-    )
-    mocker.patch.object(
-        deliver_events,
-        "load_recent_notification_history",
-        new=AsyncMock(return_value=[history_entry]),
-    )
-    assess_mock = mocker.patch.object(
-        deliver_events, "assess_and_compose_event_notification", new=AsyncMock()
-    )
-
-    await deliver_events._deliver_event_notifications(item.id)
-
-    assert assess_mock.await_count == 0, (
-        "deliver_event_notifications called assessor for headline duplicate"
-    )
-
 
 @pytest.mark.asyncio
 async def test_deliver_event_notifications_skips_already_sent_subscription(mocker) -> None:

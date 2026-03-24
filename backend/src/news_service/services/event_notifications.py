@@ -1,9 +1,7 @@
 import logging
-import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from difflib import SequenceMatcher
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +17,6 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 _NOTIFICATION_HISTORY_LOOKBACK_DAYS = 30
-_NORMALIZED_TOKEN_PATTERN = re.compile(r"\w+", re.UNICODE)
 
 
 @dataclass(slots=True)
@@ -173,22 +170,3 @@ def _format_preview_candidate(item: NewsItem) -> str:
     return "\n".join(lines)
 
 
-def normalize_event_text(*parts: str | None) -> str:
-    values = [part for part in parts if part]
-    if not values:
-        return ""
-    normalized = " ".join(values).casefold().replace("\u0451", "\u0435")
-    tokens = _NORMALIZED_TOKEN_PATTERN.findall(normalized)
-    return " ".join(tokens)
-
-
-def token_overlap(left: str, right: str) -> float:
-    left_tokens = {token for token in left.split() if len(token) >= 4}
-    right_tokens = {token for token in right.split() if len(token) >= 4}
-    if not left_tokens or not right_tokens:
-        return 0.0
-    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
-
-
-def text_similarity(left: str, right: str) -> float:
-    return SequenceMatcher(a=left, b=right).ratio()

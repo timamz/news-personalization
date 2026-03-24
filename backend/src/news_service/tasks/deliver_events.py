@@ -14,9 +14,6 @@ from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.delivery import get_delivery_channel
 from news_service.services.event_notifications import (
     load_recent_notification_history,
-    normalize_event_text,
-    text_similarity,
-    token_overlap,
 )
 from news_service.tasks.celery_app import celery_app
 
@@ -73,31 +70,6 @@ async def _deliver_event_notifications(news_item_id: uuid.UUID) -> dict:
             """Process a single subscription. Returns 'delivered', 'failed', or 'skipped'."""
             async with sem:
                 history = await load_recent_notification_history(session, subscription.id)
-                normalized_headline = normalize_event_text(item.headline)
-                is_dup = False
-                for entry in history:
-                    normalized_entry = normalize_event_text(entry.title)
-                    if (
-                        normalized_headline
-                        and normalized_entry
-                        and (
-                            token_overlap(normalized_headline, normalized_entry) >= 0.85
-                            or text_similarity(normalized_headline, normalized_entry) >= 0.96
-                        )
-                    ):
-                        is_dup = True
-                        break
-                if is_dup:
-                    logger.info(
-                        "Event %s skipped for subscription %s: deterministic headline duplicate",
-                        item.id,
-                        subscription.id,
-                        extra={
-                            "subscription_id": str(subscription.id),
-                            "news_item_id": str(item.id),
-                        },
-                    )
-                    return "skipped"
 
                 history_strings = [
                     f"Title: {entry.title}\nSummary: {entry.summary}\n"
