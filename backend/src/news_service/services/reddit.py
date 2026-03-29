@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -179,14 +181,63 @@ def parse_reddit_posts(payload: object) -> list[RedditPost]:
     return posts
 
 
+def _create_socks_proxy_addon(proxy_url: str) -> str:
+    """Create a temporary Firefox addon that routes all traffic through a SOCKS5 proxy.
+
+    Returns the path to the addon directory. Caller is responsible for cleanup.
+    """
+    parsed = urlparse(proxy_url)
+    host = parsed.hostname or ""
+    port = parsed.port or 1080
+    username = unquote(parsed.username) if parsed.username else ""
+    password = unquote(parsed.password) if parsed.password else ""
+
+    addon_dir = tempfile.mkdtemp(prefix="firefox_proxy_")
+
+    manifest = {
+        "manifest_version": 2,
+        "name": "SOCKS5 Proxy Auth",
+        "version": "1.0",
+        "permissions": ["proxy", "<all_urls>"],
+        "background": {"scripts": ["background.js"]},
+        "browser_specific_settings": {"gecko": {"id": "proxy-auth@news-service"}},
+    }
+
+    background_js = (
+        "browser.proxy.onRequest.addListener(\n"
+        "  () => ({\n"
+        '    type: "socks",\n'
+        f"    host: {json.dumps(host)},\n"
+        f"    port: {port},\n"
+        f"    username: {json.dumps(username)},\n"
+        f"    password: {json.dumps(password)},\n"
+        "    proxyDNS: true\n"
+        "  }),\n"
+        '  { urls: ["<all_urls>"] }\n'
+        ");\n"
+    )
+
+    with open(os.path.join(addon_dir, "manifest.json"), "w") as f:
+        json.dump(manifest, f)
+    with open(os.path.join(addon_dir, "background.js"), "w") as f:
+        f.write(background_js)
+
+    return addon_dir
+
+
 def _fetch_reddit_posts_sync(
     subreddit: str,
     timeout_seconds: float,
     limit: int,
 ) -> list[RedditPost]:
     driver = _build_firefox_driver(timeout_seconds)
+    addon_dir: str | None = None
     endpoint = f"/r/{subreddit}/new/.json?raw_json=1&limit={limit}"
     try:
+        if settings.proxy_url:
+            addon_dir = _create_socks_proxy_addon(settings.proxy_url)
+            driver.install_addon(addon_dir, temporary=True)
+
         driver.get(build_reddit_subreddit_url(subreddit))
         WebDriverWait(driver, timeout_seconds).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
@@ -204,6 +255,8 @@ def _fetch_reddit_posts_sync(
         )
     finally:
         driver.quit()
+        if addon_dir:
+            shutil.rmtree(addon_dir, ignore_errors=True)
 
     if not isinstance(response_payload, dict):
         raise RuntimeError(f"Unexpected Reddit response payload for r/{subreddit}")

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     twitter_fetch_max_rate_limit_wait_seconds: float = 30.0
     news_item_max_age_days: int = 7
 
+    proxy_url: str | None = None
+
     log_level: str = "DEBUG"
 
     embedding_model: str = "text-embedding-3-small"

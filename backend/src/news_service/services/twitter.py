@@ -164,6 +164,7 @@ async def fetch_twitter_posts(
     async with httpx.AsyncClient(
         headers={"user-agent": TWITTER_USER_AGENT},
         follow_redirects=True,
+        proxy=settings.proxy_url,
     ) as client:
         for attempt in range(1, settings.twitter_fetch_attempts + 1):
             remaining_budget = deadline - time.monotonic()

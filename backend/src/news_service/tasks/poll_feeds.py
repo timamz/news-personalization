@@ -387,6 +387,7 @@ async def _fetch_rss_feed_content(url: str) -> bytes:
     async with httpx.AsyncClient(
         timeout=RSS_FETCH_TIMEOUT_SECONDS,
         follow_redirects=True,
+        proxy=settings.proxy_url,
     ) as client:
         last_error: httpx.HTTPError | None = None
         for attempt in range(1, RSS_FETCH_ATTEMPTS + 1):

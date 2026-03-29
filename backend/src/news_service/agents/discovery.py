@@ -50,7 +50,8 @@ _sync_client: OpenAI | None = None
 def _get_sync_client() -> OpenAI:
     global _sync_client  # noqa: PLW0603
     if _sync_client is None:
-        _sync_client = OpenAI(api_key=settings.openai_api_key)
+        http_client = httpx.Client(proxy=settings.proxy_url) if settings.proxy_url else None
+        _sync_client = OpenAI(api_key=settings.openai_api_key, http_client=http_client)
     return _sync_client
 
 
@@ -134,7 +135,10 @@ async def validate_source_url(url: str, *, source_kind: SourceKind) -> bool:
 
 async def validate_feed_url(url: str) -> bool:
     try:
-        async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.http_timeout_seconds,
+            proxy=settings.proxy_url,
+        ) as client:
             response = await client.get(url, follow_redirects=True)
             if response.status_code != 200:
                 return False

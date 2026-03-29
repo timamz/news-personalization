@@ -43,7 +43,10 @@ async def fetch_source_posts(url: str, source_kind: SourceKind) -> list[str]:
 
     # RSS
     try:
-        async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.http_timeout_seconds,
+            proxy=settings.proxy_url,
+        ) as client:
             response = await client.get(url, follow_redirects=True)
             if response.status_code != 200:
                 return []

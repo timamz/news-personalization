@@ -72,7 +72,11 @@ async def fetch_telegram_posts(
 ) -> list[TelegramPost]:
     channel_url = build_telegram_channel_url(channel)
     request_timeout = timeout_seconds or settings.http_timeout_seconds
-    async with httpx.AsyncClient(timeout=request_timeout, follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        timeout=request_timeout,
+        follow_redirects=True,
+        proxy=settings.proxy_url,
+    ) as client:
         response = await client.get(channel_url)
         response.raise_for_status()
     return parse_telegram_posts(response.text)
