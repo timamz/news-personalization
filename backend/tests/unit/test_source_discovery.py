@@ -35,37 +35,18 @@ async def test_tool_search_web_returns_search_results(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_agent_has_search_existing_sources_tool() -> None:
+async def test_create_agent_has_all_required_tools() -> None:
     session = AsyncMock()
     agent = _create_source_discovery_agent(session, _random_embedding())
     tool_names = {t.name for t in agent.tools}
+
     assert "search_existing_sources" in tool_names, (
         "agent does not have search_existing_sources tool"
     )
-
-
-@pytest.mark.asyncio
-async def test_create_agent_has_tool_search_web_tool() -> None:
-    session = AsyncMock()
-    agent = _create_source_discovery_agent(session, _random_embedding())
-    tool_names = {t.name for t in agent.tools}
     assert "tool_search_web" in tool_names, "agent does not have tool_search_web tool"
-
-
-@pytest.mark.asyncio
-async def test_create_agent_has_validate_and_score_source_tool() -> None:
-    session = AsyncMock()
-    agent = _create_source_discovery_agent(session, _random_embedding())
-    tool_names = {t.name for t in agent.tools}
     assert "validate_and_score_source" in tool_names, (
         "agent does not have validate_and_score_source tool"
     )
-
-
-@pytest.mark.asyncio
-async def test_create_agent_has_exactly_three_tools() -> None:
-    session = AsyncMock()
-    agent = _create_source_discovery_agent(session, _random_embedding())
     assert len(agent.tools) == 3, "agent does not have exactly three tools"
 
 

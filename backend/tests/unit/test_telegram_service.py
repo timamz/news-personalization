@@ -2,6 +2,8 @@ import logging
 import uuid
 from datetime import datetime
 
+import pytest
+
 from news_service.services.telegram import (
     build_telegram_channel_url,
     extract_telegram_channel_from_url,
@@ -44,19 +46,26 @@ def test_extract_telegram_channels_deduplicates_and_ignores_email() -> None:
     )
 
 
-def test_extract_telegram_channel_from_url_with_s_prefix() -> None:
-    result = extract_telegram_channel_from_url("https://t.me/s/fondnauk")
-    assert result == "fondnauk", "extract did not parse t.me/s/ URL correctly"
-
-
-def test_extract_telegram_channel_from_url_without_s_prefix() -> None:
-    result = extract_telegram_channel_from_url("https://t.me/fondnauk")
-    assert result == "fondnauk", "extract did not parse t.me/ URL correctly"
-
-
-def test_extract_telegram_channel_from_non_telegram_url_returns_none() -> None:
-    result = extract_telegram_channel_from_url("https://example.com/s/fondnauk")
-    assert result is None, "extract did not return None for non-telegram URL"
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://t.me/s/fondnauk", "fondnauk"),
+        ("https://t.me/fondnauk", "fondnauk"),
+        ("https://example.com/s/fondnauk", None),
+    ],
+    ids=[
+        "with_s_prefix",
+        "without_s_prefix",
+        "non_telegram_url_returns_none",
+    ],
+)
+def test_extract_telegram_channel_from_url_parses_correctly(
+    url: str, expected: str | None
+) -> None:
+    result = extract_telegram_channel_from_url(url)
+    assert result == expected, (
+        f"extract_telegram_channel_from_url({url!r}) returned {result!r}, expected {expected!r}"
+    )
 
 
 def test_parse_telegram_posts_returns_single_post() -> None:

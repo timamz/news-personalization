@@ -28,7 +28,7 @@ def _make_response(status_code: int, json_data: dict | None = None) -> MagicMock
 
 
 @pytest.mark.asyncio
-async def test_register_user_returns_api_key() -> None:
+async def test_register_user_posts_to_users_endpoint_and_returns_api_key() -> None:
     base = f"http://test-{uuid.uuid4().hex[:8]}:8000"
     generated_key = f"key-{uuid.uuid4().hex}"
     client = BackendClient(base_url=base)
@@ -41,20 +41,8 @@ async def test_register_user_returns_api_key() -> None:
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
         result = await client.register_user()
 
-    assert result == generated_key, "register_user did not return the expected api_key"
-
-
-@pytest.mark.asyncio
-async def test_register_user_posts_to_users_endpoint() -> None:
-    base = f"http://host-{uuid.uuid4().hex[:6]}:9000"
-    client = BackendClient(base_url=base)
-    resp = _make_response(201, {"id": "x", "api_key": "k", "created_at": "2026-01-01T00:00:00Z"})
-    mock_http = _make_http_mock("post", resp)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        await client.register_user()
-
     mock_http.post.assert_called_once_with(f"{base}/users")
+    assert result == generated_key, "register_user did not return the expected api_key"
 
 
 @pytest.mark.asyncio
@@ -75,7 +63,7 @@ async def test_get_current_user_returns_timezone() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_timezone_returns_resolved_status() -> None:
+async def test_resolve_timezone_returns_resolved_status_with_candidate() -> None:
     base = f"http://srv-{uuid.uuid4().hex[:6]}:8000"
     api_key = f"key-{uuid.uuid4().hex}"
     tz_name = f"Europe/Zone_{random.randint(1, 99)}"
@@ -99,33 +87,7 @@ async def test_resolve_timezone_returns_resolved_status() -> None:
         resolution = await client.resolve_timezone(api_key, "query")
 
     assert resolution.status == "resolved", "resolve_timezone did not return resolved status"
-
-
-@pytest.mark.asyncio
-async def test_resolve_timezone_returns_candidate_timezone() -> None:
-    base = f"http://srv-{uuid.uuid4().hex[:6]}:8000"
-    api_key = f"key-{uuid.uuid4().hex}"
-    expected_tz = f"Asia/City_{random.randint(1, 99)}"
-    client = BackendClient(base_url=base)
-    resp = _make_response(
-        200,
-        {
-            "status": "resolved",
-            "candidates": [
-                {
-                    "label": "Place",
-                    "timezone": expected_tz,
-                    "local_time": "2026-03-13T10:00:00+01:00",
-                }
-            ],
-        },
-    )
-    mock_http = _make_http_mock("post", resp)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        resolution = await client.resolve_timezone(api_key, "somewhere")
-
-    assert resolution.candidates[0].timezone == expected_tz, (
+    assert resolution.candidates[0].timezone == tz_name, (
         "resolve_timezone did not return the expected candidate timezone"
     )
 
@@ -167,10 +129,11 @@ async def test_parse_schedule_returns_cron_expression() -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_subscriptions_returns_correct_count() -> None:
+async def test_list_subscriptions_returns_parsed_subscription_fields() -> None:
     base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
     api_key = f"key-{uuid.uuid4().hex}"
     sub_id = f"sub-{uuid.uuid4().hex}"
+    lang = random.choice(["en", "ru"])
     client = BackendClient(base_url=base)
     resp = _make_response(200, None)
     resp.json.return_value = [
@@ -181,61 +144,6 @@ async def test_list_subscriptions_returns_correct_count() -> None:
             "delivery_mode": "event",
             "schedule_cron": "0 8 * * *",
             "format_instructions": "brief",
-            "digest_language": "ru",
-            "is_active": True,
-        }
-    ]
-    mock_http = _make_http_mock("get", resp)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        subs = await client.list_subscriptions(api_key)
-
-    assert len(subs) == 1, "list_subscriptions did not return exactly one subscription"
-
-
-@pytest.mark.asyncio
-async def test_list_subscriptions_returns_correct_delivery_mode() -> None:
-    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
-    api_key = f"key-{uuid.uuid4().hex}"
-    client = BackendClient(base_url=base)
-    resp = _make_response(200, None)
-    resp.json.return_value = [
-        {
-            "id": f"sub-{uuid.uuid4().hex}",
-            "raw_prompt": "news",
-            "prompt_summary": "news",
-            "delivery_mode": "digest",
-            "schedule_cron": None,
-            "format_instructions": "brief",
-            "digest_language": "en",
-            "is_active": True,
-        }
-    ]
-    mock_http = _make_http_mock("get", resp)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        subs = await client.list_subscriptions(api_key)
-
-    assert subs[0].delivery_mode == "digest", (
-        "list_subscriptions did not return the expected delivery_mode"
-    )
-
-
-@pytest.mark.asyncio
-async def test_list_subscriptions_returns_correct_digest_language() -> None:
-    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
-    api_key = f"key-{uuid.uuid4().hex}"
-    lang = random.choice(["en", "ru"])
-    client = BackendClient(base_url=base)
-    resp = _make_response(200, None)
-    resp.json.return_value = [
-        {
-            "id": f"sub-{uuid.uuid4().hex}",
-            "raw_prompt": "\u043d\u043e\u0432\u043e\u0441\u0442\u0438",
-            "prompt_summary": "\u043d\u043e\u0432\u043e\u0441\u0442\u0438",
-            "delivery_mode": "event",
-            "schedule_cron": None,
-            "format_instructions": "\u043a\u0440\u0430\u0442\u043a\u043e",
             "digest_language": lang,
             "is_active": True,
         }
@@ -245,6 +153,10 @@ async def test_list_subscriptions_returns_correct_digest_language() -> None:
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
         subs = await client.list_subscriptions(api_key)
 
+    assert len(subs) == 1, "list_subscriptions did not return exactly one subscription"
+    assert subs[0].delivery_mode == "event", (
+        "list_subscriptions did not return the expected delivery_mode"
+    )
     assert subs[0].digest_language == lang, (
         "list_subscriptions did not return the expected digest_language"
     )
@@ -287,36 +199,7 @@ async def test_send_now_returns_task_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_subscription_returns_correct_id() -> None:
-    base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
-    api_key = f"key-{uuid.uuid4().hex}"
-    sub_id = f"sub-{uuid.uuid4().hex}"
-    client = BackendClient(base_url=base)
-    resp = _make_response(
-        200,
-        {
-            "id": sub_id,
-            "raw_prompt": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
-            "prompt_summary": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
-            "delivery_mode": "digest",
-            "schedule_cron": None,
-            "format_instructions": "\u043a\u0440\u0430\u0442\u043a\u043e",
-            "digest_language": "ru",
-            "delivery_webhook_url": "http://bot:8001/deliver/123",
-            "is_active": True,
-            "created_at": "2026-01-01T00:00:00Z",
-        },
-    )
-    mock_http = _make_http_mock("patch", resp)
-
-    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
-        sub = await client.update_subscription(api_key, sub_id, schedule_cron=None)
-
-    assert sub.id == sub_id, "update_subscription did not return the expected subscription id"
-
-
-@pytest.mark.asyncio
-async def test_update_subscription_returns_correct_format_instructions() -> None:
+async def test_update_subscription_returns_correct_id_and_format_instructions() -> None:
     base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
     api_key = f"key-{uuid.uuid4().hex}"
     sub_id = f"sub-{uuid.uuid4().hex}"
@@ -326,12 +209,13 @@ async def test_update_subscription_returns_correct_format_instructions() -> None
         200,
         {
             "id": sub_id,
-            "raw_prompt": "x",
-            "prompt_summary": "x",
+            "raw_prompt": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
+            "prompt_summary": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
             "delivery_mode": "digest",
             "schedule_cron": None,
             "format_instructions": fmt,
             "digest_language": "ru",
+            "delivery_webhook_url": "http://bot:8001/deliver/123",
             "is_active": True,
             "created_at": "2026-01-01T00:00:00Z",
         },
@@ -341,6 +225,7 @@ async def test_update_subscription_returns_correct_format_instructions() -> None
     with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
         sub = await client.update_subscription(api_key, sub_id, format_instructions=fmt)
 
+    assert sub.id == sub_id, "update_subscription did not return the expected subscription id"
     assert sub.format_instructions == fmt, (
         "update_subscription did not return the expected format_instructions"
     )

@@ -36,33 +36,38 @@ def _make_news_item(
     )
 
 
-@pytest.mark.asyncio
-async def test_cosine_similarity_returns_one_for_identical_vectors() -> None:
-    dim = random.randint(3, 20)
-    v = [random.random() for _ in range(dim)]
-
-    assert _cosine_similarity(v, v) == pytest.approx(1.0), (
-        "cosine_similarity did not return 1.0 for identical vectors"
-    )
-
-
-@pytest.mark.asyncio
-async def test_cosine_similarity_returns_zero_for_orthogonal_vectors() -> None:
-    result = _cosine_similarity([1.0, 0.0], [0.0, 1.0])
-
-    assert result == pytest.approx(0.0), (
-        "cosine_similarity did not return 0.0 for orthogonal vectors"
-    )
-
-
-@pytest.mark.asyncio
-async def test_cosine_similarity_returns_zero_for_zero_vector() -> None:
-    dim = random.randint(2, 10)
-    zero = [0.0] * dim
-    non_zero = [random.random() + 0.1 for _ in range(dim)]
-
-    assert _cosine_similarity(zero, non_zero) == 0.0, (
-        "cosine_similarity did not return 0.0 for zero vector"
+@pytest.mark.parametrize(
+    ("label", "vec_a", "vec_b", "expected"),
+    [
+        (
+            "identical",
+            [0.3, 0.7, 0.5],
+            [0.3, 0.7, 0.5],
+            1.0,
+        ),
+        (
+            "orthogonal",
+            [1.0, 0.0],
+            [0.0, 1.0],
+            0.0,
+        ),
+        (
+            "zero_vector",
+            [0.0, 0.0, 0.0],
+            [0.4, 0.8, 0.1],
+            0.0,
+        ),
+    ],
+    ids=["identical_vectors_return_one", "orthogonal_vectors_return_zero", "zero_vector_returns_zero"],
+)
+def test_cosine_similarity_returns_expected_value(
+    label: str,
+    vec_a: list[float],
+    vec_b: list[float],
+    expected: float,
+) -> None:
+    assert _cosine_similarity(vec_a, vec_b) == pytest.approx(expected), (
+        f"cosine_similarity did not return {expected} for {label} vectors"
     )
 
 

@@ -70,7 +70,7 @@ async def test_handle_send_now_calls_backend(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_delete_shows_confirmation(monkeypatch) -> None:
+async def test_handle_delete_shows_confirmation_with_correct_callback(monkeypatch) -> None:
     tid = random.randint(1000, 9999)
     sub_id = f"sub-{uuid.uuid4().hex[:8]}"
     callback = _make_callback(telegram_id=tid, data=f"{S_DELETE}{sub_id}")
@@ -83,19 +83,6 @@ async def test_handle_delete_shows_confirmation(monkeypatch) -> None:
     callback.bot.edit_message_text.assert_awaited_once()
     text = callback.bot.edit_message_text.await_args.kwargs["text"]
     assert "Are you sure" in text, "handle_delete did not show a confirmation prompt"
-
-
-@pytest.mark.asyncio
-async def test_handle_delete_confirmation_button_has_correct_callback(monkeypatch) -> None:
-    tid = random.randint(1000, 9999)
-    sub_id = f"sub-{uuid.uuid4().hex[:8]}"
-    callback = _make_callback(telegram_id=tid, data=f"{S_DELETE}{sub_id}")
-    state = _make_state()
-
-    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="en"))
-
-    await subscriptions.handle_delete(callback, state)
-
     keyboard = callback.bot.edit_message_text.await_args.kwargs["reply_markup"]
     buttons = keyboard.inline_keyboard[0]
     assert buttons[0].callback_data == f"{S_CONFIRM_DEL}{sub_id}", (
@@ -140,7 +127,9 @@ async def test_handle_set_language_updates_subscription(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_edit_menu_enters_edit_conversation_state(monkeypatch) -> None:
+async def test_handle_edit_menu_enters_conversation_state_and_stores_subscription_id(
+    monkeypatch,
+) -> None:
     tid = random.randint(1000, 9999)
     sub_id = f"sub-{uuid.uuid4().hex[:8]}"
     callback = _make_callback(telegram_id=tid, data=f"{S_EDIT}{sub_id}")
@@ -150,22 +139,7 @@ async def test_handle_edit_menu_enters_edit_conversation_state(monkeypatch) -> N
 
     await subscriptions.handle_edit_menu(callback, state)
 
-    state.set_state.assert_awaited_once_with(
-        subscriptions.EditConversation.chatting
-    )
-
-
-@pytest.mark.asyncio
-async def test_handle_edit_menu_stores_subscription_id(monkeypatch) -> None:
-    tid = random.randint(1000, 9999)
-    sub_id = f"sub-{uuid.uuid4().hex[:8]}"
-    callback = _make_callback(telegram_id=tid, data=f"{S_EDIT}{sub_id}")
-    state = _make_state()
-
-    monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="en"))
-
-    await subscriptions.handle_edit_menu(callback, state)
-
+    state.set_state.assert_awaited_once_with(subscriptions.EditConversation.chatting)
     call_kwargs = state.update_data.await_args.kwargs
     assert call_kwargs.get("subscription_id") == sub_id, (
         "handle_edit_menu did not store subscription_id in state"

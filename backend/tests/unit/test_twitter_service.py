@@ -47,34 +47,48 @@ def test_extract_twitter_accounts_deduplicates_urls_and_mentions() -> None:
     assert accounts == ["openai", "nasa"], "extract did not deduplicate twitter accounts correctly"
 
 
-def test_normalize_twitter_account_from_handle() -> None:
-    result = normalize_twitter_account("@OpenAI")
-    assert result == "openai", "normalize did not lowercase twitter handle"
+@pytest.mark.parametrize(
+    ("input_val", "expected"),
+    [
+        ("@OpenAI", "openai"),
+        ("x.com/NASA", "nasa"),
+        ("https://twitter.com/NASA/status/123", "nasa"),
+    ],
+    ids=[
+        "from_handle",
+        "from_short_url",
+        "from_full_url",
+    ],
+)
+def test_normalize_twitter_account_extracts_and_lowercases(
+    input_val: str, expected: str
+) -> None:
+    result = normalize_twitter_account(input_val)
+    assert result == expected, (
+        f"normalize_twitter_account({input_val!r}) returned {result!r}, expected {expected!r}"
+    )
 
 
-def test_normalize_twitter_account_from_short_url() -> None:
-    result = normalize_twitter_account("x.com/NASA")
-    assert result == "nasa", "normalize did not extract account from short URL"
-
-
-def test_normalize_twitter_account_from_full_url() -> None:
-    result = normalize_twitter_account("https://twitter.com/NASA/status/123")
-    assert result == "nasa", "normalize did not extract account from full twitter.com URL"
-
-
-def test_extract_twitter_account_from_x_url() -> None:
-    result = extract_twitter_account_from_url("https://x.com/OpenAI")
-    assert result == "openai", "extract did not parse x.com URL"
-
-
-def test_extract_twitter_account_from_mobile_twitter_url() -> None:
-    result = extract_twitter_account_from_url("https://mobile.twitter.com/NASA/status/42")
-    assert result == "nasa", "extract did not parse mobile.twitter.com URL"
-
-
-def test_extract_twitter_account_from_reserved_path_returns_none() -> None:
-    result = extract_twitter_account_from_url("https://x.com/home")
-    assert result is None, "extract did not return None for reserved path"
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://x.com/OpenAI", "openai"),
+        ("https://mobile.twitter.com/NASA/status/42", "nasa"),
+        ("https://x.com/home", None),
+    ],
+    ids=[
+        "from_x_url",
+        "from_mobile_twitter_url",
+        "reserved_path_returns_none",
+    ],
+)
+def test_extract_twitter_account_from_url_parses_correctly(
+    url: str, expected: str | None
+) -> None:
+    result = extract_twitter_account_from_url(url)
+    assert result == expected, (
+        f"extract_twitter_account_from_url({url!r}) returned {result!r}, expected {expected!r}"
+    )
 
 
 def test_parse_twitter_posts_returns_single_post() -> None:

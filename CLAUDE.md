@@ -116,11 +116,9 @@ Favor "fail fast" paradigm over "fail safe": throw exception earlier.
 Include as much context as possible in exception messages.
 
 Cover every change with a unit test to guarantee repeatability.
-Put only one assertion in every test case.
-Place the assertion as the last statement in every test.
+One logical assertion per test: multiple `assert` statements are fine when they verify the same behavioral claim (e.g. checking several fields of one response). Split into separate tests only when the assertions test independent behaviors.
 Assert at least once in every test.
 Keep test cases as short as possible.
-Aim for tests that consist of a single statement.
 Verify only one specific behavioral pattern per test.
 Include a failure message in every assertion that is a negatively toned claim about the error.
 

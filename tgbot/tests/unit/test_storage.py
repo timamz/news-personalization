@@ -90,23 +90,9 @@ async def test_different_users_have_separate_keys(tmp_path: Path) -> None:
     await save_api_key(tid_b, key_b, db_path)
 
     result_a = await get_api_key(tid_a, db_path)
-
-    assert result_a == key_a, "different users did not get separate api keys (user A)"
-
-
-@pytest.mark.asyncio
-async def test_different_users_have_separate_keys_user_b(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid_a = random.randint(10000, 49999)
-    tid_b = random.randint(50000, 99999)
-    key_a = f"key-A-{uuid.uuid4().hex}"
-    key_b = f"key-B-{uuid.uuid4().hex}"
-    await init_db(db_path)
-    await save_api_key(tid_a, key_a, db_path)
-    await save_api_key(tid_b, key_b, db_path)
-
     result_b = await get_api_key(tid_b, db_path)
 
+    assert result_a == key_a, "different users did not get separate api keys (user A)"
     assert result_b == key_b, "different users did not get separate api keys (user B)"
 
 

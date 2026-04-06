@@ -64,51 +64,11 @@ async def test_generate_digest_returns_curator_digest_text(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_digest_passes_embedding_to_curator(mocker) -> None:
-    source_id = uuid.uuid4()
-    embedding = [random.random() for _ in range(1536)]
-    prompt = f"Научные статьи {uuid.uuid4().hex[:6]}"
-    session = _make_session_with_sources([source_id])
-    subscription = _make_subscription(prompt, embedding, "подробный анализ", "ru")
-    run_curator = AsyncMock(
-        return_value=_make_curator_result(f"Текст {uuid.uuid4().hex[:6]}", [str(uuid.uuid4())])
-    )
-    mocker.patch("news_service.agents.digest_curator.run_digest_curator", new=run_curator)
-    mocker.patch.object(digest, "_mark_as_sent", new=AsyncMock())
-
-    await digest.generate_digest(session, subscription)
-
-    assert run_curator.await_args.kwargs["query_embedding"] == embedding, (
-        "generate_digest did not pass the subscription embedding to curator"
-    )
-
-
-@pytest.mark.asyncio
-async def test_generate_digest_passes_allowed_source_ids_to_curator(mocker) -> None:
-    source_id = uuid.uuid4()
-    embedding = [random.random() for _ in range(1536)]
-    prompt = f"Новости ML {uuid.uuid4().hex[:6]}"
-    session = _make_session_with_sources([source_id])
-    subscription = _make_subscription(prompt, embedding, "краткая сводка", "en")
-    run_curator = AsyncMock(
-        return_value=_make_curator_result(f"Text {uuid.uuid4().hex[:6]}", [str(uuid.uuid4())])
-    )
-    mocker.patch("news_service.agents.digest_curator.run_digest_curator", new=run_curator)
-    mocker.patch.object(digest, "_mark_as_sent", new=AsyncMock())
-
-    await digest.generate_digest(session, subscription)
-
-    assert run_curator.await_args.kwargs["allowed_source_ids"] == {source_id}, (
-        "generate_digest did not pass the correct allowed_source_ids to curator"
-    )
-
-
-@pytest.mark.asyncio
-async def test_generate_digest_passes_format_instructions_to_curator(mocker) -> None:
+async def test_generate_digest_passes_correct_kwargs_to_curator(mocker) -> None:
     source_id = uuid.uuid4()
     embedding = [random.random() for _ in range(1536)]
     format_instr = f"детальный обзор {uuid.uuid4().hex[:6]}"
-    prompt = f"Аналитика {uuid.uuid4().hex[:6]}"
+    prompt = f"Научные статьи {uuid.uuid4().hex[:6]}"
     session = _make_session_with_sources([source_id])
     subscription = _make_subscription(prompt, embedding, format_instr, "ru")
     run_curator = AsyncMock(
@@ -119,27 +79,17 @@ async def test_generate_digest_passes_format_instructions_to_curator(mocker) -> 
 
     await digest.generate_digest(session, subscription)
 
-    assert run_curator.await_args.kwargs["format_instructions"] == format_instr, (
+    kwargs = run_curator.await_args.kwargs
+    assert kwargs["query_embedding"] == embedding, (
+        "generate_digest did not pass the subscription embedding to curator"
+    )
+    assert kwargs["allowed_source_ids"] == {source_id}, (
+        "generate_digest did not pass the correct allowed_source_ids to curator"
+    )
+    assert kwargs["format_instructions"] == format_instr, (
         "generate_digest did not pass format_instructions to curator"
     )
-
-
-@pytest.mark.asyncio
-async def test_generate_digest_passes_digest_language_to_curator(mocker) -> None:
-    source_id = uuid.uuid4()
-    embedding = [random.random() for _ in range(1536)]
-    prompt = f"Обзор технологий {uuid.uuid4().hex[:6]}"
-    session = _make_session_with_sources([source_id])
-    subscription = _make_subscription(prompt, embedding, "краткая сводка", "ru")
-    run_curator = AsyncMock(
-        return_value=_make_curator_result(f"Текст {uuid.uuid4().hex[:6]}", [str(uuid.uuid4())])
-    )
-    mocker.patch("news_service.agents.digest_curator.run_digest_curator", new=run_curator)
-    mocker.patch.object(digest, "_mark_as_sent", new=AsyncMock())
-
-    await digest.generate_digest(session, subscription)
-
-    assert run_curator.await_args.kwargs["digest_language"] == "ru", (
+    assert kwargs["digest_language"] == "ru", (
         "generate_digest did not pass digest_language to curator"
     )
 

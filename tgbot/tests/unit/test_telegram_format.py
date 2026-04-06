@@ -38,7 +38,7 @@ def test_render_html_message_rewrites_inline_url_with_cyrillic() -> None:
     assert rendered == expected, "render_html_message did not rewrite inline URL"
 
 
-def test_render_html_message_uses_source_label_for_first_url() -> None:
+def test_render_html_message_labels_both_urls_as_source_links() -> None:
     text = (
         "\u0421\u0442\u0430\u0442\u044c\u044f\n"
         "Source: https://example.com/post-1\n"
@@ -49,15 +49,5 @@ def test_render_html_message_uses_source_label_for_first_url() -> None:
     assert '<a href="https://example.com/post-1"><i>Source</i></a>' in rendered, (
         "render_html_message did not use Source label for first URL"
     )
-
-
-def test_render_html_message_uses_source_label_for_second_url() -> None:
-    text = (
-        "\u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a\n"
-        "Source: https://example.com/post-1\n"
-        "https://example.com/post-2"
-    )
-    rendered = render_html_message(text)
-
     expected_end = '<a href="https://example.com/post-2"><i>Source</i></a>'
     assert rendered.endswith(expected_end), "render_html_message did not label second URL"

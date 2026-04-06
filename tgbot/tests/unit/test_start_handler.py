@@ -85,7 +85,9 @@ async def test_cmd_start_shows_language_prompt_when_ui_language_missing(monkeypa
 
 
 @pytest.mark.asyncio
-async def test_handle_ui_language_choice_saves_selected_language(monkeypatch) -> None:
+async def test_handle_ui_language_choice_saves_language_and_shows_subscription_selection(
+    monkeypatch,
+) -> None:
     from tgbot.handlers import menu
 
     tid = random.randint(1000, 9999)
@@ -107,29 +109,6 @@ async def test_handle_ui_language_choice_saves_selected_language(monkeypatch) ->
     await start.handle_ui_language_choice(callback, state)
 
     save_ui.assert_awaited_once_with(tid, f"key-{tid}", "ru")
-
-
-@pytest.mark.asyncio
-async def test_handle_ui_language_choice_shows_subscription_language_selection(monkeypatch) -> None:
-    from tgbot.handlers import menu
-
-    tid = random.randint(1000, 9999)
-    callback = _make_callback(telegram_id=tid, data=start.UI_LANGUAGE_RU)
-    state = _make_state(
-        data={
-            "setup_next_action": "subscribe",
-            "setup_require_subscription_after_ui": True,
-        }
-    )
-
-    monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr(menu, "get_ui_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value=f"key-{tid}"))
-    monkeypatch.setattr(start, "get_language_preference", AsyncMock(return_value=None))
-    monkeypatch.setattr(start, "save_ui_language", AsyncMock())
-
-    await start.handle_ui_language_choice(callback, state)
-
     callback.bot.edit_message_text.assert_awaited_once()
     edit_text = callback.bot.edit_message_text.await_args.kwargs["text"]
     assert (

@@ -7,22 +7,15 @@ from news_service.services.timezones import normalize_timezone_name, resolve_tim
 logging.disable(logging.CRITICAL)
 
 
-def test_resolve_timezone_exact_city_returns_resolved_status() -> None:
+def test_resolve_timezone_exact_city_returns_resolved_with_correct_timezone_and_label() -> None:
     resolution = resolve_timezone("Berlin")
+
     assert resolution.status == "resolved", (
         "resolve_timezone did not return resolved status for exact city name"
     )
-
-
-def test_resolve_timezone_exact_city_returns_correct_timezone() -> None:
-    resolution = resolve_timezone("Berlin")
     assert resolution.candidates[0].timezone == "Europe/Berlin", (
         "resolve_timezone did not return Europe/Berlin for Berlin"
     )
-
-
-def test_resolve_timezone_exact_city_returns_correct_label() -> None:
-    resolution = resolve_timezone("Berlin")
     assert resolution.candidates[0].label == "Berlin, Germany", (
         "resolve_timezone did not return correct label for Berlin"
     )

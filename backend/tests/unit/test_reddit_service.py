@@ -41,21 +41,12 @@ def _make_reddit_post_payload(
     }
 
 
-def test_extract_reddit_subreddits_deduplicates_mentions() -> None:
+def test_extract_reddit_subreddits_deduplicates_and_includes_all() -> None:
     prompt = _make_prompt_with_duplicate_subreddit()
     subreddits = extract_reddit_subreddits(prompt)
+
     assert "badminton" in subreddits, "extract did not include badminton subreddit"
-
-
-def test_extract_reddit_subreddits_includes_second_subreddit() -> None:
-    prompt = _make_prompt_with_duplicate_subreddit()
-    subreddits = extract_reddit_subreddits(prompt)
     assert "tennis" in subreddits, "extract did not include tennis subreddit"
-
-
-def test_extract_reddit_subreddits_removes_duplicates() -> None:
-    prompt = _make_prompt_with_duplicate_subreddit()
-    subreddits = extract_reddit_subreddits(prompt)
     assert len(subreddits) == 2, "extract did not deduplicate subreddit mentions"
 
 

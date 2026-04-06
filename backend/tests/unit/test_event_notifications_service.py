@@ -32,31 +32,17 @@ def _make_item(
 
 
 @pytest.mark.asyncio
-async def test_notification_history_entry_from_item_sets_title_to_headline() -> None:
-    item = _make_item(headline="Новая лекция по антропологии")
+async def test_notification_history_entry_from_item_maps_all_fields() -> None:
+    source_name = f"Telegram @канал_{uuid.uuid4().hex[:6]}"
+    item = _make_item(
+        headline="Новая лекция по антропологии",
+        body="Профессор расскажет о находках в Денисовой пещере.",
+        source=source_name,
+    )
     sent_at = datetime(2026, 3, random.randint(1, 28), 14, 0, tzinfo=UTC)
 
     entry = event_notifications.notification_history_entry_from_item(item, sent_at=sent_at)
 
     assert entry.title == item.headline, "entry title did not match item headline"
-
-
-@pytest.mark.asyncio
-async def test_notification_history_entry_from_item_sets_summary_to_body() -> None:
-    item = _make_item(body="Профессор расскажет о находках в Денисовой пещере.")
-    sent_at = datetime(2026, 3, random.randint(1, 28), 14, 0, tzinfo=UTC)
-
-    entry = event_notifications.notification_history_entry_from_item(item, sent_at=sent_at)
-
     assert entry.summary == item.body, "entry summary did not match item body"
-
-
-@pytest.mark.asyncio
-async def test_notification_history_entry_from_item_sets_source_to_item_source() -> None:
-    source_name = f"Telegram @канал_{uuid.uuid4().hex[:6]}"
-    item = _make_item(source=source_name)
-    sent_at = datetime(2026, 3, random.randint(1, 28), 14, 0, tzinfo=UTC)
-
-    entry = event_notifications.notification_history_entry_from_item(item, sent_at=sent_at)
-
     assert entry.source == item.source, "entry source did not match item source"

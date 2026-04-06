@@ -26,7 +26,7 @@ async def _make_webhook_client() -> TestClient:
 
 
 @pytest.mark.asyncio
-async def test_deliver_returns_200_on_success() -> None:
+async def test_deliver_sends_correct_message_to_chat_with_html_and_no_preview() -> None:
     client = await _make_webhook_client()
     try:
         mock_bot = AsyncMock()
@@ -41,90 +41,13 @@ async def test_deliver_returns_200_on_success() -> None:
                 "body": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0434\u043d\u044f.",
             },
         )
+        data = await response.json()
+        call_kwargs = mock_bot.send_message.call_args.kwargs
 
         assert response.status == 200, "deliver endpoint did not return 200 on success"
-    finally:
-        await client.close()
-
-
-@pytest.mark.asyncio
-async def test_deliver_returns_delivered_status() -> None:
-    client = await _make_webhook_client()
-    try:
-        mock_bot = AsyncMock()
-        mock_bot.send_message = AsyncMock()
-        set_bot(mock_bot)
-
-        chat_id = random.randint(10000, 99999)
-        response = await client.post(
-            delivery_webhook_path(chat_id),
-            json={
-                "subject": "\u0414\u0430\u0439\u0434\u0436\u0435\u0441\u0442",
-                "body": "\u0421\u043e\u0434\u0435\u0440\u0436\u0438\u043c\u043e\u0435.",
-            },
-        )
-        data = await response.json()
-
         assert data["status"] == "delivered", "deliver endpoint did not return delivered status"
-    finally:
-        await client.close()
-
-
-@pytest.mark.asyncio
-async def test_deliver_sends_message_to_correct_chat_id() -> None:
-    client = await _make_webhook_client()
-    try:
-        mock_bot = AsyncMock()
-        mock_bot.send_message = AsyncMock()
-        set_bot(mock_bot)
-
-        chat_id = random.randint(10000, 99999)
-        await client.post(
-            delivery_webhook_path(chat_id),
-            json={"subject": "Test", "body": "\u0422\u0435\u043b\u043e."},
-        )
-        call_kwargs = mock_bot.send_message.call_args.kwargs
-
         assert call_kwargs["chat_id"] == chat_id, "deliver did not send to the correct chat_id"
-    finally:
-        await client.close()
-
-
-@pytest.mark.asyncio
-async def test_deliver_uses_html_parse_mode() -> None:
-    client = await _make_webhook_client()
-    try:
-        mock_bot = AsyncMock()
-        mock_bot.send_message = AsyncMock()
-        set_bot(mock_bot)
-
-        chat_id = random.randint(10000, 99999)
-        await client.post(
-            delivery_webhook_path(chat_id),
-            json={"subject": "S", "body": "B"},
-        )
-        call_kwargs = mock_bot.send_message.call_args.kwargs
-
         assert call_kwargs["parse_mode"] == ParseMode.HTML, "deliver did not use HTML parse mode"
-    finally:
-        await client.close()
-
-
-@pytest.mark.asyncio
-async def test_deliver_disables_web_page_preview() -> None:
-    client = await _make_webhook_client()
-    try:
-        mock_bot = AsyncMock()
-        mock_bot.send_message = AsyncMock()
-        set_bot(mock_bot)
-
-        chat_id = random.randint(10000, 99999)
-        await client.post(
-            delivery_webhook_path(chat_id),
-            json={"subject": "S", "body": "B"},
-        )
-        call_kwargs = mock_bot.send_message.call_args.kwargs
-
         assert call_kwargs["disable_web_page_preview"] is True, (
             "deliver did not disable web page preview"
         )
