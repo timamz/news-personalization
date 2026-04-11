@@ -8,7 +8,9 @@ any other provider supported by LiteLLM.
 import logging
 from typing import Any
 
+import httpx
 import litellm
+from openai import AsyncOpenAI
 
 from news_service.core.config import get_settings
 from news_service.core.llm_retry import with_llm_retry
@@ -19,6 +21,11 @@ settings = get_settings()
 
 EMBEDDING_MAX_CHARS = 4000
 EMBEDDING_BATCH_SIZE = 6
+
+_http_client = httpx.AsyncClient(proxy=settings.proxy_url) if settings.proxy_url else None
+_openai_client: AsyncOpenAI | None = None
+if settings.proxy_url:
+    _openai_client = AsyncOpenAI(http_client=_http_client)
 
 
 async def chat_completion(
@@ -44,6 +51,8 @@ async def chat_completion(
         kwargs["response_format"] = response_format
     if tools is not None:
         kwargs["tools"] = tools
+    if _openai_client is not None:
+        kwargs["client"] = _openai_client
     return await litellm.acompletion(**kwargs)
 
 
@@ -55,11 +64,14 @@ def _normalize_embedding_text(content: str) -> str:
 @with_llm_retry()
 async def embed_text(content: str) -> list[float]:
     """Embed a single text string via LiteLLM."""
-    response = await litellm.aembedding(
-        model=settings.litellm_embedding_model,
-        input=[_normalize_embedding_text(content)],
-        dimensions=settings.embedding_dimensions,
-    )
+    kwargs: dict[str, Any] = {
+        "model": settings.litellm_embedding_model,
+        "input": [_normalize_embedding_text(content)],
+        "dimensions": settings.embedding_dimensions,
+    }
+    if _openai_client is not None:
+        kwargs["client"] = _openai_client
+    response = await litellm.aembedding(**kwargs)
     return response.data[0]["embedding"]
 
 
@@ -74,11 +86,14 @@ async def embed_texts(contents: list[str]) -> list[list[float]]:
     for i in range(0, len(normalized), EMBEDDING_BATCH_SIZE):
         batch = normalized[i : i + EMBEDDING_BATCH_SIZE]
         try:
-            response = await litellm.aembedding(
-                model=settings.litellm_embedding_model,
-                input=batch,
-                dimensions=settings.embedding_dimensions,
-            )
+            kwargs: dict[str, Any] = {
+                "model": settings.litellm_embedding_model,
+                "input": batch,
+                "dimensions": settings.embedding_dimensions,
+            }
+            if _openai_client is not None:
+                kwargs["client"] = _openai_client
+            response = await litellm.aembedding(**kwargs)
             embeddings.extend(item["embedding"] for item in response.data)
         except Exception:
             logger.exception(
