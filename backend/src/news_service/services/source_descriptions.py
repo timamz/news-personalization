@@ -3,16 +3,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from news_service.core.config import get_settings
+from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
-from news_service.core.openai_client import openai_client
 
 type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
 
 logger = logging.getLogger(__name__)
-
-settings = get_settings()
-_client = openai_client
 
 SYSTEM_PROMPT = """\
 You summarize news sources for source matching.
@@ -50,8 +46,7 @@ async def describe_source(
         truncated = [text[:300] for text in sample_content[:5]]
         user_lines.append("\nSample content from this source:\n" + "\n---\n".join(truncated))
 
-    completion = await _client.beta.chat.completions.parse(
-        model=settings.llm_model,
+    completion = await chat_completion(
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": "\n".join(user_lines)},

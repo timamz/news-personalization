@@ -1,167 +1,176 @@
+"""Tests for the multi-agent source discovery pipeline."""
+
 import logging
 import uuid
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
 from news_service.agents.source_discovery import (
+    DiscoveryPlan,
     ScoredSource,
     SourceDiscoveryResult,
-    _create_source_discovery_agent,
-    run_source_discovery,
-    tool_search_web,
 )
+from news_service.agents.source_discovery.aggregator import aggregate_sources
 
 logging.disable(logging.CRITICAL)
 
 
-def _random_embedding(dim: int = 10) -> list[float]:
-    return [float(i * 0.1) for i in range(dim)]
-
-
-@pytest.mark.asyncio
-async def test_tool_search_web_returns_search_results(mocker) -> None:
-    search_url = f"https://{uuid.uuid4().hex[:8]}.com/rss"
-    mocker.patch(
-        "news_service.agents.source_discovery.search_web",
-        new=AsyncMock(return_value=f"Найдено: {search_url} - лента новостей ИИ"),
+def test_scored_source_model_accepts_valid_data() -> None:
+    source = ScoredSource(
+        url=f"https://{uuid.uuid4().hex[:8]}.com/feed",
+        title=f"Источник-{uuid.uuid4().hex[:6]}",
+        source_kind="rss",
+        relevance_score=0.85,
     )
-
-    result = await tool_search_web.on_invoke_tool(
-        MagicMock(), f'{{"query": "лучшие RSS ленты про ИИ {uuid.uuid4().hex[:4]}"}}'
-    )
-    assert search_url in result, "tool_search_web did not include search URL in result"
+    assert source.relevance_score == 0.85, "ScoredSource did not preserve relevance score"
+    assert source.source_kind == "rss", "ScoredSource did not preserve source kind"
 
 
-@pytest.mark.asyncio
-async def test_create_agent_has_all_required_tools() -> None:
-    session = AsyncMock()
-    agent = _create_source_discovery_agent(session, _random_embedding())
-    tool_names = {t.name for t in agent.tools}
-
-    assert "search_existing_sources" in tool_names, (
-        "agent does not have search_existing_sources tool"
-    )
-    assert "tool_search_web" in tool_names, "agent does not have tool_search_web tool"
-    assert "validate_and_score_source" in tool_names, (
-        "agent does not have validate_and_score_source tool"
-    )
-    assert len(agent.tools) == 3, "agent does not have exactly three tools"
+def test_source_discovery_result_model_accepts_source_list() -> None:
+    sources = [
+        ScoredSource(
+            url=f"https://{uuid.uuid4().hex[:8]}.com",
+            title="Тест",
+            source_kind="telegram_channel",
+            relevance_score=0.72,
+        )
+    ]
+    result = SourceDiscoveryResult(sources=sources)
+    assert len(result.sources) == 1, "SourceDiscoveryResult did not preserve sources list"
 
 
-@pytest.mark.asyncio
-async def test_create_agent_uses_structured_output() -> None:
-    session = AsyncMock()
-    agent = _create_source_discovery_agent(session, _random_embedding())
-    assert agent.output_type is SourceDiscoveryResult, (
-        "agent does not use SourceDiscoveryResult as output type"
-    )
-
-
-@pytest.mark.asyncio
-async def test_run_source_discovery_returns_agent_result(mocker) -> None:
-    source_url = f"https://{uuid.uuid4().hex[:8]}.com"
-    expected = SourceDiscoveryResult(
-        sources=[
-            ScoredSource(
-                url=source_url,
-                title="Источник А",
-                source_kind="rss",
-                relevance_score=0.9,
-            )
+def test_discovery_plan_model_accepts_strategies() -> None:
+    plan = DiscoveryPlan(
+        strategies=[
+            f"Find arxiv RSS feeds about ML {uuid.uuid4().hex[:4]}",
+            f"Find Reddit subreddits about AI {uuid.uuid4().hex[:4]}",
         ]
     )
+    assert len(plan.strategies) == 2, "DiscoveryPlan did not preserve strategies"
 
-    mock_run_result = MagicMock()
-    mock_run_result.final_output = expected
 
-    mocker.patch(
-        "news_service.agents.source_discovery.Runner.run",
-        new=AsyncMock(return_value=mock_run_result),
+def test_discovery_plan_rejects_empty_strategies() -> None:
+    with pytest.raises(ValueError):
+        DiscoveryPlan(strategies=[])
+
+
+def test_aggregator_deduplicates_by_url() -> None:
+    url = f"https://{uuid.uuid4().hex[:8]}.com/feed"
+    source_a = ScoredSource(url=url, source_kind="rss", relevance_score=0.8)
+    source_b = ScoredSource(url=url, source_kind="rss", relevance_score=0.9)
+
+    result = aggregate_sources([[source_a], [source_b]], max_sources=10)
+
+    assert len(result.sources) == 1, "aggregator did not deduplicate sources with same URL"
+
+
+def test_aggregator_deduplicates_urls_case_insensitive() -> None:
+    base = f"https://{uuid.uuid4().hex[:8]}.com/Feed"
+    source_a = ScoredSource(url=base, source_kind="rss", relevance_score=0.8)
+    source_b = ScoredSource(url=base.lower(), source_kind="rss", relevance_score=0.9)
+
+    result = aggregate_sources([[source_a], [source_b]], max_sources=10)
+
+    assert len(result.sources) == 1, "aggregator did not deduplicate case-different URLs"
+
+
+def test_aggregator_sorts_by_relevance_descending() -> None:
+    low = ScoredSource(
+        url=f"https://{uuid.uuid4().hex[:8]}.com", source_kind="rss", relevance_score=0.3
+    )
+    high = ScoredSource(
+        url=f"https://{uuid.uuid4().hex[:8]}.com", source_kind="rss", relevance_score=0.9
+    )
+    mid = ScoredSource(
+        url=f"https://{uuid.uuid4().hex[:8]}.com", source_kind="rss", relevance_score=0.6
     )
 
-    session = AsyncMock()
+    result = aggregate_sources([[low, mid], [high]], max_sources=10)
+
+    scores = [s.relevance_score for s in result.sources]
+    assert scores == sorted(scores, reverse=True), (
+        "aggregator did not sort sources by relevance descending"
+    )
+
+
+def test_aggregator_respects_max_sources() -> None:
+    sources = [
+        ScoredSource(
+            url=f"https://{uuid.uuid4().hex[:8]}.com",
+            source_kind="rss",
+            relevance_score=0.5 + i * 0.1,
+        )
+        for i in range(10)
+    ]
+
+    result = aggregate_sources([sources], max_sources=3)
+
+    assert len(result.sources) == 3, "aggregator did not respect max_sources limit"
+
+
+def test_aggregator_returns_empty_for_no_results() -> None:
+    result = aggregate_sources([], max_sources=5)
+    assert len(result.sources) == 0, "aggregator did not return empty for no finder results"
+
+
+@pytest.mark.asyncio
+async def test_pipeline_calls_orchestrator_and_finders(mocker) -> None:
+    mocker.patch(
+        "news_service.agents.source_discovery.pipeline.plan_discovery",
+        new=AsyncMock(
+            return_value=DiscoveryPlan(strategies=["Find RSS feeds", "Find Reddit subs"])
+        ),
+    )
+
+    source_url = f"https://{uuid.uuid4().hex[:8]}.com/feed"
+    mocker.patch(
+        "news_service.agents.source_discovery.pipeline.run_finder",
+        new=AsyncMock(
+            return_value=[ScoredSource(url=source_url, source_kind="rss", relevance_score=0.85)]
+        ),
+    )
+
+    from news_service.agents.source_discovery.pipeline import run_source_discovery
+
     result = await run_source_discovery(
-        session=session,
-        raw_prompt=f"Новости ИИ {uuid.uuid4().hex[:4]}",
-        prompt_embedding=_random_embedding(),
+        session=AsyncMock(),
+        raw_prompt=f"AI research {uuid.uuid4().hex[:4]}",
+        prompt_embedding=[0.1] * 10,
     )
 
-    assert result == expected, "run_source_discovery did not return expected result"
+    assert len(result.sources) > 0, "pipeline returned no sources"
+    assert result.sources[0].url == source_url, "pipeline did not return expected source URL"
 
 
 @pytest.mark.asyncio
-async def test_search_existing_sources_tool_includes_url(mocker) -> None:
-    session = AsyncMock()
-    prompt_embedding = _random_embedding()
-    source_url = f"https://existing-{uuid.uuid4().hex[:6]}.com/feed"
-
-    mock_source = SimpleNamespace(
-        url=source_url,
-        title="Существующий источник",
-        source_description="Покрывает новости ИИ",
-    )
+async def test_pipeline_handles_finder_failure_gracefully(mocker) -> None:
     mocker.patch(
-        "news_service.agents.source_discovery.embed_text",
-        new=AsyncMock(return_value=[0.2] * 10),
-    )
-    mocker.patch(
-        "news_service.agents.source_discovery.find_similar_sources",
-        new=AsyncMock(return_value=[mock_source]),
+        "news_service.agents.source_discovery.pipeline.plan_discovery",
+        new=AsyncMock(return_value=DiscoveryPlan(strategies=["Strategy A", "Strategy B"])),
     )
 
-    agent = _create_source_discovery_agent(session, prompt_embedding)
-    search_tool = next(t for t in agent.tools if t.name == "search_existing_sources")
+    source_url = f"https://{uuid.uuid4().hex[:8]}.com"
+    call_count = 0
 
-    result = await search_tool.on_invoke_tool(
-        MagicMock(), f'{{"query": "ИИ {uuid.uuid4().hex[:4]}"}}'
-    )
-    assert source_url in result, "search_existing_sources did not include source URL"
-
-
-@pytest.mark.asyncio
-async def test_search_existing_sources_tool_includes_title(mocker) -> None:
-    session = AsyncMock()
-    prompt_embedding = _random_embedding()
-    title = f"Существующий-{uuid.uuid4().hex[:6]}"
-
-    mock_source = SimpleNamespace(
-        url="https://existing.com/feed",
-        title=title,
-        source_description="Покрывает новости ИИ",
-    )
-    mocker.patch(
-        "news_service.agents.source_discovery.embed_text",
-        new=AsyncMock(return_value=[0.2] * 10),
-    )
-    mocker.patch(
-        "news_service.agents.source_discovery.find_similar_sources",
-        new=AsyncMock(return_value=[mock_source]),
-    )
-
-    agent = _create_source_discovery_agent(session, prompt_embedding)
-    search_tool = next(t for t in agent.tools if t.name == "search_existing_sources")
-
-    result = await search_tool.on_invoke_tool(MagicMock(), '{"query": "ИИ"}')
-    assert title in result, "search_existing_sources did not include source title"
-
-
-@pytest.mark.asyncio
-async def test_validate_and_score_source_tool_includes_score(mocker) -> None:
-    session = AsyncMock()
-    prompt_embedding = _random_embedding()
+    async def _mock_finder(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise RuntimeError("Finder A failed")
+        return [ScoredSource(url=source_url, source_kind="rss", relevance_score=0.7)]
 
     mocker.patch(
-        "news_service.agents.source_discovery.score_candidate",
-        new=AsyncMock(return_value=(0.85, ["образец текста поста"])),
+        "news_service.agents.source_discovery.pipeline.run_finder",
+        new=AsyncMock(side_effect=_mock_finder),
     )
 
-    agent = _create_source_discovery_agent(session, prompt_embedding)
-    score_tool = next(t for t in agent.tools if t.name == "validate_and_score_source")
+    from news_service.agents.source_discovery.pipeline import run_source_discovery
 
-    result = await score_tool.on_invoke_tool(
-        MagicMock(),
-        f'{{"url": "https://{uuid.uuid4().hex[:8]}.com/feed", "source_kind": "rss"}}',
+    result = await run_source_discovery(
+        session=AsyncMock(),
+        raw_prompt=f"Технологии {uuid.uuid4().hex[:4]}",
+        prompt_embedding=[0.1] * 10,
     )
-    assert "0.850" in result, "validate_and_score_source did not include score in result"
+
+    assert len(result.sources) == 1, "pipeline did not return sources from surviving finder"

@@ -1,141 +1,157 @@
+"""Tests for event assessment and preview agents."""
+
 import logging
 import uuid
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from news_service.agents.event import (
-    EventAssessmentResult,
     RecentEventsPreviewDecision,
 )
+from news_service.agents.event.batch_assessor import (
+    BatchAssessmentResult,
+    ItemAssessment,
+    assess_batch_events,
+)
+from news_service.agents.event.preview import render_recent_events_preview
 
 logging.disable(logging.CRITICAL)
 
+_BATCH_PATH = "news_service.agents.event.batch_assessor.chat_completion"
+_PREVIEW_PATH = "news_service.agents.event.preview.chat_completion"
+
 
 def _fake_completion(parsed: object) -> MagicMock:
-    mock_message = MagicMock()
-    mock_message.parsed = parsed
-
-    mock_choice = MagicMock()
-    mock_choice.message = mock_message
-
-    mock_completion = MagicMock()
-    mock_completion.choices = [mock_choice]
-    return mock_completion
-
-
-def _fake_client(parsed: object) -> AsyncMock:
-    client = AsyncMock()
-    client.beta.chat.completions.parse = AsyncMock(return_value=_fake_completion(parsed))
-    return client
+    msg = MagicMock()
+    msg.parsed = parsed
+    choice = MagicMock()
+    choice.message = msg
+    completion = MagicMock()
+    completion.choices = [choice]
+    return completion
 
 
 @pytest.mark.asyncio
-async def test_assess_relevant_event_returns_relevant_flag_and_nonempty_body() -> None:
-    body_text = f"Финал сезона подтверждён #{uuid.uuid4().hex[:6]}"
-    parsed = EventAssessmentResult(
-        is_relevant_event=True,
-        notification_body=body_text,
-        reason="Событие соответствует подписке",
+async def test_batch_assess_returns_relevant_items(mocker) -> None:
+    item_id = str(uuid.uuid4())
+    parsed = BatchAssessmentResult(
+        assessments=[
+            ItemAssessment(
+                item_id=item_id,
+                is_relevant=True,
+                notification_body=f"Уведомление {uuid.uuid4().hex[:6]}",
+                reason="Соответствует подписке",
+            )
+        ]
+    )
+    mocker.patch(_BATCH_PATH, new=AsyncMock(return_value=_fake_completion(parsed)))
+
+    result = await assess_batch_events(
+        items=[
+            {
+                "item_id": item_id,
+                "headline": f"Событие {uuid.uuid4().hex[:6]}",
+                "body": "Описание события",
+                "url": f"https://example.com/{uuid.uuid4().hex}",
+            }
+        ],
+        user_spec="Уведомлять о новых лекциях",
+        target_language="ru",
+        recent_notification_history=[],
+        max_history_chars=100_000,
     )
 
-    with patch("news_service.agents.event._client", _fake_client(parsed)):
-        from news_service.agents.event import assess_and_compose_event_notification
-
-        result = await assess_and_compose_event_notification(
-            headline="Severance finale announced",
-            body="The new episode arrives next Friday.",
-            url=f"https://example.com/{uuid.uuid4().hex}",
-            published_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
-            raw_prompt="Notify me when new Severance episodes are announced",
-            target_language="en",
-            recent_notification_history=[],
-            max_history_chars=100_000,
-        )
-
-    assert result.is_relevant_event is True, "assessment did not mark relevant event as relevant"
-    assert result.notification_body != "", "relevant event returned empty notification body"
-
-
-@pytest.mark.asyncio
-async def test_assess_irrelevant_event_returns_not_relevant_and_empty_body() -> None:
-    parsed = EventAssessmentResult(
-        is_relevant_event=False,
-        notification_body="",
-        reason="Общая новость, не совпадает с запросом",
+    assert result.assessments[0].is_relevant is True, (
+        "batch assessment did not mark relevant item as relevant"
     )
 
-    with patch("news_service.agents.event._client", _fake_client(parsed)):
-        from news_service.agents.event import assess_and_compose_event_notification
-
-        result = await assess_and_compose_event_notification(
-            headline="Квартальная отчётность",
-            body="Компания показала рост выручки за квартал.",
-            url=f"https://example.com/{uuid.uuid4().hex}",
-            published_at=datetime(2026, 3, 13, 10, 0, tzinfo=UTC),
-            raw_prompt="Notify me when new Severance episodes are announced",
-            target_language="en",
-            recent_notification_history=[],
-            max_history_chars=100_000,
-        )
-
-    assert result.is_relevant_event is False, "irrelevant event was marked as relevant"
-    assert result.notification_body == "", "irrelevant event returned non-empty notification body"
-
 
 @pytest.mark.asyncio
-async def test_assess_duplicate_event_returns_is_relevant_false() -> None:
-    parsed = EventAssessmentResult(
-        is_relevant_event=False,
-        notification_body="",
-        reason="Пользователь уже был уведомлён об этом",
+async def test_batch_assess_returns_not_relevant_items(mocker) -> None:
+    item_id = str(uuid.uuid4())
+    parsed = BatchAssessmentResult(
+        assessments=[
+            ItemAssessment(
+                item_id=item_id,
+                is_relevant=False,
+                notification_body="",
+                reason="Не совпадает с подпиской",
+            )
+        ]
+    )
+    mocker.patch(_BATCH_PATH, new=AsyncMock(return_value=_fake_completion(parsed)))
+
+    result = await assess_batch_events(
+        items=[
+            {
+                "item_id": item_id,
+                "headline": f"Нерелевантное {uuid.uuid4().hex[:6]}",
+                "body": "Текст",
+                "url": f"https://example.com/{uuid.uuid4().hex}",
+            }
+        ],
+        user_spec="Уведомлять о новых лекциях",
+        target_language="ru",
+        recent_notification_history=[],
+        max_history_chars=100_000,
     )
 
-    with patch("news_service.agents.event._client", _fake_client(parsed)):
-        from news_service.agents.event import assess_and_compose_event_notification
-
-        result = await assess_and_compose_event_notification(
-            headline="Напоминание о финале Разделения",
-            body="Напоминаем: финал в пятницу.",
-            url=f"https://example.com/{uuid.uuid4().hex}",
-            published_at=datetime(2026, 3, 14, 10, 0, tzinfo=UTC),
-            raw_prompt="Notify me when new Severance episodes are announced",
-            target_language="en",
-            recent_notification_history=[
-                "Title: Severance season finale\nSummary: Apple confirmed the finale release date."
-            ],
-            max_history_chars=100_000,
-        )
-
-    assert result.is_relevant_event is False, "duplicate event was not detected as irrelevant"
+    assert result.assessments[0].is_relevant is False, (
+        "batch assessment did not mark irrelevant item"
+    )
 
 
 @pytest.mark.asyncio
-async def test_render_recent_events_preview_returns_ids_subject_and_body_with_url() -> None:
+async def test_batch_assess_handles_multiple_items(mocker) -> None:
+    id_a = str(uuid.uuid4())
+    id_b = str(uuid.uuid4())
+    parsed = BatchAssessmentResult(
+        assessments=[
+            ItemAssessment(
+                item_id=id_a, is_relevant=True, notification_body="A", reason="Совпадает"
+            ),
+            ItemAssessment(
+                item_id=id_b, is_relevant=False, notification_body="", reason="Не совпадает"
+            ),
+        ]
+    )
+    mocker.patch(_BATCH_PATH, new=AsyncMock(return_value=_fake_completion(parsed)))
+
+    result = await assess_batch_events(
+        items=[
+            {"item_id": id_a, "headline": "A", "body": "A", "url": "http://a.test"},
+            {"item_id": id_b, "headline": "B", "body": "B", "url": "http://b.test"},
+        ],
+        user_spec="Тема",
+        target_language="en",
+        recent_notification_history=[],
+        max_history_chars=100_000,
+    )
+
+    assert len(result.assessments) == 2, "batch assessment did not return all items"
+    relevant = [a for a in result.assessments if a.is_relevant]
+    assert len(relevant) == 1, "batch assessment did not return exactly one relevant item"
+
+
+@pytest.mark.asyncio
+async def test_render_preview_returns_selected_ids_and_body(mocker) -> None:
     event_id = f"event-{uuid.uuid4().hex[:8]}"
-    subject_text = f"Что вы могли пропустить #{uuid.uuid4().hex[:6]}"
-    event_url = f"https://example.com/событие-{uuid.uuid4().hex[:8]}"
+    event_url = f"https://example.com/{uuid.uuid4().hex[:8]}"
     parsed = RecentEventsPreviewDecision(
         selected_item_ids=[event_id],
-        subject=subject_text,
-        body=f"- Лекция Дробышевского\n{event_url}",
+        subject=f"Что вы пропустили #{uuid.uuid4().hex[:6]}",
+        body=f"- Лекция\n{event_url}",
+    )
+    mocker.patch(_PREVIEW_PATH, new=AsyncMock(return_value=_fake_completion(parsed)))
+
+    result = await render_recent_events_preview(
+        raw_prompt="Только лекции",
+        target_language="ru",
+        lookback_days=7,
+        candidate_events=[f"ID: {event_id}\nTitle: Лекция\nURL: {event_url}"],
+        recent_notifications=[],
     )
 
-    with patch("news_service.agents.event._client", _fake_client(parsed)):
-        from news_service.agents.event import render_recent_events_preview
-
-        result = await render_recent_events_preview(
-            raw_prompt="Только лекции Дробышевского",
-            target_language="ru",
-            lookback_days=7,
-            candidate_events=[
-                f"ID: {event_id}\nTitle: Лекция Станислава Дробышевского\n"
-                f"URL: {event_url}"
-            ],
-            recent_notifications=[],
-        )
-
     assert result.selected_item_ids == [event_id], "preview did not return expected item ids"
-    assert result.subject == subject_text, "preview subject did not match expected value"
     assert event_url in result.body, "preview body did not contain the event url"

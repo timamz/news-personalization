@@ -22,7 +22,7 @@ from news_service.tasks.celery_app import celery_app
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-DELIVER_EVENTS_TASK = "news_service.tasks.deliver_events.deliver_event_notifications"
+DELIVER_EVENTS_BATCH_TASK = "news_service.tasks.deliver_events.deliver_event_notifications_batch"
 RSS_FETCH_TIMEOUT_SECONDS = settings.http_timeout_seconds
 RSS_FETCH_ATTEMPTS = 2
 
@@ -64,8 +64,11 @@ async def _poll_all_feeds() -> dict:
 
         event_item_ids = list(dict.fromkeys(session.info.pop("event_item_ids", [])))
 
-    for item_id in event_item_ids:
-        celery_app.send_task(DELIVER_EVENTS_TASK, args=[str(item_id)])
+    if event_item_ids:
+        celery_app.send_task(
+            DELIVER_EVENTS_BATCH_TASK,
+            args=[[str(item_id) for item_id in event_item_ids]],
+        )
 
     return {
         "feeds_polled": len(all_sources),

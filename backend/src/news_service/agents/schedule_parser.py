@@ -2,14 +2,10 @@ import logging
 
 from pydantic import BaseModel, Field
 
-from news_service.core.config import get_settings
+from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
-from news_service.core.openai_client import openai_client
 
 logger = logging.getLogger(__name__)
-
-settings = get_settings()
-_client = openai_client
 
 SCHEDULE_PARSER_PROMPT = """\
 You parse natural-language schedule preferences into cron.
@@ -31,8 +27,7 @@ class ParsedSchedule(BaseModel):
 
 @with_llm_retry()
 async def parse_schedule_preference(schedule_text: str) -> str:
-    completion = await _client.beta.chat.completions.parse(
-        model=settings.llm_model,
+    completion = await chat_completion(
         messages=[
             {"role": "system", "content": SCHEDULE_PARSER_PROMPT},
             {"role": "user", "content": schedule_text},

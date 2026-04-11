@@ -1,37 +1,13 @@
+"""Recent events preview — selects best events for a preview message."""
+
 import logging
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from news_service.core.config import get_settings
+from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
-from news_service.core.openai_client import openai_client
 
 logger = logging.getLogger(__name__)
-
-settings = get_settings()
-_client = openai_client
-
-ASSESS_AND_COMPOSE_PROMPT = """\
-You decide whether to deliver a post to the user based on their subscription request.
-
-The subscription request defines exactly what the user wants. Only deliver posts that \
-directly match the request. Being in the same general topic or category is NOT enough — \
-the post must be about something the user specifically asked for.
-
-If the user listed specific titles, names, people, or entities, the post must be about \
-one of those. For example, if the user asked for "One Piece, Jujutsu Kaisen", a post \
-about Naruto is NOT a match.
-
-If the user has already been notified about the same thing (see notification history), \
-return is_relevant_event=false.
-
-If is_relevant_event=true, compose a short notification_body in the target language: \
-a concise title, timing if known, 1-2 sentence summary, and the source URL. \
-Keep it suitable for a chat message.
-
-Always fill in the reason field explaining your decision.
-"""
 
 RECENT_EVENTS_PREVIEW_PROMPT = """\
 You select the relevant missed events for a user and write a single preview message.
@@ -77,59 +53,6 @@ class RecentEventsPreviewDecision(BaseModel):
 
 
 @with_llm_retry()
-async def assess_and_compose_event_notification(
-    *,
-    headline: str,
-    body: str,
-    url: str,
-    published_at: datetime | None,
-    raw_prompt: str,
-    target_language: str,
-    recent_notification_history: list[str],
-    max_history_chars: int,
-) -> EventAssessmentResult:
-    history_text = "\n\n".join(
-        f"Notification {index}:\n{entry}"
-        for index, entry in enumerate(recent_notification_history, start=1)
-    )
-    if len(history_text) > max_history_chars:
-        history_text = history_text[:max_history_chars] + "\n... (truncated)"
-
-    history_block = history_text if history_text else "No recent notification history."
-
-    completion = await _client.beta.chat.completions.parse(
-        model=settings.llm_model,
-        messages=[
-            {"role": "system", "content": ASSESS_AND_COMPOSE_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Target language: {target_language}\n\n"
-                    f"Subscription request:\n{raw_prompt}\n\n"
-                    f"Post headline:\n{headline}\n\n"
-                    f"Post body:\n{body}\n\n"
-                    f"Post URL:\n{url}\n\n"
-                    "Notification history:\n"
-                    f"{history_block}"
-                ),
-            },
-        ],
-        response_format=EventAssessmentResult,
-        temperature=0.1,
-    )
-    result = completion.choices[0].message.parsed
-    if result is None:
-        raise ValueError("LLM returned empty parsed response for event assessment")
-
-    logger.info(
-        "Event assessment: is_relevant=%s reason=%s",
-        result.is_relevant_event,
-        result.reason,
-    )
-    return result
-
-
-@with_llm_retry()
 async def render_recent_events_preview(
     *,
     raw_prompt: str,
@@ -154,8 +77,7 @@ async def render_recent_events_preview(
         f"Candidate event {index}:\n{summary}"
         for index, summary in enumerate(candidate_events, start=1)
     )
-    completion = await _client.beta.chat.completions.parse(
-        model=settings.llm_model,
+    completion = await chat_completion(
         messages=[
             {"role": "system", "content": RECENT_EVENTS_PREVIEW_PROMPT},
             {

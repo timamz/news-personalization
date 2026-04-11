@@ -60,9 +60,7 @@ def test_extract_twitter_accounts_deduplicates_urls_and_mentions() -> None:
         "from_full_url",
     ],
 )
-def test_normalize_twitter_account_extracts_and_lowercases(
-    input_val: str, expected: str
-) -> None:
+def test_normalize_twitter_account_extracts_and_lowercases(input_val: str, expected: str) -> None:
     result = normalize_twitter_account(input_val)
     assert result == expected, (
         f"normalize_twitter_account({input_val!r}) returned {result!r}, expected {expected!r}"
@@ -82,9 +80,7 @@ def test_normalize_twitter_account_extracts_and_lowercases(
         "reserved_path_returns_none",
     ],
 )
-def test_extract_twitter_account_from_url_parses_correctly(
-    url: str, expected: str | None
-) -> None:
+def test_extract_twitter_account_from_url_parses_correctly(url: str, expected: str | None) -> None:
     result = extract_twitter_account_from_url(url)
     assert result == expected, (
         f"extract_twitter_account_from_url({url!r}) returned {result!r}, expected {expected!r}"

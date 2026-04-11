@@ -23,9 +23,10 @@ class Settings(BaseSettings):
 
     log_level: str = "DEBUG"
 
-    embedding_model: str = "text-embedding-3-small"
+    litellm_model: str = "openai/gpt-5.4-nano"
+    litellm_embedding_model: str = "openai/text-embedding-3-small"
+    litellm_judge_model: str = "openai/gpt-5.4-nano"
     embedding_dimensions: int = 1536
-    llm_model: str = "gpt-5.4-nano"
     recent_event_match_concurrency: int = 8
 
     llm_retry_max_attempts: int = 3
@@ -42,6 +43,9 @@ class Settings(BaseSettings):
     conversation_ttl_seconds: int = 1800
 
     llm_max_context_chars: int = 1_200_000
+
+    searxng_url: str = "http://searxng:8080"
+    web_search_provider: str = "searxng"
 
 
 def get_settings() -> Settings:

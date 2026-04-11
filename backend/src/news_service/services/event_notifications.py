@@ -112,7 +112,7 @@ async def build_recent_events_preview_for_subscription(
     history = await load_recent_notification_history(session, subscription.id)
     try:
         decision = await render_recent_events_preview(
-            raw_prompt=subscription.canonical_prompt,
+            raw_prompt=subscription.user_spec or subscription.canonical_prompt,
             target_language=subscription.digest_language,
             lookback_days=lookback_days,
             candidate_events=[_format_preview_candidate(item) for item in items],
@@ -168,5 +168,3 @@ def _format_preview_candidate(item: NewsItem) -> str:
         lines.append(f"Summary: {body_preview}")
     lines.append(f"URL: {item.url}")
     return "\n".join(lines)
-
-

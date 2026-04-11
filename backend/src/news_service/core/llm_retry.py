@@ -7,19 +7,20 @@ from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from openai import (
-    APIConnectionError,
-    APITimeoutError,
-    InternalServerError,
-    RateLimitError,
-)
+import litellm
 
 logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 T = TypeVar("T")
 
-_RETRYABLE_ERRORS = (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)
+_RETRYABLE_ERRORS = (
+    litellm.Timeout,
+    litellm.APIConnectionError,
+    litellm.RateLimitError,
+    litellm.InternalServerError,
+    litellm.ServiceUnavailableError,
+)
 
 
 def with_llm_retry(
@@ -28,7 +29,7 @@ def with_llm_retry(
     base_delay_seconds: float = 1.0,
     max_delay_seconds: float = 30.0,
 ) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
-    """Retry an async function on transient OpenAI API errors with exponential backoff."""
+    """Retry an async function on transient LLM API errors with exponential backoff."""
 
     def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
         @wraps(func)

@@ -1,10 +1,8 @@
-import asyncio
 import logging
 from typing import Literal
 
 import feedparser
 import httpx
-from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
@@ -42,32 +40,6 @@ class DiscoveredSourceItem(BaseModel):
 
 class DiscoveredSourceList(BaseModel):
     sources: list[DiscoveredSourceItem] = Field(..., description="List of discovered sources")
-
-
-_sync_client: OpenAI | None = None
-
-
-def _get_sync_client() -> OpenAI:
-    global _sync_client  # noqa: PLW0603
-    if _sync_client is None:
-        http_client = httpx.Client(proxy=settings.proxy_url) if settings.proxy_url else None
-        _sync_client = OpenAI(api_key=settings.openai_api_key, http_client=http_client)
-    return _sync_client
-
-
-async def search_web(query: str) -> str:
-    """Search the web using OpenAI's web_search tool and return results."""
-
-    def _search() -> str:
-        client = _get_sync_client()
-        response = client.responses.create(
-            model=settings.llm_model,
-            tools=[{"type": "web_search"}],
-            input=query,
-        )
-        return response.output_text
-
-    return await asyncio.to_thread(_search)
 
 
 def normalize_source_url(url: str, *, source_kind: SourceKind) -> str | None:

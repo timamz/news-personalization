@@ -2,65 +2,59 @@ import logging
 import random
 from unittest.mock import AsyncMock, patch
 
-import httpx
+import litellm
 import pytest
-from openai import (
-    APIConnectionError,
-    APITimeoutError,
-    AuthenticationError,
-    BadRequestError,
-    InternalServerError,
-    RateLimitError,
-)
 
 from news_service.core.llm_retry import with_llm_retry
 
 logging.disable(logging.CRITICAL)
 
 
-def _make_api_timeout_error() -> APITimeoutError:
-    request = httpx.Request("POST", f"https://api.example.com/v1/{random.randint(1, 9999)}")
-    return APITimeoutError(request=request)
-
-
-def _make_api_connection_error() -> APIConnectionError:
-    request = httpx.Request("POST", f"https://api.example.com/v1/{random.randint(1, 9999)}")
-    return APIConnectionError(request=request)
-
-
-def _make_rate_limit_error() -> RateLimitError:
-    response = httpx.Response(429, request=httpx.Request("POST", "https://api.example.com"))
-    return RateLimitError(
-        message="Rate limit exceeded",
-        response=response,
-        body={"error": {"message": "Rate limit exceeded"}},
+def _make_timeout_error() -> litellm.Timeout:
+    return litellm.Timeout(
+        message=f"Request timed out {random.randint(1, 9999)}",
+        model="test-model",
+        llm_provider="openai",
     )
 
 
-def _make_internal_server_error() -> InternalServerError:
-    response = httpx.Response(500, request=httpx.Request("POST", "https://api.example.com"))
-    return InternalServerError(
-        message="Internal server error",
-        response=response,
-        body={"error": {"message": "Internal server error"}},
+def _make_connection_error() -> litellm.APIConnectionError:
+    return litellm.APIConnectionError(
+        message=f"Connection failed {random.randint(1, 9999)}",
+        model="test-model",
+        llm_provider="openai",
     )
 
 
-def _make_auth_error() -> AuthenticationError:
-    response = httpx.Response(401, request=httpx.Request("POST", "https://api.example.com"))
-    return AuthenticationError(
+def _make_rate_limit_error() -> litellm.RateLimitError:
+    return litellm.RateLimitError(
+        message=f"Rate limit exceeded {random.randint(1, 9999)}",
+        model="test-model",
+        llm_provider="openai",
+    )
+
+
+def _make_internal_server_error() -> litellm.InternalServerError:
+    return litellm.InternalServerError(
+        message=f"Internal server error {random.randint(1, 9999)}",
+        model="test-model",
+        llm_provider="openai",
+    )
+
+
+def _make_auth_error() -> litellm.AuthenticationError:
+    return litellm.AuthenticationError(
         message="Invalid API key",
-        response=response,
-        body={"error": {"message": "Invalid API key"}},
+        model="test-model",
+        llm_provider="openai",
     )
 
 
-def _make_bad_request_error() -> BadRequestError:
-    response = httpx.Response(400, request=httpx.Request("POST", "https://api.example.com"))
-    return BadRequestError(
+def _make_bad_request_error() -> litellm.BadRequestError:
+    return litellm.BadRequestError(
         message="Bad request",
-        response=response,
-        body={"error": {"message": "Bad request"}},
+        model="test-model",
+        llm_provider="openai",
     )
 
 
@@ -73,7 +67,6 @@ async def test_decorated_function_returns_result_on_first_successful_call() -> N
         return expected
 
     result = await succeed()
-
     assert result == expected, "decorated function did not return expected result"
 
 
@@ -88,7 +81,6 @@ async def test_decorated_function_calls_underlying_function_exactly_once_on_succ
         return "ок"
 
     await succeed()
-
     assert call_count == 1, "function was not called exactly once on success"
 
 
@@ -96,8 +88,8 @@ async def test_decorated_function_calls_underlying_function_exactly_once_on_succ
 @pytest.mark.parametrize(
     "error_factory",
     [
-        _make_api_timeout_error,
-        _make_api_connection_error,
+        _make_timeout_error,
+        _make_connection_error,
         _make_rate_limit_error,
         _make_internal_server_error,
     ],
@@ -125,8 +117,8 @@ async def test_retries_on_transient_error_then_returns_result(error_factory) -> 
 @pytest.mark.parametrize(
     "error_factory",
     [
-        _make_api_timeout_error,
-        _make_api_connection_error,
+        _make_timeout_error,
+        _make_connection_error,
         _make_rate_limit_error,
         _make_internal_server_error,
     ],
@@ -155,11 +147,11 @@ async def test_retries_on_transient_error_calls_function_expected_number_of_time
 async def test_raises_after_all_retries_exhausted() -> None:
     @with_llm_retry(max_attempts=2, base_delay_seconds=0.01)
     async def always_fail():
-        raise _make_api_timeout_error()
+        raise _make_timeout_error()
 
     with (
         patch("news_service.core.llm_retry.asyncio.sleep", new_callable=AsyncMock),
-        pytest.raises(APITimeoutError),
+        pytest.raises(litellm.Timeout),
     ):
         await always_fail()
 
@@ -189,12 +181,12 @@ async def test_permanent_error_is_not_retried(error_factory) -> None:
 async def test_exponential_backoff_first_delay_equals_base_delay() -> None:
     @with_llm_retry(max_attempts=4, base_delay_seconds=1.0, max_delay_seconds=30.0)
     async def always_fail():
-        raise _make_api_timeout_error()
+        raise _make_timeout_error()
 
     with (
         patch("news_service.core.llm_retry.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         patch("news_service.core.llm_retry.random.uniform", return_value=0.0),
-        pytest.raises(APITimeoutError),
+        pytest.raises(litellm.Timeout),
     ):
         await always_fail()
 
@@ -206,12 +198,12 @@ async def test_exponential_backoff_first_delay_equals_base_delay() -> None:
 async def test_exponential_backoff_second_delay_doubles_base_delay() -> None:
     @with_llm_retry(max_attempts=4, base_delay_seconds=1.0, max_delay_seconds=30.0)
     async def always_fail():
-        raise _make_api_timeout_error()
+        raise _make_timeout_error()
 
     with (
         patch("news_service.core.llm_retry.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         patch("news_service.core.llm_retry.random.uniform", return_value=0.0),
-        pytest.raises(APITimeoutError),
+        pytest.raises(litellm.Timeout),
     ):
         await always_fail()
 
@@ -223,12 +215,12 @@ async def test_exponential_backoff_second_delay_doubles_base_delay() -> None:
 async def test_exponential_backoff_third_delay_quadruples_base_delay() -> None:
     @with_llm_retry(max_attempts=4, base_delay_seconds=1.0, max_delay_seconds=30.0)
     async def always_fail():
-        raise _make_api_timeout_error()
+        raise _make_timeout_error()
 
     with (
         patch("news_service.core.llm_retry.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         patch("news_service.core.llm_retry.random.uniform", return_value=0.0),
-        pytest.raises(APITimeoutError),
+        pytest.raises(litellm.Timeout),
     ):
         await always_fail()
 
@@ -240,12 +232,12 @@ async def test_exponential_backoff_third_delay_quadruples_base_delay() -> None:
 async def test_exponential_backoff_produces_three_sleep_calls_for_four_attempts() -> None:
     @with_llm_retry(max_attempts=4, base_delay_seconds=1.0, max_delay_seconds=30.0)
     async def always_fail():
-        raise _make_api_timeout_error()
+        raise _make_timeout_error()
 
     with (
         patch("news_service.core.llm_retry.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         patch("news_service.core.llm_retry.random.uniform", return_value=0.0),
-        pytest.raises(APITimeoutError),
+        pytest.raises(litellm.Timeout),
     ):
         await always_fail()
 
@@ -259,12 +251,12 @@ async def test_max_delay_caps_backoff_at_configured_maximum() -> None:
 
     @with_llm_retry(max_attempts=4, base_delay_seconds=10.0, max_delay_seconds=max_delay)
     async def always_fail():
-        raise _make_api_timeout_error()
+        raise _make_timeout_error()
 
     with (
         patch("news_service.core.llm_retry.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         patch("news_service.core.llm_retry.random.uniform", return_value=0.0),
-        pytest.raises(APITimeoutError),
+        pytest.raises(litellm.Timeout),
     ):
         await always_fail()
 

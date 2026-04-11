@@ -1,76 +1,36 @@
 import logging
 import uuid
-from unittest.mock import MagicMock
 
-import pytest
-
-from news_service.agents import discovery
-from news_service.agents.discovery import search_web
+from news_service.agents.discovery import normalize_source_url
 
 logging.disable(logging.CRITICAL)
 
 
-@pytest.mark.asyncio
-async def test_search_web_returns_output_text(mocker) -> None:
-    expected_text = f"Результаты поиска RSS-каналов об ИИ {uuid.uuid4().hex[:8]}"
-    mock_response = MagicMock()
-    mock_response.output_text = expected_text
-    mock_client = MagicMock()
-    mock_client.responses.create.return_value = mock_response
-    mocker.patch.object(discovery, "_sync_client", mock_client)
-
-    query = f"лучшие RSS-каналы об ИИ {uuid.uuid4().hex[:6]}"
-    result = await search_web(query)
-
-    assert result == expected_text, "search_web did not return the expected output text"
+def test_normalize_source_url_strips_whitespace_for_rss() -> None:
+    url = f"  https://{uuid.uuid4().hex[:8]}.com/feed  "
+    result = normalize_source_url(url, source_kind="rss")
+    assert result == url.strip(), "normalize_source_url did not strip whitespace from RSS URL"
 
 
-@pytest.mark.asyncio
-async def test_search_web_passes_query_to_client(mocker) -> None:
-    mock_response = MagicMock()
-    mock_response.output_text = f"Ответ {uuid.uuid4().hex[:6]}"
-    mock_client = MagicMock()
-    mock_client.responses.create.return_value = mock_response
-    mocker.patch.object(discovery, "_sync_client", mock_client)
+def test_normalize_source_url_returns_none_for_empty_rss() -> None:
+    result = normalize_source_url("  ", source_kind="rss")
+    assert result is None, "normalize_source_url did not return None for empty RSS URL"
 
-    query = f"поиск источников {uuid.uuid4().hex[:6]}"
-    await search_web(query)
 
-    assert mock_client.responses.create.call_args.kwargs["input"] == query, (
-        "search_web did not pass the query to the OpenAI client"
+def test_normalize_source_url_returns_none_for_telegram_url_as_rss() -> None:
+    result = normalize_source_url("https://t.me/s/somechannel", source_kind="rss")
+    assert result is None, "normalize_source_url did not return None for Telegram URL passed as RSS"
+
+
+def test_normalize_source_url_normalizes_telegram_channel() -> None:
+    result = normalize_source_url("https://t.me/s/testchannel", source_kind="telegram_channel")
+    assert result is not None, "normalize_source_url returned None for valid Telegram channel URL"
+    assert "testchannel" in result, "normalize_source_url did not preserve channel name"
+
+
+def test_normalize_source_url_normalizes_reddit_subreddit() -> None:
+    result = normalize_source_url(
+        "https://www.reddit.com/r/machinelearning", source_kind="reddit_subreddit"
     )
-
-
-@pytest.mark.asyncio
-async def test_search_web_requests_web_search_tool(mocker) -> None:
-    mock_response = MagicMock()
-    mock_response.output_text = f"Результат {uuid.uuid4().hex[:6]}"
-    mock_client = MagicMock()
-    mock_client.responses.create.return_value = mock_response
-    mocker.patch.object(discovery, "_sync_client", mock_client)
-
-    await search_web(f"запрос {uuid.uuid4().hex[:6]}")
-
-    assert mock_client.responses.create.call_args.kwargs["tools"] == [{"type": "web_search"}], (
-        "search_web did not request the web_search tool"
-    )
-
-
-@pytest.mark.asyncio
-async def test_search_web_initializes_client_when_none(mocker) -> None:
-    mock_response = MagicMock()
-    mock_response.output_text = f"Результаты {uuid.uuid4().hex[:6]}"
-    mock_client_instance = MagicMock()
-    mock_client_instance.responses.create.return_value = mock_response
-    mocker.patch.object(discovery, "_sync_client", None)
-    mock_openai_cls = mocker.patch(
-        "news_service.agents.discovery.OpenAI",
-        return_value=mock_client_instance,
-    )
-
-    await search_web(f"тестовый запрос {uuid.uuid4().hex[:6]}")
-
-    assert mock_openai_cls.called, (
-        "search_web did not initialize OpenAI client when _sync_client was None"
-    )
-    discovery._sync_client = None
+    assert result is not None, "normalize_source_url returned None for valid Reddit subreddit URL"
+    assert "machinelearning" in result, "normalize_source_url did not preserve subreddit name"

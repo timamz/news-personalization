@@ -38,7 +38,6 @@ from news_service.services.coverage import (
 from news_service.services.event_notifications import (
     build_recent_events_preview_for_subscription,
 )
-from news_service.services.prompt_summaries import build_prompt_summary
 from news_service.services.reddit import (
     build_reddit_subreddit_url,
     extract_reddit_subreddits,
@@ -222,7 +221,7 @@ async def _create_subscription_streaming(
     yield {"event": "status", "status_key": "status_analyzing"}
     canonical_prompt = payload.canonical_prompt or payload.prompt
     canonical_prompt_embedding = await _subscription_prompt_embedding(canonical_prompt)
-    prompt_summary = payload.prompt_summary or build_prompt_summary(payload.prompt)
+    prompt_summary = payload.prompt_summary or " ".join(payload.prompt.split())[:140]
     short_label = payload.short_label or prompt_summary[:30]
 
     subscription = Subscription(
@@ -230,8 +229,10 @@ async def _create_subscription_streaming(
         raw_prompt=payload.prompt,
         canonical_prompt=canonical_prompt,
         canonical_prompt_embedding=canonical_prompt_embedding,
+        topic_embedding=canonical_prompt_embedding,
         prompt_summary=prompt_summary,
         short_label=short_label,
+        user_spec=f"## Topic\n{canonical_prompt}",
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         format_instructions=payload.format_instructions or "brief summary",
@@ -259,13 +260,12 @@ async def _create_subscription_streaming(
     if include_discovered_sources:
         yield {"event": "status", "status_key": "status_discovering_sources"}
 
-        from news_service.agents.source_discovery import StatusRunHooks
-
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        hooks = StatusRunHooks(queue)
 
         discovery_task = asyncio.create_task(
-            ensure_prompt_coverage(session, payload.prompt, canonical_prompt_embedding, hooks=hooks)
+            ensure_prompt_coverage(
+                session, payload.prompt, canonical_prompt_embedding, status_queue=queue
+            )
         )
 
         # Drain status events from the queue while discovery runs

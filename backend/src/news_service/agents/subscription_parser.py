@@ -7,17 +7,16 @@ import random
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
+import litellm
 
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
+from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
-from news_service.core.openai_client import openai_client
 from news_service.schemas.conversation import AgentTurnOutput, ExistingSubscriptionContext
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-_client = openai_client
 
 _MAX_TOOL_ROUNDS = 3
 
@@ -201,8 +200,7 @@ async def run_conversation_turn(
     new_messages: list[dict] = []
 
     for _ in range(_MAX_TOOL_ROUNDS + 1):
-        response = await _client.beta.chat.completions.parse(
-            model=settings.llm_model,
+        response = await chat_completion(
             messages=[system_msg, *messages, *new_messages],
             tools=TOOL_DEFINITIONS,
             response_format=AgentTurnOutput,
@@ -250,7 +248,13 @@ async def run_conversation_turn(
     raise ValueError("Conversation turn exceeded maximum tool rounds")
 
 
-_RETRYABLE = (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)
+_RETRYABLE = (
+    litellm.Timeout,
+    litellm.APIConnectionError,
+    litellm.RateLimitError,
+    litellm.InternalServerError,
+    litellm.ServiceUnavailableError,
+)
 _MAX_RETRY = 3
 
 
@@ -259,8 +263,7 @@ async def _parse_with_retry(system_msg: dict, all_messages: list[dict]) -> objec
     last_error: Exception | None = None
     for attempt in range(1, _MAX_RETRY + 1):
         try:
-            return await _client.beta.chat.completions.parse(
-                model=settings.llm_model,
+            return await chat_completion(
                 messages=[system_msg, *all_messages],
                 tools=TOOL_DEFINITIONS,
                 response_format=AgentTurnOutput,

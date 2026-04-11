@@ -59,9 +59,7 @@ def test_extract_telegram_channels_deduplicates_and_ignores_email() -> None:
         "non_telegram_url_returns_none",
     ],
 )
-def test_extract_telegram_channel_from_url_parses_correctly(
-    url: str, expected: str | None
-) -> None:
+def test_extract_telegram_channel_from_url_parses_correctly(url: str, expected: str | None) -> None:
     result = extract_telegram_channel_from_url(url)
     assert result == expected, (
         f"extract_telegram_channel_from_url({url!r}) returned {result!r}, expected {expected!r}"
