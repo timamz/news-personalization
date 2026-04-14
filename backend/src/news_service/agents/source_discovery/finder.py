@@ -19,7 +19,7 @@ from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.adk_runner import run_agent
+from news_service.agents.adk_runner import run_agent_text
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_text, find_similar_sources
 from news_service.services.relevance import score_candidate
@@ -149,7 +149,7 @@ async def run_finder(
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 
-    await run_agent(
+    await run_agent_text(
         agent=agent,
         message=f"Execute this search strategy:\n{strategy}",
     )

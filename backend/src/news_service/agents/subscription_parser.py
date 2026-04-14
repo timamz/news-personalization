@@ -14,7 +14,7 @@ from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 
-from news_service.agents.adk_runner import run_agent
+from news_service.agents.adk_runner import run_agent, run_agent_text
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
 from news_service.schemas.conversation import (
@@ -289,7 +289,7 @@ async def run_conversation_turn(
         existing_config=existing_config,
     )
 
-    agent_text = await run_agent(
+    agent_text = await run_agent_text(
         agent=agent,
         message=current_message,
     )
@@ -329,10 +329,9 @@ async def run_conversation_turn_streaming(
 
     agent_text = ""
     try:
-        async for event in await run_agent(
+        async for event in run_agent(
             agent=agent,
             message=current_message,
-            streaming=True,
         ):
             if event["type"] == "tool_call":
                 tool_name = event["name"]

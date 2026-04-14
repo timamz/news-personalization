@@ -15,7 +15,7 @@ from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.adk_runner import run_agent
+from news_service.agents.adk_runner import run_agent_text
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
 from news_service.models.subscription import Subscription
@@ -315,7 +315,7 @@ async def run_conversational_turn(
         subscription_id=subscription_id,
     )
 
-    agent_message = await run_agent(
+    agent_message = await run_agent_text(
         agent=agent,
         message=user_message,
         user_id=str(user.id),

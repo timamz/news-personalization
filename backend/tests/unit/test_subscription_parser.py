@@ -14,6 +14,7 @@ from news_service.schemas.conversation import ExistingSubscriptionContext
 
 logging.disable(logging.CRITICAL)
 
+_RUN_AGENT_TEXT_PATH = "news_service.agents.subscription_parser.run_agent_text"
 _RUN_AGENT_PATH = "news_service.agents.subscription_parser.run_agent"
 
 
@@ -21,7 +22,7 @@ _RUN_AGENT_PATH = "news_service.agents.subscription_parser.run_agent"
 async def test_run_conversation_turn_returns_in_progress_when_agent_does_not_finalize() -> None:
     agent_reply = f"What kind of news? {uuid.uuid4().hex[:6]}"
 
-    with patch(_RUN_AGENT_PATH, new=AsyncMock(return_value=agent_reply)):
+    with patch(_RUN_AGENT_TEXT_PATH, new=AsyncMock(return_value=agent_reply)):
         output, _new_messages = await run_conversation_turn(
             [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
             user_language="en",
@@ -37,7 +38,9 @@ async def test_run_conversation_turn_returns_in_progress_when_agent_does_not_fin
 
 @pytest.mark.asyncio
 async def test_run_conversation_turn_returns_one_new_message() -> None:
-    with patch(_RUN_AGENT_PATH, new=AsyncMock(return_value=f"question {uuid.uuid4().hex[:6]}")):
+    with patch(
+        _RUN_AGENT_TEXT_PATH, new=AsyncMock(return_value=f"question {uuid.uuid4().hex[:6]}")
+    ):
         _output, new_messages = await run_conversation_turn(
             [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
             user_language="en",
@@ -51,7 +54,7 @@ async def test_run_conversation_turn_returns_one_new_message() -> None:
 
 @pytest.mark.asyncio
 async def test_run_conversation_turn_passes_finalized_config_via_tool() -> None:
-    async def fake_run_agent(*, agent, message, user_id="system"):
+    async def fake_run_agent_text(*, agent, message, user_id="system"):
         for tool in agent.tools:
             if callable(tool) and getattr(tool, "__name__", "") == "finalize_subscription":
                 await tool(
@@ -62,7 +65,7 @@ async def test_run_conversation_turn_passes_finalized_config_via_tool() -> None:
                 break
         return f"Your subscription is ready! {uuid.uuid4().hex[:6]}"
 
-    with patch(_RUN_AGENT_PATH, side_effect=fake_run_agent):
+    with patch(_RUN_AGENT_TEXT_PATH, side_effect=fake_run_agent_text):
         output, _new_messages = await run_conversation_turn(
             [{"role": "user", "content": f"AI news every morning {uuid.uuid4().hex[:6]}"}],
             user_language="ru",
@@ -80,36 +83,22 @@ async def test_run_conversation_turn_passes_finalized_config_via_tool() -> None:
     )
 
 
-def _fake_run_agent_streaming(events_to_yield):
-    """Build a mock for run_agent that returns an async generator when streaming=True."""
+def _fake_streaming_agent(events_to_yield):
+    """Build a mock for run_agent that yields the given events."""
 
-    async def _gen():
+    async def fake(*, agent, message, user_id="system"):
         for ev in events_to_yield:
             yield ev
-
-    async def fake(*, agent, message, user_id="system", streaming=False):
-        if streaming:
-            return _gen()
-        text = ""
-        for ev in events_to_yield:
-            if ev.get("type") == "final_response":
-                text = ev["text"]
-        return text
 
     return fake
 
 
-def _fake_run_agent_streaming_error(error):
-    """Build a mock for run_agent that raises when streaming=True."""
+def _fake_streaming_agent_error(error):
+    """Build a mock for run_agent that raises on iteration."""
 
-    async def _gen():
+    async def fake(*, agent, message, user_id="system"):
         raise error
         yield  # make it a generator
-
-    async def fake(*, agent, message, user_id="system", streaming=False):
-        if streaming:
-            return _gen()
-        raise error
 
     return fake
 
@@ -117,7 +106,7 @@ def _fake_run_agent_streaming_error(error):
 @pytest.mark.asyncio
 async def test_streaming_yields_done_event() -> None:
     agent_text = f"What kind of news? {uuid.uuid4().hex[:6]}"
-    fake = _fake_run_agent_streaming([{"type": "final_response", "text": agent_text}])
+    fake = _fake_streaming_agent([{"type": "final_response", "text": agent_text}])
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
@@ -134,7 +123,7 @@ async def test_streaming_yields_done_event() -> None:
 @pytest.mark.asyncio
 async def test_streaming_done_event_contains_agent_message() -> None:
     agent_text = f"What kind of schedule? {uuid.uuid4().hex[:6]}"
-    fake = _fake_run_agent_streaming([{"type": "final_response", "text": agent_text}])
+    fake = _fake_streaming_agent([{"type": "final_response", "text": agent_text}])
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
@@ -151,7 +140,7 @@ async def test_streaming_done_event_contains_agent_message() -> None:
 
 @pytest.mark.asyncio
 async def test_streaming_yields_status_event_for_validate_source_tool_call() -> None:
-    fake = _fake_run_agent_streaming(
+    fake = _fake_streaming_agent(
         [
             {
                 "type": "tool_call",
@@ -180,7 +169,7 @@ async def test_streaming_yields_status_event_for_validate_source_tool_call() -> 
 
 @pytest.mark.asyncio
 async def test_streaming_tool_call_flow_yields_done_last() -> None:
-    fake = _fake_run_agent_streaming(
+    fake = _fake_streaming_agent(
         [
             {
                 "type": "tool_call",
@@ -206,7 +195,7 @@ async def test_streaming_tool_call_flow_yields_done_last() -> None:
 
 @pytest.mark.asyncio
 async def test_streaming_yields_error_event_on_agent_failure() -> None:
-    fake = _fake_run_agent_streaming_error(RuntimeError(f"Agent crashed {uuid.uuid4().hex[:6]}"))
+    fake = _fake_streaming_agent_error(RuntimeError(f"Agent crashed {uuid.uuid4().hex[:6]}"))
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
