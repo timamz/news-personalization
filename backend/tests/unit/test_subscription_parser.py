@@ -15,7 +15,6 @@ from news_service.schemas.conversation import ExistingSubscriptionContext
 logging.disable(logging.CRITICAL)
 
 _RUN_AGENT_PATH = "news_service.agents.subscription_parser.run_agent"
-_RUN_AGENT_STREAMING_PATH = "news_service.agents.subscription_parser.run_agent_streaming"
 
 
 @pytest.mark.asyncio
@@ -81,14 +80,46 @@ async def test_run_conversation_turn_passes_finalized_config_via_tool() -> None:
     )
 
 
+def _fake_run_agent_streaming(events_to_yield):
+    """Build a mock for run_agent that returns an async generator when streaming=True."""
+
+    async def _gen():
+        for ev in events_to_yield:
+            yield ev
+
+    async def fake(*, agent, message, user_id="system", streaming=False):
+        if streaming:
+            return _gen()
+        text = ""
+        for ev in events_to_yield:
+            if ev.get("type") == "final_response":
+                text = ev["text"]
+        return text
+
+    return fake
+
+
+def _fake_run_agent_streaming_error(error):
+    """Build a mock for run_agent that raises when streaming=True."""
+
+    async def _gen():
+        raise error
+        yield  # make it a generator
+
+    async def fake(*, agent, message, user_id="system", streaming=False):
+        if streaming:
+            return _gen()
+        raise error
+
+    return fake
+
+
 @pytest.mark.asyncio
 async def test_streaming_yields_done_event() -> None:
     agent_text = f"What kind of news? {uuid.uuid4().hex[:6]}"
+    fake = _fake_run_agent_streaming([{"type": "final_response", "text": agent_text}])
 
-    async def fake_stream(*, agent, message, user_id="system"):
-        yield {"type": "final_response", "text": agent_text}
-
-    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+    with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
@@ -103,11 +134,9 @@ async def test_streaming_yields_done_event() -> None:
 @pytest.mark.asyncio
 async def test_streaming_done_event_contains_agent_message() -> None:
     agent_text = f"What kind of schedule? {uuid.uuid4().hex[:6]}"
+    fake = _fake_run_agent_streaming([{"type": "final_response", "text": agent_text}])
 
-    async def fake_stream(*, agent, message, user_id="system"):
-        yield {"type": "final_response", "text": agent_text}
-
-    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+    with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
@@ -122,15 +151,18 @@ async def test_streaming_done_event_contains_agent_message() -> None:
 
 @pytest.mark.asyncio
 async def test_streaming_yields_status_event_for_validate_source_tool_call() -> None:
-    async def fake_stream(*, agent, message, user_id="system"):
-        yield {
-            "type": "tool_call",
-            "name": "validate_source",
-            "args": {"url": "https://t.me/s/durov", "source_kind": "telegram_channel"},
-        }
-        yield {"type": "final_response", "text": "Channel verified!"}
+    fake = _fake_run_agent_streaming(
+        [
+            {
+                "type": "tool_call",
+                "name": "validate_source",
+                "args": {"url": "https://t.me/s/durov", "source_kind": "telegram_channel"},
+            },
+            {"type": "final_response", "text": "Channel verified!"},
+        ]
+    )
 
-    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+    with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"Add @durov {uuid.uuid4().hex[:6]}"}],
@@ -148,15 +180,18 @@ async def test_streaming_yields_status_event_for_validate_source_tool_call() -> 
 
 @pytest.mark.asyncio
 async def test_streaming_tool_call_flow_yields_done_last() -> None:
-    async def fake_stream(*, agent, message, user_id="system"):
-        yield {
-            "type": "tool_call",
-            "name": "validate_source",
-            "args": {"url": "https://t.me/s/durov", "source_kind": "telegram_channel"},
-        }
-        yield {"type": "final_response", "text": "Channel verified!"}
+    fake = _fake_run_agent_streaming(
+        [
+            {
+                "type": "tool_call",
+                "name": "validate_source",
+                "args": {"url": "https://t.me/s/durov", "source_kind": "telegram_channel"},
+            },
+            {"type": "final_response", "text": "Channel verified!"},
+        ]
+    )
 
-    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+    with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"Add @durov {uuid.uuid4().hex[:6]}"}],
@@ -171,11 +206,9 @@ async def test_streaming_tool_call_flow_yields_done_last() -> None:
 
 @pytest.mark.asyncio
 async def test_streaming_yields_error_event_on_agent_failure() -> None:
-    async def fake_stream(*, agent, message, user_id="system"):
-        raise RuntimeError(f"Agent crashed {uuid.uuid4().hex[:6]}")
-        yield  # make it a generator
+    fake = _fake_run_agent_streaming_error(RuntimeError(f"Agent crashed {uuid.uuid4().hex[:6]}"))
 
-    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+    with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"Test {uuid.uuid4().hex[:6]}"}],
