@@ -57,7 +57,7 @@ def _mock_composition(digest_text: str, item_ids: list[str]) -> DigestCompositio
 
 def _mock_quality(verdict: str = "PASS", feedback: str = "") -> QualityScores:
     return QualityScores(
-        relevance=4, coverage=4, dedup=5, quality=4, verdict=verdict, feedback=feedback
+        relevance=4, format_score=4, conciseness=5, verdict=verdict, feedback=feedback
     )
 
 

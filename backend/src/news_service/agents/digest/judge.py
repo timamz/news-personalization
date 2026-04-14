@@ -15,9 +15,10 @@ JUDGE_PROMPT = """\
 You are a quality judge for news digests. Score the digest on these criteria:
 
 1. **Relevance** (1-5): Do the items match the user's stated interests?
-2. **Coverage** (1-5): Are there obvious gaps given the available candidates?
-3. **Dedup** (1-5): Are any items about the same story?
-4. **Quality** (1-5): Is the writing clear, well-formatted, and appropriate length?
+2. **Format** (1-5): Does the digest follow the user's format, length, and style \
+preferences? Check against their user_spec instructions.
+3. **Conciseness** (1-5): Is every item substantive? No filler, no redundancy, \
+no low-signal items included just to pad the digest.
 
 Then decide:
 - If ALL scores are >= 3 and the average is >= 3.5: verdict = "PASS"
@@ -29,9 +30,8 @@ Be strict but fair. A score of 3 means acceptable, 4 means good, 5 means excelle
 
 class QualityScores(BaseModel):
     relevance: int = Field(..., ge=1, le=5, description="Relevance to user interests")
-    coverage: int = Field(..., ge=1, le=5, description="Coverage of available topics")
-    dedup: int = Field(..., ge=1, le=5, description="Deduplication quality")
-    quality: int = Field(..., ge=1, le=5, description="Writing and formatting quality")
+    format_score: int = Field(..., ge=1, le=5, description="Adherence to user format preferences")
+    conciseness: int = Field(..., ge=1, le=5, description="No filler, no redundancy")
     verdict: str = Field(..., description="PASS or REVISE")
     feedback: str = Field(default="", description="Specific improvement feedback if REVISE")
 
@@ -64,11 +64,10 @@ async def judge_digest(
         raise ValueError("LLM returned empty response for digest judging")
 
     logger.info(
-        "Digest judge: relevance=%d coverage=%d dedup=%d quality=%d verdict=%s",
+        "Digest judge: relevance=%d format=%d conciseness=%d verdict=%s",
         result.relevance,
-        result.coverage,
-        result.dedup,
-        result.quality,
+        result.format_score,
+        result.conciseness,
         result.verdict,
     )
     return result

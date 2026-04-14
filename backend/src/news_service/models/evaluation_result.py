@@ -21,10 +21,9 @@ class EvaluationResult(UUIDPrimaryKey, TimestampMixin, Base):
             subscription_id=sub.id,
             delivery_type="digest",
             relevance_score=4.0,
-            coverage_score=3.5,
-            dedup_score=5.0,
-            quality_score=4.0,
-            overall_score=4.1,
+            format_score=3.5,
+            conciseness_score=5.0,
+            overall_score=4.2,
             judge_model="openai/gpt-5.4-nano",
         )
     """
@@ -37,9 +36,8 @@ class EvaluationResult(UUIDPrimaryKey, TimestampMixin, Base):
     )
     delivery_type: Mapped[str] = mapped_column(String(16), nullable=False)
     relevance_score: Mapped[float] = mapped_column(Float, nullable=False)
-    coverage_score: Mapped[float] = mapped_column(Float, nullable=False)
-    dedup_score: Mapped[float] = mapped_column(Float, nullable=False)
-    quality_score: Mapped[float] = mapped_column(Float, nullable=False)
+    format_score: Mapped[float] = mapped_column(Float, nullable=False)
+    conciseness_score: Mapped[float] = mapped_column(Float, nullable=False)
     overall_score: Mapped[float] = mapped_column(Float, nullable=False)
     judge_model: Mapped[str] = mapped_column(String(64), nullable=False)
     verdict: Mapped[str] = mapped_column(String(16), nullable=False, default="PASS")

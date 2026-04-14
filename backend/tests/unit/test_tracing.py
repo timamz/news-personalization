@@ -59,9 +59,8 @@ async def test_record_evaluation_result_computes_overall_score() -> None:
         subscription_id=uuid.uuid4(),
         delivery_type="digest",
         relevance_score=4.0,
-        coverage_score=3.0,
-        dedup_score=5.0,
-        quality_score=4.0,
+        format_score=3.0,
+        conciseness_score=5.0,
         judge_model="openai/gpt-5.4-nano",
     )
 

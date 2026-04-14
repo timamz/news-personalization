@@ -179,35 +179,36 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     if composition is None:
         return None
 
-    # --- Stage 4: Reflect (fire-and-forget, don't block delivery) ---
-    try:
-        reflection = await reflect_on_pipeline(
-            digest_text=composition.digest_text,
-            user_spec=user_spec,
-            quality_scores=quality.model_dump() if quality else {},
-            source_contributions=candidates_summary,
-        )
-
-        if reflection.user_spec_patch and subscription.user_spec:
-            subscription.user_spec = (
-                subscription.user_spec.rstrip() + f"\n\n{reflection.observations}"
+    # --- Stage 4: Reflect (only when the pipeline struggled) ---
+    pipeline_struggled = quality is None or quality.verdict != "PASS"
+    if pipeline_struggled:
+        try:
+            reflection = await reflect_on_pipeline(
+                digest_text=composition.digest_text,
+                user_spec=user_spec,
+                quality_scores=quality.model_dump() if quality else {},
+                source_contributions=candidates_summary,
             )
-            await session.flush()
 
-        if reflection.sources_to_remove:
-            logger.info(
-                "Reflector wants to remove %d sources for subscription %s",
-                len(reflection.sources_to_remove),
+            if reflection.user_spec_patch and subscription.user_spec:
+                subscription.user_spec = (
+                    subscription.user_spec.rstrip() + f"\n\n{reflection.observations}"
+                )
+
+            if reflection.sources_to_remove:
+                logger.info(
+                    "Reflector wants to remove %d sources for subscription %s",
+                    len(reflection.sources_to_remove),
+                    subscription.id,
+                )
+
+        except Exception:
+            logger.exception(
+                "Pipeline reflector failed for subscription %s (non-blocking)",
                 subscription.id,
             )
 
-    except Exception:
-        logger.exception(
-            "Pipeline reflector failed for subscription %s (non-blocking)",
-            subscription.id,
-        )
-
-    # --- Stage 5: Mark as sent ---
+    # --- Stage 5: Mark as sent (same transaction as reflector changes) ---
     used_ids = [uuid.UUID(item_id) for item_id in composition.used_item_ids]
     await _mark_as_sent(session, subscription.id, used_ids)
 

@@ -64,22 +64,20 @@ async def record_evaluation_result(
     subscription_id: uuid.UUID,
     delivery_type: str,
     relevance_score: float,
-    coverage_score: float,
-    dedup_score: float,
-    quality_score: float,
+    format_score: float,
+    conciseness_score: float,
     judge_model: str,
     verdict: str = "PASS",
 ) -> EvaluationResult:
     """Record quality scores from the LLM-as-Judge."""
-    overall = (relevance_score + coverage_score + dedup_score + quality_score) / 4.0
+    overall = (relevance_score + format_score + conciseness_score) / 3.0
     result = EvaluationResult(
         trace_id=trace_id,
         subscription_id=subscription_id,
         delivery_type=delivery_type,
         relevance_score=relevance_score,
-        coverage_score=coverage_score,
-        dedup_score=dedup_score,
-        quality_score=quality_score,
+        format_score=format_score,
+        conciseness_score=conciseness_score,
         overall_score=round(overall, 2),
         judge_model=judge_model,
         verdict=verdict,
