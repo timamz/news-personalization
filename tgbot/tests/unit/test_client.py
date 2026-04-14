@@ -140,7 +140,7 @@ async def test_list_subscriptions_returns_parsed_subscription_fields() -> None:
         {
             "id": sub_id,
             "raw_prompt": "\u043d\u043e\u0432\u043e\u0441\u0442\u0438",
-            "prompt_summary": "\u0441\u043f\u043e\u0440\u0442",
+            "user_spec": "## Topic\n\u0441\u043f\u043e\u0440\u0442",
             "delivery_mode": "event",
             "schedule_cron": "0 8 * * *",
             "format_instructions": "brief",
@@ -210,7 +210,7 @@ async def test_update_subscription_returns_correct_id_and_format_instructions() 
         {
             "id": sub_id,
             "raw_prompt": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
-            "prompt_summary": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
+            "user_spec": "## Topic\n\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
             "delivery_mode": "digest",
             "schedule_cron": None,
             "format_instructions": fmt,
@@ -264,15 +264,14 @@ async def test_apply_subscription_edit_config_returns_subscription() -> None:
     base = f"http://host-{uuid.uuid4().hex[:6]}:8000"
     api_key = f"key-{uuid.uuid4().hex}"
     sub_id = f"sub-{uuid.uuid4().hex}"
-    summary = f"Резюме-{uuid.uuid4().hex[:6]}"
+    user_spec = f"## Topic\nРезюме-{uuid.uuid4().hex[:6]}"
     client = BackendClient(base_url=base)
     resp = _make_response(
         200,
         {
             "id": sub_id,
             "raw_prompt": "old",
-            "canonical_prompt": "обновлённый промпт",
-            "prompt_summary": summary,
+            "user_spec": user_spec,
             "delivery_mode": "event",
             "schedule_cron": None,
             "format_instructions": "brief",
@@ -287,9 +286,9 @@ async def test_apply_subscription_edit_config_returns_subscription() -> None:
         result = await client.apply_subscription_edit_config(
             api_key,
             sub_id,
-            config={"canonical_prompt": "обновлённый промпт", "prompt_summary": summary},
+            config={"user_spec": user_spec},
         )
 
-    assert result.prompt_summary == summary, (
-        "apply_subscription_edit_config did not return the expected prompt_summary"
+    assert result.user_spec == user_spec, (
+        "apply_subscription_edit_config did not return the expected user_spec"
     )

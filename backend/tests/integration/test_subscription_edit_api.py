@@ -1,5 +1,4 @@
 import uuid
-from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
@@ -7,7 +6,6 @@ from httpx import AsyncClient
 from news_service.db.session import async_session_factory
 from news_service.models.source import Source
 from news_service.models.subscription import Subscription
-from news_service.schemas.subscription import SubscriptionEditProposalResponse
 from tests.integration.helpers import create_subscription_via_stream, create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -44,7 +42,6 @@ async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uu
             "prompt": "Notify me when new episodes of Apothecary Diaries air.",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
-            "prompt_summary": "Anime episode notifications",
             "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
@@ -52,54 +49,27 @@ async def _create_subscription(api_client: AsyncClient, mocker) -> tuple[str, uu
     return api_key, uuid.UUID(sub["id"])
 
 
-async def test_subscription_edit_proposal_and_apply_updates_canonical_prompt(
+async def test_apply_config_updates_format_instructions(
     api_client: AsyncClient,
     mocker,
 ) -> None:
     api_key, subscription_id = await _create_subscription(api_client, mocker)
-    proposal = SubscriptionEditProposalResponse(
-        canonical_prompt="Notify me when new episodes of Apothecary Diaries and Frieren air.",
-        prompt_summary="Anime episode notifications",
-        format_instructions="brief summary",
-        change_summary="Added Frieren to the tracked show list.",
-    )
-    mocker.patch(
-        "news_service.api.routes_subscriptions.propose_subscription_edit",
-        new=AsyncMock(return_value=proposal),
-    )
-
-    propose_response = await api_client.post(
-        f"/subscriptions/{subscription_id}/edit/propose",
-        headers={"X-API-Key": api_key},
-        json={"change_request": "Also add Frieren."},
-    )
-
-    assert propose_response.status_code == 200
-    assert propose_response.json() == {
-        "canonical_prompt": proposal.canonical_prompt,
-        "prompt_summary": proposal.prompt_summary,
-        "format_instructions": proposal.format_instructions,
-        "change_summary": proposal.change_summary,
-    }
 
     apply_response = await api_client.post(
-        f"/subscriptions/{subscription_id}/edit/apply",
+        f"/subscriptions/{subscription_id}/edit/apply-config",
         headers={"X-API-Key": api_key},
         json={
-            "canonical_prompt": proposal.canonical_prompt,
-            "prompt_summary": proposal.prompt_summary,
-            "format_instructions": proposal.format_instructions,
+            "delivery_mode": "event",
+            "format_instructions": "detailed analysis",
+            "digest_language": "en",
         },
     )
 
     assert apply_response.status_code == 200
-    assert apply_response.json()["prompt_summary"] == "Anime episode notifications"
-    assert apply_response.json()["canonical_prompt"] == proposal.canonical_prompt
+    assert apply_response.json()["format_instructions"] == "detailed analysis"
 
     async with async_session_factory() as session:
         subscription = await session.get(Subscription, subscription_id)
         assert subscription is not None
         assert subscription.raw_prompt == "Notify me when new episodes of Apothecary Diaries air."
-        assert subscription.canonical_prompt == proposal.canonical_prompt
-        assert list(subscription.canonical_prompt_embedding) == [2.0] * 1536
-        assert subscription.format_instructions == "brief summary"
+        assert subscription.format_instructions == "detailed analysis"

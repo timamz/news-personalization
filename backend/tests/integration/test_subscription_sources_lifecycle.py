@@ -47,7 +47,6 @@ async def test_deactivate_subscription_removes_fixed_source_links(
         {
             "prompt": "AI updates every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
-            "prompt_summary": "AI updates",
             "schedule_cron_override": "0 8 * * *",
             "format_instructions": "brief summary",
             "digest_language_override": "en",
@@ -126,7 +125,6 @@ async def test_create_event_subscription_forces_schedule_off(
             "prompt": "Notify me when the next episode is announced",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
-            "prompt_summary": "TV episode notifications",
             "schedule_cron_override": "0 8 * * *",
             "format_instructions": "brief summary",
             "digest_language_override": "en",
@@ -165,7 +163,6 @@ async def test_append_subscription_sources_adds_only_new_links(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "fixed_telegram_channels": ["fondnauk"],
             "include_discovered_sources": False,
-            "prompt_summary": "AI updates",
             "schedule_cron_override": "0 8 * * *",
             "format_instructions": "brief summary",
             "digest_language_override": "en",

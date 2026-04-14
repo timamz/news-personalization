@@ -168,9 +168,7 @@ async def _build_existing_config(
 
     return ExistingSubscriptionContext(
         subscription_id=str(subscription.id),
-        canonical_prompt=subscription.canonical_prompt,
-        prompt_summary=subscription.prompt_summary,
-        short_label=subscription.short_label,
+        user_spec=subscription.user_spec,
         delivery_mode=subscription.delivery_mode,
         schedule_cron=subscription.schedule_cron,
         format_instructions=subscription.format_instructions,

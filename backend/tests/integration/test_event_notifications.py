@@ -38,7 +38,7 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
         subscription = Subscription(
             user_id=user.id,
             raw_prompt="Notify me when a new episode is announced",
-            prompt_summary="Severance episode announcements",
+            user_spec="## Topic\nSeverance episode announcements",
             delivery_mode="event",
             schedule_cron=None,
             format_instructions="brief summary",
@@ -132,7 +132,7 @@ async def test_event_notification_skips_non_relevant_event(mocker) -> None:
         subscription = Subscription(
             user_id=user.id,
             raw_prompt="Only Stanislav Drobyshevsky's own lectures",
-            prompt_summary="Drobyshevsky lectures only",
+            user_spec="## Topic\nDrobyshevsky lectures only",
             delivery_mode="event",
             schedule_cron=None,
             format_instructions="brief summary",
@@ -215,7 +215,7 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         old_subscription = Subscription(
             user_id=user.id,
             raw_prompt="Notify me about Drobyshevsky lectures",
-            prompt_summary="Drobyshevsky lectures",
+            user_spec="## Topic\nDrobyshevsky lectures",
             delivery_mode="event",
             schedule_cron=None,
             format_instructions="brief summary",
@@ -226,7 +226,7 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
         current_subscription = Subscription(
             user_id=user.id,
             raw_prompt="Notify me about Drobyshevsky lectures",
-            prompt_summary="Drobyshevsky lectures",
+            user_spec="## Topic\nDrobyshevsky lectures",
             delivery_mode="event",
             schedule_cron=None,
             format_instructions="brief summary",

@@ -83,14 +83,14 @@ services:
     image: searxng/searxng:latest
     ports:
       - "8888:8080"
+    environment:
+      SEARXNG_SECRET: "news-monorepo-searxng-secret"
+      SEARXNG_LIMITER: "false"
+      SEARXNG_IMAGE_PROXY: "false"
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   db-backup:
     image: pgvector/pgvector:pg16

@@ -48,7 +48,7 @@ def _make_subscription(delivery_mode: str, webhook_url: str) -> Subscription:
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         raw_prompt=f"Новости об ИИ {uuid.uuid4().hex[:6]}",
-        prompt_summary=f"Краткое описание {uuid.uuid4().hex[:6]}",
+        user_spec=f"## Topic\nНовости об ИИ {uuid.uuid4().hex[:6]}",
         delivery_mode=delivery_mode,
         schedule_cron=f"{random.randint(0, 59)} {random.randint(0, 23)} * * *",
         format_instructions="краткая сводка",

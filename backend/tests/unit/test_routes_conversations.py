@@ -211,8 +211,6 @@ async def test_continue_conversation_stream_returns_done_with_ready_status(mocke
         message="Ваша подписка готова!",
         status="ready",
         finalized_config=FinalizedSubscriptionConfig(
-            prompt_summary="Дайджест новостей ИИ",
-            short_label="ИИ Новости",
             digest_language="ru",
         ),
     )
@@ -249,14 +247,12 @@ async def test_continue_conversation_stream_returns_finalized_config(mocker) -> 
     redis_fake = _mock_redis({f"conv:{conv_id}": state.model_dump_json()})
     mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
-    summary = f"Дайджест новостей ИИ {uuid.uuid4().hex[:4]}"
+    language = "ru"
     agent_output = AgentTurnOutput(
         message="Ваша подписка готова!",
         status="ready",
         finalized_config=FinalizedSubscriptionConfig(
-            prompt_summary=summary,
-            short_label="ИИ Новости",
-            digest_language="ru",
+            digest_language=language,
         ),
     )
     mocker.patch(
@@ -275,7 +271,7 @@ async def test_continue_conversation_stream_returns_finalized_config(mocker) -> 
 
     events = await _collect_streaming_response(response)
     done = [e for e in events if e.get("event") == "done"][0]
-    assert done["finalized_config"]["prompt_summary"] == summary, (
+    assert done["finalized_config"]["digest_language"] == language, (
         "continue stream did not return correct finalized config"
     )
 

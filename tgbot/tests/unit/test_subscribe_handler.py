@@ -96,7 +96,7 @@ async def _stream_with_tools(
 
 async def _create_stream(
     sub_id: str = "sub-new",
-    prompt_summary: str = "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
+    user_spec: str = "## Topic\n\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418",
     **extra,
 ):
     yield {
@@ -107,12 +107,11 @@ async def _create_stream(
         "event": "done",
         "subscription": {
             "id": sub_id,
-            "prompt_summary": prompt_summary,
+            "user_spec": user_spec,
             "delivery_mode": extra.get("delivery_mode", "digest"),
             "schedule_cron": extra.get("schedule_cron"),
             "format_instructions": extra.get("format_instructions", "brief summary"),
             "digest_language": extra.get("digest_language", "en"),
-            "short_label": extra.get("short_label", ""),
         },
     }
 
@@ -245,8 +244,7 @@ async def test_finalized_config_creates_digest_subscription(monkeypatch) -> None
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
 
     config = {
-        "prompt_summary": "\u0414\u0430\u0439\u0434\u0436\u0435\u0441\u0442 \u0418\u0418",
-        "short_label": "AI",
+        "user_spec": "## Topic\n\u0414\u0430\u0439\u0434\u0436\u0435\u0441\u0442 \u0418\u0418",
         "delivery_mode": "digest",
         "schedule_cron": "0 8 * * *",
         "manual_only": False,
@@ -294,8 +292,7 @@ async def test_finalized_config_passes_schedule_cron(monkeypatch) -> None:
 
     cron = f"0 {random.randint(6, 11)} * * *"
     config = {
-        "prompt_summary": "News",
-        "short_label": "N",
+        "user_spec": "## Topic\nNews",
         "delivery_mode": "digest",
         "schedule_cron": cron,
         "manual_only": False,
@@ -340,8 +337,7 @@ async def test_finalized_event_subscription_offers_recent_events(monkeypatch) ->
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
 
     config = {
-        "prompt_summary": "\u041a\u043e\u043d\u0446\u0435\u0440\u0442\u044b",
-        "short_label": "Concerts",
+        "user_spec": "## Topic\n\u041a\u043e\u043d\u0446\u0435\u0440\u0442\u044b",
         "delivery_mode": "event",
         "schedule_cron": None,
         "manual_only": False,
@@ -366,7 +362,7 @@ async def test_finalized_event_subscription_offers_recent_events(monkeypatch) ->
         "create_subscription_stream",
         lambda *a, **kw: _create_stream(
             sub_id="sub-evt",
-            prompt_summary="\u041a\u043e\u043d\u0446\u0435\u0440\u0442\u044b",
+            user_spec="## Topic\n\u041a\u043e\u043d\u0446\u0435\u0440\u0442\u044b",
             delivery_mode="event",
         ),
     )
@@ -486,8 +482,7 @@ async def test_fixed_sources_forwarded_to_create(monkeypatch) -> None:
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
 
     config = {
-        "prompt_summary": "\u0422\u0435\u0445 \u043d\u043e\u0432\u043e\u0441\u0442\u0438",
-        "short_label": "Tech",
+        "user_spec": "## Topic\n\u0422\u0435\u0445 \u043d\u043e\u0432\u043e\u0441\u0442\u0438",
         "delivery_mode": "digest",
         "schedule_cron": None,
         "manual_only": True,
@@ -534,8 +529,7 @@ async def test_fixed_sources_manual_only_forwarded(monkeypatch) -> None:
     monkeypatch.setattr(subscribe, "ensure_api_key", AsyncMock(return_value="api-key"))
 
     config = {
-        "prompt_summary": "Tech",
-        "short_label": "T",
+        "user_spec": "## Topic\nTech",
         "delivery_mode": "digest",
         "schedule_cron": None,
         "manual_only": True,

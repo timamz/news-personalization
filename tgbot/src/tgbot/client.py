@@ -13,15 +13,36 @@ _UNSET = object()
 
 @dataclass
 class SubscriptionInfo:
+    """Subscription data from the backend API.
+
+    The display_label property extracts a short label from user_spec for UI display.
+    The topic property extracts the topic line from user_spec for detail views.
+    """
+
     id: str
-    prompt_summary: str
+    user_spec: str
     delivery_mode: str
     schedule_cron: str | None
     format_instructions: str
     digest_language: str
-    short_label: str = ""
     raw_prompt: str | None = None
-    canonical_prompt: str | None = None
+
+    @property
+    def topic(self) -> str:
+        for line in self.user_spec.split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("## Topic"):
+                continue
+            if stripped.startswith("##"):
+                break
+            if stripped:
+                return stripped
+        return self.raw_prompt or self.user_spec[:80]
+
+    @property
+    def display_label(self) -> str:
+        topic = self.topic
+        return topic[:30] if topic else "Subscription"
 
 
 @dataclass
@@ -176,14 +197,12 @@ class BackendClient:
     def _parse_subscription(data: dict) -> SubscriptionInfo:
         return SubscriptionInfo(
             id=data["id"],
-            prompt_summary=data["prompt_summary"],
+            user_spec=data.get("user_spec", ""),
             delivery_mode=data["delivery_mode"],
             schedule_cron=data["schedule_cron"],
             format_instructions=data["format_instructions"],
             digest_language=data["digest_language"],
-            short_label=data.get("short_label", ""),
             raw_prompt=data.get("raw_prompt"),
-            canonical_prompt=data.get("canonical_prompt"),
         )
 
     async def parse_schedule(self, api_key: str, schedule_text: str) -> str:
@@ -207,14 +226,12 @@ class BackendClient:
             return [
                 SubscriptionInfo(
                     id=s["id"],
-                    prompt_summary=s["prompt_summary"],
+                    user_spec=s.get("user_spec", ""),
                     delivery_mode=s.get("delivery_mode", "digest"),
                     schedule_cron=s["schedule_cron"],
                     format_instructions=s["format_instructions"],
                     digest_language=s["digest_language"],
-                    short_label=s.get("short_label", ""),
                     raw_prompt=s.get("raw_prompt"),
-                    canonical_prompt=s.get("canonical_prompt"),
                 )
                 for s in response.json()
             ]
@@ -257,14 +274,12 @@ class BackendClient:
             data = response.json()
             return SubscriptionInfo(
                 id=data["id"],
-                prompt_summary=data["prompt_summary"],
+                user_spec=data.get("user_spec", ""),
                 delivery_mode=data["delivery_mode"],
                 schedule_cron=data["schedule_cron"],
                 format_instructions=data["format_instructions"],
                 digest_language=data["digest_language"],
-                short_label=data.get("short_label", ""),
                 raw_prompt=data.get("raw_prompt"),
-                canonical_prompt=data.get("canonical_prompt"),
             )
 
     async def append_subscription_sources(

@@ -19,9 +19,7 @@ class ExistingSubscriptionContext(BaseModel):
     """Current subscription state provided to the agent in edit mode."""
 
     subscription_id: str
-    canonical_prompt: str
-    prompt_summary: str
-    short_label: str
+    user_spec: str
     delivery_mode: DeliveryMode
     schedule_cron: str | None = None
     format_instructions: str
@@ -46,12 +44,6 @@ class ConversationMessageRequest(BaseModel):
 
 
 class FinalizedSubscriptionConfig(BaseModel):
-    canonical_prompt: str = Field(
-        default="",
-        description="User prompt with orthographical mistakes corrected",
-    )
-    prompt_summary: str = Field(..., description="Short human-readable summary")
-    short_label: str = Field(..., description="Ultra-short 2-3 word label")
     delivery_mode: DeliveryMode = Field(default="digest")
     schedule_cron: str | None = Field(default=None, description="5-field cron expression")
     manual_only: bool = Field(default=False)

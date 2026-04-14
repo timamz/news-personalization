@@ -55,7 +55,6 @@ async def _create_subscription(
             "prompt": "Notify me about upcoming events",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": delivery_mode,
-            "prompt_summary": "Upcoming events",
             "format_instructions": "brief summary",
             "digest_language_override": "en",
         },

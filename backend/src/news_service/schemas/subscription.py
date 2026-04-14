@@ -9,10 +9,6 @@ type DeliveryMode = Literal["digest", "event"]
 
 class SubscriptionCreate(BaseModel):
     prompt: str = Field(..., min_length=5, description="Natural language news preference")
-    canonical_prompt: str | None = Field(
-        default=None,
-        description="Prompt with orthographical mistakes corrected; defaults to prompt if omitted",
-    )
     delivery_webhook_url: str | None = Field(
         default=None, description="URL where digest will be POSTed"
     )
@@ -53,15 +49,6 @@ class SubscriptionCreate(BaseModel):
         max_length=16,
         description="Override output language for digests and event notifications",
     )
-    prompt_summary: str | None = Field(
-        default=None,
-        description="Short user-facing summary; auto-generated from prompt if omitted",
-    )
-    short_label: str | None = Field(
-        default=None,
-        max_length=30,
-        description="Ultra-short 2-3 word label; derived from prompt_summary if omitted",
-    )
     format_instructions: str | None = Field(
         default=None,
         description="How the user wants to consume news; defaults to 'brief summary'",
@@ -71,9 +58,7 @@ class SubscriptionCreate(BaseModel):
 class SubscriptionResponse(BaseModel):
     id: uuid.UUID
     raw_prompt: str
-    canonical_prompt: str
-    short_label: str
-    prompt_summary: str
+    user_spec: str
     delivery_mode: DeliveryMode
     schedule_cron: str | None
     format_instructions: str

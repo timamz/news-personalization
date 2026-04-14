@@ -115,7 +115,6 @@ async def test_deliver_splits_long_message_into_multiple_sends() -> None:
         await client.close()
 
 
-
 @pytest.mark.asyncio
 async def test_deliver_rejects_invalid_token() -> None:
     client = await _make_webhook_client()

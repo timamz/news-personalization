@@ -1,355 +1,230 @@
 import logging
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from news_service.agents.subscription_parser import (
-    _execute_tool,
+    _build_system_prompt,
+    _source_display_name,
     run_conversation_turn,
     run_conversation_turn_streaming,
 )
-from news_service.schemas.conversation import (
-    AgentTurnOutput,
-    FinalizedSubscriptionConfig,
-)
+from news_service.schemas.conversation import ExistingSubscriptionContext
 
 logging.disable(logging.CRITICAL)
 
-_CHAT_COMPLETION_PATH = "news_service.agents.subscription_parser.chat_completion"
-
-
-def _mock_parsed_response(output: AgentTurnOutput) -> MagicMock:
-    msg = MagicMock()
-    msg.tool_calls = None
-    msg.parsed = output
-    choice = MagicMock()
-    choice.message = msg
-    response = MagicMock()
-    response.choices = [choice]
-    return response
-
-
-def _mock_tool_call_response(
-    tool_name: str, arguments: str, call_id: str | None = None
-) -> MagicMock:
-    tc = MagicMock()
-    tc.id = call_id or f"call_{uuid.uuid4().hex[:8]}"
-    tc.function.name = tool_name
-    tc.function.arguments = arguments
-    msg = MagicMock()
-    msg.tool_calls = [tc]
-    msg.content = None
-    msg.parsed = None
-    choice = MagicMock()
-    choice.message = msg
-    response = MagicMock()
-    response.choices = [choice]
-    return response
+_RUN_AGENT_PATH = "news_service.agents.subscription_parser.run_agent"
+_RUN_AGENT_STREAMING_PATH = "news_service.agents.subscription_parser.run_agent_streaming"
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_validate_source_url_valid(mocker) -> None:
-    mocker.patch(
-        "news_service.agents.subscription_parser._validate_source_url",
-        new=AsyncMock(return_value=True),
-    )
-    result = await _execute_tool(
-        "validate_source_url",
-        f'{{"url": "https://t.me/s/{uuid.uuid4().hex[:8]}", "source_kind": "telegram_channel"}}',
-    )
-    assert "valid" in result, "_execute_tool did not return valid indicator for valid source"
+async def test_run_conversation_turn_returns_in_progress_when_agent_does_not_finalize() -> None:
+    agent_reply = f"What kind of news? {uuid.uuid4().hex[:6]}"
 
+    with patch(_RUN_AGENT_PATH, new=AsyncMock(return_value=agent_reply)):
+        output, _new_messages = await run_conversation_turn(
+            [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
+            user_language="en",
+        )
 
-@pytest.mark.asyncio
-async def test_execute_tool_validate_source_url_invalid(mocker) -> None:
-    mocker.patch(
-        "news_service.agents.subscription_parser._validate_source_url",
-        new=AsyncMock(return_value=False),
+    assert output.status == "in_progress", (
+        "run_conversation_turn did not return in_progress when agent does not call finalize"
     )
-    result = await _execute_tool(
-        "validate_source_url",
-        f'{{"url": "https://t.me/s/{uuid.uuid4().hex[:8]}", "source_kind": "telegram_channel"}}',
-    )
-    assert "could not fetch" in result, (
-        "_execute_tool did not return failure indicator for invalid source"
+    assert output.message == agent_reply, (
+        "run_conversation_turn did not return the agent reply as message"
     )
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_unknown_returns_error() -> None:
-    result = await _execute_tool(f"unknown_tool_{uuid.uuid4().hex[:4]}", "{}")
-    assert "Unknown tool" in result, "_execute_tool did not return error for unknown tool name"
+async def test_run_conversation_turn_returns_one_new_message() -> None:
+    with patch(_RUN_AGENT_PATH, new=AsyncMock(return_value=f"question {uuid.uuid4().hex[:6]}")):
+        _output, new_messages = await run_conversation_turn(
+            [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
+            user_language="en",
+        )
+
+    assert len(new_messages) == 1, (
+        "run_conversation_turn did not produce exactly one assistant message"
+    )
+    assert new_messages[0]["role"] == "assistant", "new message role is not assistant"
 
 
 @pytest.mark.asyncio
-async def test_run_conversation_turn_returns_expected_output(mocker) -> None:
-    message_text = f"Какие новости вас интересуют? {uuid.uuid4().hex[:4]}"
-    expected = AgentTurnOutput(message=message_text, status="in_progress")
+async def test_run_conversation_turn_passes_finalized_config_via_tool() -> None:
+    async def fake_run_agent(*, agent, message, user_id="system"):
+        for tool in agent.tools:
+            if callable(tool) and getattr(tool, "__name__", "") == "finalize_subscription":
+                await tool(
+                    delivery_mode="digest",
+                    schedule_cron="0 8 * * *",
+                    digest_language="ru",
+                )
+                break
+        return f"Your subscription is ready! {uuid.uuid4().hex[:6]}"
 
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(return_value=_mock_parsed_response(expected)),
-    )
+    with patch(_RUN_AGENT_PATH, side_effect=fake_run_agent):
+        output, _new_messages = await run_conversation_turn(
+            [{"role": "user", "content": f"AI news every morning {uuid.uuid4().hex[:6]}"}],
+            user_language="ru",
+            user_timezone="Europe/Moscow",
+        )
 
-    output, _new_messages = await run_conversation_turn(
-        [{"role": "user", "content": f"Новости ИИ {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    )
-    assert output == expected, "run_conversation_turn did not return expected output"
-
-
-@pytest.mark.asyncio
-async def test_run_conversation_turn_returns_one_new_message(mocker) -> None:
-    expected = AgentTurnOutput(message=f"Вопрос {uuid.uuid4().hex[:4]}", status="in_progress")
-
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(return_value=_mock_parsed_response(expected)),
-    )
-
-    _output, new_messages = await run_conversation_turn(
-        [{"role": "user", "content": f"Новости ИИ {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    )
-    assert len(new_messages) == 1, "run_conversation_turn did not return exactly one new message"
-
-
-@pytest.mark.asyncio
-async def test_run_conversation_turn_finalized_has_ready_status(mocker) -> None:
-    config = FinalizedSubscriptionConfig(
-        prompt_summary=f"Дайджест новостей ИИ {uuid.uuid4().hex[:4]}",
-        short_label="ИИ Новости",
-        delivery_mode="digest",
-        schedule_cron="0 8 * * *",
-        manual_only=False,
-        format_instructions="краткое описание",
-        digest_language="ru",
-        include_discovered_sources=True,
-    )
-    expected = AgentTurnOutput(
-        message="Ваша подписка готова!", status="ready", finalized_config=config
-    )
-
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(return_value=_mock_parsed_response(expected)),
-    )
-
-    output, _new_messages = await run_conversation_turn(
-        [
-            {"role": "user", "content": f"Новости ИИ каждое утро {uuid.uuid4().hex[:4]}"},
-            {"role": "assistant", "content": "Понял!"},
-            {"role": "user", "content": "Да, найдите источники за меня"},
-        ],
-        user_language="ru",
-        user_timezone="Europe/Moscow",
-    )
     assert output.status == "ready", (
-        "run_conversation_turn did not return ready status for finalized config"
+        "run_conversation_turn did not return ready status after finalize tool call"
     )
-
-
-@pytest.mark.asyncio
-async def test_run_conversation_turn_finalized_has_cron(mocker) -> None:
-    config = FinalizedSubscriptionConfig(
-        prompt_summary=f"Дайджест {uuid.uuid4().hex[:4]}",
-        short_label="ИИ",
-        delivery_mode="digest",
-        schedule_cron="0 8 * * *",
-        manual_only=False,
-        format_instructions="краткое описание",
-        digest_language="ru",
-        include_discovered_sources=True,
-    )
-    expected = AgentTurnOutput(message="Готово!", status="ready", finalized_config=config)
-
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(return_value=_mock_parsed_response(expected)),
-    )
-
-    output, _new_messages = await run_conversation_turn(
-        [{"role": "user", "content": f"Каждое утро в 8 {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-        user_timezone="Europe/Moscow",
+    assert output.finalized_config is not None, (
+        "run_conversation_turn did not return finalized config"
     )
     assert output.finalized_config.schedule_cron == "0 8 * * *", (
-        "run_conversation_turn did not return correct schedule_cron in finalized config"
+        "finalized config did not preserve schedule_cron"
     )
 
 
 @pytest.mark.asyncio
-async def test_run_conversation_turn_handles_tool_calls_and_returns_final_output(mocker) -> None:
-    mocker.patch(
-        "news_service.agents.subscription_parser._validate_source_url",
-        new=AsyncMock(return_value=True),
-    )
+async def test_streaming_yields_done_event() -> None:
+    agent_text = f"What kind of news? {uuid.uuid4().hex[:6]}"
 
-    final_message = f"Канал проверен! {uuid.uuid4().hex[:4]}"
-    final_output = AgentTurnOutput(message=final_message, status="in_progress")
+    async def fake_stream(*, agent, message, user_id="system"):
+        yield {"type": "final_response", "text": agent_text}
 
-    tool_response = _mock_tool_call_response(
-        "validate_source_url",
-        f'{{"url": "https://t.me/s/{uuid.uuid4().hex[:8]}", "source_kind": "telegram_channel"}}',
-    )
-    final_response = _mock_parsed_response(final_output)
+    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+        events = []
+        async for ev in run_conversation_turn_streaming(
+            [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
+            user_language="en",
+        ):
+            events.append(ev)
 
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(side_effect=[tool_response, final_response]),
-    )
-
-    output, _new_messages = await run_conversation_turn(
-        [{"role": "user", "content": f"Добавьте канал @durov {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    )
-    assert output == final_output, (
-        "run_conversation_turn did not return final output after tool call"
-    )
-
-
-@pytest.mark.asyncio
-async def test_run_conversation_turn_tool_call_generates_three_messages(mocker) -> None:
-    mocker.patch(
-        "news_service.agents.subscription_parser._validate_source_url",
-        new=AsyncMock(return_value=True),
-    )
-
-    final_output = AgentTurnOutput(message="Канал проверен!", status="in_progress")
-    tool_response = _mock_tool_call_response(
-        "validate_source_url",
-        f'{{"url": "https://t.me/s/{uuid.uuid4().hex[:8]}", "source_kind": "telegram_channel"}}',
-    )
-    final_response = _mock_parsed_response(final_output)
-
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(side_effect=[tool_response, final_response]),
-    )
-
-    _output, new_messages = await run_conversation_turn(
-        [{"role": "user", "content": f"Добавьте канал {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    )
-    assert len(new_messages) == 3, (
-        "run_conversation_turn did not produce three messages for tool call flow"
-    )
-
-
-@pytest.mark.asyncio
-async def test_run_conversation_turn_raises_on_empty_response(mocker) -> None:
-    msg = MagicMock()
-    msg.tool_calls = None
-    msg.parsed = None
-    choice = MagicMock()
-    choice.message = msg
-    response = MagicMock()
-    response.choices = [choice]
-
-    mocker.patch(_CHAT_COMPLETION_PATH, new=AsyncMock(return_value=response))
-
-    with pytest.raises(ValueError):
-        await run_conversation_turn([{"role": "user", "content": f"тест {uuid.uuid4().hex[:4]}"}])
-
-
-@pytest.mark.asyncio
-async def test_streaming_yields_done_event(mocker) -> None:
-    message_text = f"Какие новости? {uuid.uuid4().hex[:4]}"
-    expected = AgentTurnOutput(message=message_text, status="in_progress")
-
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(return_value=_mock_parsed_response(expected)),
-    )
-
-    events = []
-    async for ev in run_conversation_turn_streaming(
-        [{"role": "user", "content": f"Новости ИИ {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    ):
-        events.append(ev)
-
+    assert len(events) == 1, "streaming did not yield exactly one event"
     assert events[0]["event"] == "done", "streaming did not yield a done event"
 
 
 @pytest.mark.asyncio
-async def test_streaming_done_event_contains_message(mocker) -> None:
-    message_text = f"Какие новости? {uuid.uuid4().hex[:4]}"
-    expected = AgentTurnOutput(message=message_text, status="in_progress")
+async def test_streaming_done_event_contains_agent_message() -> None:
+    agent_text = f"What kind of schedule? {uuid.uuid4().hex[:6]}"
 
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(return_value=_mock_parsed_response(expected)),
-    )
+    async def fake_stream(*, agent, message, user_id="system"):
+        yield {"type": "final_response", "text": agent_text}
 
-    events = []
-    async for ev in run_conversation_turn_streaming(
-        [{"role": "user", "content": f"Новости ИИ {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    ):
-        events.append(ev)
+    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+        events = []
+        async for ev in run_conversation_turn_streaming(
+            [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
+            user_language="en",
+        ):
+            events.append(ev)
 
-    assert events[0]["output"]["message"] == message_text, (
-        "streaming done event did not contain expected message"
+    assert events[0]["output"]["message"] == agent_text, (
+        "streaming done event did not contain expected agent message"
     )
 
 
 @pytest.mark.asyncio
-async def test_streaming_yields_status_event_for_tool_call(mocker) -> None:
-    mocker.patch(
-        "news_service.agents.subscription_parser._validate_source_url",
-        new=AsyncMock(return_value=True),
+async def test_streaming_yields_status_event_for_validate_source_tool_call() -> None:
+    async def fake_stream(*, agent, message, user_id="system"):
+        yield {
+            "type": "tool_call",
+            "name": "validate_source",
+            "args": {"url": "https://t.me/s/durov", "source_kind": "telegram_channel"},
+        }
+        yield {"type": "final_response", "text": "Channel verified!"}
+
+    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+        events = []
+        async for ev in run_conversation_turn_streaming(
+            [{"role": "user", "content": f"Add @durov {uuid.uuid4().hex[:6]}"}],
+            user_language="en",
+        ):
+            events.append(ev)
+
+    assert events[0]["event"] == "status", (
+        "streaming did not yield status event for validate_source tool call"
     )
-
-    final_output = AgentTurnOutput(message="Канал проверен!", status="in_progress")
-    tool_response = _mock_tool_call_response(
-        "validate_source_url",
-        '{"url": "https://t.me/s/durov", "source_kind": "telegram_channel"}',
+    assert events[0]["status_key"] == "status_checking_source", (
+        "status event did not have expected status_key"
     )
-    final_response = _mock_parsed_response(final_output)
-
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(side_effect=[tool_response, final_response]),
-    )
-
-    events = []
-    async for ev in run_conversation_turn_streaming(
-        [{"role": "user", "content": f"Добавьте @durov {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    ):
-        events.append(ev)
-
-    assert events[0]["event"] == "status", "streaming did not yield status event before tool call"
 
 
 @pytest.mark.asyncio
-async def test_streaming_tool_call_flow_yields_done_event_last(mocker) -> None:
-    mocker.patch(
-        "news_service.agents.subscription_parser._validate_source_url",
-        new=AsyncMock(return_value=True),
-    )
+async def test_streaming_tool_call_flow_yields_done_last() -> None:
+    async def fake_stream(*, agent, message, user_id="system"):
+        yield {
+            "type": "tool_call",
+            "name": "validate_source",
+            "args": {"url": "https://t.me/s/durov", "source_kind": "telegram_channel"},
+        }
+        yield {"type": "final_response", "text": "Channel verified!"}
 
-    final_output = AgentTurnOutput(message="Канал проверен!", status="in_progress")
-    tool_response = _mock_tool_call_response(
-        "validate_source_url",
-        '{"url": "https://t.me/s/durov", "source_kind": "telegram_channel"}',
-    )
-    final_response = _mock_parsed_response(final_output)
-
-    mocker.patch(
-        _CHAT_COMPLETION_PATH,
-        new=AsyncMock(side_effect=[tool_response, final_response]),
-    )
-
-    events = []
-    async for ev in run_conversation_turn_streaming(
-        [{"role": "user", "content": f"Добавьте @durov {uuid.uuid4().hex[:4]}"}],
-        user_language="ru",
-    ):
-        events.append(ev)
+    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+        events = []
+        async for ev in run_conversation_turn_streaming(
+            [{"role": "user", "content": f"Add @durov {uuid.uuid4().hex[:6]}"}],
+            user_language="en",
+        ):
+            events.append(ev)
 
     assert events[-1]["event"] == "done", (
         "streaming tool call flow did not yield done event as last event"
     )
+
+
+@pytest.mark.asyncio
+async def test_streaming_yields_error_event_on_agent_failure() -> None:
+    async def fake_stream(*, agent, message, user_id="system"):
+        raise RuntimeError(f"Agent crashed {uuid.uuid4().hex[:6]}")
+        yield  # make it a generator
+
+    with patch(_RUN_AGENT_STREAMING_PATH, side_effect=fake_stream):
+        events = []
+        async for ev in run_conversation_turn_streaming(
+            [{"role": "user", "content": f"Test {uuid.uuid4().hex[:6]}"}],
+        ):
+            events.append(ev)
+
+    assert events[0]["event"] == "error", "streaming did not yield error event on agent failure"
+
+
+def test_source_display_name_telegram_channel() -> None:
+    result = _source_display_name(f"https://t.me/s/{uuid.uuid4().hex[:8]}", "telegram_channel")
+    assert result.startswith("@"), "telegram display name does not start with @"
+
+
+def test_source_display_name_reddit_subreddit() -> None:
+    subreddit = uuid.uuid4().hex[:8]
+    result = _source_display_name(f"https://www.reddit.com/r/{subreddit}/new/", "reddit_subreddit")
+    assert result == f"r/{subreddit}", "reddit display name not formatted as r/name"
+
+
+def test_source_display_name_twitter_account() -> None:
+    handle = uuid.uuid4().hex[:8]
+    result = _source_display_name(f"https://x.com/{handle}", "twitter_account")
+    assert result == f"x.com/{handle}", "twitter display name not formatted as x.com/handle"
+
+
+def test_build_system_prompt_includes_user_language() -> None:
+    lang = f"lang_{uuid.uuid4().hex[:4]}"
+    prompt = _build_system_prompt(user_language=lang, user_timezone=None)
+    assert lang in prompt, "system prompt does not include user language"
+
+
+def test_build_system_prompt_includes_conversation_history() -> None:
+    marker = uuid.uuid4().hex[:8]
+    history = [{"role": "user", "content": f"previous message {marker}"}]
+    prompt = _build_system_prompt(
+        user_language=None, user_timezone=None, conversation_history=history
+    )
+    assert marker in prompt, "system prompt does not include conversation history"
+
+
+def test_build_system_prompt_includes_edit_context() -> None:
+    existing = ExistingSubscriptionContext(
+        subscription_id=str(uuid.uuid4()),
+        user_spec=f"## Topic\nEditing test {uuid.uuid4().hex[:6]}",
+        delivery_mode="digest",
+        schedule_cron="0 8 * * *",
+        format_instructions="brief summary",
+        digest_language="en",
+    )
+    prompt = _build_system_prompt(user_language=None, user_timezone=None, existing_config=existing)
+    assert "EXISTING subscription" in prompt, "system prompt does not include edit context"

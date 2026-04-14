@@ -12,11 +12,10 @@ from typing import Any
 
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from news_service.agents.adk_runner import run_agent
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
 from news_service.models.subscription import Subscription
@@ -119,7 +118,6 @@ def create_conversational_agent(
         sub = Subscription(
             user_id=user.id,
             raw_prompt=shared_state["new_user_spec"][:500],
-            canonical_prompt=shared_state["new_user_spec"][:500],
             delivery_mode=delivery_mode,
             schedule_cron=schedule_cron or None,
             digest_language=digest_language,
@@ -180,21 +178,22 @@ def create_conversational_agent(
             return f"Source {url} ({source_kind}): validation error: {exc}"
 
     async def discover_sources(topic: str) -> str:
-        """Trigger automatic source discovery for a subscription topic.
+        """Signal that automatic source discovery should run after this conversation turn.
 
-        This runs the source discovery pipeline in the background to find
-        relevant RSS feeds, Telegram channels, Reddit subreddits, etc.
+        This does NOT execute discovery immediately. It sets a flag so the caller
+        knows to kick off the discovery pipeline after the turn completes.
 
         Args:
             topic: The topic to find sources for (from user_spec).
 
         Returns:
-            Confirmation that discovery was triggered.
+            Confirmation that the discovery request was recorded.
         """
         shared_state["discovery_triggered"] = True
+        shared_state["discovery_topic"] = topic
         return (
-            "Source discovery triggered. "
-            "I'll search for relevant sources and add them to your subscription."
+            "Source discovery request recorded. "
+            "The system will search for relevant sources after this conversation turn."
         )
 
     async def list_subscriptions() -> str:
@@ -216,7 +215,7 @@ def create_conversational_agent(
             return "No active subscriptions."
         lines = []
         for s in subs:
-            topic = (s.user_spec or s.canonical_prompt or s.raw_prompt)[:80]
+            topic = (s.user_spec or s.raw_prompt)[:80]
             lines.append(
                 f"- [{s.id}] {s.delivery_mode}: {topic} "
                 f"(schedule: {s.schedule_cron or 'event mode'})"
@@ -316,35 +315,11 @@ async def run_conversational_turn(
         subscription_id=subscription_id,
     )
 
-    session_service = InMemorySessionService()
-    run_id = uuid.uuid4().hex[:12]
-    await session_service.create_session(
-        app_name="conversational",
-        user_id=str(user.id),
-        session_id=run_id,
-    )
-
-    runner = Runner(
+    agent_message = await run_agent(
         agent=agent,
-        app_name="conversational",
-        session_service=session_service,
-    )
-
-    message = types.Content(
-        role="user",
-        parts=[types.Part(text=user_message)],
-    )
-
-    agent_message = ""
-    async for event in runner.run_async(
+        message=user_message,
         user_id=str(user.id),
-        session_id=run_id,
-        new_message=message,
-    ):
-        if event.is_final_response():
-            if event.content and event.content.parts:
-                agent_message = event.content.parts[0].text or ""
-            break
+    )
 
     return {
         "agent_message": agent_message,

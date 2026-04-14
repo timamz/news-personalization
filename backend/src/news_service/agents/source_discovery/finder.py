@@ -16,11 +16,10 @@ from typing import Any
 
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from news_service.agents.adk_runner import run_agent
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_text, find_similar_sources
 from news_service.services.relevance import score_candidate
@@ -150,32 +149,10 @@ async def run_finder(
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 
-    session_service = InMemorySessionService()
-    run_id = uuid.uuid4().hex[:12]
-    await session_service.create_session(
-        app_name="source_finder",
-        user_id="system",
-        session_id=run_id,
-    )
-
-    runner = Runner(
+    await run_agent(
         agent=agent,
-        app_name="source_finder",
-        session_service=session_service,
+        message=f"Execute this search strategy:\n{strategy}",
     )
-
-    message = types.Content(
-        role="user",
-        parts=[types.Part(text=f"Execute this search strategy:\n{strategy}")],
-    )
-
-    async for event in runner.run_async(
-        user_id="system",
-        session_id=run_id,
-        new_message=message,
-    ):
-        if event.is_final_response():
-            break
 
     logger.info(
         "Finder completed strategy '%s' — found %d sources",

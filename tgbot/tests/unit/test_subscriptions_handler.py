@@ -16,9 +16,7 @@ def _make_bot() -> SimpleNamespace:
     return SimpleNamespace(
         edit_message_text=AsyncMock(),
         delete_message=AsyncMock(),
-        send_message=AsyncMock(
-            return_value=SimpleNamespace(message_id=random.randint(50, 200))
-        ),
+        send_message=AsyncMock(return_value=SimpleNamespace(message_id=random.randint(50, 200))),
     )
 
 
@@ -155,13 +153,9 @@ async def test_handle_edit_cancel_clears_state(monkeypatch) -> None:
 
     monkeypatch.setattr(subscriptions, "get_ui_language", AsyncMock(return_value="en"))
     monkeypatch.setattr(subscriptions, "ensure_api_key", AsyncMock(return_value="api-key"))
-    monkeypatch.setattr(
-        subscriptions.backend, "cancel_subscription_conversation", AsyncMock()
-    )
+    monkeypatch.setattr(subscriptions.backend, "cancel_subscription_conversation", AsyncMock())
 
     with patch("tgbot.handlers.menu.show_subscription_detail", new_callable=AsyncMock):
         await subscriptions.handle_edit_cancel(callback, state)
 
-    state.clear.assert_awaited_once(), (
-        "handle_edit_cancel did not clear the state"
-    )
+    state.clear.assert_awaited_once(), ("handle_edit_cancel did not clear the state")

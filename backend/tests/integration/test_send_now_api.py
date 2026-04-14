@@ -47,7 +47,6 @@ async def _create_user_and_subscription(
             "prompt": "AI updates every morning in a brief summary",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": delivery_mode,
-            "prompt_summary": "AI updates",
             "schedule_cron_override": "0 8 * * *",
             "format_instructions": "brief summary",
             "digest_language_override": "en",

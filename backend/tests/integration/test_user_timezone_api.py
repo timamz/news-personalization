@@ -74,7 +74,6 @@ async def test_create_subscription_rejects_schedule_without_timezone(
         json={
             "prompt": "AI updates every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
-            "prompt_summary": "AI updates",
             "schedule_cron_override": "0 8 * * *",
             "format_instructions": "brief summary",
             "digest_language_override": "en",

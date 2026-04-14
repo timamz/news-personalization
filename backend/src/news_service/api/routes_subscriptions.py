@@ -219,20 +219,13 @@ async def _create_subscription_streaming(
 
     # --- embedding ---
     yield {"event": "status", "status_key": "status_analyzing"}
-    canonical_prompt = payload.canonical_prompt or payload.prompt
-    canonical_prompt_embedding = await _subscription_prompt_embedding(canonical_prompt)
-    prompt_summary = payload.prompt_summary or " ".join(payload.prompt.split())[:140]
-    short_label = payload.short_label or prompt_summary[:30]
+    topic_embedding = await _subscription_prompt_embedding(payload.prompt)
 
     subscription = Subscription(
         user_id=user.id,
         raw_prompt=payload.prompt,
-        canonical_prompt=canonical_prompt,
-        canonical_prompt_embedding=canonical_prompt_embedding,
-        topic_embedding=canonical_prompt_embedding,
-        prompt_summary=prompt_summary,
-        short_label=short_label,
-        user_spec=f"## Topic\n{canonical_prompt}",
+        topic_embedding=topic_embedding,
+        user_spec=f"## Topic\n{payload.prompt}",
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         format_instructions=payload.format_instructions or "brief summary",
@@ -263,9 +256,7 @@ async def _create_subscription_streaming(
         queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
         discovery_task = asyncio.create_task(
-            ensure_prompt_coverage(
-                session, payload.prompt, canonical_prompt_embedding, status_queue=queue
-            )
+            ensure_prompt_coverage(session, payload.prompt, topic_embedding, status_queue=queue)
         )
 
         # Drain status events from the queue while discovery runs
@@ -444,13 +435,7 @@ async def apply_subscription_config(
             detail="Subscription is inactive",
         )
 
-    # Update prompt and re-embed
-    subscription.canonical_prompt = payload.canonical_prompt.strip()
-    subscription.canonical_prompt_embedding = await _subscription_prompt_embedding(
-        subscription.canonical_prompt
-    )
-    subscription.prompt_summary = payload.prompt_summary.strip()
-    subscription.short_label = payload.short_label.strip()
+    # Update format and language
     subscription.format_instructions = payload.format_instructions.strip()
     subscription.digest_language = payload.digest_language
 

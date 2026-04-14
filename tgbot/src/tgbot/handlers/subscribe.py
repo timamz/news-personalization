@@ -231,6 +231,9 @@ async def _send_user_message(
     state_data = await state.get_data()
     conversation_id = state_data.get("conversation_id")
 
+    if not conversation_id:
+        await state.update_data(first_user_message=text)
+
     # Send initial status message with animated emoji
     status_msg = await _send_status(event, t(ui_language, "status_thinking"))
 
@@ -325,8 +328,6 @@ async def _create_subscription_from_config(
         "manual_only": config.get("manual_only", False),
         "delivery_mode": config.get("delivery_mode", "digest"),
         "digest_language": config.get("digest_language"),
-        "prompt_summary": config.get("prompt_summary"),
-        "short_label": config.get("short_label"),
         "format_instructions": config.get("format_instructions"),
     }
 
@@ -341,7 +342,8 @@ async def _create_subscription_from_config(
     if twitter_accounts:
         create_kwargs["fixed_twitter_accounts"] = twitter_accounts
 
-    prompt = config.get("prompt_summary", "")
+    state_data_for_prompt = await state.get_data()
+    prompt = state_data_for_prompt.get("first_user_message", turn.agent_message[:200])
     subscription_data: dict | None = None
     try:
         async for event_data in backend.create_subscription_stream(
@@ -387,7 +389,7 @@ async def _create_subscription_from_config(
         await state.update_data(created_subscription_id=subscription.id)
         await state.set_state(SubscribeFlow.waiting_for_recent_events_decision)
         text = (
-            t(ui_language, completion_key, prompt_summary=subscription.prompt_summary)
+            t(ui_language, completion_key, prompt_summary=subscription.display_label)
             + "\n\n"
             + t(ui_language, "show_recent_events_prompt")
         )
@@ -395,7 +397,7 @@ async def _create_subscription_from_config(
         return
 
     await state.clear()
-    text = t(ui_language, completion_key, prompt_summary=subscription.prompt_summary)
+    text = t(ui_language, completion_key, prompt_summary=subscription.display_label)
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [back_button(ui_language, M_SUBS)],

@@ -53,7 +53,7 @@ def _make_subscription(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         raw_prompt=f"Новости ИИ {uuid.uuid4().hex[:4]}",
-        prompt_summary=f"Дайджест {uuid.uuid4().hex[:4]}",
+        user_spec=f"## Topic\nНовости ИИ {uuid.uuid4().hex[:4]}",
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         format_instructions="краткое описание",

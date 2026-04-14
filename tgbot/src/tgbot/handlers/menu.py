@@ -178,7 +178,7 @@ async def show_subscription_list(event: types.Message | CallbackQuery, state: FS
 
     buttons: list[list[InlineKeyboardButton]] = []
     for sub in subs:
-        label = sub.short_label or sub.prompt_summary
+        label = sub.display_label
         if len(label) > 28:
             label = label[:25] + "..."
         buttons.append(
@@ -236,8 +236,8 @@ async def show_subscription_detail(
     text = t(
         lang,
         "subscription_detail",
-        prompt_summary=sub.prompt_summary,
-        canonical_prompt=sub.canonical_prompt or sub.raw_prompt or "",
+        prompt_summary=sub.display_label,
+        canonical_prompt=sub.topic,
         type=mode_label,
         language=interface_language_name(lang, sub.digest_language),
     )

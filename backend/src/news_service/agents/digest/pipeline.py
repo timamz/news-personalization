@@ -31,7 +31,7 @@ _MAX_REVISIONS = 2
 
 
 def _effective_prompt(subscription: Subscription) -> str:
-    """Extract the topic text used for embedding, preferring user_spec."""
+    """Extract the topic text used for embedding from user_spec."""
     if subscription.user_spec:
         for line in subscription.user_spec.split("\n"):
             stripped = line.strip()
@@ -41,7 +41,7 @@ def _effective_prompt(subscription: Subscription) -> str:
                 break
             if stripped:
                 return stripped
-    return subscription.canonical_prompt or subscription.raw_prompt
+    return subscription.raw_prompt
 
 
 async def generate_digest(session: AsyncSession, subscription: Subscription) -> str | None:
@@ -74,14 +74,14 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
         )
         return None
 
-    query_embedding = subscription.topic_embedding or subscription.canonical_prompt_embedding
+    query_embedding = subscription.topic_embedding
     if query_embedding is None:
         query_text = _effective_prompt(subscription)
         query_embedding = await embed_text(query_text)
         subscription.topic_embedding = query_embedding
 
     published_after = _published_after_for_digest(last_sent_at)
-    user_spec = subscription.user_spec or subscription.canonical_prompt or ""
+    user_spec = subscription.user_spec or ""
 
     # --- Stage 1: Fetch candidates (no LLM) ---
     candidates = await fetch_candidate_items(

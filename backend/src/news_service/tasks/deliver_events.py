@@ -142,7 +142,7 @@ async def _assess_and_deliver_for_subscription(
         for entry in history
     ]
 
-    user_spec = subscription.user_spec or subscription.canonical_prompt
+    user_spec = subscription.user_spec
 
     items_for_llm = [
         {

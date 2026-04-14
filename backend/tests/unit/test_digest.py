@@ -27,11 +27,8 @@ def _make_subscription(
     return SimpleNamespace(
         id=uuid.uuid4(),
         raw_prompt=prompt,
-        canonical_prompt=prompt,
-        canonical_prompt_embedding=embedding,
         topic_embedding=embedding,
         user_spec=f"## Topic\n{prompt}",
-        prompt_summary=f"Краткое: {prompt[:20]}",
         format_instructions=format_instructions,
         digest_language=digest_language,
     )
