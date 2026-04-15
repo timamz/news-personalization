@@ -123,9 +123,28 @@ All endpoints that involve LLM processing use **NDJSON streaming** (`application
 - Use `Pydantic v2` for all data validation and serialization.
 
 ### Error Handling
+
+Three tiers for pipeline stages:
+
+1. **Critical (must succeed)**: Planner, Composer, Batch Assessor.
+   - Raise `DigestPipelineError` / `EventPipelineError` (from `core/exceptions.py`) after retries are exhausted.
+   - Let the Celery task handle retry/abort decisions.
+   - Never silently return None for a critical failure.
+
+2. **Quality gate (best-effort)**: Judge.
+   - If the judge fails, log a warning and use the unreviewed draft.
+   - Never block the pipeline on a quality gate failure.
+
+3. **Non-blocking (nice-to-have)**: Reflector, tracing, observability.
+   - Log and swallow. Never let these failures affect the user.
+
+General rules:
 - Fail loudly and early. Raise specific exceptions, not bare `Exception`.
 - Never silently swallow errors. Log then re-raise or handle explicitly.
 - External calls (LLM, SearXNG, RSS/Telegram sources, DB) must have explicit timeout and retry logic.
+- Use `@with_llm_retry()` for LLM calls; the decorator handles transient errors.
+- After retries are exhausted, raise a typed exception (never bare `Exception`).
+- Broad `except Exception` is acceptable only at task boundaries (Celery tasks, API route handlers) where you must prevent an unhandled crash.
 
 ---
 

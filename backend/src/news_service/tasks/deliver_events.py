@@ -18,6 +18,7 @@ from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
+from news_service.orchestration.guardrails import validate_notification_body
 from news_service.services.delivery import get_delivery_channel
 from news_service.services.event_notifications import load_recent_notification_history
 from news_service.tasks.celery_app import celery_app
@@ -188,9 +189,16 @@ async def _assess_and_deliver_for_subscription(
             logger.warning("Relevant item %s has empty notification body", assessment.item_id)
             continue
 
+        validated_body = validate_notification_body(
+            assessment.notification_body,
+            is_relevant=assessment.is_relevant,
+        )
+        if validated_body is None:
+            continue
+
         channel = get_delivery_channel(subscription.delivery_webhook_url)
         try:
-            await channel.send("", assessment.notification_body)
+            await channel.send("", validated_body)
             session.add(SentItem(subscription_id=subscription.id, news_item_id=item.id))
             await session.commit()
             delivered += 1

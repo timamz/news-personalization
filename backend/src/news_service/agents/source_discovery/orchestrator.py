@@ -42,12 +42,18 @@ Return only the list of strategy strings. No commentary.
 
 
 @with_llm_retry()
-async def plan_discovery(topic: str) -> DiscoveryPlan:
+async def plan_discovery(topic: str, removal_history: str = "") -> DiscoveryPlan:
     """Analyze a topic and produce a list of search strategies."""
+    user_content = f"Topic: {topic}"
+    if removal_history:
+        user_content += (
+            f"\n\nRecently removed sources (use judgment about re-adding):\n{removal_history}"
+        )
+
     completion = await chat_completion(
         messages=[
             {"role": "system", "content": ORCHESTRATOR_PROMPT},
-            {"role": "user", "content": f"Topic: {topic}"},
+            {"role": "user", "content": user_content},
         ],
         response_format=DiscoveryPlan,
         temperature=0.2,

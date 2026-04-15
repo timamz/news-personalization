@@ -1,14 +1,15 @@
+"""Tests for the poll_feeds task and the generic polling loop."""
+
 import logging
 import uuid
 from datetime import UTC
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
 from news_service.models.source import Source
-from news_service.tasks import poll_feeds
+from news_service.tasks import poll_adapters, poll_feeds
 
 logging.disable(logging.CRITICAL)
 
@@ -82,8 +83,8 @@ async def test_fetch_rss_feed_content_returns_bytes_after_retry() -> None:
     mock_http.__aenter__ = AsyncMock(return_value=mock_http)
     mock_http.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("news_service.tasks.poll_feeds.httpx.AsyncClient", return_value=mock_http):
-        content = await poll_feeds._fetch_rss_feed_content(
+    with patch("news_service.tasks.poll_adapters.httpx.AsyncClient", return_value=mock_http):
+        content = await poll_adapters._fetch_rss_feed_content(
             f"https://example.com/{uuid.uuid4().hex}.xml"
         )
 
@@ -101,8 +102,8 @@ async def test_fetch_rss_feed_content_retries_on_read_timeout() -> None:
     mock_http.__aenter__ = AsyncMock(return_value=mock_http)
     mock_http.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("news_service.tasks.poll_feeds.httpx.AsyncClient", return_value=mock_http):
-        await poll_feeds._fetch_rss_feed_content(f"https://example.com/{uuid.uuid4().hex}.xml")
+    with patch("news_service.tasks.poll_adapters.httpx.AsyncClient", return_value=mock_http):
+        await poll_adapters._fetch_rss_feed_content(f"https://example.com/{uuid.uuid4().hex}.xml")
 
     assert mock_http.get.await_count == 2, "fetcher did not retry after read timeout"
 
@@ -110,21 +111,22 @@ async def test_fetch_rss_feed_content_retries_on_read_timeout() -> None:
 @pytest.mark.asyncio
 async def test_poll_single_rss_source_returns_one_for_single_entry(mocker) -> None:
     src = _make_rss_source()
-    parsed_feed = SimpleNamespace(
-        entries=[
-            {
-                "title": "Новая лекция по палеонтологии",
-                "summary": "Лекция пройдёт в четверг вечером.",
-                "link": f"https://example.com/posts/{uuid.uuid4().hex}",
-            }
-        ]
+
+    xml = (
+        '<?xml version="1.0"?><rss version="2.0"><channel>'
+        "<item>"
+        "<title>Новая лекция по палеонтологии</title>"
+        f"<link>https://example.com/posts/{uuid.uuid4().hex}</link>"
+        "<summary>Лекция пройдёт в четверг вечером.</summary>"
+        "</item>"
+        "</channel></rss>"
     )
+
     mocker.patch.object(
-        poll_feeds,
+        poll_adapters,
         "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=b"<rss />"),
+        new=AsyncMock(return_value=xml.encode()),
     )
-    mocker.patch.object(poll_feeds.feedparser, "parse", return_value=parsed_feed)
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
 
@@ -134,76 +136,24 @@ async def test_poll_single_rss_source_returns_one_for_single_entry(mocker) -> No
 
 
 @pytest.mark.asyncio
-async def test_poll_single_rss_source_calls_fetch_content_with_source_url(mocker) -> None:
-    src = _make_rss_source()
-    parsed_feed = SimpleNamespace(
-        entries=[
-            {
-                "title": "Заголовок",
-                "summary": "Текст новости",
-                "link": f"https://example.com/{uuid.uuid4().hex}",
-            }
-        ]
-    )
-    fetch_content = mocker.patch.object(
-        poll_feeds,
-        "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=b"<rss />"),
-    )
-    mocker.patch.object(poll_feeds.feedparser, "parse", return_value=parsed_feed)
-    mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
-    mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
-
-    await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
-
-    assert fetch_content.await_args[0][0] == src.url, "fetch was not called with the source url"
-
-
-@pytest.mark.asyncio
-async def test_poll_single_rss_source_passes_raw_bytes_to_feedparser(mocker) -> None:
-    src = _make_rss_source()
-    raw_bytes = f"<rss>{uuid.uuid4().hex}</rss>".encode()
-    parsed_feed = SimpleNamespace(
-        entries=[
-            {
-                "title": "Заголовок",
-                "summary": "Текст",
-                "link": f"https://example.com/{uuid.uuid4().hex}",
-            }
-        ]
-    )
-    mocker.patch.object(
-        poll_feeds,
-        "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=raw_bytes),
-    )
-    parse_feed = mocker.patch.object(poll_feeds.feedparser, "parse", return_value=parsed_feed)
-    mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
-    mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
-
-    await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
-
-    assert parse_feed.call_args[0][0] == raw_bytes, "feedparser was not called with raw bytes"
-
-
-@pytest.mark.asyncio
 async def test_poll_single_rss_source_calls_upsert_for_each_entry(mocker) -> None:
     src = _make_rss_source()
-    parsed_feed = SimpleNamespace(
-        entries=[
-            {
-                "title": "Статья",
-                "summary": "Текст статьи",
-                "link": f"https://example.com/{uuid.uuid4().hex}",
-            }
-        ]
+
+    xml = (
+        '<?xml version="1.0"?><rss version="2.0"><channel>'
+        "<item>"
+        "<title>Статья</title>"
+        f"<link>https://example.com/{uuid.uuid4().hex}</link>"
+        "<summary>Текст статьи</summary>"
+        "</item>"
+        "</channel></rss>"
     )
+
     mocker.patch.object(
-        poll_feeds,
+        poll_adapters,
         "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=b"<rss />"),
+        new=AsyncMock(return_value=xml.encode()),
     )
-    mocker.patch.object(poll_feeds.feedparser, "parse", return_value=parsed_feed)
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     upsert_news_item = AsyncMock(return_value=object())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert_news_item)
@@ -216,21 +166,22 @@ async def test_poll_single_rss_source_calls_upsert_for_each_entry(mocker) -> Non
 @pytest.mark.asyncio
 async def test_poll_single_rss_source_sets_last_polled_at(mocker) -> None:
     src = _make_rss_source()
-    parsed_feed = SimpleNamespace(
-        entries=[
-            {
-                "title": "Заголовок",
-                "summary": "Текст",
-                "link": f"https://example.com/{uuid.uuid4().hex}",
-            }
-        ]
+
+    xml = (
+        '<?xml version="1.0"?><rss version="2.0"><channel>'
+        "<item>"
+        "<title>Заголовок</title>"
+        f"<link>https://example.com/{uuid.uuid4().hex}</link>"
+        "<summary>Текст</summary>"
+        "</item>"
+        "</channel></rss>"
     )
+
     mocker.patch.object(
-        poll_feeds,
+        poll_adapters,
         "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=b"<rss />"),
+        new=AsyncMock(return_value=xml.encode()),
     )
-    mocker.patch.object(poll_feeds.feedparser, "parse", return_value=parsed_feed)
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
 
@@ -242,21 +193,22 @@ async def test_poll_single_rss_source_sets_last_polled_at(mocker) -> None:
 @pytest.mark.asyncio
 async def test_poll_single_rss_source_sets_last_polled_at_with_utc_timezone(mocker) -> None:
     src = _make_rss_source()
-    parsed_feed = SimpleNamespace(
-        entries=[
-            {
-                "title": "Заголовок",
-                "summary": "Текст",
-                "link": f"https://example.com/{uuid.uuid4().hex}",
-            }
-        ]
+
+    xml = (
+        '<?xml version="1.0"?><rss version="2.0"><channel>'
+        "<item>"
+        "<title>Заголовок</title>"
+        f"<link>https://example.com/{uuid.uuid4().hex}</link>"
+        "<summary>Текст</summary>"
+        "</item>"
+        "</channel></rss>"
     )
+
     mocker.patch.object(
-        poll_feeds,
+        poll_adapters,
         "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=b"<rss />"),
+        new=AsyncMock(return_value=xml.encode()),
     )
-    mocker.patch.object(poll_feeds.feedparser, "parse", return_value=parsed_feed)
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
 

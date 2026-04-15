@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -12,6 +13,7 @@ from news_service.agents.discovery import SourceKind
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_text
 from news_service.models.source import Source
+from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.source_descriptions import describe_source
 from news_service.services.telegram import build_telegram_channel_url
@@ -34,15 +36,21 @@ async def ensure_prompt_coverage(
     session: AsyncSession,
     raw_prompt: str,
     prompt_embedding: list[float],
+    subscription_id: uuid.UUID | None = None,
     status_queue: object | None = None,
 ) -> list[Source]:
     from news_service.agents.source_discovery import run_source_discovery
+
+    removal_history = ""
+    if subscription_id is not None:
+        removal_history = await _build_removal_history(session, subscription_id)
 
     try:
         result = await run_source_discovery(
             session=session,
             raw_prompt=raw_prompt,
             prompt_embedding=prompt_embedding,
+            removal_history=removal_history,
             status_queue=status_queue,
         )
     except Exception:
@@ -152,3 +160,28 @@ async def _build_source_profile(
     )
     embedding = await embed_text(description)
     return description, embedding
+
+
+async def _build_removal_history(
+    session: AsyncSession,
+    subscription_id: uuid.UUID,
+) -> str:
+    """Build a formatted removal history string for the discovery pipeline."""
+    result = await session.execute(
+        select(SourceRemovalLog)
+        .where(SourceRemovalLog.subscription_id == subscription_id)
+        .order_by(SourceRemovalLog.removed_at.desc())
+        .limit(20)
+    )
+    entries = list(result.scalars().all())
+    if not entries:
+        return ""
+
+    now = datetime.now(UTC)
+    lines: list[str] = []
+    for entry in entries:
+        days_ago = (now - entry.removed_at).days
+        reason = entry.removal_reason or "unknown"
+        lines.append(f"- {entry.source_url} — removed {days_ago} days ago (reason: {reason})")
+
+    return "\n".join(lines)

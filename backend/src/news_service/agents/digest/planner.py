@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
+from news_service.orchestration.guardrails import sanitize_for_llm_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ async def plan_digest(
 ) -> DigestPlan:
     """Create a digest plan from user preferences and available candidates."""
     user_message = (
-        f"User preferences:\n{user_spec}\n\n"
+        f"User preferences:\n{sanitize_for_llm_prompt('user-preferences', user_spec)}\n\n"
         f"Digest language: {digest_language}\n"
         f"Format: {format_instructions}\n\n"
         f"Available candidates:\n{items_text}"

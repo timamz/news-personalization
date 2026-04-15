@@ -21,6 +21,7 @@ from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
+from news_service.models.user_spec import UserSpecSections, render_user_spec
 from news_service.schemas.conversation import FinalizedSubscriptionConfig
 from news_service.schemas.subscription import (
     RecentEventAcknowledgeRequest,
@@ -226,7 +227,7 @@ async def _create_subscription_streaming(
         user_id=user.id,
         raw_prompt=payload.prompt,
         topic_embedding=topic_embedding,
-        user_spec=f"## Topic\n{payload.prompt}",
+        user_spec=render_user_spec(UserSpecSections(topic=payload.prompt)),
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         format_instructions=payload.format_instructions or "brief summary",
@@ -238,6 +239,7 @@ async def _create_subscription_streaming(
 
     # --- fixed sources ---
     selected_sources: dict[uuid.UUID, Source] = {}
+    user_specified_source_ids: set[uuid.UUID] = set()
     has_fixed = bool(telegram_channels or reddit_subreddits or twitter_accounts)
     if has_fixed:
         yield {"event": "status", "status_key": "status_registering_sources"}
@@ -249,6 +251,7 @@ async def _create_subscription_streaming(
         if identifiers:
             for source in await ensure_source_coverage(session, identifiers, kind):
                 selected_sources[source.id] = source
+                user_specified_source_ids.add(source.id)
 
     # --- source discovery (the slow part, concurrency-limited) ---
     if include_discovered_sources:
@@ -290,7 +293,13 @@ async def _create_subscription_streaming(
         return
 
     for source_id in selected_sources:
-        session.add(SubscriptionSource(subscription_id=subscription.id, source_id=source_id))
+        session.add(
+            SubscriptionSource(
+                subscription_id=subscription.id,
+                source_id=source_id,
+                is_user_specified=source_id in user_specified_source_ids,
+            )
+        )
 
     await session.commit()
     await session.refresh(subscription)
@@ -382,7 +391,13 @@ async def append_subscription_sources(
                 selected_sources[source.id] = source
 
     for source_id in selected_sources:
-        session.add(SubscriptionSource(subscription_id=subscription.id, source_id=source_id))
+        session.add(
+            SubscriptionSource(
+                subscription_id=subscription.id,
+                source_id=source_id,
+                is_user_specified=True,
+            )
+        )
 
     await session.commit()
 
@@ -504,7 +519,13 @@ async def apply_subscription_config(
                 new_sources[source.id] = source
 
     for source_id in new_sources:
-        session.add(SubscriptionSource(subscription_id=subscription.id, source_id=source_id))
+        session.add(
+            SubscriptionSource(
+                subscription_id=subscription.id,
+                source_id=source_id,
+                is_user_specified=True,
+            )
+        )
 
     await session.commit()
     await session.refresh(subscription)

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
+from news_service.orchestration.guardrails import sanitize_for_llm_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,9 @@ async def compose_digest(
         f"Format: {format_instructions}",
     ]
     if user_spec:
-        user_parts.append(f"User preferences:\n{user_spec}")
+        user_parts.append(
+            f"User preferences:\n{sanitize_for_llm_prompt('user-preferences', user_spec)}"
+        )
     if feedback:
         user_parts.append(f"REVISION REQUESTED — address this feedback:\n{feedback}")
     user_parts.append(f"Candidate news items:\n\n{items_text}")

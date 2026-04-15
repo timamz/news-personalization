@@ -29,6 +29,7 @@ async def run_source_discovery(
     raw_prompt: str,
     prompt_embedding: list[float],
     exclude_urls: list[str] | None = None,
+    removal_history: str = "",
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
 ) -> SourceDiscoveryResult:
     """Run the full multi-agent source discovery pipeline.
@@ -46,7 +47,7 @@ async def run_source_discovery(
     if status_queue is not None:
         status_queue.put_nowait({"event": "status", "status_key": "status_planning_discovery"})
 
-    plan = await plan_discovery(raw_prompt)
+    plan = await plan_discovery(raw_prompt, removal_history=removal_history)
 
     logger.info(
         "Discovery plan for '%s': %d strategies",

@@ -50,6 +50,10 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    last_reflected_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     user: Mapped["User"] = relationship(back_populates="subscriptions")  # noqa: F821
     sent_items: Mapped[list["SentItem"]] = relationship(  # noqa: F821

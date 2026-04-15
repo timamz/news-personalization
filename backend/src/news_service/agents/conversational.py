@@ -20,6 +20,7 @@ from news_service.agents.discovery import validate_source_url as _validate_sourc
 from news_service.core.config import get_settings
 from news_service.models.subscription import Subscription
 from news_service.models.user import User
+from news_service.models.user_spec import validate_user_spec
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -143,8 +144,13 @@ def create_conversational_agent(
         Returns:
             Confirmation that the spec was updated.
         """
+        try:
+            validated = validate_user_spec(content)
+        except (ValueError, Exception) as exc:
+            return f"Invalid user spec: {exc}"
+
         shared_state["user_spec_updated"] = True
-        shared_state["new_user_spec"] = content
+        shared_state["new_user_spec"] = validated
 
         if subscription_id:
             from sqlalchemy import select
@@ -154,7 +160,7 @@ def create_conversational_agent(
             )
             sub = result.scalar_one_or_none()
             if sub:
-                sub.user_spec = content
+                sub.user_spec = validated
                 await db_session.flush()
 
         return "User spec updated."

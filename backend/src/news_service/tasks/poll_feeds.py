@@ -1,9 +1,13 @@
+"""Source polling task — fetches new items from all active sources.
+
+Uses the adapter pattern to handle different source types (RSS, Telegram,
+Reddit, Twitter) through a single generic polling loop.
+"""
+
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
-import feedparser
-import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,17 +18,23 @@ from news_service.models.news_item import NewsItem
 from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
-from news_service.services.reddit import extract_reddit_subreddit_from_url, fetch_reddit_posts
-from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
-from news_service.services.twitter import extract_twitter_account_from_url, fetch_twitter_posts
+from news_service.orchestration.guardrails import cap_text_for_embedding, scan_for_injection
+from news_service.services.reddit import extract_reddit_subreddit_from_url
+from news_service.services.telegram import extract_telegram_channel_from_url
+from news_service.services.twitter import extract_twitter_account_from_url
 from news_service.tasks.celery_app import celery_app
+from news_service.tasks.poll_adapters import (
+    RedditAdapter,
+    RssAdapter,
+    SourceAdapter,
+    TelegramAdapter,
+    TwitterAdapter,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 DELIVER_EVENTS_BATCH_TASK = "news_service.tasks.deliver_events.deliver_event_notifications_batch"
-RSS_FETCH_TIMEOUT_SECONDS = settings.http_timeout_seconds
-RSS_FETCH_ATTEMPTS = 2
 
 
 @celery_app.task(name="news_service.tasks.poll_feeds.poll_all_feeds")
@@ -78,141 +88,79 @@ async def _poll_all_feeds() -> dict:
 
 
 async def _poll_single_source(session: AsyncSession, src: Source) -> int:
+    """Route a source to its adapter and poll through the generic loop."""
     channel_handle = extract_telegram_channel_from_url(src.url)
     if channel_handle is not None:
-        return await _poll_single_telegram_channel(session, src, channel_handle)
+        return await _poll_typed_source(session, src, TelegramAdapter(src, channel_handle))
 
     subreddit = extract_reddit_subreddit_from_url(src.url)
     if subreddit is not None:
-        return await _poll_single_reddit_subreddit(session, src, subreddit)
+        return await _poll_typed_source(session, src, RedditAdapter(src, subreddit))
 
     twitter_account = extract_twitter_account_from_url(src.url)
     if twitter_account is not None:
-        return await _poll_single_twitter_account(session, src, twitter_account)
+        return await _poll_typed_source(session, src, TwitterAdapter(src, twitter_account))
 
+    return await _poll_typed_source(session, src, RssAdapter(src))
+
+
+async def _poll_typed_source(
+    session: AsyncSession,
+    src: Source,
+    adapter: SourceAdapter,
+) -> int:
+    """Generic polling loop for any source type via adapter."""
     try:
-        content = await _fetch_rss_feed_content(src.url)
-        parsed = feedparser.parse(content)
+        posts = await adapter.fetch_posts()
     except Exception:
-        logger.exception("Failed to parse feed %s", src.url, extra={"source_id": str(src.id)})
-        return 0
-
-    entries = parsed.entries
-    if not entries:
+        logger.exception(
+            "Failed to fetch from %s",
+            adapter.log_label(),
+            extra={"source_id": str(src.id)},
+        )
         return 0
 
     now = datetime.now(UTC)
-    recent_entries: list[tuple[object, str, str, datetime | None]] = []
-    for entry in entries:
-        headline = entry.get("title", "")
-        body = entry.get("summary", entry.get("description", ""))
-        published_at = _published_at_from_rss_entry(entry)
-        if not _is_fresh_news_item(published_at, now):
-            continue
-        recent_entries.append((entry, headline, body, published_at))
-    if not recent_entries:
+    fresh_posts = [p for p in posts if _is_fresh_news_item(p.published_at, now)]
+    if not fresh_posts:
         src.last_polled_at = now
         logger.info(
-            "Polled feed %s: 0 new items from %d recent entries",
-            src.url,
-            len(entries),
+            "Polled %s: 0 new items from %d posts",
+            adapter.log_label(),
+            len(posts),
             extra={"source_id": str(src.id)},
         )
         return 0
 
-    texts_to_embed = [f"{headline} {body}" for _, headline, body, _ in recent_entries]
+    for post in fresh_posts:
+        injection_flags = scan_for_injection(post.body)
+        if injection_flags:
+            logger.warning(
+                "Injection detected in post %s: %s",
+                post.url,
+                injection_flags[:3],
+            )
+
+    texts_to_embed = [cap_text_for_embedding(p.text_to_embed) for p in fresh_posts]
     try:
         embeddings = await embed_texts(texts_to_embed)
     except Exception:
         logger.exception(
-            "Failed to embed entries for feed %s",
-            src.url,
+            "Failed to embed posts for %s",
+            adapter.log_label(),
             extra={"source_id": str(src.id)},
         )
         return 0
 
-    new_count = 0
-    for (entry, headline, body, published_at), embedding in zip(
-        recent_entries,
-        embeddings,
-        strict=True,
-    ):
-        url = entry.get("link", "")
-        if not url:
-            continue
-
-        item = await upsert_news_item(
-            session,
-            source_id=src.id,
-            headline=headline or "Untitled",
-            body=body,
-            url=url,
-            source=src.title or src.url,
-            published_at=published_at,
-            fetched_at=now,
-            embedding=embedding,
-        )
-        if item is not None:
-            new_count += 1
-            if isinstance(item, NewsItem) and item.source_id in session.info.get(
-                "event_source_ids", set()
-            ):
-                session.info.setdefault("event_item_ids", []).append(item.id)
-
-    src.last_polled_at = now
-    logger.info(
-        "Polled feed %s: %d new items from %d recent entries",
-        src.url,
-        new_count,
-        len(recent_entries),
-        extra={"source_id": str(src.id)},
-    )
-    return new_count
-
-
-async def _poll_single_telegram_channel(
-    session: AsyncSession,
-    src: Source,
-    channel_handle: str,
-) -> int:
-    try:
-        posts = await fetch_telegram_posts(channel_handle)
-    except Exception:
-        logger.exception(
-            "Failed to parse Telegram channel @%s",
-            channel_handle,
-            extra={"source_id": str(src.id)},
-        )
-        return 0
-
-    now = datetime.now(UTC)
-    fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
-    if not fresh_posts:
-        src.last_polled_at = now
-        return 0
-
-    texts_to_embed = [post.body for post in fresh_posts]
-    try:
-        embeddings = await embed_texts(texts_to_embed)
-    except Exception:
-        logger.exception(
-            "Failed to embed Telegram posts for @%s",
-            channel_handle,
-            extra={"source_id": str(src.id)},
-        )
-        return 0
-
-    source_name = src.title or f"Telegram @{channel_handle}"
     new_count = 0
     for post, embedding in zip(fresh_posts, embeddings, strict=True):
-        headline = post.body.splitlines()[0][:200]
         item = await upsert_news_item(
             session,
             source_id=src.id,
-            headline=headline or f"Telegram post from @{channel_handle}",
+            headline=post.headline or adapter.source_name(),
             body=post.body,
             url=post.url,
-            source=source_name,
+            source=adapter.source_name(),
             published_at=post.published_at,
             fetched_at=now,
             embedding=embedding,
@@ -226,189 +174,16 @@ async def _poll_single_telegram_channel(
 
     src.last_polled_at = now
     logger.info(
-        "Polled Telegram channel @%s: %d new items from %d posts",
-        channel_handle,
+        "Polled %s: %d new items from %d posts",
+        adapter.log_label(),
         new_count,
         len(fresh_posts),
         extra={"source_id": str(src.id)},
     )
     return new_count
-
-
-async def _poll_single_reddit_subreddit(
-    session: AsyncSession,
-    src: Source,
-    subreddit: str,
-) -> int:
-    try:
-        posts = await fetch_reddit_posts(subreddit)
-    except Exception:
-        logger.exception(
-            "Failed to parse Reddit subreddit r/%s",
-            subreddit,
-            extra={"source_id": str(src.id)},
-        )
-        return 0
-
-    now = datetime.now(UTC)
-    fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
-    if not fresh_posts:
-        src.last_polled_at = now
-        return 0
-
-    texts_to_embed = [
-        "\n\n".join(part for part in [post.title, post.body] if part).strip()
-        for post in fresh_posts
-    ]
-    try:
-        embeddings = await embed_texts(texts_to_embed)
-    except Exception:
-        logger.exception(
-            "Failed to embed Reddit posts for r/%s",
-            subreddit,
-            extra={"source_id": str(src.id)},
-        )
-        return 0
-
-    source_name = src.title or f"Reddit r/{subreddit}"
-    new_count = 0
-    for post, embedding in zip(fresh_posts, embeddings, strict=True):
-        item = await upsert_news_item(
-            session,
-            source_id=src.id,
-            headline=post.title[:200] or f"Reddit post from r/{subreddit}",
-            body=post.body,
-            url=post.url,
-            source=source_name,
-            published_at=post.published_at,
-            fetched_at=now,
-            embedding=embedding,
-        )
-        if item is not None:
-            new_count += 1
-            if isinstance(item, NewsItem) and item.source_id in session.info.get(
-                "event_source_ids", set()
-            ):
-                session.info.setdefault("event_item_ids", []).append(item.id)
-
-    src.last_polled_at = now
-    logger.info(
-        "Polled Reddit subreddit r/%s: %d new items from %d posts",
-        subreddit,
-        new_count,
-        len(fresh_posts),
-        extra={"source_id": str(src.id)},
-    )
-    return new_count
-
-
-async def _poll_single_twitter_account(
-    session: AsyncSession,
-    src: Source,
-    account: str,
-) -> int:
-    try:
-        posts = await fetch_twitter_posts(account)
-    except Exception:
-        logger.exception(
-            "Failed to parse Twitter/X account @%s",
-            account,
-            extra={"source_id": str(src.id)},
-        )
-        return 0
-
-    now = datetime.now(UTC)
-    fresh_posts = [post for post in posts if _is_fresh_news_item(post.published_at, now)]
-    if not fresh_posts:
-        src.last_polled_at = now
-        return 0
-
-    texts_to_embed = [post.body for post in fresh_posts]
-    try:
-        embeddings = await embed_texts(texts_to_embed)
-    except Exception:
-        logger.exception(
-            "Failed to embed Twitter/X posts for @%s",
-            account,
-            extra={"source_id": str(src.id)},
-        )
-        return 0
-
-    source_name = src.title or f"X @{account}"
-    new_count = 0
-    for post, embedding in zip(fresh_posts, embeddings, strict=True):
-        headline = post.body.splitlines()[0][:200]
-        item = await upsert_news_item(
-            session,
-            source_id=src.id,
-            headline=headline or f"Post from @{account}",
-            body=post.body,
-            url=post.url,
-            source=source_name,
-            published_at=post.published_at,
-            fetched_at=now,
-            embedding=embedding,
-        )
-        if item is not None:
-            new_count += 1
-            if isinstance(item, NewsItem) and item.source_id in session.info.get(
-                "event_source_ids", set()
-            ):
-                session.info.setdefault("event_item_ids", []).append(item.id)
-
-    src.last_polled_at = now
-    logger.info(
-        "Polled Twitter/X account @%s: %d new items from %d posts",
-        account,
-        new_count,
-        len(fresh_posts),
-        extra={"source_id": str(src.id)},
-    )
-    return new_count
-
-
-def _published_at_from_rss_entry(entry: object) -> datetime | None:
-    published_str = entry.get("published", None)
-    if not published_str:
-        return None
-    try:
-        import email.utils
-
-        parsed_date = email.utils.parsedate_to_datetime(published_str)
-        return parsed_date.astimezone(UTC)
-    except (ValueError, TypeError):
-        return None
 
 
 def _is_fresh_news_item(published_at: datetime | None, now: datetime) -> bool:
     if published_at is None:
         return True
     return published_at >= now - timedelta(days=settings.news_item_max_age_days)
-
-
-async def _fetch_rss_feed_content(url: str) -> bytes:
-    async with httpx.AsyncClient(
-        timeout=RSS_FETCH_TIMEOUT_SECONDS,
-        follow_redirects=True,
-        proxy=settings.proxy_url,
-    ) as client:
-        last_error: httpx.HTTPError | None = None
-        for attempt in range(1, RSS_FETCH_ATTEMPTS + 1):
-            try:
-                response = await client.get(url)
-                response.raise_for_status()
-                return response.content
-            except httpx.HTTPError as exc:
-                last_error = exc
-                if attempt == RSS_FETCH_ATTEMPTS:
-                    break
-                logger.warning(
-                    "RSS fetch attempt %d/%d failed for %s; retrying",
-                    attempt,
-                    RSS_FETCH_ATTEMPTS,
-                    url,
-                )
-
-    if last_error is None:
-        raise RuntimeError(f"RSS fetch failed without HTTP error for {url}")
-    raise last_error

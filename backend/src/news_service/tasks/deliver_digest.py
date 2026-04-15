@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select
 
 from news_service.agents.digest import generate_digest
+from news_service.core.exceptions import DigestPipelineError
 from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
 from news_service.services.delivery import get_delivery_channel
@@ -36,7 +37,16 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
             )
             return {"status": "skipped", "reason": "wrong_delivery_mode"}
 
-        digest_text = await generate_digest(session, subscription)
+        try:
+            digest_text = await generate_digest(session, subscription)
+        except DigestPipelineError:
+            logger.exception(
+                "Digest pipeline failed for subscription %s",
+                subscription_id,
+                extra={"subscription_id": str(subscription_id)},
+            )
+            return {"status": "failed", "reason": "pipeline_error"}
+
         if digest_text is None:
             if notify_if_empty:
                 channel = get_delivery_channel(subscription.delivery_webhook_url)

@@ -19,6 +19,15 @@ _INJECTION_PATTERNS = [
     re.compile(r"IMPORTANT\s*:\s*override", re.IGNORECASE),
     re.compile(r"disregard\s+(all\s+)?prior", re.IGNORECASE),
     re.compile(r"new\s+instructions?\s*:", re.IGNORECASE),
+    re.compile(r"do\s+not\s+follow", re.IGNORECASE),
+    re.compile(r"forget\s+(all\s+)?previous", re.IGNORECASE),
+    re.compile(r"act\s+as\s+(a|an|if)", re.IGNORECASE),
+    re.compile(r"pretend\s+(you|that)", re.IGNORECASE),
+    re.compile(r"(?:```|~~~)\s*(?:system|admin)", re.IGNORECASE),
+    re.compile(r"<\s*/?\s*(?:admin|root)\s*>", re.IGNORECASE),
+    re.compile(r"BEGIN\s+(?:OVERRIDE|INJECTION|SYSTEM)", re.IGNORECASE),
+    re.compile(r"\[INST\]", re.IGNORECASE),
+    re.compile(r"<\|im_start\|>", re.IGNORECASE),
 ]
 
 _MAX_NOTIFICATION_BODY_LENGTH = 4000
@@ -117,4 +126,23 @@ def validate_digest_text(
     if len(text) > max_length:
         logger.warning("Digest text exceeds %d chars, truncating", max_length)
         return text[:max_length] + "\n\n..."
+    return text
+
+
+def sanitize_for_llm_prompt(label: str, content: str) -> str:
+    """Wrap untrusted content with labeled boundaries for LLM prompts.
+
+    Scans for injection and logs warnings.
+    """
+    flags = scan_for_injection(content)
+    if flags:
+        logger.warning("Potential injection in %s: %s", label, flags[:3])
+    return f"<untrusted-{label}>\n{content}\n</untrusted-{label}>"
+
+
+def cap_text_for_embedding(text: str, max_length: int = 8000) -> str:
+    """Truncate text for embedding if it exceeds max_length."""
+    if len(text) > max_length:
+        logger.warning("Text exceeds %d chars, truncating for embedding", max_length)
+        return text[:max_length]
     return text

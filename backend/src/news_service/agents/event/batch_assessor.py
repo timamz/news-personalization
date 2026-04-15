@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
+from news_service.orchestration.guardrails import sanitize_for_llm_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +68,8 @@ async def assess_batch_events(
     """
     items_block = "\n\n".join(
         f"Item {i + 1} [ID: {item['item_id']}]:\n"
-        f"Headline: {item['headline']}\n"
-        f"Body: {item['body']}\n"
+        f"Headline: {sanitize_for_llm_prompt('headline', item['headline'])}\n"
+        f"Body: {sanitize_for_llm_prompt('body', item['body'])}\n"
         f"URL: {item['url']}\n"
         f"Published: {item.get('published_at', 'unknown')}"
         for i, item in enumerate(items)
@@ -88,7 +89,8 @@ async def assess_batch_events(
                 "role": "user",
                 "content": (
                     f"Target language: {target_language}\n\n"
-                    f"Subscription request:\n{user_spec}\n\n"
+                    f"Subscription request:\n"
+                    f"{sanitize_for_llm_prompt('user-preferences', user_spec)}\n\n"
                     f"Posts to evaluate ({len(items)} items):\n\n{items_block}\n\n"
                     f"Notification history:\n{history_block}"
                 ),

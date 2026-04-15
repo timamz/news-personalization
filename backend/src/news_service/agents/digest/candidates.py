@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.db.vector_store import find_similar_news
 from news_service.models.news_item import NewsItem
+from news_service.orchestration.guardrails import wrap_untrusted_content
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -78,9 +79,9 @@ def format_news_item(item: NewsItem) -> str:
     body_preview = item.body or ""
     return (
         f"[ID: {item.id}]\n"
-        f"Headline: {item.headline}\n"
+        f"Headline: {wrap_untrusted_content(item.headline)}\n"
         f"Published: {pub_str}\n"
-        f"Body: {body_preview}\n"
+        f"Body: {wrap_untrusted_content(body_preview)}\n"
         f"Link: {item.url}"
     )
 

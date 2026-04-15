@@ -8,7 +8,7 @@ import pytest
 
 from news_service.models.source import Source
 from news_service.services.telegram import TelegramPost
-from news_service.tasks import poll_feeds
+from news_service.tasks import poll_adapters, poll_feeds
 
 logging.disable(logging.CRITICAL)
 
@@ -43,7 +43,7 @@ async def test_poll_single_source_returns_one_for_fresh_telegram_post(mocker) ->
     src = _make_telegram_source(channel="fondnauk")
     post = _make_fresh_telegram_post(channel="fondnauk")
 
-    mocker.patch.object(poll_feeds, "fetch_telegram_posts", new=AsyncMock(return_value=[post]))
+    mocker.patch.object(poll_adapters, "fetch_telegram_posts", new=AsyncMock(return_value=[post]))
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
 
@@ -57,7 +57,7 @@ async def test_poll_single_source_calls_upsert_for_fresh_telegram_post(mocker) -
     src = _make_telegram_source(channel="fondnauk")
     post = _make_fresh_telegram_post(channel="fondnauk")
 
-    mocker.patch.object(poll_feeds, "fetch_telegram_posts", new=AsyncMock(return_value=[post]))
+    mocker.patch.object(poll_adapters, "fetch_telegram_posts", new=AsyncMock(return_value=[post]))
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     upsert_news_item = AsyncMock(return_value=object())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert_news_item)

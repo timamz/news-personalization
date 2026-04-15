@@ -1,7 +1,10 @@
 """Digest generation pipeline: Fetch -> Plan -> LoopAgent([Compose, Judge]) -> Reflect.
 
-This replaces the old single-shot digest_curator with a multi-stage pipeline
-featuring quality-gated revision and self-healing reflection.
+Multi-stage pipeline with quality-gated revision and self-healing reflection.
+Error handling follows the tiered policy:
+- Critical (planner, composer): raise DigestPipelineError
+- Quality gate (judge): log warning, use unreviewed draft
+- Non-blocking (reflector): log and swallow
 """
 
 import logging
@@ -12,17 +15,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
+from news_service.core.exceptions import DigestPipelineError
 from news_service.db.vector_store import embed_text
 from news_service.models.sent_item import SentItem
 from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
+from news_service.models.user_spec import extract_topic
+from news_service.orchestration.guardrails import validate_digest_text, validate_used_item_ids
 
 from .candidates import build_items_text, fetch_candidate_items
 from .composer import compose_digest
 from .judge import judge_digest
 from .planner import plan_digest
-from .reflector import reflect_on_pipeline
+from .reflector import run_reflector
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -30,31 +36,18 @@ settings = get_settings()
 _MAX_REVISIONS = 2
 
 
-def _effective_prompt(subscription: Subscription) -> str:
-    """Extract the topic text used for embedding from user_spec."""
-    if subscription.user_spec:
-        for line in subscription.user_spec.split("\n"):
-            stripped = line.strip()
-            if stripped.startswith("## Topic"):
-                continue
-            if stripped.startswith("##"):
-                break
-            if stripped:
-                return stripped
-    return subscription.raw_prompt
-
-
 async def generate_digest(session: AsyncSession, subscription: Subscription) -> str | None:
     """Run the full digest pipeline for a subscription.
 
     Pipeline stages:
     1. Fetch candidates (DB queries, no LLM)
-    2. Plan digest outline (Planner LLM call)
-    3. Compose + Judge loop (max 2 revisions)
-    4. Reflect on pipeline health (Reflector LLM call)
+    2. Plan digest outline (Planner LLM call) — raises DigestPipelineError on failure
+    3. Compose + Judge loop (max 2 revisions) — composer raises, judge degrades gracefully
+    4. Reflect on pipeline health (Reflector ADK agent) — non-blocking
     5. Mark items as sent
 
     Returns the digest text, or None if no usable items.
+    Raises DigestPipelineError if a critical stage fails.
     """
     sent_result = await session.execute(
         select(SentItem.news_item_id, SentItem.sent_at).where(
@@ -76,7 +69,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
 
     query_embedding = subscription.topic_embedding
     if query_embedding is None:
-        query_text = _effective_prompt(subscription)
+        query_text = extract_topic(subscription.user_spec or subscription.raw_prompt)
         query_embedding = await embed_text(query_text)
         subscription.topic_embedding = query_embedding
 
@@ -102,7 +95,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     items_text = build_items_text(candidates, settings.llm_max_context_chars)
     candidates_summary = f"{len(candidates)} candidates from {len(source_ids)} sources"
 
-    # --- Stage 2: Plan ---
+    # --- Stage 2: Plan (critical — raises on failure) ---
     try:
         plan_result = await plan_digest(
             user_spec=user_spec,
@@ -110,13 +103,10 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
             digest_language=subscription.digest_language,
             format_instructions=subscription.format_instructions,
         )
-    except Exception:
-        logger.exception(
-            "Digest planner failed for subscription %s",
-            subscription.id,
-            extra={"subscription_id": str(subscription.id)},
-        )
-        return None
+    except Exception as exc:
+        raise DigestPipelineError(
+            f"Planner failed for subscription {subscription.id}: {exc}"
+        ) from exc
 
     # --- Stage 3: Compose + Judge loop ---
     feedback = ""
@@ -133,14 +123,10 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 format_instructions=subscription.format_instructions,
                 feedback=feedback,
             )
-        except Exception:
-            logger.exception(
-                "Digest composer failed (revision %d) for subscription %s",
-                revision,
-                subscription.id,
-                extra={"subscription_id": str(subscription.id)},
-            )
-            return None
+        except Exception as exc:
+            raise DigestPipelineError(
+                f"Composer failed (revision {revision}) for subscription {subscription.id}: {exc}"
+            ) from exc
 
         if not composition.used_item_ids:
             logger.info(
@@ -157,11 +143,12 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 candidates_summary=candidates_summary,
             )
         except Exception:
-            logger.exception(
-                "Digest judge failed for subscription %s",
+            logger.warning(
+                "Judge failed for subscription %s; using unreviewed draft",
                 subscription.id,
                 extra={"subscription_id": str(subscription.id)},
             )
+            quality = None
             break
 
         if quality.verdict == "PASS":
@@ -179,28 +166,42 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     if composition is None:
         return None
 
-    # --- Stage 4: Reflect (only when the pipeline struggled) ---
-    pipeline_struggled = quality is None or quality.verdict != "PASS"
-    if pipeline_struggled:
+    candidate_ids = {str(item.id) for item in candidates}
+    composition.used_item_ids = validate_used_item_ids(composition.used_item_ids, candidate_ids)
+    if not composition.used_item_ids:
+        logger.warning(
+            "All used_item_ids were phantom for subscription %s",
+            subscription.id,
+        )
+        return None
+
+    composition.digest_text = validate_digest_text(composition.digest_text)
+
+    # --- Stage 4: Reflect (data-driven trigger, non-blocking) ---
+    should_reflect = _should_reflect(
+        subscription=subscription,
+        quality=quality,
+        candidates=candidates,
+        source_ids=source_ids,
+    )
+
+    if should_reflect:
         try:
-            reflection = await reflect_on_pipeline(
+            source_info = await _build_source_info(session, subscription.id, source_ids, candidates)
+
+            shared_state = await run_reflector(
+                db_session=session,
+                subscription=subscription,
                 digest_text=composition.digest_text,
                 user_spec=user_spec,
                 quality_scores=quality.model_dump() if quality else {},
-                source_contributions=candidates_summary,
+                source_info=source_info,
             )
 
-            if reflection.user_spec_patch and subscription.user_spec:
-                subscription.user_spec = (
-                    subscription.user_spec.rstrip() + f"\n\n{reflection.observations}"
-                )
+            subscription.last_reflected_at = datetime.now(UTC)
 
-            if reflection.sources_to_remove:
-                logger.info(
-                    "Reflector wants to remove %d sources for subscription %s",
-                    len(reflection.sources_to_remove),
-                    subscription.id,
-                )
+            if shared_state.get("discovery_triggered"):
+                _queue_discovery(subscription, shared_state.get("discovery_reason", ""))
 
         except Exception:
             logger.exception(
@@ -208,18 +209,100 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 subscription.id,
             )
 
-    # --- Stage 5: Mark as sent (same transaction as reflector changes) ---
+    # --- Stage 5: Mark as sent ---
     used_ids = [uuid.UUID(item_id) for item_id in composition.used_item_ids]
     await _mark_as_sent(session, subscription.id, used_ids)
 
     logger.info(
-        "Generated digest with %d items for subscription %s (revisions: %d)",
+        "Generated digest with %d items for subscription %s (reflected: %s)",
         len(used_ids),
         subscription.id,
-        _MAX_REVISIONS - 1 if quality and quality.verdict != "PASS" else 0,
+        should_reflect,
         extra={"subscription_id": str(subscription.id)},
     )
     return composition.digest_text
+
+
+def _should_reflect(
+    *,
+    subscription: Subscription,
+    quality: object | None,
+    candidates: list,
+    source_ids: set[uuid.UUID],
+) -> bool:
+    """Decide whether to run the reflector based on pipeline health signals."""
+    pipeline_struggled = quality is None or getattr(quality, "verdict", None) != "PASS"
+    if pipeline_struggled:
+        return True
+
+    contributing_source_ids = {item.source_id for item in candidates}
+    source_coverage = len(contributing_source_ids) / len(source_ids) if source_ids else 1.0
+    if source_coverage < settings.reflector_coverage_threshold:
+        return True
+
+    relevance = getattr(quality, "relevance", 5)
+    format_score = getattr(quality, "format_score", 5)
+    conciseness = getattr(quality, "conciseness", 5)
+    avg_score = (relevance + format_score + conciseness) / 3
+    if avg_score < settings.reflector_quality_threshold:
+        return True
+
+    if subscription.last_reflected_at is None:
+        return True
+
+    days_since = (datetime.now(UTC) - subscription.last_reflected_at).days
+    return days_since >= settings.reflector_max_interval_days
+
+
+async def _build_source_info(
+    session: AsyncSession,
+    subscription_id: uuid.UUID,
+    source_ids: set[uuid.UUID],
+    candidates: list,
+) -> str:
+    """Build labeled source info string for the reflector prompt."""
+    contribution_counts: dict[uuid.UUID, int] = {}
+    for item in candidates:
+        contribution_counts[item.source_id] = contribution_counts.get(item.source_id, 0) + 1
+    for sid in source_ids:
+        contribution_counts.setdefault(sid, 0)
+
+    links_result = await session.execute(
+        select(SubscriptionSource.source_id, SubscriptionSource.is_user_specified).where(
+            SubscriptionSource.subscription_id == subscription_id
+        )
+    )
+    user_specified: dict[uuid.UUID, bool] = {row[0]: row[1] for row in links_result.all()}
+
+    source_result = await session.execute(
+        select(Source.id, Source.url, Source.title).where(Source.id.in_(list(source_ids)))
+    )
+    source_details = {row[0]: (row[1], row[2]) for row in source_result.all()}
+
+    lines: list[str] = []
+    for sid in source_ids:
+        url, title = source_details.get(sid, ("unknown", "unknown"))
+        is_user = user_specified.get(sid, False)
+        label = "user-specified, DO NOT remove" if is_user else "auto-discovered, removable"
+        count = contribution_counts.get(sid, 0)
+        display = f"{title} ({url})" if title else url
+        lines.append(f"- {display} [{label}] — {count} candidates")
+
+    return "\n".join(lines)
+
+
+def _queue_discovery(subscription: Subscription, reason: str) -> None:
+    """Queue an async source discovery task after reflector requests it."""
+    from news_service.tasks.celery_app import celery_app
+
+    celery_app.send_task(
+        "news_service.tasks.poll_feeds.poll_all_feeds",
+    )
+    logger.info(
+        "Reflector triggered source discovery for subscription %s: %s",
+        subscription.id,
+        reason[:100],
+    )
 
 
 def _published_after_for_digest(last_sent_at: datetime | None) -> datetime:

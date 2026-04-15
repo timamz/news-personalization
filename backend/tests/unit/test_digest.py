@@ -11,7 +11,7 @@ from news_service.agents.digest import pipeline as digest_pipeline
 from news_service.agents.digest.composer import DigestComposition
 from news_service.agents.digest.judge import QualityScores
 from news_service.agents.digest.planner import DigestPlan
-from news_service.agents.digest.reflector import ReflectionResult
+from news_service.core.exceptions import DigestPipelineError
 
 logging.disable(logging.CRITICAL)
 
@@ -26,11 +26,13 @@ def _make_subscription(
 ) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
         raw_prompt=prompt,
         topic_embedding=embedding,
         user_spec=f"## Topic\n{prompt}",
         format_instructions=format_instructions,
         digest_language=digest_language,
+        last_reflected_at=datetime.now(UTC),
     )
 
 
@@ -61,14 +63,12 @@ def _mock_quality(verdict: str = "PASS", feedback: str = "") -> QualityScores:
     )
 
 
-def _mock_reflection() -> ReflectionResult:
-    return ReflectionResult(observations="All healthy")
-
-
 def _patch_pipeline_stages(mocker, digest_text: str, item_ids: list[str]) -> dict:
     """Patch all pipeline stages with default happy-path mocks. Returns mock dict."""
+    source_id = uuid.uuid4()
     fake_item = SimpleNamespace(
-        id=uuid.uuid4(),
+        id=uuid.UUID(item_ids[0]) if item_ids else uuid.uuid4(),
+        source_id=source_id,
         headline="Test",
         body="Body",
         url="http://test.com",
@@ -97,10 +97,6 @@ def _patch_pipeline_stages(mocker, digest_text: str, item_ids: list[str]) -> dic
         "judge": mocker.patch(
             f"{_PIPELINE}.judge_digest",
             new=AsyncMock(return_value=_mock_quality()),
-        ),
-        "reflect": mocker.patch(
-            f"{_PIPELINE}.reflect_on_pipeline",
-            new=AsyncMock(return_value=_mock_reflection()),
         ),
     }
     return mocks
@@ -200,7 +196,7 @@ async def test_generate_digest_stores_computed_embedding(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_digest_returns_none_on_planner_failure(mocker) -> None:
+async def test_generate_digest_raises_pipeline_error_on_planner_failure(mocker) -> None:
     source_id = uuid.uuid4()
     session = _make_session_with_sources([source_id])
     embedding = [random.random() for _ in range(1536)]
@@ -209,6 +205,7 @@ async def test_generate_digest_returns_none_on_planner_failure(mocker) -> None:
     )
     fake_item = SimpleNamespace(
         id=uuid.uuid4(),
+        source_id=source_id,
         headline="T",
         body="B",
         url="http://t.com",
@@ -223,9 +220,8 @@ async def test_generate_digest_returns_none_on_planner_failure(mocker) -> None:
         new=AsyncMock(side_effect=RuntimeError("planner failed")),
     )
 
-    result = await digest_pipeline.generate_digest(session, subscription)
-
-    assert result is None, "generate_digest did not return None on planner failure"
+    with pytest.raises(DigestPipelineError):
+        await digest_pipeline.generate_digest(session, subscription)
 
 
 @pytest.mark.asyncio
@@ -237,8 +233,10 @@ async def test_generate_digest_revises_on_judge_feedback(mocker) -> None:
         f"Новости {uuid.uuid4().hex[:6]}", embedding, "краткая сводка", "en"
     )
 
+    candidate_item_id = uuid.uuid4()
     fake_item = SimpleNamespace(
-        id=uuid.uuid4(),
+        id=candidate_item_id,
+        source_id=source_id,
         headline="T",
         body="B",
         url="http://t.com",
@@ -249,7 +247,10 @@ async def test_generate_digest_revises_on_judge_feedback(mocker) -> None:
     mocker.patch(f"{_PIPELINE}.fetch_candidate_items", new=AsyncMock(return_value=[fake_item]))
     mocker.patch(f"{_PIPELINE}.build_items_text", return_value="items")
     mocker.patch(f"{_PIPELINE}.plan_digest", new=AsyncMock(return_value=_mock_plan()))
-    mocker.patch(f"{_PIPELINE}.reflect_on_pipeline", new=AsyncMock(return_value=_mock_reflection()))
+    mocker.patch(
+        f"{_PIPELINE}.run_reflector",
+        new=AsyncMock(return_value={"discovery_triggered": False, "observations": "ok"}),
+    )
 
     first_text = f"Draft {uuid.uuid4().hex[:6]}"
     revised_text = f"Revised {uuid.uuid4().hex[:6]}"
@@ -257,8 +258,8 @@ async def test_generate_digest_revises_on_judge_feedback(mocker) -> None:
         f"{_PIPELINE}.compose_digest",
         new=AsyncMock(
             side_effect=[
-                _mock_composition(first_text, [str(uuid.uuid4())]),
-                _mock_composition(revised_text, [str(uuid.uuid4())]),
+                _mock_composition(first_text, [str(candidate_item_id)]),
+                _mock_composition(revised_text, [str(candidate_item_id)]),
             ]
         ),
     )

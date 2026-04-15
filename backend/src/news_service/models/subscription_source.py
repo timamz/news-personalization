@@ -28,5 +28,7 @@ class SubscriptionSource(UUIDPrimaryKey, TimestampMixin, Base):
         nullable=False,
     )
 
+    is_user_specified: Mapped[bool] = mapped_column(default=False, server_default="false")
+
     subscription: Mapped["Subscription"] = relationship(back_populates="source_links")  # noqa: F821
     source: Mapped["Source"] = relationship(back_populates="subscription_links")  # noqa: F821

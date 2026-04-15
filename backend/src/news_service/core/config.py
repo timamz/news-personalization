@@ -47,6 +47,10 @@ class Settings(BaseSettings):
 
     llm_max_context_chars: int = 1_200_000
 
+    reflector_coverage_threshold: float = 0.5
+    reflector_quality_threshold: float = 4.0
+    reflector_max_interval_days: int = 30
+
     searxng_url: str = "http://searxng:8080"
     web_search_provider: str = "searxng"
 

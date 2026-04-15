@@ -8,7 +8,7 @@ import pytest
 
 from news_service.models.source import Source
 from news_service.services.reddit import RedditPost
-from news_service.tasks import poll_feeds
+from news_service.tasks import poll_adapters, poll_feeds
 
 logging.disable(logging.CRITICAL)
 
@@ -53,7 +53,7 @@ async def test_poll_single_source_returns_one_for_fresh_reddit_post(mocker) -> N
     src = _make_reddit_source(subreddit="badminton")
     post = _make_fresh_reddit_post(subreddit="badminton")
 
-    mocker.patch.object(poll_feeds, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
+    mocker.patch.object(poll_adapters, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
 
@@ -67,7 +67,7 @@ async def test_poll_single_source_calls_upsert_for_fresh_reddit_post(mocker) -> 
     src = _make_reddit_source(subreddit="badminton")
     post = _make_fresh_reddit_post(subreddit="badminton")
 
-    mocker.patch.object(poll_feeds, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
+    mocker.patch.object(poll_adapters, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
     upsert_news_item = AsyncMock(return_value=object())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert_news_item)
@@ -82,7 +82,7 @@ async def test_poll_single_source_returns_zero_for_stale_reddit_post(mocker) -> 
     src = _make_reddit_source(subreddit="arxiv")
     post = _make_stale_reddit_post(subreddit="arxiv")
 
-    mocker.patch.object(poll_feeds, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
+    mocker.patch.object(poll_adapters, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock())
 
@@ -96,7 +96,7 @@ async def test_poll_single_source_does_not_embed_stale_reddit_post(mocker) -> No
     src = _make_reddit_source(subreddit="arxiv")
     post = _make_stale_reddit_post(subreddit="arxiv")
 
-    mocker.patch.object(poll_feeds, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
+    mocker.patch.object(poll_adapters, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
     embed_texts = mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock())
     mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock())
 
@@ -110,7 +110,7 @@ async def test_poll_single_source_does_not_upsert_stale_reddit_post(mocker) -> N
     src = _make_reddit_source(subreddit="arxiv")
     post = _make_stale_reddit_post(subreddit="arxiv")
 
-    mocker.patch.object(poll_feeds, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
+    mocker.patch.object(poll_adapters, "fetch_reddit_posts", new=AsyncMock(return_value=[post]))
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock())
     upsert_news_item = mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock())
 

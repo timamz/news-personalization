@@ -17,6 +17,7 @@ from google.genai import types
 from news_service.agents.adk_runner import run_agent, run_agent_text
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
+from news_service.models.user_spec import extract_topic
 from news_service.schemas.conversation import (
     AgentTurnOutput,
     ExistingSubscriptionContext,
@@ -101,19 +102,6 @@ Edit rules:
 """
 
 
-def _extract_topic_from_user_spec(user_spec: str) -> str:
-    """Extract the topic line from user_spec markdown."""
-    for line in user_spec.split("\n"):
-        stripped = line.strip()
-        if stripped.startswith("## Topic"):
-            continue
-        if stripped.startswith("##"):
-            break
-        if stripped:
-            return stripped
-    return user_spec[:200]
-
-
 def _source_display_name(url: str, source_kind: str) -> str:
     """Extract a user-friendly name from a source URL."""
     if source_kind == "telegram_channel":
@@ -143,7 +131,7 @@ def _build_system_prompt(
     if user_timezone:
         parts.append(f"User's timezone: {user_timezone}.")
     if existing_config is not None:
-        topic = _extract_topic_from_user_spec(existing_config.user_spec)
+        topic = extract_topic(existing_config.user_spec)
         parts.append(
             SUBSCRIPTION_EDIT_CONTEXT.format(
                 user_spec_topic=topic,
