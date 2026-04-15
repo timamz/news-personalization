@@ -42,6 +42,9 @@ class Settings(BaseSettings):
 
     conversation_ttl_seconds: int = 1800
 
+    max_concurrent_discoveries: int = 3
+    max_concurrent_previews: int = 5
+
     llm_max_context_chars: int = 1_200_000
 
     searxng_url: str = "http://searxng:8080"

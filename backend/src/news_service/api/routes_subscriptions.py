@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.schedule_parser import parse_schedule_preference
 from news_service.api.dependencies import get_current_user
+from news_service.core.concurrency import discovery_semaphore, preview_semaphore
 from news_service.db.session import get_session
 from news_service.db.vector_store import embed_text
 from news_service.models.sent_item import SentItem
@@ -249,35 +250,36 @@ async def _create_subscription_streaming(
             for source in await ensure_source_coverage(session, identifiers, kind):
                 selected_sources[source.id] = source
 
-    # --- source discovery (the slow part) ---
+    # --- source discovery (the slow part, concurrency-limited) ---
     if include_discovered_sources:
         yield {"event": "status", "status_key": "status_discovering_sources"}
 
-        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        async with discovery_semaphore:
+            queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
-        discovery_task = asyncio.create_task(
-            ensure_prompt_coverage(session, payload.prompt, topic_embedding, status_queue=queue)
-        )
+            discovery_task = asyncio.create_task(
+                ensure_prompt_coverage(session, payload.prompt, topic_embedding, status_queue=queue)
+            )
 
-        # Drain status events from the queue while discovery runs
-        while not discovery_task.done():
+            # Drain status events from the queue while discovery runs
+            while not discovery_task.done():
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=0.5)
+                    yield event
+                except TimeoutError:
+                    continue
+
+            # Drain remaining events
+            while not queue.empty():
+                yield queue.get_nowait()
+
+            # Get result (re-raises on failure)
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=0.5)
-                yield event
-            except TimeoutError:
-                continue
-
-        # Drain remaining events
-        while not queue.empty():
-            yield queue.get_nowait()
-
-        # Get result (re-raises on failure)
-        try:
-            discovered_sources = await discovery_task
-        except Exception:
-            logger.exception("Source discovery failed during streaming creation")
-            yield {"event": "error", "detail": "Source discovery failed"}
-            return
+                discovered_sources = await discovery_task
+            except Exception:
+                logger.exception("Source discovery failed during streaming creation")
+                yield {"event": "error", "detail": "Source discovery failed"}
+                return
 
         for source in discovered_sources:
             selected_sources[source.id] = source
@@ -535,37 +537,38 @@ async def _recent_events_preview_streaming(
         yield {"event": "done", "preview": None}
         return
 
-    # Pre-initialize session.info keys that _poll_single_source reads/writes
-    session.info["event_source_ids"] = set()
-    session.info["event_item_ids"] = []
+    async with preview_semaphore:
+        # Pre-initialize session.info keys that _poll_single_source reads/writes
+        session.info["event_source_ids"] = set()
+        session.info["event_item_ids"] = []
 
-    for src in sources:
-        display = source_display_name(src)
-        yield {"event": "status", "status_key": "status_checking_source", "source": display}
+        for src in sources:
+            display = source_display_name(src)
+            yield {"event": "status", "status_key": "status_checking_source", "source": display}
+            try:
+                await _poll_single_source(session, src)
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                logger.exception(
+                    "Failed to poll source %s during recent events preview",
+                    src.url,
+                    extra={"source_id": str(src.id)},
+                )
+
+        yield {"event": "status", "status_key": "status_looking_for_events"}
         try:
-            await _poll_single_source(session, src)
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            logger.exception(
-                "Failed to poll source %s during recent events preview",
-                src.url,
-                extra={"source_id": str(src.id)},
+            preview = await build_recent_events_preview_for_subscription(
+                session,
+                subscription,
+                lookback_days=7,
             )
-
-    yield {"event": "status", "status_key": "status_looking_for_events"}
-    try:
-        preview = await build_recent_events_preview_for_subscription(
-            session,
-            subscription,
-            lookback_days=7,
-        )
-    except Exception:
-        logger.exception(
-            "Failed to build recent events preview for subscription %s",
-            subscription.id,
-        )
-        preview = None
+        except Exception:
+            logger.exception(
+                "Failed to build recent events preview for subscription %s",
+                subscription.id,
+            )
+            preview = None
 
     if preview is None:
         yield {"event": "done", "preview": None}
