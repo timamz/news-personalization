@@ -1,22 +1,24 @@
-"""Digest generation pipeline: Fetch -> Plan -> LoopAgent([Compose, Judge]) -> Reflect.
+"""Digest generation pipeline: Fetch -> Write + Judge loop -> Reflect.
 
 Multi-stage pipeline with quality-gated revision and self-healing reflection.
 Error handling follows the tiered policy:
-- Critical (planner, composer): raise DigestPipelineError
+- Critical (writer): raise DigestPipelineError
 - Quality gate (judge): log warning, use unreviewed draft
 - Non-blocking (reflector): log and swallow
 """
 
 import logging
 import uuid
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
 from news_service.core.exceptions import DigestPipelineError
 from news_service.db.vector_store import embed_text
+from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
 from news_service.models.source import Source
 from news_service.models.subscription import Subscription
@@ -25,15 +27,15 @@ from news_service.models.user_spec import extract_topic
 from news_service.orchestration.guardrails import validate_digest_text, validate_used_item_ids
 
 from .candidates import build_items_text, fetch_candidate_items
-from .composer import compose_digest
 from .judge import judge_digest
-from .planner import plan_digest
 from .reflector import run_reflector
+from .writer import write_digest
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 _MAX_REVISIONS = 2
+_RECENT_DIGEST_LIMIT = 15
 
 
 async def generate_digest(session: AsyncSession, subscription: Subscription) -> str | None:
@@ -41,10 +43,9 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
 
     Pipeline stages:
     1. Fetch candidates (DB queries, no LLM)
-    2. Plan digest outline (Planner LLM call) — raises DigestPipelineError on failure
-    3. Compose + Judge loop (max 2 revisions) — composer raises, judge degrades gracefully
-    4. Reflect on pipeline health (Reflector ADK agent) — non-blocking
-    5. Mark items as sent
+    2. Write + Judge loop (max 2 revisions) -- writer raises, judge degrades gracefully
+    3. Reflect on pipeline health (Reflector ADK agent) -- non-blocking
+    4. Mark items as sent
 
     Returns the digest text, or None if no usable items.
     Raises DigestPipelineError if a critical stage fails.
@@ -95,42 +96,31 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     items_text = build_items_text(candidates, settings.llm_max_context_chars)
     candidates_summary = f"{len(candidates)} candidates from {len(source_ids)} sources"
 
-    # --- Stage 2: Plan (critical — raises on failure) ---
-    try:
-        plan_result = await plan_digest(
-            user_spec=user_spec,
-            items_text=items_text,
-            digest_language=subscription.digest_language,
-            format_instructions=subscription.format_instructions,
-        )
-    except Exception as exc:
-        raise DigestPipelineError(
-            f"Planner failed for subscription {subscription.id}: {exc}"
-        ) from exc
+    recent_summaries = await _build_recent_digest_summaries(session, subscription.id)
 
-    # --- Stage 3: Compose + Judge loop ---
+    # --- Stage 2: Write + Judge loop ---
     feedback = ""
     composition = None
     quality = None
 
     for revision in range(_MAX_REVISIONS):
         try:
-            composition = await compose_digest(
-                plan=plan_result.plan,
+            composition = await write_digest(
                 items_text=items_text,
                 user_spec=user_spec,
                 digest_language=subscription.digest_language,
                 format_instructions=subscription.format_instructions,
+                recent_digest_summaries=recent_summaries,
                 feedback=feedback,
             )
         except Exception as exc:
             raise DigestPipelineError(
-                f"Composer failed (revision {revision}) for subscription {subscription.id}: {exc}"
+                f"Writer failed (revision {revision}) for subscription {subscription.id}: {exc}"
             ) from exc
 
         if not composition.used_item_ids:
             logger.info(
-                "Composer returned no items for subscription %s",
+                "Writer returned no items for subscription %s",
                 subscription.id,
                 extra={"subscription_id": str(subscription.id)},
             )
@@ -177,7 +167,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
 
     composition.digest_text = validate_digest_text(composition.digest_text)
 
-    # --- Stage 4: Reflect (data-driven trigger, non-blocking) ---
+    # --- Stage 3: Reflect (data-driven trigger, non-blocking) ---
     should_reflect = _should_reflect(
         subscription=subscription,
         quality=quality,
@@ -209,7 +199,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 subscription.id,
             )
 
-    # --- Stage 5: Mark as sent ---
+    # --- Stage 4: Mark as sent ---
     used_ids = [uuid.UUID(item_id) for item_id in composition.used_item_ids]
     await _mark_as_sent(session, subscription.id, used_ids)
 
@@ -221,6 +211,45 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
         extra={"subscription_id": str(subscription.id)},
     )
     return composition.digest_text
+
+
+async def _build_recent_digest_summaries(
+    session: AsyncSession,
+    subscription_id: uuid.UUID,
+) -> str:
+    """Build a rolling-window summary of recently sent digests.
+
+    Queries the last N sent items, joins to NewsItem for headlines,
+    groups by date, and formats as a short summary for the writer prompt.
+    Returns an empty string if no previous digests exist.
+    """
+    stmt = (
+        select(
+            func.date(SentItem.sent_at).label("sent_date"),
+            NewsItem.headline,
+        )
+        .join(NewsItem, NewsItem.id == SentItem.news_item_id)
+        .where(SentItem.subscription_id == subscription_id)
+        .order_by(SentItem.sent_at.desc())
+        .limit(_RECENT_DIGEST_LIMIT)
+    )
+    result = await session.execute(stmt)
+    rows = list(result.all())
+
+    if not rows:
+        return ""
+
+    by_date: dict[str, list[str]] = defaultdict(list)
+    for sent_date, headline in rows:
+        date_str = sent_date.strftime("%b %d") if hasattr(sent_date, "strftime") else str(sent_date)
+        short_headline = headline[:60] if len(headline) > 60 else headline
+        by_date[date_str].append(short_headline)
+
+    lines = ["Recent digests:"]
+    for date_str, headlines in by_date.items():
+        lines.append(f"- {date_str}: {', '.join(headlines)}")
+
+    return "\n".join(lines)
 
 
 def _should_reflect(
@@ -286,7 +315,7 @@ async def _build_source_info(
         label = "user-specified, DO NOT remove" if is_user else "auto-discovered, removable"
         count = contribution_counts.get(sid, 0)
         display = f"{title} ({url})" if title else url
-        lines.append(f"- {display} [{label}] — {count} candidates")
+        lines.append(f"- {display} [{label}] -- {count} candidates")
 
     return "\n".join(lines)
 

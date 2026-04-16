@@ -34,7 +34,7 @@ def _session():
 
 
 @pytest.mark.asyncio
-async def test_generate_digest_raises_pipeline_error_when_planner_fails(_subscription, _session):
+async def test_generate_digest_raises_pipeline_error_when_writer_fails(_subscription, _session):
     candidate = MagicMock()
     candidate.id = uuid.uuid4()
     candidate.source_id = uuid.uuid4()
@@ -56,56 +56,14 @@ async def test_generate_digest_raises_pipeline_error_when_planner_fails(_subscri
             return_value={candidate.source_id},
         ),
         patch(
-            "news_service.agents.digest.pipeline.plan_digest",
+            "news_service.agents.digest.pipeline.write_digest",
             new_callable=AsyncMock,
             side_effect=RuntimeError("LLM timeout"),
         ),
     ):
         from news_service.agents.digest.pipeline import generate_digest
 
-        with pytest.raises(DigestPipelineError, match="Planner failed"):
-            await generate_digest(_session, _subscription)
-
-
-@pytest.mark.asyncio
-async def test_generate_digest_raises_pipeline_error_when_composer_fails(_subscription, _session):
-    candidate = MagicMock()
-    candidate.id = uuid.uuid4()
-    candidate.source_id = uuid.uuid4()
-    candidate.embedding = [0.2] * 1536
-
-    plan_result = MagicMock()
-    plan_result.plan = "Write about ML"
-
-    with (
-        patch(
-            "news_service.agents.digest.pipeline.fetch_candidate_items",
-            new_callable=AsyncMock,
-            return_value=[candidate],
-        ),
-        patch(
-            "news_service.agents.digest.pipeline.build_items_text",
-            return_value="item text",
-        ),
-        patch(
-            "news_service.agents.digest.pipeline._source_ids_for_digest",
-            new_callable=AsyncMock,
-            return_value={candidate.source_id},
-        ),
-        patch(
-            "news_service.agents.digest.pipeline.plan_digest",
-            new_callable=AsyncMock,
-            return_value=plan_result,
-        ),
-        patch(
-            "news_service.agents.digest.pipeline.compose_digest",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("LLM connection refused"),
-        ),
-    ):
-        from news_service.agents.digest.pipeline import generate_digest
-
-        with pytest.raises(DigestPipelineError, match="Composer failed"):
+        with pytest.raises(DigestPipelineError, match="Writer failed"):
             await generate_digest(_session, _subscription)
 
 
@@ -115,9 +73,6 @@ async def test_generate_digest_uses_unreviewed_draft_when_judge_fails(_subscript
     candidate.id = uuid.uuid4()
     candidate.source_id = uuid.uuid4()
     candidate.embedding = [0.2] * 1536
-
-    plan_result = MagicMock()
-    plan_result.plan = "Write about ML"
 
     composition = MagicMock()
     composition.digest_text = "Erstaunliche ML-Nachrichten heute"
@@ -139,12 +94,7 @@ async def test_generate_digest_uses_unreviewed_draft_when_judge_fails(_subscript
             return_value={candidate.source_id},
         ),
         patch(
-            "news_service.agents.digest.pipeline.plan_digest",
-            new_callable=AsyncMock,
-            return_value=plan_result,
-        ),
-        patch(
-            "news_service.agents.digest.pipeline.compose_digest",
+            "news_service.agents.digest.pipeline.write_digest",
             new_callable=AsyncMock,
             return_value=composition,
         ),
@@ -180,11 +130,9 @@ async def test_generate_digest_succeeds_when_reflector_fails(_subscription, _ses
     candidate.source_id = uuid.uuid4()
     candidate.embedding = [0.2] * 1536
 
-    plan_result = MagicMock()
-    plan_result.plan = "Write about ML"
-
     composition = MagicMock()
-    composition.digest_text = "Великие новости по ML"
+    reflector_digest = "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 ML"
+    composition.digest_text = reflector_digest
     composition.used_item_ids = [str(candidate.id)]
 
     quality = MagicMock()
@@ -210,12 +158,7 @@ async def test_generate_digest_succeeds_when_reflector_fails(_subscription, _ses
             return_value={candidate.source_id},
         ),
         patch(
-            "news_service.agents.digest.pipeline.plan_digest",
-            new_callable=AsyncMock,
-            return_value=plan_result,
-        ),
-        patch(
-            "news_service.agents.digest.pipeline.compose_digest",
+            "news_service.agents.digest.pipeline.write_digest",
             new_callable=AsyncMock,
             return_value=composition,
         ),
@@ -244,9 +187,7 @@ async def test_generate_digest_succeeds_when_reflector_fails(_subscription, _ses
         result = await generate_digest(_session, _subscription)
 
         assert result is not None, "digest should be returned even when reflector crashes"
-        assert result == "Великие новости по ML", (
-            "digest text should not be affected by reflector failure"
-        )
+        assert result == reflector_digest, "digest text should not be affected by reflector failure"
 
 
 def test_should_reflect_returns_true_when_pipeline_struggled():

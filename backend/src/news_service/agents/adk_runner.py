@@ -5,9 +5,9 @@ to run agents. It wraps the Agent + InMemorySessionService + Runner ceremony
 into a single function call.
 
 ADK is used for agents that need multi-turn tool-calling loops. Single-shot
-structured output agents (planner, composer, judge, reflector, batch_assessor,
-orchestrator) use direct chat_completion() with response_format instead, because
-ADK does not support Pydantic structured output (response_format).
+structured output agents (judge, batch_assessor, orchestrator) use direct
+chat_completion() with response_format instead, because ADK does not support
+Pydantic structured output (response_format).
 """
 
 import uuid

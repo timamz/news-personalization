@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     reflector_quality_threshold: float = 4.0
     reflector_max_interval_days: int = 30
 
+    writer_max_article_fetches: int = 3
+    writer_max_web_searches: int = 2
+    writer_article_fetch_timeout_seconds: float = 15.0
+    writer_article_max_chars: int = 3000
+
     searxng_url: str = "http://searxng:8080"
     web_search_provider: str = "searxng"
 

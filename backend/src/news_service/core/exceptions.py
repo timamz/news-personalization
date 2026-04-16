@@ -14,7 +14,7 @@ class NewsServiceError(Exception):
 class DigestPipelineError(NewsServiceError):
     """Critical digest pipeline stage failed after retries exhausted.
 
-    Raised by planner or composer when an LLM call fails and retries
+    Raised by writer when an LLM call fails and retries
     are exhausted. Caught at the Celery task level in deliver_digest.
     """
 

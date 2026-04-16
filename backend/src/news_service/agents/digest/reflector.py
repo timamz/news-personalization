@@ -52,7 +52,7 @@ Guidelines:
 - Be conservative with removals — only remove clearly dead sources.
 - After removing sources, trigger discovery with a reason explaining what was lost.
 - If coverage is thin but no sources need removal, still trigger discovery.
-- If the composer ignored user preferences, mention it in your response \
+- If the writer ignored user preferences, mention it in your response \
 so the pipeline can update user_spec.
 """
 
