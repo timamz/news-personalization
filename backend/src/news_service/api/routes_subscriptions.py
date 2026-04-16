@@ -220,7 +220,11 @@ async def _create_subscription_streaming(
     digest_language: str = validated["digest_language"]
 
     # --- embedding ---
-    yield {"event": "status", "status_key": "status_analyzing"}
+    yield {
+        "event": "status",
+        "status_key": "status_analyzing",
+        "status_text": "Analyzing your request...",
+    }
     topic_embedding = await _subscription_prompt_embedding(payload.prompt)
 
     subscription = Subscription(
@@ -242,7 +246,11 @@ async def _create_subscription_streaming(
     user_specified_source_ids: set[uuid.UUID] = set()
     has_fixed = bool(telegram_channels or reddit_subreddits or twitter_accounts)
     if has_fixed:
-        yield {"event": "status", "status_key": "status_registering_sources"}
+        yield {
+            "event": "status",
+            "status_key": "status_registering_sources",
+            "status_text": "Registering your sources...",
+        }
     for identifiers, kind in [
         (telegram_channels, "telegram_channel"),
         (reddit_subreddits, "reddit_subreddit"),
@@ -255,7 +263,11 @@ async def _create_subscription_streaming(
 
     # --- source discovery (the slow part, concurrency-limited) ---
     if include_discovered_sources:
-        yield {"event": "status", "status_key": "status_discovering_sources"}
+        yield {
+            "event": "status",
+            "status_key": "status_discovering_sources",
+            "status_text": "Discovering relevant sources...",
+        }
 
         async with discovery_semaphore:
             queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()

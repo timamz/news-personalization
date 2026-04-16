@@ -1,6 +1,6 @@
 """Shared ADK runner helper — eliminates InMemorySessionService boilerplate.
 
-All ADK agents (conversational, finder, subscription_parser) use this helper
+All ADK agents (conversational, finder) use this helper
 to run agents. It wraps the Agent + InMemorySessionService + Runner ceremony
 into a single function call.
 

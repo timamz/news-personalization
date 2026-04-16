@@ -1,59 +1,39 @@
+"""Tests for subscription parser capabilities merged into the conversational agent."""
+
 import logging
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from news_service.agents.subscription_parser import (
-    _build_system_prompt,
+from news_service.agents.conversational import (
+    _build_instruction,
     _source_display_name,
-    run_conversation_turn,
+    create_conversational_agent,
     run_conversation_turn_streaming,
 )
 from news_service.schemas.conversation import ExistingSubscriptionContext
 
 logging.disable(logging.CRITICAL)
 
-_RUN_AGENT_TEXT_PATH = "news_service.agents.subscription_parser.run_agent_text"
-_RUN_AGENT_PATH = "news_service.agents.subscription_parser.run_agent"
+_RUN_AGENT_TEXT_PATH = "news_service.agents.conversational.run_agent_text"
+_RUN_AGENT_PATH = "news_service.agents.conversational.run_agent"
 
 
-@pytest.mark.asyncio
-async def test_run_conversation_turn_returns_in_progress_when_agent_does_not_finalize() -> None:
-    agent_reply = f"What kind of news? {uuid.uuid4().hex[:6]}"
-
-    with patch(_RUN_AGENT_TEXT_PATH, new=AsyncMock(return_value=agent_reply)):
-        output, _new_messages = await run_conversation_turn(
-            [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
-            user_language="en",
-        )
-
-    assert output.status == "in_progress", (
-        "run_conversation_turn did not return in_progress when agent does not call finalize"
-    )
-    assert output.message == agent_reply, (
-        "run_conversation_turn did not return the agent reply as message"
+def _fake_user() -> SimpleNamespace:
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        timezone="Europe/Moscow",
+        conversation_summary="",
     )
 
 
 @pytest.mark.asyncio
-async def test_run_conversation_turn_returns_one_new_message() -> None:
-    with patch(
-        _RUN_AGENT_TEXT_PATH, new=AsyncMock(return_value=f"question {uuid.uuid4().hex[:6]}")
-    ):
-        _output, new_messages = await run_conversation_turn(
-            [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
-            user_language="en",
-        )
+async def test_finalize_subscription_tool_sets_ready_status() -> None:
+    db_session = AsyncMock()
+    user = _fake_user()
 
-    assert len(new_messages) == 1, (
-        "run_conversation_turn did not produce exactly one assistant message"
-    )
-    assert new_messages[0]["role"] == "assistant", "new message role is not assistant"
-
-
-@pytest.mark.asyncio
-async def test_run_conversation_turn_passes_finalized_config_via_tool() -> None:
     async def fake_run_agent_text(*, agent, message, user_id="system"):
         for tool in agent.tools:
             if callable(tool) and getattr(tool, "__name__", "") == "finalize_subscription":
@@ -66,19 +46,22 @@ async def test_run_conversation_turn_passes_finalized_config_via_tool() -> None:
         return f"Your subscription is ready! {uuid.uuid4().hex[:6]}"
 
     with patch(_RUN_AGENT_TEXT_PATH, side_effect=fake_run_agent_text):
-        output, _new_messages = await run_conversation_turn(
-            [{"role": "user", "content": f"AI news every morning {uuid.uuid4().hex[:6]}"}],
+        agent, shared_state = create_conversational_agent(
+            db_session=db_session,
+            user=user,
+            user_spec=f"## Topic\nAI news {uuid.uuid4().hex[:6]}",
+            conversation_summary="",
             user_language="ru",
-            user_timezone="Europe/Moscow",
         )
+        await fake_run_agent_text(agent=agent, message="AI news every morning")
 
-    assert output.status == "ready", (
-        "run_conversation_turn did not return ready status after finalize tool call"
+    assert shared_state["status"] == "ready", (
+        "finalize_subscription tool did not set status to ready"
     )
-    assert output.finalized_config is not None, (
-        "run_conversation_turn did not return finalized config"
+    assert shared_state["finalized_config"] is not None, (
+        "finalize_subscription tool did not populate finalized_config"
     )
-    assert output.finalized_config.schedule_cron == "0 8 * * *", (
+    assert shared_state["finalized_config"].schedule_cron == "0 8 * * *", (
         "finalized config did not preserve schedule_cron"
     )
 
@@ -98,7 +81,7 @@ def _fake_streaming_agent_error(error):
 
     async def fake(*, agent, message, user_id="system"):
         raise error
-        yield  # make it a generator
+        yield  # noqa: UP028 — makes it a generator
 
     return fake
 
@@ -107,11 +90,17 @@ def _fake_streaming_agent_error(error):
 async def test_streaming_yields_done_event() -> None:
     agent_text = f"What kind of news? {uuid.uuid4().hex[:6]}"
     fake = _fake_streaming_agent([{"type": "final_response", "text": agent_text}])
+    db_session = AsyncMock()
+    user = _fake_user()
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
+            db_session=db_session,
+            user=user,
+            user_spec="",
+            conversation_summary="",
             user_language="en",
         ):
             events.append(ev)
@@ -124,11 +113,17 @@ async def test_streaming_yields_done_event() -> None:
 async def test_streaming_done_event_contains_agent_message() -> None:
     agent_text = f"What kind of schedule? {uuid.uuid4().hex[:6]}"
     fake = _fake_streaming_agent([{"type": "final_response", "text": agent_text}])
+    db_session = AsyncMock()
+    user = _fake_user()
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
+            db_session=db_session,
+            user=user,
+            user_spec="",
+            conversation_summary="",
             user_language="en",
         ):
             events.append(ev)
@@ -150,11 +145,17 @@ async def test_streaming_yields_status_event_for_validate_source_tool_call() -> 
             {"type": "final_response", "text": "Channel verified!"},
         ]
     )
+    db_session = AsyncMock()
+    user = _fake_user()
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"Add @durov {uuid.uuid4().hex[:6]}"}],
+            db_session=db_session,
+            user=user,
+            user_spec="",
+            conversation_summary="",
             user_language="en",
         ):
             events.append(ev)
@@ -179,11 +180,17 @@ async def test_streaming_tool_call_flow_yields_done_last() -> None:
             {"type": "final_response", "text": "Channel verified!"},
         ]
     )
+    db_session = AsyncMock()
+    user = _fake_user()
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"Add @durov {uuid.uuid4().hex[:6]}"}],
+            db_session=db_session,
+            user=user,
+            user_spec="",
+            conversation_summary="",
             user_language="en",
         ):
             events.append(ev)
@@ -196,11 +203,17 @@ async def test_streaming_tool_call_flow_yields_done_last() -> None:
 @pytest.mark.asyncio
 async def test_streaming_yields_error_event_on_agent_failure() -> None:
     fake = _fake_streaming_agent_error(RuntimeError(f"Agent crashed {uuid.uuid4().hex[:6]}"))
+    db_session = AsyncMock()
+    user = _fake_user()
 
     with patch(_RUN_AGENT_PATH, side_effect=fake):
         events = []
         async for ev in run_conversation_turn_streaming(
             [{"role": "user", "content": f"Test {uuid.uuid4().hex[:6]}"}],
+            db_session=db_session,
+            user=user,
+            user_spec="",
+            conversation_summary="",
         ):
             events.append(ev)
 
@@ -224,22 +237,31 @@ def test_source_display_name_twitter_account() -> None:
     assert result == f"x.com/{handle}", "twitter display name not formatted as x.com/handle"
 
 
-def test_build_system_prompt_includes_user_language() -> None:
+def test_build_instruction_includes_user_language() -> None:
     lang = f"lang_{uuid.uuid4().hex[:4]}"
-    prompt = _build_system_prompt(user_language=lang, user_timezone=None)
-    assert lang in prompt, "system prompt does not include user language"
+    prompt = _build_instruction(
+        user_spec="",
+        conversation_summary="",
+        user_language=lang,
+        user_timezone=None,
+    )
+    assert lang in prompt, "instruction does not include user language"
 
 
-def test_build_system_prompt_includes_conversation_history() -> None:
+def test_build_instruction_includes_conversation_history() -> None:
     marker = uuid.uuid4().hex[:8]
     history = [{"role": "user", "content": f"previous message {marker}"}]
-    prompt = _build_system_prompt(
-        user_language=None, user_timezone=None, conversation_history=history
+    prompt = _build_instruction(
+        user_spec="",
+        conversation_summary="",
+        user_language=None,
+        user_timezone=None,
+        conversation_history=history,
     )
-    assert marker in prompt, "system prompt does not include conversation history"
+    assert marker in prompt, "instruction does not include conversation history"
 
 
-def test_build_system_prompt_includes_edit_context() -> None:
+def test_build_instruction_includes_edit_context() -> None:
     existing = ExistingSubscriptionContext(
         subscription_id=str(uuid.uuid4()),
         user_spec=f"## Topic\nEditing test {uuid.uuid4().hex[:6]}",
@@ -248,5 +270,11 @@ def test_build_system_prompt_includes_edit_context() -> None:
         format_instructions="brief summary",
         digest_language="en",
     )
-    prompt = _build_system_prompt(user_language=None, user_timezone=None, existing_config=existing)
-    assert "EXISTING subscription" in prompt, "system prompt does not include edit context"
+    prompt = _build_instruction(
+        user_spec="",
+        conversation_summary="",
+        user_language=None,
+        user_timezone=None,
+        existing_config=existing,
+    )
+    assert "EXISTING subscription" in prompt, "instruction does not include edit context"

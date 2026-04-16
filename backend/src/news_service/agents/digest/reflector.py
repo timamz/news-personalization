@@ -7,6 +7,7 @@ Converted from single-shot structured output to an ADK agent with tools:
 Runs after digest delivery when data-driven triggers indicate health issues.
 """
 
+import asyncio
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -64,6 +65,7 @@ async def run_reflector(
     user_spec: str,
     quality_scores: dict,
     source_info: str,
+    status_queue: asyncio.Queue[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run the reflector ADK agent and return shared state with side effects.
 
@@ -147,7 +149,29 @@ async def run_reflector(
         shared_state["discovery_reason"] = reason
         return f"Source discovery requested: {reason}"
 
-    message = (
+    async def emit_status(message: str) -> str:
+        """Emit a progress status message to the user.
+
+        Call this when starting a significant operation to keep the user informed.
+
+        Args:
+            message: A short, friendly progress message
+                (e.g. "Reviewing pipeline health...")
+
+        Returns:
+            Confirmation that the status was emitted.
+        """
+        if status_queue is not None:
+            status_queue.put_nowait(
+                {
+                    "event": "status",
+                    "status_key": "status_agent_progress",
+                    "status_text": message,
+                }
+            )
+        return "Status emitted."
+
+    input_message = (
         f"User preferences (user_spec):\n{user_spec}\n\n"
         f"Quality scores: {quality_scores}\n\n"
         f"Linked sources:\n{source_info}\n\n"
@@ -158,13 +182,13 @@ async def run_reflector(
         name=f"reflector_{uuid.uuid4().hex[:6]}",
         model=LiteLlm(model=settings.litellm_model),
         instruction=REFLECTOR_PROMPT,
-        tools=[remove_source, trigger_source_discovery],
+        tools=[remove_source, trigger_source_discovery, emit_status],
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 
     response = await run_agent_text(
         agent=agent,
-        message=message,
+        message=input_message,
         user_id=str(subscription.user_id),
     )
 

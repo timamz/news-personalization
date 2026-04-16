@@ -1,5 +1,6 @@
-"""Tests for the reflector's remove_source and trigger_discovery tools."""
+"""Tests for the reflector's remove_source, trigger_discovery, and emit_status tools."""
 
+import asyncio
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -77,3 +78,49 @@ async def test_trigger_discovery_sets_shared_state_flag(_session, _subscription)
             "shared state should have discovery_triggered key"
         )
         assert "observations" in shared_state, "shared state should have observations key"
+
+
+@pytest.mark.asyncio
+async def test_reflector_accepts_status_queue_parameter(_session, _subscription):
+    queue: asyncio.Queue = asyncio.Queue()
+
+    with patch(
+        "news_service.agents.digest.reflector.run_agent_text",
+        new_callable=AsyncMock,
+        return_value="Reviewing pipeline health.",
+    ):
+        from news_service.agents.digest.reflector import run_reflector
+
+        shared_state = await run_reflector(
+            db_session=_session,
+            subscription=_subscription,
+            digest_text=f"Дайджест за день {uuid.uuid4().hex[:6]}",
+            user_spec=_subscription.user_spec,
+            quality_scores={"relevance": 4, "format_score": 4, "conciseness": 4},
+            source_info="- source [auto-discovered] — 3 candidates",
+            status_queue=queue,
+        )
+
+        assert isinstance(shared_state, dict), "run_reflector did not return a dict"
+        assert "observations" in shared_state, "shared state missing observations key"
+
+
+@pytest.mark.asyncio
+async def test_reflector_without_status_queue_does_not_raise(_session, _subscription):
+    with patch(
+        "news_service.agents.digest.reflector.run_agent_text",
+        new_callable=AsyncMock,
+        return_value="Pipeline looks fine.",
+    ):
+        from news_service.agents.digest.reflector import run_reflector
+
+        shared_state = await run_reflector(
+            db_session=_session,
+            subscription=_subscription,
+            digest_text=f"Tech digest {uuid.uuid4().hex[:6]}",
+            user_spec=_subscription.user_spec,
+            quality_scores={},
+            source_info="- source [auto-discovered] — 2 candidates",
+        )
+
+        assert isinstance(shared_state, dict), "run_reflector without queue did not return a dict"

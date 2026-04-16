@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.subscription_parser import run_conversation_turn_streaming
+from news_service.agents.conversational import run_conversation_turn_streaming
 from news_service.api.dependencies import get_current_user
 from news_service.core.config import get_settings
 from news_service.core.redis import get_redis_client
@@ -90,12 +90,23 @@ async def _run_turn_streaming(
     conversation_id: str,
     messages: list[dict],
     conv_state: ConversationState,
+    *,
+    db_session: AsyncSession,
+    user: User,
 ) -> AsyncGenerator[str, None]:
     """Shared streaming generator for both start and continue endpoints."""
+    user_spec = ""
+    conversation_summary = user.conversation_summary or ""
+    if conv_state.existing_config is not None:
+        user_spec = conv_state.existing_config.user_spec
+
     async for event in run_conversation_turn_streaming(
         messages,
+        db_session=db_session,
+        user=user,
+        user_spec=user_spec,
+        conversation_summary=conversation_summary,
         user_language=conv_state.user_language,
-        user_timezone=conv_state.user_timezone,
         existing_config=conv_state.existing_config,
     ):
         if event["event"] == "done":
@@ -219,7 +230,7 @@ async def start_conversation_stream(
         existing_config=existing_config,
     )
     return StreamingResponse(
-        _run_turn_streaming(conversation_id, messages, conv_state),
+        _run_turn_streaming(conversation_id, messages, conv_state, db_session=session, user=user),
         media_type="application/x-ndjson",
     )
 
@@ -229,6 +240,7 @@ async def continue_conversation_stream(
     conversation_id: str,
     payload: ConversationMessageRequest,
     user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
     """Continue a conversation with streaming status updates (NDJSON)."""
     conv_state = await _load_state(conversation_id, str(user.id))
@@ -239,7 +251,9 @@ async def continue_conversation_stream(
         )
     conv_state.messages.append({"role": "user", "content": payload.message})
     return StreamingResponse(
-        _run_turn_streaming(conversation_id, conv_state.messages, conv_state),
+        _run_turn_streaming(
+            conversation_id, conv_state.messages, conv_state, db_session=session, user=user
+        ),
         media_type="application/x-ndjson",
     )
 

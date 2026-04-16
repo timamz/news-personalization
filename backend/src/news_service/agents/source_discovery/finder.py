@@ -102,7 +102,13 @@ async def run_finder(
             Formatted search results with URLs and descriptions.
         """
         if status_queue is not None:
-            status_queue.put_nowait({"event": "status", "status_key": "status_searching_web"})
+            status_queue.put_nowait(
+                {
+                    "event": "status",
+                    "status_key": "status_searching_web",
+                    "status_text": f"Searching the web: {query[:60]}...",
+                }
+            )
         return await search_web(query)
 
     async def validate_and_score_source(url: str, source_kind: str) -> str:
@@ -120,7 +126,13 @@ async def run_finder(
         if url in exclude_urls:
             return f"Source {url}: skipped (already subscribed)"
         if status_queue is not None:
-            status_queue.put_nowait({"event": "status", "status_key": "status_validating_source"})
+            status_queue.put_nowait(
+                {
+                    "event": "status",
+                    "status_key": "status_validating_source",
+                    "status_text": f"Checking {url[:60]}...",
+                }
+            )
         kind: SourceKind = source_kind  # type: ignore[assignment]
         relevance, sampled = await score_candidate(url, kind, prompt_embedding)
         if not sampled:

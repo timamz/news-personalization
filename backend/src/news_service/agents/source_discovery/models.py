@@ -18,12 +18,3 @@ class ScoredSource(BaseModel):
 
 class SourceDiscoveryResult(BaseModel):
     sources: list[ScoredSource] = Field(..., description="Selected sources ranked by relevance")
-
-
-class DiscoveryPlan(BaseModel):
-    strategies: list[str] = Field(
-        ...,
-        min_length=1,
-        max_length=6,
-        description="Independent search strategies to execute in parallel",
-    )
