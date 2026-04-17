@@ -2,8 +2,10 @@
 
 The backend holds one persistent conversation per user, so the tgbot is a
 thin transport: make sure the user has an API key, stream each turn to
-the backend, forward the reply. /start resets the backend thread so the
-user can explicitly begin fresh.
+the backend, forward the reply. /start is non-destructive -- it just
+ensures registration and greets; the conversation thread persists across
+/start invocations. The backend has a separate reset endpoint reserved
+for an explicit escape hatch if one is ever exposed.
 """
 
 import contextlib
@@ -29,17 +31,14 @@ _TELEGRAM_MESSAGE_LIMIT = 4000
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message) -> None:
-    """Register the user if needed, reset the backend thread, greet."""
+    """Ensure the user has an API key and greet. Never touches the thread."""
     telegram_id = message.from_user.id
     try:
-        api_key = await ensure_api_key(telegram_id, backend)
+        await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to register user for telegram_id=%d", telegram_id)
         await message.answer(_ERROR_TEXT)
         return
-
-    with contextlib.suppress(Exception):
-        await backend.reset_conversation(api_key)
 
     await message.answer(_WELCOME_TEXT)
 

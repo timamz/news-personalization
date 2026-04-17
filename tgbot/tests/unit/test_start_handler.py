@@ -33,22 +33,18 @@ async def test_cmd_start_sends_welcome_message(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
-    reset_mock = mocker.patch.object(start.backend, "reset_conversation", new=AsyncMock())
     await start.cmd_start(message)
     message.answer.assert_awaited_once()
-    reset_mock.assert_awaited_once_with("key")
 
 
 @pytest.mark.asyncio
-async def test_cmd_start_still_greets_when_backend_reset_fails(mocker) -> None:
+async def test_cmd_start_does_not_touch_the_conversation_thread(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
-    mocker.patch.object(
-        start.backend, "reset_conversation", new=AsyncMock(side_effect=RuntimeError("boom"))
-    )
+    reset_mock = mocker.patch.object(start.backend, "reset_conversation", new=AsyncMock())
     await start.cmd_start(message)
-    message.answer.assert_awaited_once()
+    reset_mock.assert_not_awaited()
 
 
 @pytest.mark.asyncio
