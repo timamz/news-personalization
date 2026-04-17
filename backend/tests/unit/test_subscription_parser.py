@@ -28,6 +28,7 @@ def _fake_user() -> SimpleNamespace:
         timezone="Europe/Moscow",
         language="en",
         conversation_summary="",
+        has_onboarded=True,
     )
 
 

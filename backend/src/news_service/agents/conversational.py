@@ -179,6 +179,7 @@ def _build_instruction(
     conversation_history: list[dict] | None = None,
     subscription_summaries: list[str] | None = None,
     compacted_log: list[str] | None = None,
+    has_onboarded: bool = False,
 ) -> str:
     parts: list[str] = []
     persisted_bits: list[str] = []
@@ -191,17 +192,22 @@ def _build_instruction(
         + (", ".join(persisted_bits) if persisted_bits else "none yet")
         + "."
     )
-    if subscription_summaries is not None:
-        if subscription_summaries:
-            parts.append(
-                "Active subscriptions for this user:\n"
-                + "\n".join(f"- {line}" for line in subscription_summaries)
-            )
-        else:
-            parts.append(
-                "Active subscriptions: none. Treat this as a first-time interaction "
-                "and follow the greeting rules above."
-            )
+    if not has_onboarded:
+        parts.append(
+            "This user has never completed onboarding. Treat this as a first-time "
+            "interaction and follow the greeting rules above."
+        )
+    if subscription_summaries:
+        parts.append(
+            "Active subscriptions for this user:\n"
+            + "\n".join(f"- {line}" for line in subscription_summaries)
+        )
+    elif has_onboarded:
+        parts.append(
+            "Active subscriptions: none right now. This is a returning user "
+            "(already onboarded) who has no active subscriptions at the moment -- "
+            "do NOT show the first-time greeting. Answer directly."
+        )
     if conversation_summary:
         parts.append(f"What you already know about this user:\n{conversation_summary}")
     if compacted_log:
@@ -465,6 +471,14 @@ def create_conversational_agent(
                 await scoped.rollback()
                 return f"could not save subscription: {exc}."
             shared_state["created_subscription_id"] = str(subscription.id)
+
+            if not user.has_onboarded:
+                persisted_user = await scoped.get(User, user.id)
+                if persisted_user is not None and not persisted_user.has_onboarded:
+                    persisted_user.has_onboarded = True
+                    await scoped.commit()
+                user.has_onboarded = True
+
             return (
                 f"subscription {subscription.id}: created (auto-discovery "
                 f"{'queued' if include_discovered_sources else 'skipped'})."
@@ -865,6 +879,7 @@ def create_conversational_agent(
         conversation_history=conversation_history,
         subscription_summaries=subscription_summaries,
         compacted_log=compacted_log,
+        has_onboarded=bool(getattr(user, "has_onboarded", False)),
     )
 
     agent = Agent(

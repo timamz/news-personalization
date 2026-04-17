@@ -50,6 +50,7 @@ def _mock_user(user_id: str | None = None) -> MagicMock:
     mock.conversation_summary = ""
     mock.timezone = "Europe/Moscow"
     mock.language = "en"
+    mock.has_onboarded = True
     return mock
 
 

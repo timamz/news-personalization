@@ -32,12 +32,13 @@ _EXPECTED_TOOL_NAMES = {
 }
 
 
-def _fake_user() -> SimpleNamespace:
+def _fake_user(*, has_onboarded: bool = True) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
         timezone="Europe/Moscow",
         language="en",
         conversation_summary="",
+        has_onboarded=has_onboarded,
     )
 
 
@@ -103,15 +104,42 @@ def test_build_instruction_includes_timezone() -> None:
     assert tz in result, "instruction did not include timezone"
 
 
-def test_build_instruction_flags_first_time_user_when_no_subscriptions() -> None:
+def test_build_instruction_flags_first_time_user_when_not_onboarded() -> None:
     result = _build_instruction(
         conversation_summary="",
         user_language=None,
         user_timezone=None,
         subscription_summaries=[],
+        has_onboarded=False,
     )
     assert "first-time interaction" in result, (
-        "empty subscription list should trigger first-time greeting context"
+        "a user who has not completed onboarding should trigger the first-time cue"
+    )
+
+
+def test_build_instruction_does_not_flag_first_time_for_onboarded_user_without_subs() -> None:
+    result = _build_instruction(
+        conversation_summary="",
+        user_language="en",
+        user_timezone="Europe/Berlin",
+        subscription_summaries=[],
+        has_onboarded=True,
+    )
+    assert "first-time interaction" not in result, (
+        "an onboarded user who has deleted all subs must not be greeted as a first-timer"
+    )
+
+
+def test_build_instruction_notes_returning_user_when_onboarded_without_subs() -> None:
+    result = _build_instruction(
+        conversation_summary="",
+        user_language="en",
+        user_timezone="Europe/Berlin",
+        subscription_summaries=[],
+        has_onboarded=True,
+    )
+    assert "returning user" in result, (
+        "onboarded user without subs should be flagged as returning in context"
     )
 
 
@@ -307,6 +335,45 @@ async def test_save_subscription_creates_subscription_with_embedding(mocker) -> 
     assert ": created" in result, f"save_subscription did not confirm create: {result!r}"
     assert shared_state["created_subscription_id"], (
         "shared_state.created_subscription_id was not set after create"
+    )
+
+
+@pytest.mark.asyncio
+async def test_save_subscription_flips_has_onboarded_on_first_create(mocker) -> None:
+    user = _fake_user(has_onboarded=False)
+    persisted = MagicMock()
+    persisted.has_onboarded = False
+
+    scoped = AsyncMock()
+    scoped.execute = AsyncMock()
+    scoped.add = MagicMock()
+    scoped.flush = AsyncMock()
+    scoped.commit = AsyncMock()
+    scoped.get = AsyncMock(return_value=persisted)
+
+    mocker.patch(
+        "news_service.agents.conversational.embed_text",
+        new=AsyncMock(return_value=[0.0] * 8),
+    )
+    mocker.patch(
+        "news_service.agents.conversational.ensure_source_coverage",
+        new=AsyncMock(return_value=[]),
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    save = _get_tool(agent, "save_subscription")
+    await save(
+        topic=f"news {uuid.uuid4().hex[:6]}",
+        delivery_mode="digest",
+        schedule_cron="0 8 * * *",
+        include_discovered_sources=False,
+    )
+
+    assert persisted.has_onboarded is True, (
+        "first successful save_subscription did not flip has_onboarded on the persisted user"
+    )
+    assert user.has_onboarded is True, (
+        "first successful save_subscription did not mirror has_onboarded onto the in-memory user"
     )
 
 
