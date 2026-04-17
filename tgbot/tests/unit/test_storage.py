@@ -1,205 +1,89 @@
-import logging
-import random
-import uuid
-from pathlib import Path
+"""Tests for the per-telegram-user local sqlite storage."""
 
-import aiosqlite
+import os
+import tempfile
+
 import pytest
 
-from tgbot.language import LanguagePreference
 from tgbot.storage import (
+    clear_conversation_id,
     get_api_key,
-    get_language_preference,
-    get_ui_language,
+    get_conversation_id,
     init_db,
     save_api_key,
-    save_language_preference,
-    save_ui_language,
+    save_conversation_id,
 )
 
-logging.disable(logging.CRITICAL)
+
+def _temp_db() -> str:
+    handle, path = tempfile.mkstemp(suffix=".sqlite", dir=tempfile.gettempdir())
+    os.close(handle)
+    return path
 
 
 @pytest.mark.asyncio
-async def test_get_api_key_returns_none_for_unknown_user(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
+async def test_save_api_key_returns_same_value_on_fetch() -> None:
+    db_path = _temp_db()
     await init_db(db_path)
-
-    result = await get_api_key(random.randint(10000, 99999), db_path)
-
-    assert result is None, "get_api_key did not return None for an unknown user"
-
-
-@pytest.mark.asyncio
-async def test_get_ui_language_returns_none_for_unknown_user(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    await init_db(db_path)
-
-    result = await get_ui_language(random.randint(10000, 99999), db_path)
-
-    assert result is None, "get_ui_language did not return None for an unknown user"
-
-
-@pytest.mark.asyncio
-async def test_get_language_preference_returns_none_for_unknown_user(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    await init_db(db_path)
-
-    result = await get_language_preference(random.randint(10000, 99999), db_path)
-
-    assert result is None, "get_language_preference did not return None for an unknown user"
-
-
-@pytest.mark.asyncio
-async def test_save_and_retrieve_api_key(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid = random.randint(10000, 99999)
-    key = f"\u043a\u043b\u044e\u0447-{uuid.uuid4().hex}"
-    await init_db(db_path)
-    await save_api_key(tid, key, db_path)
-
-    result = await get_api_key(tid, db_path)
-
-    assert result == key, "save_api_key/get_api_key roundtrip did not preserve the key"
-
-
-@pytest.mark.asyncio
-async def test_overwrite_api_key_keeps_latest(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid = random.randint(10000, 99999)
-    old_key = f"old-{uuid.uuid4().hex}"
-    new_key = f"new-{uuid.uuid4().hex}"
-    await init_db(db_path)
-    await save_api_key(tid, old_key, db_path)
-    await save_api_key(tid, new_key, db_path)
-
-    result = await get_api_key(tid, db_path)
-
-    assert result == new_key, "overwriting api_key did not keep the latest value"
-
-
-@pytest.mark.asyncio
-async def test_different_users_have_separate_keys(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid_a = random.randint(10000, 49999)
-    tid_b = random.randint(50000, 99999)
-    key_a = f"\u043a\u043b\u044e\u0447-A-{uuid.uuid4().hex}"
-    key_b = f"\u043a\u043b\u044e\u0447-B-{uuid.uuid4().hex}"
-    await init_db(db_path)
-    await save_api_key(tid_a, key_a, db_path)
-    await save_api_key(tid_b, key_b, db_path)
-
-    result_a = await get_api_key(tid_a, db_path)
-    result_b = await get_api_key(tid_b, db_path)
-
-    assert result_a == key_a, "different users did not get separate api keys (user A)"
-    assert result_b == key_b, "different users did not get separate api keys (user B)"
-
-
-@pytest.mark.asyncio
-async def test_save_and_retrieve_language_preference(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid = random.randint(10000, 99999)
-    api_key = f"\u043a\u043b\u044e\u0447-{uuid.uuid4().hex}"
-    await init_db(db_path)
-    await save_language_preference(
-        tid, api_key, LanguagePreference(mode="fixed", code="ru"), db_path
-    )
-
-    result = await get_language_preference(tid, db_path)
-
-    assert result == LanguagePreference(mode="fixed", code="ru"), (
-        "save_language_preference/get_language_preference roundtrip did not preserve the preference"
+    telegram_id = 424242
+    api_key = "tgbot-test-key-abc"
+    await save_api_key(telegram_id, api_key, db_path=db_path)
+    assert await get_api_key(telegram_id, db_path=db_path) == api_key, (
+        "get_api_key did not return the value that was just saved"
     )
 
 
 @pytest.mark.asyncio
-async def test_save_and_retrieve_ui_language(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid = random.randint(10000, 99999)
-    api_key = f"key-{uuid.uuid4().hex}"
-    lang = random.choice(["en", "ru"])
+async def test_get_api_key_returns_none_for_unknown_user() -> None:
+    db_path = _temp_db()
     await init_db(db_path)
-    await save_ui_language(tid, api_key, lang, db_path)
-
-    result = await get_ui_language(tid, db_path)
-
-    assert result == lang, (
-        "save_ui_language/get_ui_language roundtrip did not preserve the language"
+    assert await get_api_key(99999999, db_path=db_path) is None, (
+        "get_api_key did not return None for an unregistered telegram_id"
     )
 
 
 @pytest.mark.asyncio
-async def test_save_api_key_preserves_language_preference(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid = random.randint(10000, 99999)
-    old_key = f"old-{uuid.uuid4().hex}"
-    new_key = f"new-{uuid.uuid4().hex}"
+async def test_save_api_key_overwrites_previous_key() -> None:
+    db_path = _temp_db()
     await init_db(db_path)
-    await save_language_preference(tid, old_key, LanguagePreference(mode="ask", code=None), db_path)
-    await save_api_key(tid, new_key, db_path)
-
-    result = await get_language_preference(tid, db_path)
-
-    assert result == LanguagePreference(mode="ask", code=None), (
-        "save_api_key overwrote the existing language preference"
+    telegram_id = 111222
+    await save_api_key(telegram_id, "old-key", db_path=db_path)
+    await save_api_key(telegram_id, "new-key", db_path=db_path)
+    assert await get_api_key(telegram_id, db_path=db_path) == "new-key", (
+        "second save_api_key did not overwrite the earlier value"
     )
 
 
 @pytest.mark.asyncio
-async def test_save_api_key_preserves_language_preference_and_updates_key(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    tid = random.randint(10000, 99999)
-    old_key = f"old-{uuid.uuid4().hex}"
-    new_key = f"new-{uuid.uuid4().hex}"
+async def test_save_conversation_id_persists_between_calls() -> None:
+    db_path = _temp_db()
     await init_db(db_path)
-    await save_language_preference(tid, old_key, LanguagePreference(mode="ask", code=None), db_path)
-    await save_api_key(tid, new_key, db_path)
-
-    result = await get_api_key(tid, db_path)
-
-    assert result == new_key, "save_api_key did not update the key after preserving preference"
-
-
-@pytest.mark.asyncio
-async def test_init_db_migrates_existing_users_table_adds_language_preference(
-    tmp_path: Path,
-) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    async with aiosqlite.connect(db_path) as db:
-        await db.execute(
-            "CREATE TABLE users (telegram_id INTEGER PRIMARY KEY, api_key TEXT NOT NULL)"
-        )
-        await db.commit()
-
-    await init_db(db_path)
-    tid = random.randint(10000, 99999)
-    api_key = f"\u043a\u043b\u044e\u0447-{uuid.uuid4().hex}"
-    await save_language_preference(
-        tid, api_key, LanguagePreference(mode="fixed", code="en"), db_path
-    )
-
-    result = await get_language_preference(tid, db_path)
-
-    assert result == LanguagePreference(mode="fixed", code="en"), (
-        "init_db migration did not add language_preference columns"
+    telegram_id = 333444
+    await save_api_key(telegram_id, "key", db_path=db_path)
+    conversation_id = "conv-xyz-42"
+    await save_conversation_id(telegram_id, conversation_id, db_path=db_path)
+    assert await get_conversation_id(telegram_id, db_path=db_path) == conversation_id, (
+        "get_conversation_id did not return the persisted value"
     )
 
 
 @pytest.mark.asyncio
-async def test_init_db_migrates_existing_users_table_adds_ui_language(tmp_path: Path) -> None:
-    db_path = str(tmp_path / f"test-{uuid.uuid4().hex}.db")
-    async with aiosqlite.connect(db_path) as db:
-        await db.execute(
-            "CREATE TABLE users (telegram_id INTEGER PRIMARY KEY, api_key TEXT NOT NULL)"
-        )
-        await db.commit()
-
+async def test_clear_conversation_id_removes_previously_saved_value() -> None:
+    db_path = _temp_db()
     await init_db(db_path)
-    tid = random.randint(10000, 99999)
-    api_key = f"key-{uuid.uuid4().hex}"
-    await save_ui_language(tid, api_key, "ru", db_path)
+    telegram_id = 555666
+    await save_api_key(telegram_id, "key", db_path=db_path)
+    await save_conversation_id(telegram_id, "c1", db_path=db_path)
+    await clear_conversation_id(telegram_id, db_path=db_path)
+    assert await get_conversation_id(telegram_id, db_path=db_path) is None, (
+        "clear_conversation_id did not remove the stored conversation id"
+    )
 
-    result = await get_ui_language(tid, db_path)
 
-    assert result == "ru", "init_db migration did not add ui_language column"
+@pytest.mark.asyncio
+async def test_get_conversation_id_returns_none_for_unknown_user() -> None:
+    db_path = _temp_db()
+    await init_db(db_path)
+    assert await get_conversation_id(12345, db_path=db_path) is None, (
+        "get_conversation_id did not return None for an unregistered telegram_id"
+    )

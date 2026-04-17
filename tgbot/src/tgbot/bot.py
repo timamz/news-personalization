@@ -7,7 +7,7 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp import web
 
 from tgbot.core.config import get_settings
-from tgbot.handlers import menu, start, subscribe, subscriptions
+from tgbot.handlers import start
 from tgbot.storage import init_db
 from tgbot.webhook_server import create_webhook_app, set_bot
 
@@ -42,9 +42,6 @@ async def main() -> None:
     await init_db(settings.bot_storage_path)
 
     dp.include_router(start.router)
-    dp.include_router(subscribe.router)
-    dp.include_router(subscriptions.router)
-    dp.include_router(menu.router)
 
     set_bot(bot)
 

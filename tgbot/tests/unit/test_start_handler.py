@@ -1,188 +1,265 @@
+"""Tests for the /start command and the generic text-message relay handler."""
+
 import logging
 import random
+import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 
 from tgbot.handlers import start
-from tgbot.language import LanguagePreference
 
 logging.disable(logging.CRITICAL)
 
 
-def _make_message(telegram_id: int) -> SimpleNamespace:
+def _make_message(telegram_id: int, text: str = "") -> SimpleNamespace:
     return SimpleNamespace(
         from_user=SimpleNamespace(id=telegram_id),
         chat=SimpleNamespace(id=telegram_id),
+        text=text,
         answer=AsyncMock(),
-        bot=SimpleNamespace(
-            edit_message_text=AsyncMock(),
-            delete_message=AsyncMock(),
-            send_message=AsyncMock(
-                return_value=SimpleNamespace(message_id=random.randint(50, 200))
-            ),
+        bot=SimpleNamespace(send_chat_action=AsyncMock()),
+    )
+
+
+async def _stream_events(events: list[dict]):
+    for event in events:
+        yield event
+
+
+@pytest.mark.asyncio
+async def test_cmd_start_sends_welcome_message(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id)
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    clear_mock = mocker.patch.object(start, "clear_conversation_id", new=AsyncMock())
+    await start.cmd_start(message)
+    message.answer.assert_awaited_once()
+    clear_mock.assert_awaited_once_with(telegram_id)
+
+
+@pytest.mark.asyncio
+async def test_cmd_start_reports_error_when_registration_fails(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id)
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(side_effect=RuntimeError("boom")))
+    await start.cmd_start(message)
+    assert message.answer.await_args is not None, "cmd_start did not answer the user"
+    spoken_text = message.answer.await_args.args[0]
+    assert "wrong" in spoken_text.lower(), (
+        f"cmd_start did not surface an error to the user: {spoken_text!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_handle_user_message_ignores_empty_text(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id, text="   ")
+    ensure_mock = mocker.patch.object(start, "ensure_api_key", new=AsyncMock())
+    await start.handle_user_message(message)
+    ensure_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handle_user_message_starts_fresh_conversation_when_none_stored(
+    mocker,
+) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id, text="hello")
+    api_key = f"key-{uuid.uuid4().hex}"
+    conversation_id = f"conv-{uuid.uuid4().hex}"
+    agent_text = f"pong-{uuid.uuid4().hex[:6]}"
+
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=None))
+    save_mock = mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
+
+    start_stream = mocker.patch.object(
+        start.backend,
+        "start_subscription_conversation_stream",
+        return_value=_stream_events(
+            [
+                {"event": "status", "status_key": "status_thinking"},
+                {
+                    "event": "done",
+                    "conversation_id": conversation_id,
+                    "agent_message": agent_text,
+                    "status": "in_progress",
+                    "finalized_config": None,
+                },
+            ]
+        ),
+    )
+    mocker.patch.object(
+        start.backend,
+        "continue_subscription_conversation_stream",
+        new=AsyncMock(),
+    )
+
+    await start.handle_user_message(message)
+
+    start_stream.assert_called_once_with(api_key, "hello")
+    save_mock.assert_awaited_once_with(telegram_id, conversation_id)
+    assert message.answer.await_count == 1, (
+        f"handle_user_message sent {message.answer.await_count} messages, expected 1"
+    )
+
+
+@pytest.mark.asyncio
+async def test_handle_user_message_continues_existing_conversation(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id, text="what did i say yesterday?")
+    api_key = f"key-{uuid.uuid4().hex}"
+    conversation_id = f"conv-{uuid.uuid4().hex}"
+
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=conversation_id))
+    mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
+
+    continue_stream = mocker.patch.object(
+        start.backend,
+        "continue_subscription_conversation_stream",
+        return_value=_stream_events(
+            [
+                {
+                    "event": "done",
+                    "conversation_id": conversation_id,
+                    "agent_message": "ok",
+                    "status": "in_progress",
+                    "finalized_config": None,
+                }
+            ]
+        ),
+    )
+    start_stream = mocker.patch.object(
+        start.backend, "start_subscription_conversation_stream", new=AsyncMock()
+    )
+
+    await start.handle_user_message(message)
+
+    continue_stream.assert_called_once_with(api_key, conversation_id, "what did i say yesterday?")
+    start_stream.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_user_message_clears_conversation_id_and_retries_on_conflict(
+    mocker,
+) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id, text="hi again")
+    api_key = f"key-{uuid.uuid4().hex}"
+    stale_id = f"conv-{uuid.uuid4().hex}"
+    fresh_id = f"conv-{uuid.uuid4().hex}"
+
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=stale_id))
+    save_mock = mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
+
+    import httpx
+
+    conflict = httpx.HTTPStatusError(
+        "Conflict", request=AsyncMock(), response=SimpleNamespace(status_code=409)
+    )
+
+    async def _fail_continue(*_args, **_kwargs):
+        raise conflict
+        yield  # pragma: no cover
+
+    mocker.patch.object(
+        start.backend,
+        "continue_subscription_conversation_stream",
+        side_effect=_fail_continue,
+    )
+    start_stream = mocker.patch.object(
+        start.backend,
+        "start_subscription_conversation_stream",
+        return_value=_stream_events(
+            [
+                {
+                    "event": "done",
+                    "conversation_id": fresh_id,
+                    "agent_message": "hi",
+                    "status": "in_progress",
+                    "finalized_config": None,
+                }
+            ]
         ),
     )
 
+    await start.handle_user_message(message)
 
-def _make_callback(telegram_id: int, data: str) -> SimpleNamespace:
-    msg = SimpleNamespace(
-        answer=AsyncMock(),
-        edit_text=AsyncMock(),
-        chat=SimpleNamespace(id=telegram_id),
-        message_id=random.randint(10, 100),
+    start_stream.assert_called_once_with(api_key, "hi again")
+    save_mock.assert_awaited_once_with(telegram_id, fresh_id)
+
+
+@pytest.mark.asyncio
+async def test_handle_user_message_creates_subscription_on_ready_status(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id, text="digest about AI every morning")
+    api_key = f"key-{uuid.uuid4().hex}"
+    conversation_id = f"conv-{uuid.uuid4().hex}"
+
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=None))
+    mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
+    clear_mock = mocker.patch.object(start, "clear_conversation_id", new=AsyncMock())
+    mocker.patch.object(
+        start,
+        "delivery_webhook_url",
+        return_value="http://bot:8080/deliver/x/1",
     )
-    return SimpleNamespace(
-        from_user=SimpleNamespace(id=telegram_id),
-        data=data,
-        answer=AsyncMock(),
-        message=msg,
-        bot=SimpleNamespace(
-            edit_message_text=AsyncMock(),
-            delete_message=AsyncMock(),
-            send_message=AsyncMock(
-                return_value=SimpleNamespace(message_id=random.randint(50, 200))
-            ),
+
+    mocker.patch.object(
+        start.backend,
+        "start_subscription_conversation_stream",
+        return_value=_stream_events(
+            [
+                {
+                    "event": "done",
+                    "conversation_id": conversation_id,
+                    "agent_message": "All set! Creating your subscription...",
+                    "status": "ready",
+                    "finalized_config": {
+                        "delivery_mode": "digest",
+                        "schedule_cron": "0 8 * * *",
+                        "digest_language": "en",
+                        "format_instructions": "brief summary",
+                        "fixed_telegram_channels": [],
+                        "fixed_reddit_subreddits": [],
+                        "fixed_twitter_accounts": [],
+                        "include_discovered_sources": True,
+                    },
+                }
+            ]
         ),
     )
 
-
-def _make_state(data: dict | None = None) -> SimpleNamespace:
-    base = {"_menu_msg_id": random.randint(10, 100)}
-    if data:
-        base.update(data)
-    return SimpleNamespace(
-        get_data=AsyncMock(return_value=base),
-        update_data=AsyncMock(),
-        set_state=AsyncMock(),
-        clear=AsyncMock(),
-    )
-
-
-@pytest.mark.asyncio
-async def test_cmd_start_shows_language_prompt_when_ui_language_missing(monkeypatch) -> None:
-    from tgbot.handlers import menu
-
-    tid = random.randint(1000, 9999)
-    message = _make_message(telegram_id=tid)
-    state = _make_state()
-
-    monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value=None))
-    monkeypatch.setattr(menu, "get_ui_language", AsyncMock(return_value=None))
-    monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value=f"key-{tid}"))
-
-    await start.cmd_start(message, state)
-
-    bot_calls = list(message.bot.edit_message_text.await_args_list) + list(
-        message.bot.send_message.await_args_list
-    )
-    any_lang_text = any(
-        "language" in str(c).lower() or "\u044f\u0437\u044b\u043a" in str(c).lower()
-        for c in bot_calls
-    )
-    assert any_lang_text, "cmd_start did not show language selection when ui_language is missing"
-
-
-@pytest.mark.asyncio
-async def test_handle_ui_language_choice_saves_language_and_shows_subscription_selection(
-    monkeypatch,
-) -> None:
-    from tgbot.handlers import menu
-
-    tid = random.randint(1000, 9999)
-    callback = _make_callback(telegram_id=tid, data=start.UI_LANGUAGE_RU)
-    state = _make_state(
-        data={
-            "setup_next_action": "subscribe",
-            "setup_require_subscription_after_ui": True,
-        }
-    )
-
-    monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr(menu, "get_ui_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value=f"key-{tid}"))
-    monkeypatch.setattr(start, "get_language_preference", AsyncMock(return_value=None))
-    save_ui = AsyncMock()
-    monkeypatch.setattr(start, "save_ui_language", save_ui)
-
-    await start.handle_ui_language_choice(callback, state)
-
-    save_ui.assert_awaited_once_with(tid, f"key-{tid}", "ru")
-    callback.bot.edit_message_text.assert_awaited_once()
-    edit_text = callback.bot.edit_message_text.await_args.kwargs["text"]
-    assert (
-        "\u043f\u043e\u0434\u043f\u0438\u0441\u043e\u043a" in edit_text.lower()
-        or "subscription" in edit_text.lower()
-    ), "handle_ui_language_choice did not show subscription language selection"
-
-
-@pytest.mark.asyncio
-async def test_handle_subscription_language_choice_updates_existing_subscriptions(
-    monkeypatch,
-) -> None:
-    from tgbot.handlers import menu
-
-    tid = random.randint(1000, 9999)
-    callback = _make_callback(telegram_id=tid, data=start.SUBSCRIPTION_LANGUAGE_FIXED_RU)
-    state = _make_state(data={"setup_next_action": "menu"})
-
-    monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="ru"))
-    monkeypatch.setattr(menu, "get_ui_language", AsyncMock(return_value="ru"))
-    monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value=f"key-{tid}"))
-    monkeypatch.setattr(
-        start,
-        "get_language_preference",
-        AsyncMock(return_value=LanguagePreference(mode="ask", code=None)),
-    )
-    monkeypatch.setattr(start, "save_language_preference", AsyncMock())
-    monkeypatch.setattr(
+    create_events = [
+        {"event": "status", "status_key": "status_looking_for_sources"},
+        {"event": "done", "subscription": {"id": "sub-123"}},
+    ]
+    create_stream = mocker.patch.object(
         start.backend,
-        "get_current_user",
-        AsyncMock(return_value=SimpleNamespace(timezone="UTC")),
-    )
-    sub_id = f"sub-{random.randint(100, 999)}"
-    monkeypatch.setattr(
-        start.backend,
-        "list_subscriptions",
-        AsyncMock(return_value=[SimpleNamespace(id=sub_id, digest_language="en")]),
-    )
-    update_sub = AsyncMock()
-    monkeypatch.setattr(start.backend, "update_subscription", update_sub)
-
-    await start.handle_subscription_language_choice(callback, state)
-
-    update_sub.assert_awaited_once_with(f"key-{tid}", sub_id, digest_language="ru")
-
-
-@pytest.mark.asyncio
-async def test_handle_subscription_language_choice_prompts_timezone_when_missing(
-    monkeypatch,
-) -> None:
-    from tgbot.handlers import menu
-
-    tid = random.randint(1000, 9999)
-    callback = _make_callback(telegram_id=tid, data=start.SUBSCRIPTION_LANGUAGE_FIXED_EN)
-    state = _make_state(data={"setup_next_action": "menu"})
-
-    monkeypatch.setattr(start, "get_ui_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr(menu, "get_ui_language", AsyncMock(return_value="en"))
-    monkeypatch.setattr(start, "ensure_api_key", AsyncMock(return_value=f"key-{tid}"))
-    monkeypatch.setattr(
-        start,
-        "get_language_preference",
-        AsyncMock(return_value=LanguagePreference(mode="ask", code=None)),
-    )
-    monkeypatch.setattr(start, "save_language_preference", AsyncMock())
-    monkeypatch.setattr(start.backend, "list_subscriptions", AsyncMock(return_value=[]))
-    monkeypatch.setattr(
-        start.backend,
-        "get_current_user",
-        AsyncMock(return_value=SimpleNamespace(timezone=None)),
+        "create_subscription_stream",
+        return_value=_stream_events(create_events),
     )
 
-    await start.handle_subscription_language_choice(callback, state)
+    await start.handle_user_message(message)
 
-    state.set_state.assert_awaited_once_with(
-        start.SetupFlow.waiting_for_timezone_city,
+    create_stream.assert_called_once()
+    clear_mock.assert_awaited_once_with(telegram_id)
+
+
+def test_split_returns_single_chunk_for_short_text() -> None:
+    assert start._split("short", 4000) == ["short"], (
+        "_split should return the input unchanged when it already fits"
     )
+
+
+def test_split_breaks_on_paragraph_boundary_when_available() -> None:
+    text = "a" * 100 + "\n\n" + "b" * 100
+    chunks = start._split(text, 150)
+    assert len(chunks) == 2, f"_split produced {len(chunks)} chunks, expected 2"
+    assert chunks[0].endswith("a"), "first chunk should end on the paragraph boundary"
+    assert chunks[1].startswith("b"), "second chunk should start with the next paragraph"
