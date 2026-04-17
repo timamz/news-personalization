@@ -12,6 +12,7 @@ venv/
 .env
 backend/.env
 tgbot/.env
+.cache
 
 *.db
 *.sqlite3

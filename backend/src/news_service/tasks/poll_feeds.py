@@ -12,13 +12,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
+from news_service.core.guardrails import cap_text_for_embedding, scan_for_injection
 from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
 from news_service.models.news_item import NewsItem
 from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
-from news_service.orchestration.guardrails import cap_text_for_embedding, scan_for_injection
 from news_service.services.reddit import extract_reddit_subreddit_from_url
 from news_service.services.telegram import extract_telegram_channel_from_url
 from news_service.services.twitter import extract_twitter_account_from_url

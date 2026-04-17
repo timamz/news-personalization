@@ -17,6 +17,7 @@ from aiogram.filters import CommandStart
 
 from tgbot.client import BackendClient
 from tgbot.telegram_format import render_html_message
+from tgbot.text_split import split_for_telegram
 from tgbot.user_registry import ensure_api_key
 
 logger = logging.getLogger(__name__)
@@ -94,29 +95,11 @@ async def _safe_typing(message: types.Message) -> None:
 
 
 async def _send_long_message(message: types.Message, text: str) -> None:
-    """Split on paragraph boundaries if the agent's reply exceeds 4096 chars."""
+    """Split on paragraph boundaries if the agent's reply exceeds the limit."""
     rendered = render_html_message(text)
-    for chunk in _split(rendered, _TELEGRAM_MESSAGE_LIMIT):
+    for chunk in split_for_telegram(rendered, _TELEGRAM_MESSAGE_LIMIT):
         await message.answer(
             chunk,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
         )
-
-
-def _split(text: str, limit: int) -> list[str]:
-    if len(text) <= limit:
-        return [text]
-    chunks: list[str] = []
-    remaining = text
-    while len(remaining) > limit:
-        split_at = remaining.rfind("\n\n", 0, limit)
-        if split_at <= 0:
-            split_at = remaining.rfind("\n", 0, limit)
-        if split_at <= 0:
-            split_at = limit
-        chunks.append(remaining[:split_at].rstrip())
-        remaining = remaining[split_at:].lstrip()
-    if remaining:
-        chunks.append(remaining)
-    return chunks

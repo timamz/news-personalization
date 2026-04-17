@@ -82,11 +82,6 @@ def mock_subscription_embedding_creation(mocker) -> None:
         return [2.0] * 1536
 
     mocker.patch(
-        "news_service.api.routes_subscriptions.embed_text",
-        new=AsyncMock(side_effect=_embed),
-    )
-
-    mocker.patch(
         "news_service.services.coverage.embed_text",
         new=AsyncMock(side_effect=_embed),
     )

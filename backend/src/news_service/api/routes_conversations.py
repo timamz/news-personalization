@@ -52,34 +52,22 @@ def _redis_key(user_id: str) -> str:
 
 async def _load_state(user_id: str) -> ConversationState:
     """Return the stored thread or a fresh one if nothing is cached yet."""
-    redis = get_redis_client()
-    try:
-        raw = await redis.get(_redis_key(user_id))
-    finally:
-        await redis.aclose()
+    raw = await get_redis_client().get(_redis_key(user_id))
     if raw is None:
         return ConversationState(user_id=user_id)
     return ConversationState.model_validate_json(raw)
 
 
 async def _save_state(state: ConversationState) -> None:
-    redis = get_redis_client()
-    try:
-        await redis.set(
-            _redis_key(state.user_id),
-            state.model_dump_json(),
-            ex=settings.conversation_ttl_seconds,
-        )
-    finally:
-        await redis.aclose()
+    await get_redis_client().set(
+        _redis_key(state.user_id),
+        state.model_dump_json(),
+        ex=settings.conversation_ttl_seconds,
+    )
 
 
 async def _delete_state(user_id: str) -> None:
-    redis = get_redis_client()
-    try:
-        await redis.delete(_redis_key(user_id))
-    finally:
-        await redis.aclose()
+    await get_redis_client().delete(_redis_key(user_id))
 
 
 def _messages_byte_size(messages: list[dict]) -> int:

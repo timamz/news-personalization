@@ -1,4 +1,4 @@
-"""Tests for digest pipeline error handling tiers and reflector trigger logic."""
+"""Tests for digest pipeline error tiers and the reflector trigger heuristic."""
 
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -14,7 +14,7 @@ def _subscription():
     sub = MagicMock()
     sub.id = uuid.uuid4()
     sub.user_id = uuid.uuid4()
-    sub.user_spec = "## Topic\nMachine learning Neuigkeiten\n\n## Preferences\nbrief summary"
+    sub.user_spec = "## Topic\nML\n\n## Preferences\nbrief"
     sub.topic_embedding = [0.1] * 1536
     sub.digest_language = "de"
     sub.schedule_cron = "0 8 * * *"
@@ -31,23 +31,24 @@ def _session():
     return session
 
 
-@pytest.mark.asyncio
-async def test_generate_digest_raises_pipeline_error_when_writer_fails(_subscription, _session):
+def _candidate():
     candidate = MagicMock()
     candidate.id = uuid.uuid4()
     candidate.source_id = uuid.uuid4()
     candidate.embedding = [0.2] * 1536
+    return candidate
 
+
+@pytest.mark.asyncio
+async def test_writer_failure_raises_pipeline_error(_subscription, _session) -> None:
+    candidate = _candidate()
     with (
         patch(
             "news_service.agents.digest.pipeline.fetch_candidate_items",
             new_callable=AsyncMock,
             return_value=[candidate],
         ),
-        patch(
-            "news_service.agents.digest.pipeline.build_items_text",
-            return_value="item text",
-        ),
+        patch("news_service.agents.digest.pipeline.build_items_text", return_value="items"),
         patch(
             "news_service.agents.digest.pipeline._source_ids_for_digest",
             new_callable=AsyncMock,
@@ -66,14 +67,10 @@ async def test_generate_digest_raises_pipeline_error_when_writer_fails(_subscrip
 
 
 @pytest.mark.asyncio
-async def test_generate_digest_uses_unreviewed_draft_when_judge_fails(_subscription, _session):
-    candidate = MagicMock()
-    candidate.id = uuid.uuid4()
-    candidate.source_id = uuid.uuid4()
-    candidate.embedding = [0.2] * 1536
-
+async def test_judge_failure_falls_back_to_unreviewed_draft(_subscription, _session) -> None:
+    candidate = _candidate()
     composition = MagicMock()
-    composition.digest_text = "Erstaunliche ML-Nachrichten heute"
+    composition.digest_text = "draft text"
     composition.used_item_ids = [str(candidate.id)]
 
     with (
@@ -82,10 +79,7 @@ async def test_generate_digest_uses_unreviewed_draft_when_judge_fails(_subscript
             new_callable=AsyncMock,
             return_value=[candidate],
         ),
-        patch(
-            "news_service.agents.digest.pipeline.build_items_text",
-            return_value="item text",
-        ),
+        patch("news_service.agents.digest.pipeline.build_items_text", return_value="items"),
         patch(
             "news_service.agents.digest.pipeline._source_ids_for_digest",
             new_callable=AsyncMock,
@@ -99,38 +93,26 @@ async def test_generate_digest_uses_unreviewed_draft_when_judge_fails(_subscript
         patch(
             "news_service.agents.digest.pipeline.judge_digest",
             new_callable=AsyncMock,
-            side_effect=RuntimeError("Judge model unavailable"),
+            side_effect=RuntimeError("judge model unavailable"),
         ),
         patch(
             "news_service.agents.digest.pipeline.run_reflector",
             new_callable=AsyncMock,
             return_value={"discovery_triggered": False},
         ),
-        patch(
-            "news_service.agents.digest.pipeline._mark_as_sent",
-            new_callable=AsyncMock,
-        ),
+        patch("news_service.agents.digest.pipeline._mark_as_sent", new_callable=AsyncMock),
     ):
         from news_service.agents.digest.pipeline import generate_digest
 
-        result = await generate_digest(_session, _subscription)
-
-        assert result is not None, "digest should be returned even when judge fails"
-        assert result == "Erstaunliche ML-Nachrichten heute", "draft text should be used as-is"
+        assert await generate_digest(_session, _subscription) == "draft text"
 
 
 @pytest.mark.asyncio
-async def test_generate_digest_succeeds_when_reflector_fails(_subscription, _session):
+async def test_reflector_failure_does_not_block_digest(_subscription, _session) -> None:
     _subscription.last_reflected_at = None
-
-    candidate = MagicMock()
-    candidate.id = uuid.uuid4()
-    candidate.source_id = uuid.uuid4()
-    candidate.embedding = [0.2] * 1536
-
+    candidate = _candidate()
     composition = MagicMock()
-    reflector_digest = "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 ML"
-    composition.digest_text = reflector_digest
+    composition.digest_text = "digest"
     composition.used_item_ids = [str(candidate.id)]
 
     quality = MagicMock()
@@ -146,10 +128,7 @@ async def test_generate_digest_succeeds_when_reflector_fails(_subscription, _ses
             new_callable=AsyncMock,
             return_value=[candidate],
         ),
-        patch(
-            "news_service.agents.digest.pipeline.build_items_text",
-            return_value="item text",
-        ),
+        patch("news_service.agents.digest.pipeline.build_items_text", return_value="items"),
         patch(
             "news_service.agents.digest.pipeline._source_ids_for_digest",
             new_callable=AsyncMock,
@@ -173,126 +152,80 @@ async def test_generate_digest_succeeds_when_reflector_fails(_subscription, _ses
         patch(
             "news_service.agents.digest.pipeline.run_reflector",
             new_callable=AsyncMock,
-            side_effect=RuntimeError("Reflector crashed"),
+            side_effect=RuntimeError("reflector crashed"),
         ),
-        patch(
-            "news_service.agents.digest.pipeline._mark_as_sent",
-            new_callable=AsyncMock,
-        ),
+        patch("news_service.agents.digest.pipeline._mark_as_sent", new_callable=AsyncMock),
     ):
         from news_service.agents.digest.pipeline import generate_digest
 
-        result = await generate_digest(_session, _subscription)
-
-        assert result is not None, "digest should be returned even when reflector crashes"
-        assert result == reflector_digest, "digest text should not be affected by reflector failure"
+        assert await generate_digest(_session, _subscription) == "digest"
 
 
-def test_should_reflect_returns_true_when_pipeline_struggled():
-    from news_service.agents.digest.pipeline import _should_reflect
-
-    sub = MagicMock()
-    sub.last_reflected_at = datetime.now(UTC)
-
-    assert _should_reflect(subscription=sub, quality=None, candidates=[], source_ids=set()), (
-        "should reflect when quality is None (judge failed)"
-    )
-
-
-def test_should_reflect_returns_true_when_source_coverage_below_threshold():
-    from news_service.agents.digest.pipeline import _should_reflect
-
-    sub = MagicMock()
-    sub.last_reflected_at = datetime.now(UTC)
-
+def _healthy_quality() -> MagicMock:
     quality = MagicMock()
     quality.verdict = "PASS"
     quality.relevance = 5
     quality.format_score = 5
     quality.conciseness = 5
-
-    source_a = uuid.uuid4()
-    source_b = uuid.uuid4()
-    source_c = uuid.uuid4()
-
-    candidate = MagicMock()
-    candidate.source_id = source_a
-
-    assert _should_reflect(
-        subscription=sub,
-        quality=quality,
-        candidates=[candidate],
-        source_ids={source_a, source_b, source_c},
-    ), "should reflect when only 1 of 3 sources contributed (33% < 50%)"
+    return quality
 
 
-def test_should_reflect_returns_true_when_quality_scores_mediocre():
-    from news_service.agents.digest.pipeline import _should_reflect
-
-    sub = MagicMock()
-    sub.last_reflected_at = datetime.now(UTC)
-
+def _mediocre_quality() -> MagicMock:
     quality = MagicMock()
     quality.verdict = "PASS"
     quality.relevance = 3
     quality.format_score = 3
     quality.conciseness = 3
-
-    source_id = uuid.uuid4()
-    candidate = MagicMock()
-    candidate.source_id = source_id
-
-    assert _should_reflect(
-        subscription=sub,
-        quality=quality,
-        candidates=[candidate],
-        source_ids={source_id},
-    ), "should reflect when average score (3.0) is below threshold (4.0)"
+    return quality
 
 
-def test_should_reflect_returns_true_when_never_reflected_before():
+def test_should_reflect_fires_on_unhealthy_signals_and_otherwise_stays_quiet() -> None:
     from news_service.agents.digest.pipeline import _should_reflect
 
-    sub = MagicMock()
-    sub.last_reflected_at = None
+    sub_recent = MagicMock()
+    sub_recent.last_reflected_at = datetime.now(UTC)
+    sub_old = MagicMock()
+    sub_old.last_reflected_at = datetime.now(UTC) - timedelta(days=2)
+    sub_never = MagicMock()
+    sub_never.last_reflected_at = None
 
-    quality = MagicMock()
-    quality.verdict = "PASS"
-    quality.relevance = 5
-    quality.format_score = 5
-    quality.conciseness = 5
-
-    source_id = uuid.uuid4()
+    source_a, source_b, source_c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     candidate = MagicMock()
-    candidate.source_id = source_id
+    candidate.source_id = source_a
 
+    # Judge failed (quality is None)
     assert _should_reflect(
-        subscription=sub,
-        quality=quality,
+        subscription=sub_recent, quality=None, candidates=[], source_ids=set()
+    ), "reflector should fire when the judge failed"
+
+    # Low source coverage (1 of 3)
+    assert _should_reflect(
+        subscription=sub_recent,
+        quality=_healthy_quality(),
         candidates=[candidate],
-        source_ids={source_id},
-    ), "should reflect when last_reflected_at is None"
+        source_ids={source_a, source_b, source_c},
+    ), "reflector should fire when only a small fraction of sources contributed"
 
+    # Mediocre quality scores
+    assert _should_reflect(
+        subscription=sub_recent,
+        quality=_mediocre_quality(),
+        candidates=[candidate],
+        source_ids={source_a},
+    ), "reflector should fire when quality scores fall below the threshold"
 
-def test_should_reflect_returns_false_when_healthy_and_recently_reflected():
-    from news_service.agents.digest.pipeline import _should_reflect
+    # Never reflected before
+    assert _should_reflect(
+        subscription=sub_never,
+        quality=_healthy_quality(),
+        candidates=[candidate],
+        source_ids={source_a},
+    ), "reflector should fire when it has never run before"
 
-    sub = MagicMock()
-    sub.last_reflected_at = datetime.now(UTC) - timedelta(days=2)
-
-    quality = MagicMock()
-    quality.verdict = "PASS"
-    quality.relevance = 5
-    quality.format_score = 5
-    quality.conciseness = 5
-
-    source_id = uuid.uuid4()
-    candidate = MagicMock()
-    candidate.source_id = source_id
-
+    # Healthy + recently reflected -> skip
     assert not _should_reflect(
-        subscription=sub,
-        quality=quality,
+        subscription=sub_old,
+        quality=_healthy_quality(),
         candidates=[candidate],
-        source_ids={source_id},
-    ), "should not reflect when all signals are healthy and recently reflected"
+        source_ids={source_a},
+    ), "reflector should stay quiet when all signals are healthy"

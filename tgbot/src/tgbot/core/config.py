@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     backend_url: str = "http://app:8000"
     backend_request_timeout_seconds: float = 300.0
     backend_slow_request_timeout_seconds: float = 600.0
-    backend_create_subscription_timeout_seconds: float = 600.0
     webhook_host: str = "0.0.0.0"
     webhook_port: int = 8001
     webhook_public_host: str = "tgbot"

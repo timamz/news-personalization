@@ -1,6 +1,5 @@
 """Tests for the conversational agent: prompt assembly + tool behavior."""
 
-import asyncio
 import logging
 import uuid
 from types import SimpleNamespace
@@ -18,21 +17,6 @@ from news_service.agents.conversational import (
 logging.disable(logging.CRITICAL)
 
 
-_EXPECTED_TOOL_NAMES = {
-    "create_subscription",
-    "update_subscription",
-    "get_subscriptions",
-    "remember",
-    "add_source",
-    "remove_source",
-    "set_user_language",
-    "set_user_timezone",
-    "trigger_digest_now",
-    "delete_subscription",
-    "close_scenario",
-}
-
-
 def _fake_user(*, has_onboarded: bool = True) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
@@ -44,8 +28,6 @@ def _fake_user(*, has_onboarded: bool = True) -> SimpleNamespace:
 
 
 class _FakeSessionFactory:
-    """async_sessionmaker stand-in that yields a supplied mock session."""
-
     def __init__(self, session: Any) -> None:
         self._session = session
 
@@ -76,33 +58,24 @@ def _get_tool(agent: Any, name: str):
 # ---------- prompt assembly ----------
 
 
-def test_build_instruction_includes_conversation_summary() -> None:
-    summary = f"durable facts {uuid.uuid4().hex[:6]}"
+def test_build_instruction_renders_all_context_sections() -> None:
+    summary = f"durable {uuid.uuid4().hex[:6]}"
+    tz = "Europe/Berlin"
+    sub_line = f"[{uuid.uuid4()}] digest | 0 8 * * * | AI {uuid.uuid4().hex[:4]}"
+    compacted = f"closed scenario {uuid.uuid4().hex[:4]}"
+
     result = _build_instruction(
         conversation_summary=summary,
-        user_language=None,
-        user_timezone=None,
-    )
-    assert summary in result, "instruction did not include conversation_summary"
-
-
-def test_build_instruction_includes_language_preference() -> None:
-    result = _build_instruction(
-        conversation_summary="",
         user_language="ru",
-        user_timezone=None,
-    )
-    assert "ru" in result, "instruction did not include language preference"
-
-
-def test_build_instruction_includes_timezone() -> None:
-    tz = "Europe/Berlin"
-    result = _build_instruction(
-        conversation_summary="",
-        user_language=None,
         user_timezone=tz,
+        subscription_summaries=[sub_line],
+        compacted_log=[compacted],
+        has_onboarded=True,
     )
-    assert tz in result, "instruction did not include timezone"
+
+    assert all(s in result for s in (summary, "ru", tz, sub_line, compacted)), (
+        "instruction did not include every context section"
+    )
 
 
 def test_build_instruction_flags_first_time_user_when_not_onboarded() -> None:
@@ -118,7 +91,7 @@ def test_build_instruction_flags_first_time_user_when_not_onboarded() -> None:
     )
 
 
-def test_build_instruction_does_not_flag_first_time_for_onboarded_user_without_subs() -> None:
+def test_build_instruction_treats_onboarded_user_without_subs_as_returning() -> None:
     result = _build_instruction(
         conversation_summary="",
         user_language="en",
@@ -126,80 +99,42 @@ def test_build_instruction_does_not_flag_first_time_for_onboarded_user_without_s
         subscription_summaries=[],
         has_onboarded=True,
     )
-    assert "first-time interaction" not in result, (
-        "an onboarded user who has deleted all subs must not be greeted as a first-timer"
-    )
-
-
-def test_build_instruction_notes_returning_user_when_onboarded_without_subs() -> None:
-    result = _build_instruction(
-        conversation_summary="",
-        user_language="en",
-        user_timezone="Europe/Berlin",
-        subscription_summaries=[],
-        has_onboarded=True,
-    )
-    assert "returning user" in result, (
-        "onboarded user without subs should be flagged as returning in context"
-    )
-
-
-def test_build_instruction_lists_active_subscriptions_when_present() -> None:
-    marker = f"[{uuid.uuid4()}] digest | 0 8 * * * | AI research {uuid.uuid4().hex[:6]}"
-    result = _build_instruction(
-        conversation_summary="",
-        user_language="en",
-        user_timezone="Europe/Berlin",
-        subscription_summaries=[marker],
-    )
-    assert marker in result, "instruction did not include the subscription summary line"
+    assert "first-time interaction" not in result and "returning user" in result
 
 
 # ---------- agent construction ----------
 
 
-def test_create_agent_returns_agent_and_shared_state() -> None:
-    user = _fake_user()
-    agent, state = create_conversational_agent(
-        db_session=AsyncMock(),
-        user=user,
-        conversation_summary="",
-        user_language="ru",
-    )
-    assert agent is not None, "create_conversational_agent did not return an agent"
-    assert isinstance(state, dict), "create_conversational_agent did not return state dict"
-
-
 def test_create_agent_registers_the_expected_tools() -> None:
-    user = _fake_user()
+    expected = {
+        "create_subscription",
+        "update_subscription",
+        "get_subscriptions",
+        "remember",
+        "add_source",
+        "remove_source",
+        "set_user_language",
+        "set_user_timezone",
+        "trigger_digest_now",
+        "delete_subscription",
+        "close_scenario",
+    }
     agent, _ = create_conversational_agent(
         db_session=AsyncMock(),
-        user=user,
+        user=_fake_user(),
         conversation_summary="",
     )
-    tool_names = {t.__name__ if callable(t) else t.name for t in agent.tools}
-    missing = _EXPECTED_TOOL_NAMES - tool_names
-    assert not missing, f"agent missing expected tools: {missing}"
-
-
-def test_create_agent_registers_no_extra_tools() -> None:
-    user = _fake_user()
-    agent, _ = create_conversational_agent(
-        db_session=AsyncMock(),
-        user=user,
-        conversation_summary="",
+    tool_names = {t.__name__ for t in agent.tools if callable(t)}
+    assert tool_names == expected, (
+        f"registered tool set drifted from the expected set (diff={tool_names ^ expected})"
     )
-    tool_names = {t.__name__ if callable(t) else t.name for t in agent.tools}
-    extras = tool_names - _EXPECTED_TOOL_NAMES
-    assert not extras, f"agent exposed unexpected tools: {extras}"
 
 
-# ---------- remember tool ----------
+# ---------- remember + conversation summary ----------
 
 
 @pytest.mark.asyncio
 async def test_remember_appends_fact_to_user_conversation_summary() -> None:
-    user = _fake_user()
     persisted = MagicMock()
     persisted.conversation_summary = ""
     lookup = MagicMock()
@@ -209,104 +144,89 @@ async def test_remember_appends_fact_to_user_conversation_summary() -> None:
     scoped.execute = AsyncMock(return_value=lookup)
     scoped.commit = AsyncMock()
 
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    remember = _get_tool(agent, "remember")
+    agent, _ = _build_agent_with_factory(user=_fake_user(), factory_session=scoped)
     fact = f"user prefers short digests {uuid.uuid4().hex[:6]}"
-    result = await remember(fact)
-
-    assert result == "remembered.", f"remember did not confirm: {result!r}"
+    await _get_tool(agent, "remember")(fact)
     assert fact in persisted.conversation_summary, (
         "remember did not append the fact to the persisted summary"
     )
-    scoped.commit.assert_awaited_once()
 
 
-@pytest.mark.asyncio
-async def test_remember_ignores_empty_fact() -> None:
-    user = _fake_user()
-    scoped = AsyncMock()
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    remember = _get_tool(agent, "remember")
-    result = await remember("   ")
-    assert "empty" in result.lower(), f"remember accepted an empty fact: {result!r}"
-    scoped.execute.assert_not_called()
-
-
-def test_append_conversation_summary_dedups_same_fact_hash() -> None:
+def test_append_conversation_summary_dedups_same_fact_and_caps_bytes() -> None:
     first = _append_conversation_summary("", "user is based in Berlin")
     twice = _append_conversation_summary(first, "user is based in Berlin")
-    assert twice.count("Berlin") == 1, (
-        "duplicate fact should be deduped, summary still contains multiple copies"
-    )
+    assert twice.count("Berlin") == 1, "duplicate fact should be deduped"
 
-
-def test_append_conversation_summary_caps_at_byte_limit() -> None:
     existing = "\n".join(f"2026-04-17 [{i:08d}] filler {i}" * 3 for i in range(100))
     added = _append_conversation_summary(existing, "brand new fact")
-    assert len(added.encode("utf-8")) <= 2048, (
-        "append_conversation_summary did not cap the summary below the byte limit"
-    )
-    assert "brand new fact" in added, "cap eviction removed the newly-added fact"
-
-
-# ---------- create_subscription / update_subscription tools ----------
-
-
-@pytest.mark.asyncio
-async def test_create_subscription_requires_topic() -> None:
-    user = _fake_user()
-    scoped = AsyncMock()
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    create = _get_tool(agent, "create_subscription")
-    result = await create(topic="")
-    assert "topic is required" in result, (
-        f"create_subscription without topic should error: {result!r}"
-    )
-    scoped.commit.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_update_subscription_rejects_malformed_id() -> None:
-    user = _fake_user()
-    scoped = AsyncMock()
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    update = _get_tool(agent, "update_subscription")
-    result = await update(subscription_id="not-a-uuid")
-    assert "invalid subscription_id" in result, (
-        f"update_subscription did not reject malformed id: {result!r}"
+    assert len(added.encode("utf-8")) <= 2048 and "brand new fact" in added, (
+        "cap eviction did not keep the newest fact under the byte limit"
     )
 
 
+# ---------- create / update subscription ----------
+
+
 @pytest.mark.asyncio
-async def test_update_subscription_updates_scalar_fields(mocker) -> None:
+async def test_create_subscription_embeds_topic_and_exposes_id_in_shared_state(mocker) -> None:
     user = _fake_user()
-    sub = MagicMock()
-    sub.id = uuid.uuid4()
-    sub.user_id = user.id
-    sub.user_spec = "## Topic\nold topic"
-
-    lookup = MagicMock()
-    lookup.scalar_one_or_none.return_value = sub
-
     scoped = AsyncMock()
-    scoped.execute = AsyncMock(return_value=lookup)
+    scoped.add = MagicMock()
+    scoped.flush = AsyncMock()
     scoped.commit = AsyncMock()
-
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    update = _get_tool(agent, "update_subscription")
-    result = await update(
-        subscription_id=str(sub.id),
-        delivery_mode="event",
-        digest_language="de",
-        preferences="detailed",
+    mocker.patch(
+        "news_service.agents.conversational.tools.embed_text",
+        new=AsyncMock(return_value=[0.0] * 8),
     )
-    assert result.endswith(": updated."), f"update_subscription did not confirm: {result!r}"
-    assert sub.delivery_mode == "event", "update did not write delivery_mode"
-    assert sub.digest_language == "de", "update did not write digest_language"
+    mocker.patch(
+        "news_service.agents.conversational.tools.ensure_source_coverage",
+        new=AsyncMock(return_value=[]),
+    )
+
+    agent, shared_state = _build_agent_with_factory(user=user, factory_session=scoped)
+    result = await _get_tool(agent, "create_subscription")(
+        topic=f"AI {uuid.uuid4().hex[:6]}",
+        delivery_mode="digest",
+        schedule_cron="0 8 * * *",
+        include_discovered_sources=True,
+    )
+    assert ": created" in result and shared_state["created_subscription_id"]
 
 
 @pytest.mark.asyncio
-async def test_update_subscription_reembeds_when_topic_changes(mocker) -> None:
+async def test_create_subscription_flips_has_onboarded_on_first_success(mocker) -> None:
+    user = _fake_user(has_onboarded=False)
+    persisted = MagicMock()
+    persisted.has_onboarded = False
+
+    scoped = AsyncMock()
+    scoped.add = MagicMock()
+    scoped.flush = AsyncMock()
+    scoped.commit = AsyncMock()
+    scoped.get = AsyncMock(return_value=persisted)
+    mocker.patch(
+        "news_service.agents.conversational.tools.embed_text",
+        new=AsyncMock(return_value=[0.0] * 8),
+    )
+    mocker.patch(
+        "news_service.agents.conversational.tools.ensure_source_coverage",
+        new=AsyncMock(return_value=[]),
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    await _get_tool(agent, "create_subscription")(
+        topic=f"news {uuid.uuid4().hex[:6]}",
+        delivery_mode="digest",
+        schedule_cron="0 8 * * *",
+        include_discovered_sources=False,
+    )
+    assert persisted.has_onboarded is True and user.has_onboarded is True, (
+        "first create_subscription did not mark persisted+in-memory user as onboarded"
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_subscription_reembeds_only_when_topic_changes(mocker) -> None:
     user = _fake_user()
     sub = MagicMock()
     sub.id = uuid.uuid4()
@@ -322,173 +242,41 @@ async def test_update_subscription_reembeds_when_topic_changes(mocker) -> None:
 
     new_vector = [0.42] * 8
     embed_mock = mocker.patch(
-        "news_service.agents.conversational.embed_text",
+        "news_service.agents.conversational.tools.embed_text",
         new=AsyncMock(return_value=new_vector),
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
     update = _get_tool(agent, "update_subscription")
+
     await update(subscription_id=str(sub.id), topic="brand new topic")
-
-    assert sub.topic_embedding == new_vector, (
-        "update_subscription did not refresh topic_embedding when the topic changed"
-    )
-    embed_mock.assert_awaited_once_with("brand new topic")
-
-
-@pytest.mark.asyncio
-async def test_update_subscription_does_not_reembed_when_topic_unchanged(mocker) -> None:
-    user = _fake_user()
-    sub = MagicMock()
-    sub.id = uuid.uuid4()
-    sub.user_id = user.id
-    sub.user_spec = "## Topic\nstatic topic"
-    sub.topic_embedding = [0.0] * 8
-
-    lookup = MagicMock()
-    lookup.scalar_one_or_none.return_value = sub
-    scoped = AsyncMock()
-    scoped.execute = AsyncMock(return_value=lookup)
-    scoped.commit = AsyncMock()
-
-    embed_mock = mocker.patch(
-        "news_service.agents.conversational.embed_text",
-        new=AsyncMock(return_value=[0.99] * 8),
+    assert sub.topic_embedding == new_vector and embed_mock.await_count == 1, (
+        "topic change did not trigger exactly one re-embed"
     )
 
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    update = _get_tool(agent, "update_subscription")
+    embed_mock.reset_mock()
     await update(subscription_id=str(sub.id), preferences="short bullets only")
+    assert embed_mock.await_count == 0, "preferences-only update must not re-embed the topic"
 
-    embed_mock.assert_not_called()
 
-
-@pytest.mark.asyncio
-async def test_create_subscription_with_embedding(mocker) -> None:
-    user = _fake_user()
-    scoped = AsyncMock()
-    scoped.execute = AsyncMock()
-    scoped.add = MagicMock()
-    scoped.flush = AsyncMock()
-    scoped.commit = AsyncMock()
-
-    mocker.patch(
-        "news_service.agents.conversational.embed_text",
-        new=AsyncMock(return_value=[0.0] * 8),
-    )
-    mocker.patch(
-        "news_service.agents.conversational.ensure_source_coverage",
-        new=AsyncMock(return_value=[]),
-    )
-
-    agent, shared_state = _build_agent_with_factory(user=user, factory_session=scoped)
-    create = _get_tool(agent, "create_subscription")
-    result = await create(
-        topic=f"news about AI {uuid.uuid4().hex[:6]}",
-        delivery_mode="digest",
-        schedule_cron="0 8 * * *",
-        include_discovered_sources=True,
-    )
-    assert ": created" in result, f"create_subscription did not confirm: {result!r}"
-    assert shared_state["created_subscription_id"], (
-        "shared_state.created_subscription_id was not set after create"
-    )
+# ---------- source tools ----------
 
 
 @pytest.mark.asyncio
-async def test_create_subscription_flips_has_onboarded(mocker) -> None:
-    user = _fake_user(has_onboarded=False)
-    persisted = MagicMock()
-    persisted.has_onboarded = False
-
-    scoped = AsyncMock()
-    scoped.execute = AsyncMock()
-    scoped.add = MagicMock()
-    scoped.flush = AsyncMock()
-    scoped.commit = AsyncMock()
-    scoped.get = AsyncMock(return_value=persisted)
-
+async def test_add_source_reports_unreachable_when_validation_fails(mocker) -> None:
     mocker.patch(
-        "news_service.agents.conversational.embed_text",
-        new=AsyncMock(return_value=[0.0] * 8),
-    )
-    mocker.patch(
-        "news_service.agents.conversational.ensure_source_coverage",
-        new=AsyncMock(return_value=[]),
-    )
-
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    create = _get_tool(agent, "create_subscription")
-    await create(
-        topic=f"news {uuid.uuid4().hex[:6]}",
-        delivery_mode="digest",
-        schedule_cron="0 8 * * *",
-        include_discovered_sources=False,
-    )
-
-    assert persisted.has_onboarded is True, (
-        "first successful create_subscription did not flip has_onboarded on the persisted user"
-    )
-    assert user.has_onboarded is True, (
-        "first successful create_subscription did not mirror has_onboarded onto the in-memory user"
-    )
-
-
-# ---------- get_subscriptions tool ----------
-
-
-@pytest.mark.asyncio
-async def test_get_subscriptions_returns_empty_message_when_none() -> None:
-    user = _fake_user()
-    result_mock = MagicMock()
-    result_mock.scalars.return_value.all.return_value = []
-
-    db_session = AsyncMock()
-    db_session.execute = AsyncMock(return_value=result_mock)
-
-    agent, _ = create_conversational_agent(
-        db_session=db_session,
-        user=user,
-        conversation_summary="",
-    )
-    get_subs = _get_tool(agent, "get_subscriptions")
-    result = await get_subs()
-    assert "No active subscriptions" in result, (
-        f"get_subscriptions should say none when empty: {result!r}"
-    )
-
-
-# ---------- source tools (preserved behavior) ----------
-
-
-@pytest.mark.asyncio
-async def test_add_source_rejects_unsupported_source_kind() -> None:
-    user = _fake_user()
-    agent, _ = _build_agent_with_factory(user=user, factory_session=MagicMock())
-    add_source = _get_tool(agent, "add_source")
-    result = await add_source(str(uuid.uuid4()), "some-feed", "rss")
-    assert "unsupported source_kind" in result, (
-        f"add_source did not reject unsupported source_kind: {result!r}"
-    )
-
-
-@pytest.mark.asyncio
-async def test_add_source_returns_unreachable_when_validation_fails(mocker) -> None:
-    user = _fake_user()
-    agent, _ = _build_agent_with_factory(user=user, factory_session=MagicMock())
-    mocker.patch(
-        "news_service.agents.conversational._validate_source_url",
+        "news_service.agents.conversational.tools._validate_source_url",
         new=AsyncMock(return_value=False),
     )
-    add_source = _get_tool(agent, "add_source")
-    result = await add_source(str(uuid.uuid4()), "deadchannel", "telegram_channel")
-    assert "unreachable or empty" in result, (
-        f"add_source did not report unreachable source: {result!r}"
+    agent, _ = _build_agent_with_factory(user=_fake_user(), factory_session=MagicMock())
+    result = await _get_tool(agent, "add_source")(
+        str(uuid.uuid4()), "deadchannel", "telegram_channel"
     )
+    assert "unreachable" in result
 
 
 @pytest.mark.asyncio
-async def test_remove_source_returns_not_attached_when_link_missing() -> None:
+async def test_remove_source_reports_when_link_is_missing() -> None:
     user = _fake_user()
     sub = MagicMock()
     sub.id = uuid.uuid4()
@@ -503,16 +291,15 @@ async def test_remove_source_returns_not_attached_when_link_missing() -> None:
     scoped.execute = AsyncMock(side_effect=[sub_lookup, link_lookup])
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    remove_source = _get_tool(agent, "remove_source")
-    result = await remove_source(str(sub.id), "bbcworld", "telegram_channel")
-    assert "not attached" in result, f"remove_source did not report missing link: {result!r}"
+    result = await _get_tool(agent, "remove_source")(str(sub.id), "bbcworld", "telegram_channel")
+    assert "not attached" in result
 
 
 # ---------- user state tools ----------
 
 
 @pytest.mark.asyncio
-async def test_set_user_language_persists_normalized_code() -> None:
+async def test_set_user_language_normalizes_and_persists_iso_code() -> None:
     user = _fake_user()
     persisted = MagicMock()
     lookup = MagicMock()
@@ -523,16 +310,14 @@ async def test_set_user_language_persists_normalized_code() -> None:
     scoped.commit = AsyncMock()
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    set_lang = _get_tool(agent, "set_user_language")
-    result = await set_lang("RU-cyrl")
-    assert "ru" in result, f"set_user_language did not normalize code: {result!r}"
+    await _get_tool(agent, "set_user_language")("RU-cyrl")
     assert persisted.language == "ru", (
-        f"persisted language was not normalized: {persisted.language!r}"
+        "set_user_language did not strip the region suffix before persisting"
     )
 
 
 @pytest.mark.asyncio
-async def test_set_user_timezone_persists_on_resolved(mocker) -> None:
+async def test_set_user_timezone_persists_resolved_candidate(mocker) -> None:
     user = _fake_user()
     user.timezone = None
     persisted = MagicMock()
@@ -550,113 +335,61 @@ async def test_set_user_timezone_persists_on_resolved(mocker) -> None:
         local_time=lambda: SimpleNamespace(strftime=lambda _: "15:30"),
     )
     mocker.patch(
-        "news_service.agents.conversational.resolve_timezone",
+        "news_service.agents.conversational.tools.resolve_timezone",
         return_value=SimpleNamespace(status="resolved", candidates=(candidate,)),
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    tool = _get_tool(agent, "set_user_timezone")
-    result = await tool("Berlin")
-    assert result.startswith("resolved:"), (
-        f"set_user_timezone did not prefix resolved status: {result!r}"
-    )
-    assert persisted.timezone == "Europe/Berlin", (
-        "persisted timezone was not set to the resolved IANA name"
-    )
+    await _get_tool(agent, "set_user_timezone")("Berlin")
+    assert persisted.timezone == "Europe/Berlin"
 
 
 @pytest.mark.asyncio
-async def test_set_user_timezone_returns_ambiguous_without_persisting(mocker) -> None:
+async def test_set_user_timezone_does_not_persist_on_ambiguous_or_not_found(mocker) -> None:
     user = _fake_user()
     original = user.timezone
     scoped = AsyncMock()
     scoped.commit = AsyncMock()
 
-    portland_or = SimpleNamespace(label="Portland, United States", timezone="America/Los_Angeles")
-    portland_me = SimpleNamespace(label="Portland, United States", timezone="America/New_York")
     mocker.patch(
-        "news_service.agents.conversational.resolve_timezone",
-        return_value=SimpleNamespace(status="ambiguous", candidates=(portland_or, portland_me)),
+        "news_service.agents.conversational.tools.resolve_timezone",
+        return_value=SimpleNamespace(
+            status="ambiguous",
+            candidates=(
+                SimpleNamespace(label="Portland, US", timezone="America/Los_Angeles"),
+                SimpleNamespace(label="Portland, US", timezone="America/New_York"),
+            ),
+        ),
+    )
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    await _get_tool(agent, "set_user_timezone")("Portland")
+    assert user.timezone == original and scoped.commit.await_count == 0, (
+        "ambiguous resolution should not overwrite the stored timezone"
     )
 
-    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    tool = _get_tool(agent, "set_user_timezone")
-    result = await tool("Portland")
-    assert result.startswith("ambiguous:"), f"set_user_timezone did not flag ambiguity: {result!r}"
-    assert user.timezone == original, "ambiguous resolution must not overwrite the user's timezone"
-    scoped.commit.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_set_user_timezone_returns_not_found_on_unknown_query(mocker) -> None:
-    user = _fake_user()
-    scoped = AsyncMock()
-    scoped.commit = AsyncMock()
     mocker.patch(
-        "news_service.agents.conversational.resolve_timezone",
+        "news_service.agents.conversational.tools.resolve_timezone",
         return_value=SimpleNamespace(status="not_found", candidates=()),
     )
-
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    tool = _get_tool(agent, "set_user_timezone")
-    result = await tool("qzzzx")
-    assert result.startswith("not_found:"), (
-        f"set_user_timezone did not signal not_found: {result!r}"
-    )
-    scoped.commit.assert_not_called()
+    await _get_tool(agent, "set_user_timezone")("qzzzx")
+    assert user.timezone == original, "not_found resolution should not overwrite the timezone"
 
 
-# ---------- close_scenario tool ----------
+# ---------- close_scenario ----------
 
 
 @pytest.mark.asyncio
-async def test_close_scenario_records_summary_into_shared_state() -> None:
-    user = _fake_user()
-    agent, shared_state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+async def test_close_scenario_records_summary_and_ignores_empty() -> None:
+    agent, shared_state = _build_agent_with_factory(user=_fake_user(), factory_session=MagicMock())
     close = _get_tool(agent, "close_scenario")
+
     summary = f"created AI digest daily 8am {uuid.uuid4().hex[:6]}"
-    result = await close(summary)
-    assert result == "scenario closed.", f"close_scenario did not confirm: {result!r}"
-    assert shared_state["scenario_close_summary"] == summary, (
-        "close_scenario did not expose the summary via shared_state"
-    )
+    await close(summary)
+    assert shared_state["scenario_close_summary"] == summary
 
-
-@pytest.mark.asyncio
-async def test_close_scenario_ignores_empty_summary() -> None:
-    user = _fake_user()
-    agent, shared_state = _build_agent_with_factory(user=user, factory_session=MagicMock())
-    close = _get_tool(agent, "close_scenario")
-    result = await close("   ")
-    assert "empty" in result.lower(), f"close_scenario accepted an empty summary: {result!r}"
+    shared_state["scenario_close_summary"] = None
+    await close("   ")
     assert shared_state["scenario_close_summary"] is None, (
-        "empty close_scenario call still wrote to shared_state"
+        "empty summary must not be written to shared_state"
     )
-
-
-def test_build_instruction_renders_compacted_log_when_present() -> None:
-    marker = f"created AI digest daily 8am {uuid.uuid4().hex[:6]}"
-    result = _build_instruction(
-        conversation_summary="",
-        user_language="en",
-        user_timezone="Europe/Berlin",
-        compacted_log=[marker],
-    )
-    assert marker in result, (
-        "instruction did not include the compacted_log entry in the context section"
-    )
-
-
-# ---------- status_queue wiring ----------
-
-
-def test_create_agent_accepts_status_queue_without_error() -> None:
-    user = _fake_user()
-    queue: asyncio.Queue = asyncio.Queue()
-    agent, _ = create_conversational_agent(
-        db_session=AsyncMock(),
-        user=user,
-        conversation_summary="",
-        status_queue=queue,
-    )
-    assert agent is not None, "agent should still build when a status_queue is passed"

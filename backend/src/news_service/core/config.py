@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     conversation_hot_max_bytes: int = 20000
 
     max_concurrent_discoveries: int = 3
-    max_concurrent_previews: int = 5
 
     llm_max_context_chars: int = 1_200_000
 
@@ -58,7 +57,6 @@ class Settings(BaseSettings):
     writer_article_max_chars: int = 3000
 
     searxng_url: str = "http://searxng:8080"
-    web_search_provider: str = "searxng"
 
 
 def get_settings() -> Settings:

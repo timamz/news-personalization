@@ -11,9 +11,9 @@ import logging
 
 from pydantic import BaseModel, Field
 
+from news_service.core.guardrails import sanitize_for_llm_prompt
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
-from news_service.orchestration.guardrails import sanitize_for_llm_prompt
 
 logger = logging.getLogger(__name__)
 

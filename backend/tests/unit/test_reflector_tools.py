@@ -1,6 +1,5 @@
-"""Tests for the reflector's remove_source, trigger_discovery, and emit_status tools."""
+"""Tests for the digest pipeline reflector tools."""
 
-import asyncio
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -21,20 +20,20 @@ def _subscription():
     sub = MagicMock()
     sub.id = uuid.uuid4()
     sub.user_id = uuid.uuid4()
-    sub.user_spec = "## Topic\nRecherche sur les réseaux de neurones"
+    sub.user_spec = "## Topic\nNeural network research"
     sub.last_reflected_at = None
     return sub
 
 
 @pytest.mark.asyncio
-async def test_remove_source_rejects_user_specified_source(_session, _subscription):
+async def test_reflector_does_not_remove_user_specified_source(_session, _subscription) -> None:
     link = MagicMock()
     link.is_user_specified = True
     link.source_id = uuid.uuid4()
 
-    result_mock = MagicMock()
-    result_mock.scalar_one_or_none.return_value = link
-    _session.execute = AsyncMock(return_value=result_mock)
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = link
+    _session.execute = AsyncMock(return_value=lookup)
 
     with patch(
         "news_service.agents.digest.reflector.run_agent_text",
@@ -46,17 +45,19 @@ async def test_remove_source_rejects_user_specified_source(_session, _subscripti
         await run_reflector(
             db_session=_session,
             subscription=_subscription,
-            digest_text="Les dernières nouvelles de ML",
+            digest_text="digest",
             user_spec=_subscription.user_spec,
             quality_scores={},
             source_info="- source [user-specified] — 5 candidates",
         )
 
-        _session.delete.assert_not_called()
+    _session.delete.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_trigger_discovery_sets_shared_state_flag(_session, _subscription):
+async def test_reflector_returns_shared_state_with_discovery_and_observations(
+    _session, _subscription
+) -> None:
     with patch(
         "news_service.agents.digest.reflector.run_agent_text",
         new_callable=AsyncMock,
@@ -67,60 +68,12 @@ async def test_trigger_discovery_sets_shared_state_flag(_session, _subscription)
         shared_state = await run_reflector(
             db_session=_session,
             subscription=_subscription,
-            digest_text="Краткий дайджест",
+            digest_text=f"Digest {uuid.uuid4().hex[:6]}",
             user_spec=_subscription.user_spec,
             quality_scores={"relevance": 3, "format_score": 3, "conciseness": 3},
             source_info="- source [auto-discovered] — 0 candidates",
         )
 
-        assert isinstance(shared_state, dict), "run_reflector should return a dict"
-        assert "discovery_triggered" in shared_state, (
-            "shared state should have discovery_triggered key"
-        )
-        assert "observations" in shared_state, "shared state should have observations key"
-
-
-@pytest.mark.asyncio
-async def test_reflector_accepts_status_queue_parameter(_session, _subscription):
-    queue: asyncio.Queue = asyncio.Queue()
-
-    with patch(
-        "news_service.agents.digest.reflector.run_agent_text",
-        new_callable=AsyncMock,
-        return_value="Reviewing pipeline health.",
-    ):
-        from news_service.agents.digest.reflector import run_reflector
-
-        shared_state = await run_reflector(
-            db_session=_session,
-            subscription=_subscription,
-            digest_text=f"Дайджест за день {uuid.uuid4().hex[:6]}",
-            user_spec=_subscription.user_spec,
-            quality_scores={"relevance": 4, "format_score": 4, "conciseness": 4},
-            source_info="- source [auto-discovered] — 3 candidates",
-            status_queue=queue,
-        )
-
-        assert isinstance(shared_state, dict), "run_reflector did not return a dict"
-        assert "observations" in shared_state, "shared state missing observations key"
-
-
-@pytest.mark.asyncio
-async def test_reflector_without_status_queue_does_not_raise(_session, _subscription):
-    with patch(
-        "news_service.agents.digest.reflector.run_agent_text",
-        new_callable=AsyncMock,
-        return_value="Pipeline looks fine.",
-    ):
-        from news_service.agents.digest.reflector import run_reflector
-
-        shared_state = await run_reflector(
-            db_session=_session,
-            subscription=_subscription,
-            digest_text=f"Tech digest {uuid.uuid4().hex[:6]}",
-            user_spec=_subscription.user_spec,
-            quality_scores={},
-            source_info="- source [auto-discovered] — 2 candidates",
-        )
-
-        assert isinstance(shared_state, dict), "run_reflector without queue did not return a dict"
+    assert "discovery_triggered" in shared_state and "observations" in shared_state, (
+        "reflector did not expose discovery_triggered and observations in shared state"
+    )

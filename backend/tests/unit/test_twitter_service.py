@@ -20,7 +20,7 @@ from news_service.services.twitter import (
 logging.disable(logging.CRITICAL)
 
 
-def _make_twitter_timeline_html(screen_name: str, tweet_id: str, text: str, created_at: str) -> str:
+def _make_html(screen_name: str, tweet_id: str, text: str, created_at: str) -> str:
     return f"""
     <html><body>
     <script id="__NEXT_DATA__" type="application/json">
@@ -43,8 +43,7 @@ def test_extract_twitter_accounts_deduplicates_urls_and_mentions() -> None:
         f"Track https://x.com/OpenAI and @NASA on Twitter. tag={tag} "
         f"Ignore duplicate https://mobile.x.com/openai."
     )
-    accounts = extract_twitter_accounts(prompt)
-    assert accounts == ["openai", "nasa"], "extract did not deduplicate twitter accounts correctly"
+    assert extract_twitter_accounts(prompt) == ["openai", "nasa"]
 
 
 @pytest.mark.parametrize(
@@ -54,17 +53,9 @@ def test_extract_twitter_accounts_deduplicates_urls_and_mentions() -> None:
         ("x.com/NASA", "nasa"),
         ("https://twitter.com/NASA/status/123", "nasa"),
     ],
-    ids=[
-        "from_handle",
-        "from_short_url",
-        "from_full_url",
-    ],
 )
 def test_normalize_twitter_account_extracts_and_lowercases(input_val: str, expected: str) -> None:
-    result = normalize_twitter_account(input_val)
-    assert result == expected, (
-        f"normalize_twitter_account({input_val!r}) returned {result!r}, expected {expected!r}"
-    )
+    assert normalize_twitter_account(input_val) == expected
 
 
 @pytest.mark.parametrize(
@@ -74,120 +65,41 @@ def test_normalize_twitter_account_extracts_and_lowercases(input_val: str, expec
         ("https://mobile.twitter.com/NASA/status/42", "nasa"),
         ("https://x.com/home", None),
     ],
-    ids=[
-        "from_x_url",
-        "from_mobile_twitter_url",
-        "reserved_path_returns_none",
-    ],
 )
-def test_extract_twitter_account_from_url_parses_correctly(url: str, expected: str | None) -> None:
-    result = extract_twitter_account_from_url(url)
-    assert result == expected, (
-        f"extract_twitter_account_from_url({url!r}) returned {result!r}, expected {expected!r}"
-    )
+def test_extract_twitter_account_from_url(url: str, expected: str | None) -> None:
+    assert extract_twitter_account_from_url(url) == expected
 
 
-def test_parse_twitter_posts_returns_single_post() -> None:
-    html = _make_twitter_timeline_html(
-        "NASA",
-        "2032045283488473242",
-        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
-        "Thu Mar 12 10:45:23 +0000 2026",
-    )
+def test_build_twitter_account_url_normalizes_handle() -> None:
+    assert build_twitter_account_url("@OpenAI") == "https://x.com/openai"
+
+
+def test_parse_twitter_posts_extracts_all_fields_from_next_data() -> None:
+    text = "\u041f\u0440\u044f\u043c\u043e\u0439 \u044d\u0444\u0438\u0440"
+    html = _make_html("NASA", "2032045283488473242", text, "Thu Mar 12 10:45:23 +0000 2026")
     posts = parse_twitter_posts(html, "nasa", limit=20)
-    assert len(posts) == 1, "parse did not return exactly one post"
-
-
-def test_parse_twitter_posts_extracts_url() -> None:
-    html = _make_twitter_timeline_html(
-        "NASA",
-        "2032045283488473242",
-        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
-        "Thu Mar 12 10:45:23 +0000 2026",
-    )
-    posts = parse_twitter_posts(html, "nasa", limit=20)
-    assert posts[0].url == "https://x.com/nasa/status/2032045283488473242", (
-        "parse did not extract correct tweet URL"
-    )
-
-
-def test_parse_twitter_posts_extracts_title() -> None:
-    html = _make_twitter_timeline_html(
-        "NASA",
-        "2032045283488473242",
-        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
-        "Thu Mar 12 10:45:23 +0000 2026",
-    )
-    posts = parse_twitter_posts(html, "nasa", limit=20)
-    assert posts[0].title == "ПРЯМОЙ ЭФИР: Идёт стыковка.", (
-        "parse did not extract correct tweet title"
-    )
-
-
-def test_parse_twitter_posts_extracts_published_at() -> None:
-    html = _make_twitter_timeline_html(
-        "NASA",
-        "2032045283488473242",
-        "ПРЯМОЙ ЭФИР: Идёт стыковка.",
-        "Thu Mar 12 10:45:23 +0000 2026",
-    )
-    posts = parse_twitter_posts(html, "nasa", limit=20)
-    assert posts[0].published_at == datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC), (
-        "parse did not extract correct published_at timestamp"
-    )
-
-
-def test_build_twitter_account_url_normalizes() -> None:
-    result = build_twitter_account_url("@OpenAI")
-    assert result == "https://x.com/openai", "build did not produce correct normalized twitter URL"
+    assert len(posts) == 1
+    assert posts[0].url == "https://x.com/nasa/status/2032045283488473242"
+    assert posts[0].title == text
+    assert posts[0].published_at == datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC)
 
 
 def test_extract_retry_after_seconds_uses_rate_limit_reset_header(mocker) -> None:
     mocker.patch.object(twitter.time, "time", return_value=100.0)
     response = httpx.Response(429, headers={"x-rate-limit-reset": "112"})
-    delay = twitter._extract_retry_after_seconds(response)
-    assert delay == pytest.approx(12.0), (
-        "extract_retry_after_seconds did not compute correct delay from header"
-    )
+    assert twitter._extract_retry_after_seconds(response) == pytest.approx(12.0)
 
 
 @pytest.mark.asyncio
-async def test_fetch_twitter_posts_retries_after_rate_limit(mocker, monkeypatch) -> None:
+async def test_fetch_twitter_posts_retries_once_after_rate_limit(mocker, monkeypatch) -> None:
     monkeypatch.setattr(twitter.settings, "twitter_fetch_attempts", 2)
     monkeypatch.setattr(twitter.settings, "twitter_fetch_retry_backoff_seconds", 2.0)
     monkeypatch.setattr(twitter.settings, "twitter_fetch_max_rate_limit_wait_seconds", 5.0)
 
     post = TwitterPost(
         url=f"https://x.com/openai/status/{uuid.uuid4().int}",
-        title="Привет мир",
-        body="Привет мир",
-        published_at=datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC),
-    )
-    mocker.patch.object(
-        twitter,
-        "_request_twitter_timeline_html",
-        new=AsyncMock(side_effect=[TwitterRateLimitError(120.0), "<html></html>"]),
-    )
-    mocker.patch.object(twitter, "parse_twitter_posts", return_value=[post])
-    mocker.patch.object(twitter.asyncio, "sleep", new=AsyncMock())
-
-    posts = await twitter.fetch_twitter_posts("OpenAI", timeout_seconds=1.0)
-
-    assert posts == [post], "fetch_twitter_posts did not return posts after rate limit retry"
-
-
-@pytest.mark.asyncio
-async def test_fetch_twitter_posts_retries_exactly_once_after_rate_limit(
-    mocker, monkeypatch
-) -> None:
-    monkeypatch.setattr(twitter.settings, "twitter_fetch_attempts", 2)
-    monkeypatch.setattr(twitter.settings, "twitter_fetch_retry_backoff_seconds", 2.0)
-    monkeypatch.setattr(twitter.settings, "twitter_fetch_max_rate_limit_wait_seconds", 5.0)
-
-    post = TwitterPost(
-        url=f"https://x.com/openai/status/{uuid.uuid4().int}",
-        title="Привет",
-        body="Привет",
+        title="hi",
+        body="hi",
         published_at=datetime(2026, 3, 12, 10, 45, 23, tzinfo=UTC),
     )
     request_html = mocker.patch.object(
@@ -198,8 +110,8 @@ async def test_fetch_twitter_posts_retries_exactly_once_after_rate_limit(
     mocker.patch.object(twitter, "parse_twitter_posts", return_value=[post])
     mocker.patch.object(twitter.asyncio, "sleep", new=AsyncMock())
 
-    await twitter.fetch_twitter_posts("OpenAI", timeout_seconds=1.0)
+    posts = await twitter.fetch_twitter_posts("OpenAI", timeout_seconds=1.0)
 
-    assert request_html.await_count == 2, (
-        "fetch_twitter_posts did not retry exactly once after rate limit"
+    assert posts == [post] and request_html.await_count == 2, (
+        "fetch_twitter_posts did not retry exactly once after a rate-limit error"
     )

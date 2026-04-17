@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from tgbot.handlers import start
+from tgbot.text_split import split_for_telegram
 
 logging.disable(logging.CRITICAL)
 
@@ -121,14 +122,14 @@ async def test_handle_user_message_reports_error_when_stream_raises(mocker) -> N
 
 
 def test_split_returns_single_chunk_for_short_text() -> None:
-    assert start._split("short", 4000) == ["short"], (
-        "_split should return the input unchanged when it already fits"
+    assert split_for_telegram("short", 4000) == ["short"], (
+        "split_for_telegram should return the input unchanged when it already fits"
     )
 
 
 def test_split_breaks_on_paragraph_boundary_when_available() -> None:
     text = "a" * 100 + "\n\n" + "b" * 100
-    chunks = start._split(text, 150)
-    assert len(chunks) == 2, f"_split produced {len(chunks)} chunks, expected 2"
+    chunks = split_for_telegram(text, 150)
+    assert len(chunks) == 2, f"split_for_telegram produced {len(chunks)} chunks, expected 2"
     assert chunks[0].endswith("a"), "first chunk should end on the paragraph boundary"
     assert chunks[1].startswith("b"), "second chunk should start with the next paragraph"

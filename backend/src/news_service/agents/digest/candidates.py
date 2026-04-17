@@ -1,24 +1,15 @@
 """Candidate fetching for digest generation — pure DB queries, no LLM."""
 
-import math
 import uuid
 from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from news_service.core.guardrails import wrap_untrusted_content
 from news_service.db.vector_store import find_similar_news
 from news_service.models.news_item import NewsItem
-from news_service.orchestration.guardrails import wrap_untrusted_content
-
-
-def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    dot = sum(x * y for x, y in zip(a, b, strict=False))
-    norm_a = math.sqrt(sum(x * x for x in a))
-    norm_b = math.sqrt(sum(x * x for x in b))
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return dot / (norm_a * norm_b)
+from news_service.services.relevance import cosine_similarity
 
 
 async def fetch_candidate_items(
@@ -63,7 +54,7 @@ async def fetch_candidate_items(
 
     merged.sort(
         key=lambda item: (
-            _cosine_similarity(list(item.embedding), query_embedding)
+            cosine_similarity(list(item.embedding), query_embedding)
             if item.embedding is not None
             else 0.0
         ),

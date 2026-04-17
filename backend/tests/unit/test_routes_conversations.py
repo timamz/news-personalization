@@ -79,51 +79,13 @@ async def _collect_streaming_response(response) -> list[dict]:
 
 
 @pytest.mark.asyncio
-async def test_send_message_stream_produces_done_event(mocker) -> None:
-    agent_output = AgentTurnOutput(message=f"ответ {uuid.uuid4().hex[:6]}")
-    mocker.patch(
-        f"{MODULE}.run_conversation_turn_streaming",
-        return_value=_mock_streaming_turn(agent_output),
-    )
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=_mock_redis())
-
-    from news_service.api.routes_conversations import send_conversation_message_stream
-
-    user = _mock_user()
-    request = ConversationTurnRequest(message="Новости ИИ", user_language="ru")
-    response = await send_conversation_message_stream(request, user=user, session=AsyncMock())
-    events = await _collect_streaming_response(response)
-    done = [e for e in events if e.get("event") == "done"]
-    assert len(done) == 1, "stream did not produce exactly one done event"
-
-
-@pytest.mark.asyncio
-async def test_send_message_stream_done_event_has_agent_message(mocker) -> None:
+async def test_send_message_stream_produces_done_event_with_agent_message_and_persists_state(
+    mocker,
+) -> None:
     text = f"response {uuid.uuid4().hex[:6]}"
-    agent_output = AgentTurnOutput(message=text)
     mocker.patch(
         f"{MODULE}.run_conversation_turn_streaming",
-        return_value=_mock_streaming_turn(agent_output),
-    )
-    mocker.patch(f"{MODULE}.get_redis_client", return_value=_mock_redis())
-
-    from news_service.api.routes_conversations import send_conversation_message_stream
-
-    request = ConversationTurnRequest(message="topic", user_language="en")
-    response = await send_conversation_message_stream(
-        request, user=_mock_user(), session=AsyncMock()
-    )
-    events = await _collect_streaming_response(response)
-    done = next(e for e in events if e.get("event") == "done")
-    assert done["agent_message"] == text, "done event did not contain the expected agent message"
-
-
-@pytest.mark.asyncio
-async def test_send_message_stream_persists_state_keyed_by_user(mocker) -> None:
-    agent_output = AgentTurnOutput(message="ok")
-    mocker.patch(
-        f"{MODULE}.run_conversation_turn_streaming",
-        return_value=_mock_streaming_turn(agent_output),
+        return_value=_mock_streaming_turn(AgentTurnOutput(message=text)),
     )
     redis_fake = _mock_redis()
     mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
@@ -131,10 +93,14 @@ async def test_send_message_stream_persists_state_keyed_by_user(mocker) -> None:
     from news_service.api.routes_conversations import send_conversation_message_stream
 
     user = _mock_user()
-    request = ConversationTurnRequest(message="hi", user_language="en")
+    request = ConversationTurnRequest(message="topic", user_language="en")
     response = await send_conversation_message_stream(request, user=user, session=AsyncMock())
+    events = await _collect_streaming_response(response)
 
-    await _collect_streaming_response(response)
+    done = [e for e in events if e.get("event") == "done"]
+    assert len(done) == 1 and done[0]["agent_message"] == text, (
+        "stream did not terminate with a single done event carrying the agent message"
+    )
     assert f"conv:user:{user.id}" in redis_fake._storage, (
         "conversation state was not saved under the user-scoped redis key"
     )

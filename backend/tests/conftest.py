@@ -1,11 +1,7 @@
 import os
 from pathlib import Path
-from unittest.mock import AsyncMock
 
-import pytest
 from sqlalchemy.engine import make_url
-
-from news_service.agents.event import RecentEventsPreviewDecision
 
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
@@ -31,42 +27,3 @@ if base_database_url:
     os.environ.setdefault("DATABASE_URL", parsed_url.render_as_string(hide_password=False))
 else:
     os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://news:news@localhost:5432/news_test")
-
-
-@pytest.fixture(autouse=True)
-def mock_event_preview_renderer(mocker) -> None:
-    async def _preview_renderer(
-        *,
-        topic_text: str,
-        target_language: str,
-        lookback_days: int,
-        candidate_events: list[str],
-        recent_notifications: list[str],
-    ) -> RecentEventsPreviewDecision:
-        del target_language, recent_notifications
-        selected_ids: list[str] = []
-        selected_entries: list[str] = []
-        normalized_prompt = topic_text.casefold()
-        for entry in candidate_events:
-            normalized_entry = entry.casefold()
-            if (
-                ("дробыш" in normalized_prompt or "drobyshev" in normalized_prompt)
-                and "дробыш" not in normalized_entry
-                and "drobyshev" not in normalized_entry
-            ):
-                continue
-            for line in entry.splitlines():
-                if line.startswith("ID: "):
-                    selected_ids.append(line.removeprefix("ID: ").strip())
-                    selected_entries.append(entry)
-                    break
-        return RecentEventsPreviewDecision(
-            selected_item_ids=selected_ids,
-            subject="Recent events you may have missed",
-            body=f"Lookback: {lookback_days} days\n\n" + "\n\n".join(selected_entries),
-        )
-
-    mocker.patch(
-        "news_service.services.event_notifications.render_recent_events_preview",
-        new=AsyncMock(side_effect=_preview_renderer),
-    )

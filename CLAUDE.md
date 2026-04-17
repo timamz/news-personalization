@@ -88,11 +88,9 @@ All new items from a polling cycle are batched. One LLM call per subscription ev
 
 **LiteLLM for all LLM calls.** `core/llm.py` wraps `litellm.acompletion()` and `litellm.aembedding()`. Model configured via `LITELLM_MODEL=openai/gpt-5.4-nano` (or any LiteLLM-supported string). Retry logic in `core/llm_retry.py` catches `litellm` exception types.
 
-**SearXNG for web search.** `services/search.py` calls a self-hosted SearXNG instance. No external API keys needed for search. Configurable via `SEARXNG_URL` and `WEB_SEARCH_PROVIDER` settings.
+**SearXNG for web search.** `services/search.py` calls a self-hosted SearXNG instance. No external API keys needed for search. Configurable via the `SEARXNG_URL` setting.
 
 **Google ADK for agentic agents.** The Conversational Agent, Discovery Agent, Source Finders, Digest Writer, and Pipeline Reflector are all ADK `Agent` instances with `LiteLlm` models and tool functions. ADK manages the tool-use / ReAct loop (LLM call -> tool execution -> result feedback -> repeat). `agents/adk_runner.py` wraps ADK's `Runner` with `run_agent` (streaming events) and `run_agent_text` (final text). Single-shot structured-output calls (Quality Judge, Batch Event Assessor, Event Preview) bypass ADK and call `core/llm.chat_completion` directly with a Pydantic `response_format`.
-
-**Pipeline observability.** `orchestration/tracing.py` records `PipelineEvent` rows with trace_id, timing, token usage, and input/output summaries. `EvaluationResult` rows store quality scores from the judge for trend analysis.
 
 **Content guardrails.** `orchestration/guardrails.py` wraps external content in `<untrusted-content>` boundary tags, scans for injection patterns, validates LLM outputs (phantom item IDs, cron expressions, notification body length).
 
@@ -143,7 +141,7 @@ Three tiers for pipeline stages:
    - If the judge fails, log a warning and use the unreviewed draft.
    - Never block the pipeline on a quality gate failure.
 
-3. **Non-blocking (nice-to-have)**: Reflector, tracing, observability.
+3. **Non-blocking (nice-to-have)**: Reflector.
    - Log and swallow. Never let these failures affect the user.
 
 General rules:
@@ -310,7 +308,6 @@ Key backend settings:
 - `LITELLM_EMBEDDING_MODEL` — embedding model (e.g. `openai/text-embedding-3-small`)
 - `LITELLM_JUDGE_MODEL` — separate model for quality judge
 - `SEARXNG_URL` — SearXNG instance URL
-- `WEB_SEARCH_PROVIDER` — `searxng` (default) or `openai` (legacy fallback)
 - `OPENAI_API_KEY` — read by LiteLLM from environment (not in Settings class)
 
 ---
@@ -321,8 +318,6 @@ Key backend settings:
 - All schema changes via Alembic migrations. Never modify the DB schema manually.
 - `pgvector` for embeddings (1536 dimensions by default, configurable).
 - The `sources` table (model: `Source`) stores all source types (RSS, Telegram, Reddit, Twitter). The `subscription_sources` join table links subscriptions to their fixed sources; digest/event retrieval must use only those sources.
-- `pipeline_events` table records every agent call for observability.
-- `evaluation_results` table stores quality scores from the judge per delivery.
 
 ---
 

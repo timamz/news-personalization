@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
 from news_service.core.exceptions import DigestPipelineError
+from news_service.core.guardrails import validate_digest_text, validate_used_item_ids
 from news_service.db.vector_store import embed_text
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
@@ -24,7 +25,6 @@ from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user_spec import extract_topic
-from news_service.orchestration.guardrails import validate_digest_text, validate_used_item_ids
 
 from .candidates import build_items_text, fetch_candidate_items
 from .judge import judge_digest

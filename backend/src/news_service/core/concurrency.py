@@ -12,4 +12,3 @@ from news_service.core.config import get_settings
 settings = get_settings()
 
 discovery_semaphore = asyncio.Semaphore(settings.max_concurrent_discoveries)
-preview_semaphore = asyncio.Semaphore(settings.max_concurrent_previews)

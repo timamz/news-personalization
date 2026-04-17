@@ -98,8 +98,7 @@ async def test_batch_delivers_relevant_event(mocker) -> None:
         deliver_events, "assess_batch_events", new=AsyncMock(return_value=batch_result)
     )
 
-    channel = AsyncMock()
-    mocker.patch.object(deliver_events, "get_delivery_channel", return_value=channel)
+    mocker.patch.object(deliver_events, "deliver", new=AsyncMock())
 
     result = await deliver_events._deliver_event_notifications_batch([item.id])
 

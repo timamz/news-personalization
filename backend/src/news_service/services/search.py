@@ -1,10 +1,5 @@
-"""Provider-agnostic web search.
+"""Web search via a self-hosted SearXNG instance."""
 
-Supports SearXNG (self-hosted, default) and OpenAI Responses API (legacy fallback).
-The active provider is selected via the ``web_search_provider`` setting.
-"""
-
-import asyncio
 import logging
 
 import httpx
@@ -18,23 +13,7 @@ _SEARXNG_MAX_RESULTS = 10
 
 
 async def search_web(query: str) -> str:
-    """Search the web and return formatted results.
-
-    Delegates to the provider configured in ``settings.web_search_provider``.
-    """
-    match settings.web_search_provider:
-        case "searxng":
-            return await _search_searxng(query)
-        case "openai":
-            return await _search_openai(query)
-        case other:
-            raise ValueError(
-                f"Unknown web_search_provider: {other!r}. Supported values: 'searxng', 'openai'."
-            )
-
-
-async def _search_searxng(query: str) -> str:
-    """Query a SearXNG instance and return results formatted for LLM consumption."""
+    """Query SearXNG and return results formatted for LLM consumption."""
     async with httpx.AsyncClient(
         timeout=settings.http_timeout_seconds,
         proxy=settings.proxy_url,
@@ -61,23 +40,3 @@ async def _search_searxng(query: str) -> str:
         snippet = r.get("content", "")
         lines.append(f"- {title}: {url}\n  {snippet}")
     return "\n".join(lines)
-
-
-async def _search_openai(query: str) -> str:
-    """Legacy fallback: search via OpenAI Responses API with web_search tool."""
-    from openai import OpenAI
-
-    def _do_search() -> str:
-        http_client = httpx.Client(proxy=settings.proxy_url) if settings.proxy_url else None
-        client = OpenAI(
-            api_key=settings.openai_api_key,
-            http_client=http_client,
-        )
-        response = client.responses.create(
-            model=settings.litellm_model.removeprefix("openai/"),
-            tools=[{"type": "web_search"}],
-            input=query,
-        )
-        return response.output_text
-
-    return await asyncio.to_thread(_do_search)

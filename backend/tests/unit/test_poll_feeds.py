@@ -53,17 +53,12 @@ class _FakeSessionFactory:
         return False
 
 
-def _make_rss_source(
-    *,
-    source_id: uuid.UUID | None = None,
-    url: str | None = None,
-    title: str = "Лента новостей",
-) -> Source:
+def _make_rss_source() -> Source:
     return Source(
-        id=source_id or uuid.uuid4(),
-        url=url or f"https://example.com/{uuid.uuid4().hex}.xml",
-        title=title,
-        source_description=f"Описание источника {uuid.uuid4().hex[:6]}",
+        id=uuid.uuid4(),
+        url=f"https://example.com/{uuid.uuid4().hex}.xml",
+        title="Feed",
+        source_description=f"Description {uuid.uuid4().hex[:6]}",
         source_description_embedding=None,
         is_active=True,
         last_polled_at=None,
@@ -72,14 +67,14 @@ def _make_rss_source(
 
 
 @pytest.mark.asyncio
-async def test_fetch_rss_feed_content_returns_bytes_after_retry() -> None:
+async def test_fetch_rss_feed_content_retries_after_read_timeout() -> None:
     rss_bytes = f"<rss>{uuid.uuid4().hex}</rss>".encode()
     response = MagicMock()
     response.content = rss_bytes
     response.raise_for_status = MagicMock()
 
     mock_http = AsyncMock()
-    mock_http.get = AsyncMock(side_effect=[httpx.ReadTimeout("тайм-аут"), response])
+    mock_http.get = AsyncMock(side_effect=[httpx.ReadTimeout("timeout"), response])
     mock_http.__aenter__ = AsyncMock(return_value=mock_http)
     mock_http.__aexit__ = AsyncMock(return_value=False)
 
@@ -88,37 +83,19 @@ async def test_fetch_rss_feed_content_returns_bytes_after_retry() -> None:
             f"https://example.com/{uuid.uuid4().hex}.xml"
         )
 
-    assert content == rss_bytes, "fetcher did not return expected bytes after retry"
+    assert content == rss_bytes and mock_http.get.await_count == 2, (
+        "fetcher did not retry after a read timeout and return the second-attempt bytes"
+    )
 
 
 @pytest.mark.asyncio
-async def test_fetch_rss_feed_content_retries_on_read_timeout() -> None:
-    response = MagicMock()
-    response.content = b"<rss />"
-    response.raise_for_status = MagicMock()
-
-    mock_http = AsyncMock()
-    mock_http.get = AsyncMock(side_effect=[httpx.ReadTimeout("тайм-аут"), response])
-    mock_http.__aenter__ = AsyncMock(return_value=mock_http)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("news_service.tasks.poll_adapters.httpx.AsyncClient", return_value=mock_http):
-        await poll_adapters._fetch_rss_feed_content(f"https://example.com/{uuid.uuid4().hex}.xml")
-
-    assert mock_http.get.await_count == 2, "fetcher did not retry after read timeout"
-
-
-@pytest.mark.asyncio
-async def test_poll_single_rss_source_returns_one_for_single_entry(mocker) -> None:
+async def test_poll_single_rss_source_upserts_entries_and_stamps_last_polled_at(mocker) -> None:
     src = _make_rss_source()
-
     xml = (
         '<?xml version="1.0"?><rss version="2.0"><channel>'
-        "<item>"
-        "<title>Новая лекция по палеонтологии</title>"
+        "<item><title>Lecture</title>"
         f"<link>https://example.com/posts/{uuid.uuid4().hex}</link>"
-        "<summary>Лекция пройдёт в четверг вечером.</summary>"
-        "</item>"
+        "<summary>Body</summary></item>"
         "</channel></rss>"
     )
 
@@ -128,195 +105,33 @@ async def test_poll_single_rss_source_returns_one_for_single_entry(mocker) -> No
         new=AsyncMock(return_value=xml.encode()),
     )
     mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
-    mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
+    upsert = AsyncMock(return_value=object())
+    mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert)
 
     count = await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
 
-    assert count == 1, "poller did not return one for a single rss entry"
+    assert (
+        count == 1
+        and upsert.await_count == 1
+        and src.last_polled_at is not None
+        and src.last_polled_at.tzinfo == UTC
+    ), "polling did not upsert the entry and stamp last_polled_at with a UTC timestamp"
 
 
 @pytest.mark.asyncio
-async def test_poll_single_rss_source_calls_upsert_for_each_entry(mocker) -> None:
-    src = _make_rss_source()
-
-    xml = (
-        '<?xml version="1.0"?><rss version="2.0"><channel>'
-        "<item>"
-        "<title>Статья</title>"
-        f"<link>https://example.com/{uuid.uuid4().hex}</link>"
-        "<summary>Текст статьи</summary>"
-        "</item>"
-        "</channel></rss>"
-    )
-
-    mocker.patch.object(
-        poll_adapters,
-        "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=xml.encode()),
-    )
-    mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
-    upsert_news_item = AsyncMock(return_value=object())
-    mocker.patch.object(poll_feeds, "upsert_news_item", new=upsert_news_item)
-
-    await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
-
-    assert upsert_news_item.await_count == 1, "upsert was not called for the rss entry"
-
-
-@pytest.mark.asyncio
-async def test_poll_single_rss_source_sets_last_polled_at(mocker) -> None:
-    src = _make_rss_source()
-
-    xml = (
-        '<?xml version="1.0"?><rss version="2.0"><channel>'
-        "<item>"
-        "<title>Заголовок</title>"
-        f"<link>https://example.com/{uuid.uuid4().hex}</link>"
-        "<summary>Текст</summary>"
-        "</item>"
-        "</channel></rss>"
-    )
-
-    mocker.patch.object(
-        poll_adapters,
-        "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=xml.encode()),
-    )
-    mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
-    mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
-
-    await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
-
-    assert src.last_polled_at is not None, "last_polled_at was not set after polling"
-
-
-@pytest.mark.asyncio
-async def test_poll_single_rss_source_sets_last_polled_at_with_utc_timezone(mocker) -> None:
-    src = _make_rss_source()
-
-    xml = (
-        '<?xml version="1.0"?><rss version="2.0"><channel>'
-        "<item>"
-        "<title>Заголовок</title>"
-        f"<link>https://example.com/{uuid.uuid4().hex}</link>"
-        "<summary>Текст</summary>"
-        "</item>"
-        "</channel></rss>"
-    )
-
-    mocker.patch.object(
-        poll_adapters,
-        "_fetch_rss_feed_content",
-        new=AsyncMock(return_value=xml.encode()),
-    )
-    mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(return_value=[[0.1, 0.2, 0.3]]))
-    mocker.patch.object(poll_feeds, "upsert_news_item", new=AsyncMock(return_value=object()))
-
-    await poll_feeds._poll_single_source(session=AsyncMock(), src=src)
-
-    assert src.last_polled_at.tzinfo == UTC, "last_polled_at timezone was not utc"
-
-
-@pytest.mark.asyncio
-async def test_poll_all_feeds_returns_correct_feeds_polled_count(mocker) -> None:
+async def test_poll_all_feeds_commits_per_source_and_reports_totals(mocker) -> None:
     sources = [_make_rss_source(), _make_rss_source()]
     session = _FakeSession(sources)
-    mocker.patch.object(
-        poll_feeds,
-        "get_task_session",
-        return_value=_FakeSessionFactory(session),
-    )
-    mocker.patch.object(
-        poll_feeds,
-        "_poll_single_source",
-        new=AsyncMock(side_effect=[1, 2]),
-    )
-    mocker.patch.object(poll_feeds.celery_app, "send_task")
-
-    result = await poll_feeds._poll_all_feeds()
-
-    assert result["feeds_polled"] == 2, "feeds_polled count did not match number of sources"
-
-
-@pytest.mark.asyncio
-async def test_poll_all_feeds_returns_correct_new_items_total(mocker) -> None:
-    sources = [_make_rss_source(), _make_rss_source()]
-    session = _FakeSession(sources)
-    mocker.patch.object(
-        poll_feeds,
-        "get_task_session",
-        return_value=_FakeSessionFactory(session),
-    )
-    mocker.patch.object(
-        poll_feeds,
-        "_poll_single_source",
-        new=AsyncMock(side_effect=[1, 2]),
-    )
-    mocker.patch.object(poll_feeds.celery_app, "send_task")
-
-    result = await poll_feeds._poll_all_feeds()
-
-    assert result["new_items"] == 3, "new_items total did not match sum of polled items"
-
-
-@pytest.mark.asyncio
-async def test_poll_all_feeds_commits_once_per_source(mocker) -> None:
-    sources = [_make_rss_source(), _make_rss_source()]
-    session = _FakeSession(sources)
-    mocker.patch.object(
-        poll_feeds,
-        "get_task_session",
-        return_value=_FakeSessionFactory(session),
-    )
-    mocker.patch.object(
-        poll_feeds,
-        "_poll_single_source",
-        new=AsyncMock(side_effect=[1, 2]),
-    )
-    mocker.patch.object(poll_feeds.celery_app, "send_task")
-
-    await poll_feeds._poll_all_feeds()
-
-    assert session.commits == 2, "session was not committed once per source"
-
-
-@pytest.mark.asyncio
-async def test_poll_all_feeds_does_not_rollback_on_success(mocker) -> None:
-    sources = [_make_rss_source(), _make_rss_source()]
-    session = _FakeSession(sources)
-    mocker.patch.object(
-        poll_feeds,
-        "get_task_session",
-        return_value=_FakeSessionFactory(session),
-    )
-    mocker.patch.object(
-        poll_feeds,
-        "_poll_single_source",
-        new=AsyncMock(side_effect=[1, 2]),
-    )
-    mocker.patch.object(poll_feeds.celery_app, "send_task")
-
-    await poll_feeds._poll_all_feeds()
-
-    assert session.rollbacks == 0, "session was rolled back despite no errors"
-
-
-@pytest.mark.asyncio
-async def test_poll_all_feeds_does_not_queue_events_when_none_exist(mocker) -> None:
-    sources = [_make_rss_source(), _make_rss_source()]
-    session = _FakeSession(sources)
-    mocker.patch.object(
-        poll_feeds,
-        "get_task_session",
-        return_value=_FakeSessionFactory(session),
-    )
-    mocker.patch.object(
-        poll_feeds,
-        "_poll_single_source",
-        new=AsyncMock(side_effect=[1, 2]),
-    )
+    mocker.patch.object(poll_feeds, "get_task_session", return_value=_FakeSessionFactory(session))
+    mocker.patch.object(poll_feeds, "_poll_single_source", new=AsyncMock(side_effect=[1, 2]))
     send_task = mocker.patch.object(poll_feeds.celery_app, "send_task")
 
-    await poll_feeds._poll_all_feeds()
+    result = await poll_feeds._poll_all_feeds()
 
-    assert send_task.call_count == 0, "event notifications were queued when none should exist"
+    assert (
+        result["feeds_polled"] == 2
+        and result["new_items"] == 3
+        and session.commits == 2
+        and session.rollbacks == 0
+        and send_task.call_count == 0
+    ), "poll_all_feeds did not commit per-source or report totals as expected"

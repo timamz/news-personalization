@@ -8,7 +8,7 @@ from news_service.agents.digest import generate_digest
 from news_service.core.exceptions import DigestPipelineError
 from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
-from news_service.services.delivery import get_delivery_channel
+from news_service.services.delivery import deliver
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -49,15 +49,14 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
 
         if digest_text is None:
             if notify_if_empty:
-                channel = get_delivery_channel(subscription.delivery_webhook_url)
-                await channel.send(
+                await deliver(
+                    subscription.delivery_webhook_url,
                     "No new updates right now",
                     "No new articles since your last digest. Try again a bit later.",
                 )
                 return {"status": "notified", "reason": "no_new_items"}
             return {"status": "skipped", "reason": "no_new_items"}
-        channel = get_delivery_channel(subscription.delivery_webhook_url)
-        await channel.send("", digest_text)
+        await deliver(subscription.delivery_webhook_url, "", digest_text)
 
         await session.commit()
         return {"status": "delivered", "subscription_id": str(subscription_id)}

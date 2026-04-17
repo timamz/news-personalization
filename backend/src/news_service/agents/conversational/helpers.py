@@ -1,0 +1,128 @@
+"""Small pure-Python helpers used across the conversational package."""
+
+import hashlib
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from news_service.models.subscription import Subscription
+from news_service.models.user_spec import extract_topic
+
+_CONVERSATION_SUMMARY_BYTE_LIMIT = 2048
+
+
+def _parse_csv_identifiers(raw: str) -> list[str]:
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _clean_identifier(identifier: str) -> str:
+    cleaned = identifier.strip().lstrip("@").lstrip("#")
+    if cleaned.startswith("r/"):
+        cleaned = cleaned[2:]
+    return cleaned
+
+
+def _source_display_name(url: str, source_kind: str) -> str:
+    """Extract a user-friendly name from a source URL (for status messages)."""
+    if source_kind == "telegram_channel":
+        name = url.rstrip("/").split("/")[-1]
+        return f"@{name}"
+    if source_kind == "reddit_subreddit":
+        parts = url.rstrip("/").split("/")
+        for i, p in enumerate(parts):
+            if p == "r" and i + 1 < len(parts):
+                return f"r/{parts[i + 1]}"
+        return url
+    if source_kind == "twitter_account":
+        name = url.rstrip("/").split("/")[-1]
+        return f"x.com/{name}"
+    return url
+
+
+def _append_conversation_summary(existing: str, fact: str) -> str:
+    """Dedup by content hash and cap at ~2KB. Evicts oldest lines when over.
+
+    Entries are prefixed with ISO timestamp so boundary flush + remember can
+    coexist peacefully in one text field.
+    """
+    fact = fact.strip()
+    if not fact:
+        return existing
+    lines = [line for line in existing.split("\n") if line.strip()]
+    fact_hash = hashlib.sha1(fact.lower().encode("utf-8")).hexdigest()[:8]
+    tagged = f"{datetime.now(UTC).strftime('%Y-%m-%d')} [{fact_hash}] {fact}"
+    lines = [line for line in lines if f"[{fact_hash}]" not in line]
+    lines.append(tagged)
+    serialized = "\n".join(lines)
+    while len(serialized.encode("utf-8")) > _CONVERSATION_SUMMARY_BYTE_LIMIT and len(lines) > 1:
+        lines.pop(0)
+        serialized = "\n".join(lines)
+    return serialized
+
+
+async def _load_subscription_summaries(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+) -> list[str]:
+    """Fetch compact one-line descriptions of the user's active subscriptions.
+
+    An empty list signals a first-time interaction. The agent calls
+    get_subscriptions when it needs the full spec of a specific one.
+    """
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.user_id == user_id,
+            Subscription.is_active.is_(True),
+        )
+    )
+    subs = list(result.scalars().all())
+    lines: list[str] = []
+    for sub in subs:
+        topic = extract_topic(sub.user_spec or "") or "(no topic)"
+        schedule = sub.schedule_cron or (
+            "event mode" if sub.delivery_mode == "event" else "on demand"
+        )
+        lines.append(f"[{sub.id}] {sub.delivery_mode} | {schedule} | {topic}")
+    return lines
+
+
+def _status_for_tool_call(event: dict[str, Any]) -> dict[str, Any] | None:
+    """Map an ADK tool_call event to a status message for the UI, or None."""
+    tool_name = event.get("name", "")
+    args = event.get("args", {})
+    if tool_name == "add_source":
+        return {
+            "event": "status",
+            "status_key": "status_adding_source",
+            "source": args.get("identifier", ""),
+            "source_kind": args.get("source_kind", ""),
+        }
+    if tool_name == "remove_source":
+        return {
+            "event": "status",
+            "status_key": "status_removing_source",
+            "source": args.get("identifier", ""),
+            "source_kind": args.get("source_kind", ""),
+        }
+    if tool_name == "set_user_timezone":
+        return {
+            "event": "status",
+            "status_key": "status_resolving_timezone",
+            "query": args.get("query", ""),
+        }
+    if tool_name in {"create_subscription", "update_subscription"}:
+        return {
+            "event": "status",
+            "status_key": "status_saving_subscription",
+            "subscription_id": args.get("subscription_id", ""),
+        }
+    if tool_name == "trigger_digest_now":
+        return {
+            "event": "status",
+            "status_key": "status_queuing_digest",
+            "subscription_id": args.get("subscription_id", ""),
+        }
+    return None

@@ -7,9 +7,8 @@ import pytest
 from aiogram.enums import ParseMode
 from aiohttp.test_utils import TestClient, TestServer
 
+from tgbot.text_split import TELEGRAM_MAX_MESSAGE_LENGTH, split_for_telegram
 from tgbot.webhook_server import (
-    TELEGRAM_MAX_MESSAGE_LENGTH,
-    _split_text,
     create_webhook_app,
     delivery_webhook_path,
     set_bot,
@@ -132,51 +131,51 @@ async def test_deliver_rejects_invalid_token() -> None:
         await client.close()
 
 
-def test_split_text_returns_single_chunk_for_short_message() -> None:
+def testsplit_for_telegram_returns_single_chunk_for_short_message() -> None:
     short = f"\u041a\u043e\u0440\u043e\u0442\u043a\u0438\u0439-{uuid.uuid4().hex[:8]}"
-    result = _split_text(short, 100)
+    result = split_for_telegram(short, 100)
 
     assert result == [short], "split_text did not return a single chunk for short message"
 
 
-def test_split_text_splits_paragraphs_into_two_halves() -> None:
+def testsplit_for_telegram_splits_paragraphs_into_two_halves() -> None:
     paras = [
         f"\u041f\u0430\u0440\u0430\u0433\u0440\u0430\u0444 {i}: {uuid.uuid4().hex[:8]}"
         for i in range(4)
     ]
     text = "\n\n".join(paras)
-    chunks = _split_text(text, len(text) - 1)
+    chunks = split_for_telegram(text, len(text) - 1)
 
     assert len(chunks) == 2, "split_text did not split into two balanced halves"
 
 
-def test_split_text_preserves_all_content() -> None:
+def testsplit_for_telegram_preserves_all_content() -> None:
     paras = [
         f"\u0421\u043e\u0434\u0435\u0440\u0436\u0438\u043c\u043e\u0435 {i}: {uuid.uuid4().hex[:10]}"
         for i in range(6)
     ]
     text = "\n\n".join(paras)
-    chunks = _split_text(text, len(text) // 2 + 10)
+    chunks = split_for_telegram(text, len(text) // 2 + 10)
     reassembled = "\n\n".join(chunks)
 
     assert reassembled == text, "split_text did not preserve all content after reassembly"
 
 
-def test_split_text_respects_max_length() -> None:
+def testsplit_for_telegram_respects_max_length() -> None:
     max_len = random.randint(300, 500)
     paras = [
         f"\u041f\u0430\u0440\u0430\u0433\u0440\u0430\u0444 {i}: " + "\u0445" * 100
         for i in range(10)
     ]
     text = "\n\n".join(paras)
-    chunks = _split_text(text, max_len)
+    chunks = split_for_telegram(text, max_len)
 
     assert all(len(chunk) <= max_len for chunk in chunks), (
         "split_text produced a chunk exceeding max_length"
     )
 
 
-def test_split_text_no_newlines_splits_at_sentence() -> None:
+def testsplit_for_telegram_no_newlines_splits_at_sentence() -> None:
     sentences = [
         "\u041f\u0435\u0440\u0432\u043e\u0435. ",
         "\u0412\u0442\u043e\u0440\u043e\u0435. ",
@@ -184,7 +183,7 @@ def test_split_text_no_newlines_splits_at_sentence() -> None:
         "\u0427\u0435\u0442\u0432\u0451\u0440\u0442\u043e\u0435.",
     ]
     text = "".join(sentences)
-    chunks = _split_text(text, len(text) - 1)
+    chunks = split_for_telegram(text, len(text) - 1)
 
     assert len(chunks) == 2, (
         "split_text did not split continuous text into two sentence-based chunks"

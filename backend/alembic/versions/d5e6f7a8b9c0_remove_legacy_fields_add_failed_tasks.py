@@ -7,7 +7,7 @@ Add failed_tasks table for dead letter queue (records Celery tasks that failed
 after all retries).
 
 Revision ID: d5e6f7a8b9c0
-Revises: c4d5e6f7a8b9
+Revises: b9c3d4e5f6a7
 Create Date: 2026-04-14 12:00:00.000000
 
 """
@@ -19,7 +19,7 @@ from alembic import op
 from pgvector.sqlalchemy import Vector
 
 revision: str = "d5e6f7a8b9c0"
-down_revision: str | None = "c4d5e6f7a8b9"
+down_revision: str | None = "b9c3d4e5f6a7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

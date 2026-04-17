@@ -32,8 +32,8 @@ from pydantic import BaseModel, Field
 
 from news_service.agents.adk_runner import run_agent_text
 from news_service.core.config import get_settings
+from news_service.core.guardrails import sanitize_for_llm_prompt
 from news_service.models.user_spec import parse_user_spec
-from news_service.orchestration.guardrails import sanitize_for_llm_prompt
 from news_service.services.search import search_web as _search_web
 
 _DEFAULT_FORMAT_GUIDANCE = "brief summary"

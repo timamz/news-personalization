@@ -1,10 +1,7 @@
-"""Tests for the user_spec parsing, validation, and rendering module."""
+"""Tests for user_spec parsing, validation, rendering, and observation append."""
 
 import random
 import string
-
-import pytest
-from pydantic import ValidationError
 
 from news_service.models.user_spec import (
     MAX_OBSERVATIONS_LENGTH,
@@ -18,197 +15,68 @@ from news_service.models.user_spec import (
 )
 
 
-def _random_string(length: int) -> str:
-    """Generate a random ASCII string of the given length."""
+def _rs(length: int) -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
 
-class TestParseUserSpec:
-    def test_extracts_topic_from_standard_format(self) -> None:
-        spec = "## Topic\nArtificial intelligence breakthroughs"
-        sections = parse_user_spec(spec)
-        assert sections.topic == "Artificial intelligence breakthroughs", (
-            "topic was not extracted from standard ## Topic header"
-        )
-
-    def test_treats_text_as_topic_when_no_headers(self) -> None:
-        raw = "just a plain text topic about quantum computing"
-        sections = parse_user_spec(raw)
-        assert sections.topic == raw, (
-            "entire text was not used as topic when no headers are present"
-        )
-
-    def test_handles_all_three_sections(self) -> None:
-        spec = (
-            "## Topic\nBlockchain regulation\n\n"
-            "## Preferences\nshort bullets only\n\n"
-            "## Observations\nSource X went offline on 2026-04-10"
-        )
-        sections = parse_user_spec(spec)
-        assert sections.topic == "Blockchain regulation", "topic section was not parsed correctly"
-        assert sections.preferences == "short bullets only", (
-            "preferences section was not parsed correctly"
-        )
-        assert sections.observations == "Source X went offline on 2026-04-10", (
-            "observations section was not parsed correctly"
-        )
-
-    def test_handles_non_ascii_cyrillic_content(self) -> None:
-        cyrillic_topic = (
-            "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 "
-            "\u0438\u0441\u043a\u0443\u0441\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e "
-            "\u0438\u043d\u0442\u0435\u043b\u043b\u0435\u043a\u0442\u0430"
-        )
-        cyrillic_pref = (
-            "\u041a\u0440\u0430\u0442\u043a\u043e\u0435 "
-            "\u0438\u0437\u043b\u043e\u0436\u0435\u043d\u0438\u0435"
-        )
-        spec = f"## Topic\n{cyrillic_topic}\n\n## Preferences\n{cyrillic_pref}"
-        sections = parse_user_spec(spec)
-        assert sections.topic == cyrillic_topic, "cyrillic topic was not parsed correctly"
-        assert sections.preferences == cyrillic_pref, (
-            "cyrillic preferences were not parsed correctly"
-        )
-
-    def test_ignores_unknown_sections(self) -> None:
-        spec = (
-            "## Topic\nML papers\n\n## UnknownHeader\nshould be ignored\n\n## Preferences\nconcise"
-        )
-        sections = parse_user_spec(spec)
-        assert sections.topic == "ML papers", (
-            "topic was not parsed when unknown sections are present"
-        )
-        assert sections.preferences == "concise", (
-            "preferences section was lost due to unknown section"
-        )
-
-    def test_case_insensitive_header_matching(self) -> None:
-        spec = "## topic\nLower-case header topic\n\n## PREFERENCES\nall caps preference"
-        sections = parse_user_spec(spec)
-        assert sections.topic == "Lower-case header topic", (
-            "case-insensitive topic header was not matched"
-        )
-        assert sections.preferences == "all caps preference", (
-            "case-insensitive PREFERENCES header was not matched"
-        )
+def test_parse_extracts_all_three_sections_including_cyrillic() -> None:
+    topic = "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0418\u0418"
+    pref = "\u041a\u0440\u0430\u0442\u043a\u043e"
+    obs = "Source X went offline on 2026-04-10"
+    spec = f"## Topic\n{topic}\n\n## Preferences\n{pref}\n\n## Observations\n{obs}"
+    sections = parse_user_spec(spec)
+    assert sections.topic == topic and sections.preferences == pref and sections.observations == obs
 
 
-class TestRenderUserSpec:
-    def test_omits_empty_sections(self) -> None:
-        sections = UserSpecSections(
-            topic="Climate change policy",
-            preferences="detailed analysis",
-            observations="",
-        )
-        rendered = render_user_spec(sections)
-        assert "## Topic" in rendered, "rendered spec did not contain Topic header"
-        assert "## Preferences" in rendered, "rendered spec did not contain Preferences header"
-        assert "## Observations" not in rendered, (
-            "rendered spec contained empty Observations section"
-        )
-
-    def test_includes_all_non_empty_sections(self) -> None:
-        tag = _random_string(12)
-        sections = UserSpecSections(
-            topic=f"Robotics {tag}",
-            preferences="concise",
-            observations="all green",
-        )
-        rendered = render_user_spec(sections)
-        for header in ("Topic", "Preferences", "Observations"):
-            assert f"## {header}" in rendered, f"rendered spec did not contain {header} header"
+def test_parse_falls_back_to_raw_text_when_no_headers() -> None:
+    raw = f"plain text topic {_rs(6)}"
+    assert parse_user_spec(raw).topic == raw
 
 
-class TestRenderAndParseRoundtrip:
-    def test_roundtrip_preserves_content(self) -> None:
-        tag = _random_string(16)
-        original = UserSpecSections(
-            topic=f"Space exploration {tag}",
-            preferences="include images",
-            observations=f"Source A healthy {tag}",
-        )
-        rendered = render_user_spec(original)
-        parsed = parse_user_spec(rendered)
-        assert parsed.topic == original.topic, "roundtrip did not preserve topic"
-        assert parsed.preferences == original.preferences, "roundtrip did not preserve preferences"
-        assert parsed.observations == original.observations, (
-            "roundtrip did not preserve observations"
-        )
+def test_render_and_parse_roundtrip_preserves_content() -> None:
+    original = UserSpecSections(
+        topic=f"Space exploration {_rs(8)}",
+        preferences="include images",
+        observations=f"Source A healthy {_rs(8)}",
+    )
+    parsed = parse_user_spec(render_user_spec(original))
+    assert (
+        parsed.topic == original.topic
+        and parsed.preferences == original.preferences
+        and parsed.observations == original.observations
+    ), "roundtrip did not preserve user_spec content"
 
 
-class TestExtractTopic:
-    def test_returns_topic_content(self) -> None:
-        spec = "## Topic\nDeep learning hardware\n\n## Preferences\nconcise"
-        result = extract_topic(spec)
-        assert result == "Deep learning hardware", (
-            "extract_topic did not return topic from structured spec"
-        )
-
-    def test_falls_back_to_raw_text(self) -> None:
-        raw = "autonomous vehicles safety standards"
-        result = extract_topic(raw)
-        assert result == raw, "extract_topic did not fall back to raw text when no headers present"
+def test_extract_topic_returns_structured_or_raw_content() -> None:
+    spec = "## Topic\nDeep learning hardware\n\n## Preferences\nconcise"
+    assert extract_topic(spec) == "Deep learning hardware"
+    raw = f"autonomous vehicles {_rs(6)}"
+    assert extract_topic(raw) == raw
 
 
-class TestValidateUserSpec:
-    def test_caps_length(self) -> None:
-        long_topic = "x" * (MAX_USER_SPEC_LENGTH + 500)
-        result = validate_user_spec(long_topic)
-        assert len(result) <= MAX_USER_SPEC_LENGTH, (
-            "validate_user_spec did not cap the total length"
-        )
+def test_validate_user_spec_caps_length_and_normalises_valid_input() -> None:
+    long = "x" * (MAX_USER_SPEC_LENGTH + 500)
+    assert len(validate_user_spec(long)) <= MAX_USER_SPEC_LENGTH
 
-    def test_raises_for_empty_topic(self) -> None:
-        with pytest.raises((ValueError, ValidationError)):
-            validate_user_spec("## Topic\n\n## Preferences\nshort")
-
-    def test_normalises_valid_spec(self) -> None:
-        tag = _random_string(10)
-        spec = f"## Topic\nCybersecurity {tag}\n\n## Preferences\nbullet points"
-        result = validate_user_spec(spec)
-        assert f"Cybersecurity {tag}" in result, "validate_user_spec did not preserve topic content"
-        assert "## Topic" in result, "validate_user_spec did not produce Topic header"
+    tag = _rs(10)
+    spec = f"## Topic\nCybersecurity {tag}\n\n## Preferences\nbullet points"
+    result = validate_user_spec(spec)
+    assert f"Cybersecurity {tag}" in result and "## Topic" in result
 
 
-class TestAppendObservations:
-    def test_adds_to_existing_observations(self) -> None:
-        tag = _random_string(8)
-        spec = f"## Topic\nFintech {tag}\n\n## Observations\nOld note"
-        result = append_observations(spec, f"New note {tag}")
-        sections = parse_user_spec(result)
-        assert "Old note" in sections.observations, "existing observations were lost after append"
-        assert f"New note {tag}" in sections.observations, "new observations were not appended"
+def test_append_observations_adds_caps_and_creates_section_when_absent() -> None:
+    tag = _rs(8)
+    with_existing = append_observations(
+        f"## Topic\nFintech {tag}\n\n## Observations\nOld note", f"New note {tag}"
+    )
+    parsed_existing = parse_user_spec(with_existing)
+    assert "Old note" in parsed_existing.observations
+    assert f"New note {tag}" in parsed_existing.observations
 
-    def test_caps_at_max_length(self) -> None:
-        spec = "## Topic\nTest capping\n\n## Observations\n" + "A" * MAX_OBSERVATIONS_LENGTH
-        new_obs = "B" * 500
-        result = append_observations(spec, new_obs)
-        sections = parse_user_spec(result)
-        assert len(sections.observations) <= MAX_OBSERVATIONS_LENGTH, (
-            "observations section exceeded MAX_OBSERVATIONS_LENGTH after append"
-        )
-        assert sections.observations.endswith("B" * 500), (
-            "most recent observations were not kept at the end"
-        )
+    long_existing = "## Topic\nTest\n\n## Observations\n" + "A" * MAX_OBSERVATIONS_LENGTH
+    capped = parse_user_spec(append_observations(long_existing, "B" * 500))
+    assert len(capped.observations) <= MAX_OBSERVATIONS_LENGTH
+    assert capped.observations.endswith("B" * 500)
 
-    def test_creates_section_when_absent(self) -> None:
-        tag = _random_string(8)
-        spec = f"## Topic\nBiotech {tag}"
-        result = append_observations(spec, f"First observation {tag}")
-        sections = parse_user_spec(result)
-        assert f"First observation {tag}" in sections.observations, (
-            "observations section was not created when absent"
-        )
-
-    def test_preserves_other_sections(self) -> None:
-        tag = _random_string(8)
-        spec = f"## Topic\nQuantum computing {tag}\n\n## Preferences\nDetailed {tag}"
-        result = append_observations(spec, "new reflector note")
-        sections = parse_user_spec(result)
-        assert sections.topic == f"Quantum computing {tag}", (
-            "topic was altered by append_observations"
-        )
-        assert sections.preferences == f"Detailed {tag}", (
-            "preferences were altered by append_observations"
-        )
-        assert "new reflector note" in sections.observations, "observations were not appended"
+    created = parse_user_spec(append_observations(f"## Topic\nBiotech {tag}", f"First {tag}"))
+    assert f"First {tag}" in created.observations

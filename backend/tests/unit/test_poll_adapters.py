@@ -20,45 +20,22 @@ def _make_source(url: str, title: str = "") -> SimpleNamespace:
 
 
 @pytest.mark.asyncio
-async def test_rss_adapter_normalizes_entry_with_title_and_summary():
-    src = _make_source("https://example.com/feed.xml", "Exemple Flux")
+async def test_rss_adapter_extracts_title_link_and_summary_with_description_fallback() -> None:
+    src = _make_source("https://example.com/feed.xml", "Feed")
     adapter = RssAdapter(src)
 
     xml = (
         '<?xml version="1.0"?><rss version="2.0"><channel>'
         "<item>"
-        "<title>Les nouvelles d'aujourd'hui</title>"
+        "<title>Headline</title>"
         "<link>https://example.com/article-42</link>"
-        "<summary>Résumé de l'article</summary>"
+        "<summary>Summary content</summary>"
         "<pubDate>Mon, 10 Mar 2026 08:00:00 +0000</pubDate>"
         "</item>"
-        "</channel></rss>"
-    )
-
-    with patch(
-        "news_service.tasks.poll_adapters._fetch_rss_feed_content",
-        new_callable=AsyncMock,
-        return_value=xml.encode(),
-    ):
-        posts = await adapter.fetch_posts()
-
-    assert len(posts) == 1, "adapter should return exactly one post"
-    assert posts[0].headline == "Les nouvelles d'aujourd'hui", "headline should come from <title>"
-    assert "Résumé" in posts[0].text_to_embed, "embed text should contain the summary"
-    assert posts[0].url == "https://example.com/article-42", "url should come from <link>"
-
-
-@pytest.mark.asyncio
-async def test_rss_adapter_uses_description_when_summary_absent():
-    src = _make_source("https://example.com/rss")
-    adapter = RssAdapter(src)
-
-    xml = (
-        '<?xml version="1.0"?><rss version="2.0"><channel>'
         "<item>"
-        "<title>Título</title>"
+        "<title>Description fallback</title>"
         "<link>https://example.com/post</link>"
-        "<description>Descripción detallada del artículo</description>"
+        "<description>Only description</description>"
         "</item>"
         "</channel></rss>"
     )
@@ -70,12 +47,15 @@ async def test_rss_adapter_uses_description_when_summary_absent():
     ):
         posts = await adapter.fetch_posts()
 
-    assert len(posts) == 1, "adapter should return one post"
-    assert "Descripción" in posts[0].body, "body should fall back to <description>"
+    assert len(posts) == 2
+    assert posts[0].headline == "Headline"
+    assert posts[0].url == "https://example.com/article-42"
+    assert "Summary content" in posts[0].text_to_embed
+    assert "Only description" in posts[1].body, "body did not fall back to <description>"
 
 
 @pytest.mark.asyncio
-async def test_rss_adapter_skips_entries_without_link():
+async def test_rss_adapter_skips_entries_without_link() -> None:
     src = _make_source("https://example.com/rss")
     adapter = RssAdapter(src)
 
@@ -93,42 +73,60 @@ async def test_rss_adapter_skips_entries_without_link():
     ):
         posts = await adapter.fetch_posts()
 
-    assert len(posts) == 1, "adapter should skip entries without a <link>"
-    assert posts[0].url == "https://example.com/ok", "only entry with link should be returned"
+    assert len(posts) == 1 and posts[0].url == "https://example.com/ok"
+
+
+def test_rss_adapter_source_name_uses_title_or_url_fallback() -> None:
+    titled = RssAdapter(_make_source("https://example.com/rss", "Feed Title"))
+    untitled = RssAdapter(_make_source("https://example.com/rss", ""))
+    assert titled.source_name() == "Feed Title"
+    assert untitled.source_name() == "https://example.com/rss"
 
 
 @pytest.mark.asyncio
-async def test_telegram_adapter_extracts_headline_from_first_body_line():
-    src = _make_source("https://t.me/s/testchannel", "ТестКанал")
+async def test_telegram_and_twitter_adapters_take_headline_from_first_body_line() -> None:
+    tg_src = _make_source("https://t.me/s/testchannel", "\u0422\u0435\u0441\u0442")
+    tw_src = _make_source("https://x.com/testaccount")
 
     tg_post = MagicMock()
     tg_post.url = "https://t.me/testchannel/42"
-    tg_post.body = "Первая строка заголовка\nВторая строка тела"
+    tg_post.body = "First line headline\nSecond line body"
     tg_post.published_at = datetime(2026, 3, 10, tzinfo=UTC)
 
-    with patch(
-        "news_service.tasks.poll_adapters.fetch_telegram_posts",
-        new_callable=AsyncMock,
-        return_value=[tg_post],
-    ):
-        adapter = TelegramAdapter(src, "testchannel")
-        posts = await adapter.fetch_posts()
+    tweet = MagicMock()
+    tweet.url = "https://x.com/testaccount/status/12345"
+    tweet.body = "Tweet headline\nRest of text"
+    tweet.published_at = datetime(2026, 3, 10, tzinfo=UTC)
 
-    assert len(posts) == 1, "adapter should return one post"
-    assert posts[0].headline == "Первая строка заголовка", (
-        "headline should be the first line of body"
+    with (
+        patch(
+            "news_service.tasks.poll_adapters.fetch_telegram_posts",
+            new_callable=AsyncMock,
+            return_value=[tg_post],
+        ),
+        patch(
+            "news_service.tasks.poll_adapters.fetch_twitter_posts",
+            new_callable=AsyncMock,
+            return_value=[tweet],
+        ),
+    ):
+        tg_posts = await TelegramAdapter(tg_src, "testchannel").fetch_posts()
+        tw_posts = await TwitterAdapter(tw_src, "testaccount").fetch_posts()
+
+    assert (
+        tg_posts[0].headline == "First line headline" and tg_posts[0].text_to_embed == tg_post.body
     )
-    assert posts[0].text_to_embed == tg_post.body, "embed text should be the full body"
+    assert tw_posts[0].headline == "Tweet headline" and tw_posts[0].text_to_embed == tweet.body
 
 
 @pytest.mark.asyncio
-async def test_reddit_adapter_joins_title_and_body_for_embed_text():
+async def test_reddit_adapter_combines_title_and_body_into_embed_text() -> None:
     src = _make_source("https://www.reddit.com/r/neuralnet")
 
     reddit_post = MagicMock()
     reddit_post.url = "https://reddit.com/r/neuralnet/post/abc"
-    reddit_post.title = "Новая модель ИИ"
-    reddit_post.body = "Подробности о модели в статье"
+    reddit_post.title = "New ML model"
+    reddit_post.body = "Details about the model"
     reddit_post.published_at = datetime(2026, 3, 10, tzinfo=UTC)
 
     with patch(
@@ -136,46 +134,10 @@ async def test_reddit_adapter_joins_title_and_body_for_embed_text():
         new_callable=AsyncMock,
         return_value=[reddit_post],
     ):
-        adapter = RedditAdapter(src, "neuralnet")
-        posts = await adapter.fetch_posts()
+        posts = await RedditAdapter(src, "neuralnet").fetch_posts()
 
-    assert len(posts) == 1, "adapter should return one post"
-    assert "Новая модель ИИ" in posts[0].text_to_embed, "embed text should include title"
-    assert "Подробности" in posts[0].text_to_embed, "embed text should include body"
-    assert posts[0].headline == "Новая модель ИИ", "headline should come from title field"
-
-
-@pytest.mark.asyncio
-async def test_twitter_adapter_extracts_headline_from_first_body_line():
-    src = _make_source("https://x.com/testaccount")
-
-    tweet = MagicMock()
-    tweet.url = "https://x.com/testaccount/status/12345"
-    tweet.body = "Заголовок твита\nОстальной текст"
-    tweet.published_at = datetime(2026, 3, 10, tzinfo=UTC)
-
-    with patch(
-        "news_service.tasks.poll_adapters.fetch_twitter_posts",
-        new_callable=AsyncMock,
-        return_value=[tweet],
-    ):
-        adapter = TwitterAdapter(src, "testaccount")
-        posts = await adapter.fetch_posts()
-
-    assert len(posts) == 1, "adapter should return one post"
-    assert posts[0].headline == "Заголовок твита", "headline should be the first line of body"
-    assert posts[0].text_to_embed == tweet.body, "embed text should be the full body"
-
-
-def test_rss_adapter_source_name_uses_title_when_available():
-    src = _make_source("https://example.com/rss", "Mon Flux RSS")
-    adapter = RssAdapter(src)
-    assert adapter.source_name() == "Mon Flux RSS", "source name should use title"
-
-
-def test_rss_adapter_source_name_falls_back_to_url():
-    src = _make_source("https://example.com/rss", "")
-    adapter = RssAdapter(src)
-    assert adapter.source_name() == "https://example.com/rss", (
-        "source name should fall back to url when title is empty"
-    )
+    assert (
+        posts[0].headline == "New ML model"
+        and "New ML model" in posts[0].text_to_embed
+        and "Details about the model" in posts[0].text_to_embed
+    ), "reddit adapter did not combine title and body into the embed text"
