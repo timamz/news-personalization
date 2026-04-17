@@ -1,14 +1,13 @@
 """Backend HTTP client used by the tgbot.
 
-Only three categories of calls remain after UI removal:
+Only two categories remain after agent unification:
 
 - user registration (first /start per telegram_id)
 - conversational turns (start / continue against the agent)
-- subscription creation (when the agent finalizes a config)
 
-Everything else -- list, edit, delete, send-now, append sources, timezone --
-is now the agent's job via its tools, so the HTTP client does not need to
-expose those endpoints.
+Subscription creation / update / delete / source management / timezone / etc.
+are handled entirely by the agent via its tools, so the tgbot never hits
+those endpoints directly.
 """
 
 import json
@@ -83,45 +82,3 @@ class BackendClient:
             async for line in response.aiter_lines():
                 if line.strip():
                     yield json.loads(line)
-
-    async def create_subscription_stream(
-        self,
-        api_key: str,
-        prompt: str,
-        delivery_webhook_url: str,
-        **kwargs: object,
-    ) -> AsyncGenerator[dict, None]:
-        payload = self._build_create_payload(prompt, delivery_webhook_url, **kwargs)
-        async with (
-            httpx.AsyncClient(
-                timeout=httpx.Timeout(
-                    settings.backend_create_subscription_timeout_seconds, connect=10.0
-                ),
-            ) as client,
-            client.stream(
-                "POST",
-                f"{self.base_url}/subscriptions/stream",
-                headers={"X-API-Key": api_key},
-                json=payload,
-            ) as response,
-        ):
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if line.strip():
-                    yield json.loads(line)
-
-    @staticmethod
-    def _build_create_payload(
-        prompt: str,
-        delivery_webhook_url: str,
-        **kwargs: object,
-    ) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "prompt": prompt,
-            "delivery_webhook_url": delivery_webhook_url,
-        }
-        key_map = {"digest_language": "digest_language_override"}
-        for key, value in kwargs.items():
-            if value is not None:
-                payload[key_map.get(key, key)] = value
-        return payload

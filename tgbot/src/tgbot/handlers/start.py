@@ -23,7 +23,6 @@ from tgbot.storage import (
 )
 from tgbot.telegram_format import render_html_message
 from tgbot.user_registry import ensure_api_key
-from tgbot.webhook_server import delivery_webhook_url
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ async def handle_user_message(message: types.Message) -> None:
     if turn is None:
         return
 
-    new_conversation_id, agent_message, status, finalized_config = turn
+    new_conversation_id, agent_message = turn
 
     if new_conversation_id:
         await save_conversation_id(telegram_id, new_conversation_id)
@@ -80,22 +79,14 @@ async def handle_user_message(message: types.Message) -> None:
     if agent_message:
         await _send_long_message(message, agent_message)
 
-    if status == "ready" and finalized_config:
-        await _finalize_subscription(message, api_key, finalized_config, text)
-        await clear_conversation_id(telegram_id)
-
 
 async def _run_turn(
     api_key: str,
     conversation_id: str | None,
     text: str,
     message: types.Message,
-) -> tuple[str | None, str, str, dict | None] | None:
-    """Run one agent turn, falling back to a fresh conversation on 404/409.
-
-    Returns (conversation_id, agent_message, status, finalized_config) on
-    success, or None on unrecoverable error (error already sent to the user).
-    """
+) -> tuple[str | None, str] | None:
+    """Run one agent turn, retrying with a fresh conversation on 404/409."""
     for attempt in (conversation_id, None) if conversation_id else (None,):
         try:
             return await _stream_turn(api_key, attempt, text, message)
@@ -119,7 +110,7 @@ async def _stream_turn(
     conversation_id: str | None,
     text: str,
     message: types.Message,
-) -> tuple[str | None, str, str, dict | None]:
+) -> tuple[str | None, str]:
     if conversation_id:
         stream = backend.continue_subscription_conversation_stream(api_key, conversation_id, text)
     else:
@@ -127,8 +118,6 @@ async def _stream_turn(
 
     new_id: str | None = conversation_id
     agent_message = ""
-    status = "in_progress"
-    finalized_config: dict | None = None
 
     async for event in stream:
         kind = event.get("event")
@@ -137,50 +126,10 @@ async def _stream_turn(
         elif kind == "done":
             new_id = event.get("conversation_id") or new_id
             agent_message = event.get("agent_message") or ""
-            status = event.get("status", "in_progress")
-            finalized_config = event.get("finalized_config")
         elif kind == "error":
             agent_message = event.get("detail") or _ERROR_TEXT
-            status = "error"
 
-    return new_id, agent_message, status, finalized_config
-
-
-async def _finalize_subscription(
-    message: types.Message,
-    api_key: str,
-    config: dict,
-    prompt: str,
-) -> None:
-    """Turn a finalized_config into a created subscription via the backend."""
-    webhook_url = delivery_webhook_url(message.from_user.id)
-    create_kwargs: dict[str, object] = {
-        "include_discovered_sources": config.get("include_discovered_sources", True),
-        "schedule_cron_override": config.get("schedule_cron"),
-        "manual_only": config.get("manual_only", False),
-        "delivery_mode": config.get("delivery_mode", "digest"),
-    }
-    if config.get("digest_language"):
-        create_kwargs["digest_language"] = config["digest_language"]
-    if config.get("format_instructions"):
-        create_kwargs["format_instructions"] = config["format_instructions"]
-    for key in ("fixed_telegram_channels", "fixed_reddit_subreddits", "fixed_twitter_accounts"):
-        if config.get(key):
-            create_kwargs[key] = config[key]
-
-    try:
-        async for event in backend.create_subscription_stream(
-            api_key, prompt[:500], webhook_url, **create_kwargs
-        ):
-            if event.get("event") == "status":
-                await _safe_typing(message)
-            elif event.get("event") == "error":
-                detail = event.get("detail") or _ERROR_TEXT
-                await message.answer(detail)
-                return
-    except Exception:
-        logger.exception("Failed to create subscription from finalized config")
-        await message.answer(_ERROR_TEXT)
+    return new_id, agent_message
 
 
 async def _safe_typing(message: types.Message) -> None:

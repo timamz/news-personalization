@@ -50,28 +50,3 @@ async def test_register_user_posts_to_users_endpoint_and_returns_api_key() -> No
     assert result == generated_key, "register_user did not return the expected api_key"
 
 
-def test_build_create_payload_renames_digest_language_key() -> None:
-    payload = BackendClient._build_create_payload(
-        "topic", "http://bot/deliver/1", digest_language="fr"
-    )
-    assert payload["digest_language_override"] == "fr", (
-        "_build_create_payload did not rename digest_language to digest_language_override"
-    )
-    assert "digest_language" not in payload, (
-        "_build_create_payload left the pre-rename key in the payload"
-    )
-
-
-def test_build_create_payload_skips_none_values() -> None:
-    payload = BackendClient._build_create_payload(
-        "topic",
-        "http://bot/deliver/1",
-        schedule_cron_override=None,
-        delivery_mode="digest",
-    )
-    assert "schedule_cron_override" not in payload, (
-        "_build_create_payload included a key whose value was None"
-    )
-    assert payload["delivery_mode"] == "digest", (
-        "_build_create_payload dropped a non-None keyword argument"
-    )

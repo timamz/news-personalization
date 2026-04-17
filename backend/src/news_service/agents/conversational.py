@@ -1,16 +1,24 @@
-"""Conversational agent -- single agent per user for all subscription management.
+"""Conversational agent -- the single chat surface for the user.
 
-The agent maintains user_spec as the primary representation of user intent.
-All subscription management (create, edit, feedback, source discovery) happens
-through this agent's tools. Conversation state persists in Redis between turns;
-user_spec and structured fields persist in the database.
+One ADK agent handles everything: greeting, help, subscription create / edit,
+source management, language + timezone setup, digest triggering, deletion.
+The agent is respawned fresh each turn; durable state lives in Postgres
+(``User``, ``Subscription``) and Redis (conversation transcript).
 
-This module also provides a streaming entry point for the subscription setup
-conversation flow (formerly in subscription_parser.py). The streaming function
-yields status events as tools execute and a final done event with the result.
+Tools come in four groups:
+
+- Subscription lifecycle: ``save_subscription``, ``delete_subscription``,
+  ``trigger_digest_now``.
+- Source attach/detach: ``add_source``, ``remove_source``.
+- User state: ``set_user_language``, ``set_user_timezone``.
+- Memory / awareness: ``get_subscriptions``, ``remember``.
+
+Every mutation tool opens its own DB session via ``session_factory`` so the
+model may emit parallel tool calls safely.
 """
 
 import asyncio
+import hashlib
 import logging
 import uuid
 from collections.abc import AsyncGenerator
@@ -26,17 +34,14 @@ from news_service.agents.adk_runner import run_agent, run_agent_text
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
 from news_service.db.session import async_session_factory
+from news_service.db.vector_store import embed_text
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
-from news_service.models.user_spec import extract_topic, validate_user_spec
-from news_service.schemas.conversation import (
-    AgentTurnOutput,
-    ExistingSubscriptionContext,
-    FinalizedSubscriptionConfig,
-)
+from news_service.models.user_spec import UserSpecSections, extract_topic, render_user_spec
+from news_service.schemas.conversation import AgentTurnOutput
 from news_service.services.coverage import ensure_source_coverage
 from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.telegram import build_telegram_channel_url
@@ -46,188 +51,97 @@ from news_service.services.twitter import build_twitter_account_url
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+_CONVERSATION_SUMMARY_BYTE_LIMIT = 2048
+
+
 CONVERSATIONAL_AGENT_PROMPT = """\
 You are a friendly personal news assistant. You are the user's ONLY interface -- \
 there is no menu, no buttons, no other UI. Every interaction flows through this chat.
 
-You help the user with three jobs:
+You do three things:
 1. Explain the service and answer questions about how it works.
 2. Create, edit, and manage news subscriptions.
-3. Take direct actions on their behalf: add/remove sources, trigger deliveries, \
-delete subscriptions, set language and timezone.
+3. Take direct actions: add/remove sources, trigger deliveries, delete subscriptions, \
+set language and timezone.
 
 Language policy:
-- ALWAYS respond in the same language as the user's most recent message.
-- If no language is persisted yet, detect it from the first message and immediately \
-call set_user_language(code) with the ISO code (e.g. 'en', 'ru', 'de', 'es'). Do NOT \
-ask which language they want -- detect silently.
-- If the user switches language mid-conversation, follow them and update with \
-set_user_language.
+- Respond in the same language as the user's most recent message.
+- On the very first turn, detect the language and immediately call set_user_language \
+with the ISO code. Never ask which language they want.
+- If the user switches language mid-chat, follow them and update via set_user_language.
 
-Greeting new users (no subscriptions yet and no language set):
-- Start with ONE short message: a friendly greeting in the detected language, one \
-sentence about what you do, and one concrete example (e.g. "I can send you a daily \
-digest about AI research, or a notification the moment your favorite artist announces \
-a concert"). End with a single question: "What would you like to follow?"
-- Do not dump a feature list. Keep it to ~3 sentences total.
+Greeting new users (no subscriptions yet):
+- One short message: friendly greeting + one sentence about what you do + one concrete \
+example, ending with a single question ("What would you like to follow?"). ~3 sentences.
+- Do not dump features.
 
 Returning users:
 - Skip the intro. Answer the request directly.
-- If the user just says hi or "what can you do?", respond briefly with 1-2 concrete \
-examples tailored to what they already have subscribed to, and ask what they want to \
-do next.
+- "Hi" / "what can you do" -> 1-2 examples tailored to what they already have, then \
+one forward-looking question.
 
-Subscription creation -- gather:
-1. **Topic** -- what they want to follow.
-2. **Delivery mode** -- periodic summary ("digest") or instant alerts about specific \
-events like releases, premieres, concerts ("event"). Default to digest unless they \
-clearly want event alerts.
-3. **Schedule** (digest only) -- ask when they want updates ("every morning", \
-"twice a day"). Offer on-demand-only as an option. Convert internally to a 5-field \
-cron. Never show cron to the user.
-   - "every morning" -> "0 8 * * *"
-   - "every evening at 9pm" -> "0 21 * * *"
-   - "every Saturday morning" -> "0 8 * * 6"
-   - "every third day" -> "0 8 */3 * *"
-   - "every hour" -> "0 * * * *"
-   - "every weekday at 9" -> "0 9 * * 1-5"
-   - "twice a day at 8 and 18" -> "0 8,18 * * *"
-4. **Language** -- use the persisted user language by default. Only ask if the user \
-clearly wants content in a different language than they're writing in.
-5. **Sources** -- ask if they already follow specific Telegram channels, Reddit \
-communities, or X accounts. Identifier formats:
-   - Telegram: @channel or t.me/channel -> "channel" (no @)
-   - Reddit: r/sub or reddit.com/r/sub -> "sub" (no r/)
-   - Twitter/X: x.com/handle -> "handle" (no @)
-   Use validate_source to check reachability. Build full URLs for validation: \
-https://t.me/s/channel, https://www.reddit.com/r/sub/new/, https://x.com/handle.
-6. **Auto-discovery** -- if the user gave sources, ask whether to also find more \
-automatically, or stick with only theirs.
-7. **Format** -- default to "brief summary" unless they specify otherwise.
+Subscription creation via save_subscription:
+- Gather topic, delivery mode (digest vs event -- default digest), schedule, sources, \
+format. When you have enough, call save_subscription without a subscription_id.
+- Convert schedule text to a 5-field cron internally. Never show cron to the user.
+  "every morning" -> "0 8 * * *", "every evening at 9pm" -> "0 21 * * *",
+  "every Saturday morning" -> "0 8 * * 6", "every third day" -> "0 8 */3 * *",
+  "every hour" -> "0 * * * *", "every weekday at 9" -> "0 9 * * 1-5",
+  "twice a day at 8 and 18" -> "0 8,18 * * *". Empty schedule = manual / event mode.
+- Source identifiers (no prefix): Telegram "channel" (not @channel), Reddit "sub" \
+(not r/sub), X "handle" (not @handle).
+- If the user provided sources, ask whether to also auto-discover more.
+
+Editing existing subscriptions:
+- Use get_subscriptions when you need the full spec of a sub (topic, schedule, format, \
+sources). The pre-loaded one-line summaries in context are enough for disambiguation \
+("the AI one") but not for editing details.
+- To change scalar fields (schedule, language, format, delivery mode, topic) call \
+save_subscription with the subscription_id and the full set of fields you want -- any \
+field you omit falls back to its default, so RESTATE unchanged values explicitly.
+- For sources on an existing subscription, use add_source / remove_source (not \
+save_subscription).
+
+Parallel tool calls:
+- If the user mentions multiple sources to add or remove in one message, emit the \
+add_source / remove_source calls in parallel in the same turn. Each is independent \
+and safe to run concurrently.
 
 Timezone handling:
-- When the user requests a scheduled digest and has no timezone set, ask "what city \
-are you in?" (in their language).
-- Pass whatever they say to set_user_timezone. Inspect the returned status:
-  - "resolved" -- confirm briefly (e.g. "Got it -- using Moscow time").
-  - "ambiguous" -- list the candidates (city, country) and ask which one.
-  - "not_found" -- ask for a larger nearby city.
-- If the user says a raw offset like "UTC+3", still pass it; the resolver handles it.
+- When a scheduled digest is requested and no timezone is set, ask "what city are \
+you in?" (in the user's language).
+- Pass the reply to set_user_timezone. On "resolved" confirm briefly; on "ambiguous" \
+list candidates and ask which one; on "not_found" ask for a larger nearby city.
+- Raw offsets like "UTC+3" work too.
 
-Managing existing subscriptions:
-- Use list_subscriptions to see what the user has. When the user refers to one fuzzily \
-("the AI one", "my tech digest"), match by topic keywords; if two could match, ask ONE \
-disambiguating question.
-- add_source / remove_source attach or detach sources on a specific subscription. \
-Both take identifier + source_kind (no URL, no prefix). Multiple sources in one \
-message? Emit the calls in parallel in a single turn; each is independent.
-- trigger_digest_now for "send me the AI digest now"-style requests.
-- delete_subscription for explicit deletion; confirm once in plain language before \
-calling.
+Memory:
+- When the user tells you a durable fact about themselves or a preference that should \
+outlive this conversation (they travel often, they prefer short digests, they mute \
+weekends, they speak only Russian with family, etc.), call remember with one short \
+sentence. Do not remember transient things ("I'm tired today").
 
-Help and questions:
-- "How does this work?" "What kinds of sources?" "Digest vs event?" -- answer inline \
-in 2-4 sentences. Do NOT call tools. Use concrete examples. Avoid feature lists.
-- If they ask why a digest was empty / late, explain briefly and offer to tune the \
-subscription (topic too narrow, sources stale, etc.).
+Help / questions:
+- "How does this work?", "digest vs event?", "what sources?" -- answer inline in \
+2-4 sentences using concrete examples. Do not call tools.
 
-Behavior rules:
-- Be friendly and concise. Ask at most ONE question per turn.
-- No buttons, no structured choices -- everything is text.
-- Never show cron expressions, UUIDs, or internal field names.
-- If the user provides enough info in a single message, act immediately.
-- Accommodate mid-conversation changes ("actually make it weekly").
-- When you modify subscription preferences, always call update_user_spec with the \
-full updated spec.
-- When subscription setup info is complete, call finalize_subscription, then \
-confirm in a single friendly sentence.
-- When the user gives feedback about digest quality, update user_spec.
+General behavior:
+- Be friendly and concise. At most ONE question per turn.
+- No buttons, no structured choices. Everything is text.
+- Never show cron expressions, UUIDs, or internal field names to the user.
+- If the user provides enough info in one message, act immediately.
+- Accommodate mid-conversation changes.
+- When the user gives feedback about digest quality, update the subscription with \
+save_subscription and include their preferences in the topic/format.
 
 {context_section}\
 """
 
 
-SUBSCRIPTION_EDIT_CONTEXT = """\
-You are editing an EXISTING subscription, not creating a new one. The user wants to change \
-something about their current subscription.
-
-Current subscription state:
-- Topic: {user_spec_topic}
-- Delivery mode: {delivery_mode}
-- Schedule: {schedule_cron}
-- Language: {digest_language}
-- Format: {format_instructions}
-- Telegram channels: {telegram_channels}
-- Reddit subreddits: {reddit_subreddits}
-- Twitter/X accounts: {twitter_accounts}
-
-Edit rules:
-- Treat the user's message as an incremental change to the existing subscription.
-- Preserve ALL fields the user does not mention changing.
-- The user can change any aspect: topic, schedule, sources, format, delivery mode.
-- For fields the user does NOT mention, carry forward the current values exactly.
-- When the edit is clear, call finalize_subscription with the complete updated config.
-- If the user's request is ambiguous, ask ONE clarifying question.
-"""
-
-
-async def _load_subscription_summaries(
-    session: AsyncSession,
-    user_id: uuid.UUID,
-) -> list[str]:
-    """Fetch compact one-line descriptions of the user's active subscriptions.
-
-    Feeds the agent's instruction so it knows what the user already has without
-    needing to call list_subscriptions on trivial questions. An empty list
-    signals a first-time interaction.
-    """
-    from sqlalchemy import select
-
-    result = await session.execute(
-        select(Subscription).where(
-            Subscription.user_id == user_id,
-            Subscription.is_active.is_(True),
-        )
-    )
-    subs = list(result.scalars().all())
-    lines: list[str] = []
-    for sub in subs:
-        topic = extract_topic(sub.user_spec or sub.raw_prompt or "") or (
-            (sub.user_spec or sub.raw_prompt or "").strip().splitlines()[0][:80]
-            if (sub.user_spec or sub.raw_prompt)
-            else "(no topic)"
-        )
-        schedule = sub.schedule_cron or (
-            "event mode" if sub.delivery_mode == "event" else "on demand"
-        )
-        lines.append(f"[{sub.id}] {sub.delivery_mode} | {schedule} | {topic}")
-    return lines
-
-
-def _source_display_name(url: str, source_kind: str) -> str:
-    """Extract a user-friendly name from a source URL."""
-    if source_kind == "telegram_channel":
-        name = url.rstrip("/").split("/")[-1]
-        return f"@{name}"
-    if source_kind == "reddit_subreddit":
-        parts = url.rstrip("/").split("/")
-        for i, p in enumerate(parts):
-            if p == "r" and i + 1 < len(parts):
-                return f"r/{parts[i + 1]}"
-        return url
-    if source_kind == "twitter_account":
-        name = url.rstrip("/").split("/")[-1]
-        return f"x.com/{name}"
-    return url
-
-
 def _build_instruction(
-    user_spec: str,
     conversation_summary: str,
     user_language: str | None,
     user_timezone: str | None,
     conversation_history: list[dict] | None = None,
-    existing_config: ExistingSubscriptionContext | None = None,
     subscription_summaries: list[str] | None = None,
 ) -> str:
     parts: list[str] = []
@@ -252,24 +166,8 @@ def _build_instruction(
                 "Active subscriptions: none. Treat this as a first-time interaction "
                 "and follow the greeting rules above."
             )
-    if existing_config is not None:
-        topic = extract_topic(existing_config.user_spec)
-        parts.append(
-            SUBSCRIPTION_EDIT_CONTEXT.format(
-                user_spec_topic=topic,
-                delivery_mode=existing_config.delivery_mode,
-                schedule_cron=existing_config.schedule_cron or "none (manual only)",
-                digest_language=existing_config.digest_language,
-                format_instructions=existing_config.format_instructions,
-                telegram_channels=", ".join(existing_config.fixed_telegram_channels) or "none",
-                reddit_subreddits=", ".join(existing_config.fixed_reddit_subreddits) or "none",
-                twitter_accounts=", ".join(existing_config.fixed_twitter_accounts) or "none",
-            )
-        )
-    if user_spec:
-        parts.append(f"Current user_spec:\n{user_spec}")
     if conversation_summary:
-        parts.append(f"Conversation summary:\n{conversation_summary}")
+        parts.append(f"What you already know about this user:\n{conversation_summary}")
     if conversation_history:
         history_lines: list[str] = []
         for msg in conversation_history:
@@ -285,176 +183,324 @@ def _build_instruction(
     return CONVERSATIONAL_AGENT_PROMPT.format(context_section=context_section)
 
 
+async def _load_subscription_summaries(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+) -> list[str]:
+    """Fetch compact one-line descriptions of the user's active subscriptions.
+
+    An empty list signals a first-time interaction. The agent calls
+    get_subscriptions when it needs the full spec of a specific one.
+    """
+    from sqlalchemy import select
+
+    result = await session.execute(
+        select(Subscription).where(
+            Subscription.user_id == user_id,
+            Subscription.is_active.is_(True),
+        )
+    )
+    subs = list(result.scalars().all())
+    lines: list[str] = []
+    for sub in subs:
+        topic = extract_topic(sub.user_spec or sub.raw_prompt or "") or "(no topic)"
+        schedule = sub.schedule_cron or (
+            "event mode" if sub.delivery_mode == "event" else "on demand"
+        )
+        lines.append(f"[{sub.id}] {sub.delivery_mode} | {schedule} | {topic}")
+    return lines
+
+
+def _parse_csv_identifiers(raw: str) -> list[str]:
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+def _clean_identifier(identifier: str) -> str:
+    cleaned = identifier.strip().lstrip("@").lstrip("#")
+    if cleaned.startswith("r/"):
+        cleaned = cleaned[2:]
+    return cleaned
+
+
+def _source_display_name(url: str, source_kind: str) -> str:
+    """Extract a user-friendly name from a source URL (for status messages)."""
+    if source_kind == "telegram_channel":
+        name = url.rstrip("/").split("/")[-1]
+        return f"@{name}"
+    if source_kind == "reddit_subreddit":
+        parts = url.rstrip("/").split("/")
+        for i, p in enumerate(parts):
+            if p == "r" and i + 1 < len(parts):
+                return f"r/{parts[i + 1]}"
+        return url
+    if source_kind == "twitter_account":
+        name = url.rstrip("/").split("/")[-1]
+        return f"x.com/{name}"
+    return url
+
+
+def _append_conversation_summary(existing: str, fact: str) -> str:
+    """Dedup by content hash and cap at ~2KB. Evicts oldest lines when over.
+
+    Entries are prefixed with ISO timestamp so boundary flush + remember can
+    coexist peacefully in one text field.
+    """
+    fact = fact.strip()
+    if not fact:
+        return existing
+    lines = [line for line in existing.split("\n") if line.strip()]
+    fact_hash = hashlib.sha1(fact.lower().encode("utf-8")).hexdigest()[:8]
+    tagged = f"{datetime.now(UTC).strftime('%Y-%m-%d')} [{fact_hash}] {fact}"
+    lines = [line for line in lines if f"[{fact_hash}]" not in line]
+    lines.append(tagged)
+    serialized = "\n".join(lines)
+    while len(serialized.encode("utf-8")) > _CONVERSATION_SUMMARY_BYTE_LIMIT and len(lines) > 1:
+        lines.pop(0)
+        serialized = "\n".join(lines)
+    return serialized
+
+
 def create_conversational_agent(
     *,
     db_session: AsyncSession,
     user: User,
-    user_spec: str,
     conversation_summary: str,
     user_language: str | None = None,
-    subscription_id: str | None = None,
     conversation_history: list[dict] | None = None,
-    existing_config: ExistingSubscriptionContext | None = None,
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
     session_factory: async_sessionmaker[AsyncSession] | None = None,
     subscription_summaries: list[str] | None = None,
 ) -> tuple[Agent, dict[str, Any]]:
-    """Create a conversational agent with tools bound to the current DB session.
+    """Build a fresh ADK agent bound to this turn's DB session and user.
 
-    Returns the agent and a shared state dict that tools write side effects to.
-
-    ``session_factory`` provides a dedicated session per tool call that mutates
-    persistent state (add_source, remove_source, set_user_language,
-    set_user_timezone). AsyncSession is not safe for concurrent operations, so
-    the request-scoped ``db_session`` is reserved for read-only or sequential
-    tool work. Defaults to the app session factory; tests override it.
-
-    ``subscription_summaries`` are compact one-line strings describing each of
-    the user's active subscriptions. When passed as an empty list, the agent
-    treats the interaction as first-time and applies the greeting rules. Pass
-    ``None`` to skip the section entirely (e.g. for legacy flows).
+    Returns the agent and a shared_state dict. All mutation tools open their
+    own DB session via session_factory so the model can emit parallel tool
+    calls safely.
     """
-    source_factory = session_factory or async_session_factory
+    scoped_factory = session_factory or async_session_factory
     shared_state: dict[str, Any] = {
-        "user_spec_updated": False,
-        "new_user_spec": user_spec,
-        "subscription_created": False,
+        "status": "in_progress",
         "created_subscription_id": None,
         "discovery_triggered": False,
-        "status": "in_progress",
-        "finalized_config": None,
     }
 
-    async def finalize_subscription(
+    async def save_subscription(
+        subscription_id: str = "",
+        topic: str = "",
         delivery_mode: str = "digest",
         schedule_cron: str = "",
-        digest_language: str = "en",
+        digest_language: str = "",
         format_instructions: str = "brief summary",
         fixed_telegram_channels: str = "",
         fixed_reddit_subreddits: str = "",
         fixed_twitter_accounts: str = "",
         include_discovered_sources: bool = True,
-        manual_only: bool = False,
     ) -> str:
-        """Call this when all subscription information is gathered and the user has confirmed.
+        """Create a new subscription or update an existing one atomically.
+
+        CREATE path (subscription_id empty):
+          topic is required -- it seeds the user_spec and drives auto-discovery.
+          Fixed sources are attached and auto-discovery runs inline if enabled.
+
+        UPDATE path (subscription_id given):
+          Updates scalar fields only: delivery_mode, schedule_cron,
+          digest_language, format_instructions, and optionally topic.
+          fixed_* and include_discovered_sources are IGNORED on update --
+          use add_source / remove_source for source changes, and trigger a
+          fresh save_subscription with include_discovered_sources=True only
+          when creating.
 
         Args:
-            delivery_mode: Either 'digest' for periodic summaries or 'event' for instant alerts.
-            schedule_cron: 5-field cron expression for digest schedule. Empty for event or manual.
-            digest_language: Language code for content (e.g. 'en', 'ru').
-            format_instructions: How to format the digest (e.g. 'brief summary', 'detailed').
-            fixed_telegram_channels: Comma-separated channel names (no @ prefix).
-            fixed_reddit_subreddits: Comma-separated subreddit names (no r/ prefix).
-            fixed_twitter_accounts: Comma-separated account handles (no @ prefix).
-            include_discovered_sources: Whether to auto-discover additional sources.
-            manual_only: If true, digest is only sent on explicit request.
+            subscription_id: UUID of the subscription to update, or empty to create.
+            topic: Subscription topic. Required on create.
+            delivery_mode: 'digest' (periodic summary) or 'event' (instant alerts).
+            schedule_cron: 5-field cron. Empty = manual / event-only delivery.
+            digest_language: ISO code (en, ru, ...). Empty = use the user's language.
+            format_instructions: Freeform guidance like 'brief summary' or 'detailed'.
+            fixed_telegram_channels: Comma-separated handles (no @), create only.
+            fixed_reddit_subreddits: Comma-separated sub names (no r/), create only.
+            fixed_twitter_accounts: Comma-separated X handles (no @), create only.
+            include_discovered_sources: On create, run auto-discovery for more sources.
 
         Returns:
-            Confirmation that the configuration was saved.
+            Confirmation with the subscription id, or an error message.
         """
-        telegram = [c.strip() for c in fixed_telegram_channels.split(",") if c.strip()]
-        reddit = [s.strip() for s in fixed_reddit_subreddits.split(",") if s.strip()]
-        twitter = [a.strip() for a in fixed_twitter_accounts.split(",") if a.strip()]
+        from sqlalchemy import select
 
-        shared_state["status"] = "ready"
-        shared_state["finalized_config"] = FinalizedSubscriptionConfig(
-            delivery_mode=delivery_mode,
-            schedule_cron=schedule_cron or None,
-            manual_only=manual_only,
-            format_instructions=format_instructions,
-            digest_language=digest_language,
-            fixed_telegram_channels=telegram,
-            fixed_reddit_subreddits=reddit,
-            fixed_twitter_accounts=twitter,
-            include_discovered_sources=include_discovered_sources,
-        )
-        return "Configuration saved. Now respond to the user with a friendly confirmation."
+        resolved_language = (digest_language or user.language or "en").strip().lower()
+        normalized_cron = schedule_cron.strip() or None
 
-    async def create_subscription(
-        delivery_mode: str,
-        schedule_cron: str = "",
-        digest_language: str = "en",
-        format_instructions: str = "brief summary",
-    ) -> str:
-        """Create a new subscription with the given structured settings.
+        if subscription_id.strip():
+            try:
+                sub_uuid = uuid.UUID(subscription_id.strip())
+            except ValueError:
+                return f"invalid subscription_id '{subscription_id}'."
+            async with scoped_factory() as scoped:
+                result = await scoped.execute(
+                    select(Subscription).where(
+                        Subscription.id == sub_uuid,
+                        Subscription.user_id == user.id,
+                    )
+                )
+                existing = result.scalar_one_or_none()
+                if existing is None:
+                    return f"subscription {subscription_id}: not found."
+                existing.delivery_mode = delivery_mode
+                existing.schedule_cron = normalized_cron
+                existing.digest_language = resolved_language
+                existing.format_instructions = format_instructions
+                if topic.strip():
+                    existing.user_spec = render_user_spec(UserSpecSections(topic=topic.strip()))
+                    existing.raw_prompt = topic.strip()[:500]
+                await scoped.commit()
+            return f"subscription {subscription_id}: updated."
 
-        Call this when the user has confirmed they want a new subscription.
+        if not topic.strip():
+            return "topic is required to create a subscription."
 
-        Args:
-            delivery_mode: Either 'digest' for periodic summaries or 'event' for instant alerts.
-            schedule_cron: 5-field cron expression for digest schedule. Empty for event mode.
-            digest_language: Language code for the digest content (e.g. 'en', 'ru').
-            format_instructions: How to format the digest (e.g. 'brief summary', 'detailed').
+        telegram = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_telegram_channels)]
+        reddit = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_reddit_subreddits)]
+        twitter = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_twitter_accounts)]
 
-        Returns:
-            Confirmation message with the subscription ID.
-        """
-        sub = Subscription(
-            user_id=user.id,
-            raw_prompt=shared_state["new_user_spec"][:500],
-            delivery_mode=delivery_mode,
-            schedule_cron=schedule_cron or None,
-            digest_language=digest_language,
-            format_instructions=format_instructions,
-            user_spec=shared_state["new_user_spec"],
-        )
-        db_session.add(sub)
-        await db_session.flush()
-        shared_state["subscription_created"] = True
-        shared_state["created_subscription_id"] = str(sub.id)
-        return f"Subscription created with ID {sub.id}."
+        async with scoped_factory() as scoped:
+            try:
+                topic_embedding = await embed_text(topic.strip())
+            except Exception as exc:
+                logger.exception("save_subscription: topic embedding failed")
+                return f"could not embed topic: {exc}."
 
-    async def update_user_spec(content: str) -> str:
-        """Update the user_spec document with the full new content.
-
-        Always pass the COMPLETE user_spec, not just the changed section.
-        The user_spec should contain sections like ## Topic, ## Sources,
-        ## Schedule, ## Preferences, ## Feedback, etc.
-
-        Args:
-            content: The complete updated user_spec markdown text.
-
-        Returns:
-            Confirmation that the spec was updated.
-        """
-        try:
-            validated = validate_user_spec(content)
-        except (ValueError, Exception) as exc:
-            return f"Invalid user spec: {exc}"
-
-        shared_state["user_spec_updated"] = True
-        shared_state["new_user_spec"] = validated
-
-        if subscription_id:
-            from sqlalchemy import select
-
-            result = await db_session.execute(
-                select(Subscription).where(Subscription.id == uuid.UUID(subscription_id))
+            subscription = Subscription(
+                user_id=user.id,
+                raw_prompt=topic.strip()[:500],
+                topic_embedding=topic_embedding,
+                user_spec=render_user_spec(UserSpecSections(topic=topic.strip())),
+                delivery_mode=delivery_mode,
+                schedule_cron=normalized_cron,
+                format_instructions=format_instructions,
+                digest_language=resolved_language,
             )
-            sub = result.scalar_one_or_none()
-            if sub:
-                sub.user_spec = validated
-                await db_session.flush()
+            scoped.add(subscription)
+            await scoped.flush()
 
-        return "User spec updated."
+            selected: dict[uuid.UUID, Source] = {}
+            user_specified_ids: set[uuid.UUID] = set()
+            for identifiers, kind in [
+                (telegram, "telegram_channel"),
+                (reddit, "reddit_subreddit"),
+                (twitter, "twitter_account"),
+            ]:
+                if not identifiers:
+                    continue
+                try:
+                    coverage = await ensure_source_coverage(scoped, identifiers, kind)
+                except Exception as exc:
+                    logger.exception(
+                        "save_subscription: coverage failed for %s", kind
+                    )
+                    await scoped.rollback()
+                    return f"could not register {kind} sources: {exc}."
+                for source in coverage:
+                    selected[source.id] = source
+                    user_specified_ids.add(source.id)
 
-    async def validate_source(url: str, source_kind: str) -> str:
-        """Check if a source URL is reachable and has content.
+            if include_discovered_sources:
+                shared_state["discovery_triggered"] = True
+                shared_state["discovery_subscription_id"] = str(subscription.id)
 
-        Args:
-            url: Full source URL to validate.
-            source_kind: One of: rss, telegram_channel, reddit_subreddit, twitter_account.
+            for source_id in selected:
+                scoped.add(
+                    SubscriptionSource(
+                        subscription_id=subscription.id,
+                        source_id=source_id,
+                        is_user_specified=source_id in user_specified_ids,
+                    )
+                )
+            try:
+                await scoped.commit()
+            except Exception as exc:
+                logger.exception("save_subscription: commit failed")
+                await scoped.rollback()
+                return f"could not save subscription: {exc}."
+            shared_state["created_subscription_id"] = str(subscription.id)
+            return (
+                f"subscription {subscription.id}: created (auto-discovery "
+                f"{'queued' if include_discovered_sources else 'skipped'})."
+            )
+
+    async def get_subscriptions() -> str:
+        """Return every active subscription the user has, with full user_spec.
+
+        Use this when you need the details (schedule, format, sources,
+        preferences) of a specific subscription to respond accurately to an
+        edit request. The one-line summaries in the turn context are enough
+        to identify which sub the user means; call this to see everything.
 
         Returns:
-            Whether the source is valid and has content.
+            A formatted listing with topic, mode, schedule, language, format,
+            sources, and the full user_spec markdown per subscription.
         """
-        try:
-            is_valid = await _validate_source_url(url, source_kind=source_kind)
-            if is_valid:
-                return f"Source {url} ({source_kind}): valid and has content."
-            return f"Source {url} ({source_kind}): could not fetch content or is empty."
-        except Exception as exc:
-            return f"Source {url} ({source_kind}): validation error: {exc}"
+        from sqlalchemy import select
+
+        result = await db_session.execute(
+            select(Subscription).where(
+                Subscription.user_id == user.id,
+                Subscription.is_active.is_(True),
+            )
+        )
+        subs = list(result.scalars().all())
+        if not subs:
+            return "No active subscriptions."
+        blocks: list[str] = []
+        for sub in subs:
+            link_result = await db_session.execute(
+                select(Source.url, SubscriptionSource.is_user_specified)
+                .join(SubscriptionSource, SubscriptionSource.source_id == Source.id)
+                .where(SubscriptionSource.subscription_id == sub.id)
+            )
+            source_lines = [
+                f"  - {row.url} {'[user]' if row.is_user_specified else '[auto]'}"
+                for row in link_result.all()
+            ]
+            schedule = sub.schedule_cron or (
+                "event mode" if sub.delivery_mode == "event" else "on demand"
+            )
+            block = (
+                f"[{sub.id}] {sub.delivery_mode} | schedule={schedule} | "
+                f"language={sub.digest_language} | format={sub.format_instructions}\n"
+                f"sources:\n{chr(10).join(source_lines) if source_lines else '  (none)'}\n"
+                f"user_spec:\n{sub.user_spec}"
+            )
+            blocks.append(block)
+        return "\n\n---\n\n".join(blocks)
+
+    async def remember(fact: str) -> str:
+        """Persist a durable fact about the user across conversations.
+
+        Use sparingly for things worth surviving Redis TTL: travel habits,
+        strong preferences, constraints ("I work nights"), language quirks,
+        relationships. Skip transient moods ("I'm tired today") or anything
+        already in a subscription's user_spec.
+
+        Args:
+            fact: One short sentence describing the durable fact.
+
+        Returns:
+            Confirmation.
+        """
+        cleaned = fact.strip()
+        if not cleaned:
+            return "empty fact; nothing remembered."
+        from sqlalchemy import select
+
+        async with scoped_factory() as scoped:
+            result = await scoped.execute(select(User).where(User.id == user.id))
+            persisted = result.scalar_one_or_none()
+            if persisted is None:
+                return "user not found."
+            updated = _append_conversation_summary(persisted.conversation_summary or "", cleaned)
+            persisted.conversation_summary = updated
+            await scoped.commit()
+        return "remembered."
 
     async def add_source(
         subscription_id: str,
@@ -463,19 +509,19 @@ def create_conversational_agent(
     ) -> str:
         """Attach a source to an existing subscription.
 
-        Validates the source is reachable, upserts it into the sources table,
-        and links it to the subscription as user-specified. Use one call per
-        source; multiple calls in the same turn run in parallel safely.
+        Validates reachability, upserts the source, links it as user-specified.
+        Safe to call in parallel for multiple sources in one turn.
 
         Args:
             subscription_id: UUID of the subscription to modify.
-            identifier: Source identifier with no prefix
-                (channel name for Telegram, subreddit for Reddit, handle for X).
-            source_kind: One of: telegram_channel, reddit_subreddit, twitter_account.
+            identifier: Handle / name with no prefix (channel, sub, handle).
+            source_kind: telegram_channel | reddit_subreddit | twitter_account.
 
         Returns:
-            Short confirmation or an error message per source.
+            Short confirmation or per-source error.
         """
+        from sqlalchemy import select
+
         url_builders = {
             "telegram_channel": build_telegram_channel_url,
             "reddit_subreddit": build_reddit_subreddit_url,
@@ -484,9 +530,7 @@ def create_conversational_agent(
         if source_kind not in url_builders:
             return f"{identifier}: unsupported source_kind '{source_kind}'."
 
-        cleaned = identifier.strip().lstrip("@").lstrip("#")
-        if cleaned.startswith("r/"):
-            cleaned = cleaned[2:]
+        cleaned = _clean_identifier(identifier)
         if not cleaned:
             return f"{identifier}: empty identifier."
 
@@ -496,7 +540,6 @@ def create_conversational_agent(
             return f"{cleaned}: invalid subscription_id."
 
         url = url_builders[source_kind](cleaned)
-
         try:
             is_valid = await _validate_source_url(url, source_kind=source_kind)
         except Exception as exc:
@@ -504,9 +547,7 @@ def create_conversational_agent(
         if not is_valid:
             return f"{cleaned}: unreachable or empty."
 
-        from sqlalchemy import select
-
-        async with source_factory() as scoped:
+        async with scoped_factory() as scoped:
             sub_result = await scoped.execute(
                 select(Subscription).where(
                     Subscription.id == sub_uuid,
@@ -559,22 +600,20 @@ def create_conversational_agent(
         identifier: str,
         source_kind: str,
     ) -> str:
-        """Detach a source from an existing subscription.
+        """Detach a source from a subscription and log the removal.
 
-        Removes the link between the subscription and the source, decrements
-        the source's subscriber count (and deactivates it if it reaches zero),
-        and records the removal in the source_removal_log. Each call runs in
-        its own DB session so parallel removals are safe.
+        Safe to call in parallel.
 
         Args:
             subscription_id: UUID of the subscription to modify.
-            identifier: Source identifier with no prefix
-                (channel for Telegram, subreddit for Reddit, handle for X).
-            source_kind: One of: telegram_channel, reddit_subreddit, twitter_account.
+            identifier: Handle / name with no prefix.
+            source_kind: telegram_channel | reddit_subreddit | twitter_account.
 
         Returns:
-            Short confirmation or an error message.
+            Short confirmation or error.
         """
+        from sqlalchemy import select
+
         url_builders = {
             "telegram_channel": build_telegram_channel_url,
             "reddit_subreddit": build_reddit_subreddit_url,
@@ -583,9 +622,7 @@ def create_conversational_agent(
         if source_kind not in url_builders:
             return f"{identifier}: unsupported source_kind '{source_kind}'."
 
-        cleaned = identifier.strip().lstrip("@").lstrip("#")
-        if cleaned.startswith("r/"):
-            cleaned = cleaned[2:]
+        cleaned = _clean_identifier(identifier)
         if not cleaned:
             return f"{identifier}: empty identifier."
 
@@ -596,9 +633,7 @@ def create_conversational_agent(
 
         url = url_builders[source_kind](cleaned)
 
-        from sqlalchemy import select
-
-        async with source_factory() as scoped:
+        async with scoped_factory() as scoped:
             sub_result = await scoped.execute(
                 select(Subscription).where(
                     Subscription.id == sub_uuid,
@@ -647,25 +682,24 @@ def create_conversational_agent(
         return f"{cleaned} ({source_kind}): removed."
 
     async def set_user_language(code: str) -> str:
-        """Persist the user's preferred language.
+        """Persist the user's preferred language (ISO code).
 
-        Call this immediately after detecting the language of the user's first
-        message, without asking. Also call it when the user switches language
-        mid-conversation.
+        Call immediately after detecting the language of the first message,
+        without asking. Also call it when the user switches language.
 
         Args:
-            code: ISO 639-1 or BCP-47 short code (e.g. 'en', 'ru', 'de', 'es').
+            code: ISO 639-1 or short BCP-47 code (en, ru, de, es, ...).
 
         Returns:
-            Confirmation that the language was persisted.
+            Confirmation.
         """
+        from sqlalchemy import select
+
         normalized = code.strip().lower().split("-", maxsplit=1)[0]
         if len(normalized) < 2 or len(normalized) > 16:
             return f"Invalid language code '{code}'."
 
-        from sqlalchemy import select
-
-        async with source_factory() as scoped:
+        async with scoped_factory() as scoped:
             result = await scoped.execute(select(User).where(User.id == user.id))
             persisted_user = result.scalar_one_or_none()
             if persisted_user is None:
@@ -679,18 +713,19 @@ def create_conversational_agent(
     async def set_user_timezone(query: str) -> str:
         """Resolve a free-text location to an IANA timezone and persist it.
 
-        Pass whatever the user said (a city, country + city, or raw zone like
-        'UTC+3' or 'Europe/Moscow'). Inspect the returned status:
-        - 'resolved' -- timezone was set automatically.
-        - 'ambiguous' -- list the candidates to the user and ask which one.
-        - 'not_found' -- ask for a larger nearby city.
+        Inspect the returned status:
+          - 'resolved' -- auto-set, confirm briefly.
+          - 'ambiguous' -- list candidates to the user, ask which one.
+          - 'not_found' -- ask for a larger nearby city.
 
         Args:
-            query: Free-text location, e.g. 'Berlin', 'Paris France', 'Europe/Moscow'.
+            query: Free-text location ('Berlin', 'Paris France', 'UTC+3', ...).
 
         Returns:
-            A line of the form 'status: details' for the agent to read.
+            'status: details' for the agent to parse.
         """
+        from sqlalchemy import select
+
         cleaned = query.strip()
         if not cleaned:
             return "not_found: empty query."
@@ -698,9 +733,7 @@ def create_conversational_agent(
         resolution = resolve_timezone(cleaned)
         if resolution.status == "resolved" and resolution.candidates:
             candidate = resolution.candidates[0]
-            from sqlalchemy import select
-
-            async with source_factory() as scoped:
+            async with scoped_factory() as scoped:
                 result = await scoped.execute(select(User).where(User.id == user.id))
                 persisted_user = result.scalar_one_or_none()
                 if persisted_user is None:
@@ -717,59 +750,14 @@ def create_conversational_agent(
 
         return f"not_found: no match for '{cleaned}'. Ask the user for a larger city."
 
-    async def discover_sources(topic: str) -> str:
-        """Signal that automatic source discovery should run after this conversation turn.
-
-        This does NOT execute discovery immediately. It sets a flag so the caller
-        knows to kick off the discovery pipeline after the turn completes.
-
-        Args:
-            topic: The topic to find sources for (from user_spec).
-
-        Returns:
-            Confirmation that the discovery request was recorded.
-        """
-        shared_state["discovery_triggered"] = True
-        shared_state["discovery_topic"] = topic
-        return (
-            "Source discovery request recorded. "
-            "The system will search for relevant sources after this conversation turn."
-        )
-
-    async def list_subscriptions() -> str:
-        """List all active subscriptions for the current user.
-
-        Returns:
-            Formatted list of subscriptions with their topics and settings.
-        """
-        from sqlalchemy import select
-
-        result = await db_session.execute(
-            select(Subscription).where(
-                Subscription.user_id == user.id,
-                Subscription.is_active.is_(True),
-            )
-        )
-        subs = list(result.scalars().all())
-        if not subs:
-            return "No active subscriptions."
-        lines = []
-        for s in subs:
-            topic = (s.user_spec or s.raw_prompt)[:80]
-            lines.append(
-                f"- [{s.id}] {s.delivery_mode}: {topic} "
-                f"(schedule: {s.schedule_cron or 'event mode'})"
-            )
-        return f"Active subscriptions:\n{chr(10).join(lines)}"
-
     async def trigger_digest_now(subscription_id: str) -> str:
-        """Queue an immediate digest delivery for a subscription.
+        """Queue an immediate digest delivery for one subscription.
 
         Args:
             subscription_id: UUID of the subscription to deliver.
 
         Returns:
-            Confirmation that the digest was queued.
+            Confirmation that the digest is queued.
         """
         from news_service.tasks.deliver_digest import deliver_digest
 
@@ -777,13 +765,15 @@ def create_conversational_agent(
         return f"Digest queued for delivery (subscription {subscription_id})."
 
     async def delete_subscription(subscription_id: str) -> str:
-        """Delete a subscription by ID.
+        """Soft-delete (deactivate) a subscription by id.
+
+        Confirm in plain language with the user before calling.
 
         Args:
-            subscription_id: UUID of the subscription to delete.
+            subscription_id: UUID of the subscription to deactivate.
 
         Returns:
-            Confirmation that the subscription was deleted.
+            Confirmation or not-found message.
         """
         from sqlalchemy import select
 
@@ -800,38 +790,13 @@ def create_conversational_agent(
         await db_session.flush()
         return f"Subscription {subscription_id} deleted."
 
-    async def emit_status(message: str) -> str:
-        """Emit a progress status message to the user.
-
-        Call this when starting a significant operation to keep the user informed.
-        Write in the same language as the conversation.
-
-        Args:
-            message: A short, friendly progress message
-                (e.g. "Looking for Telegram channels about AI...")
-
-        Returns:
-            Confirmation that the status was emitted.
-        """
-        if status_queue is not None:
-            status_queue.put_nowait(
-                {
-                    "event": "status",
-                    "status_key": "status_agent_progress",
-                    "status_text": message,
-                }
-            )
-        return "Status emitted."
-
     effective_language = user_language or user.language
 
     instruction = _build_instruction(
-        user_spec=user_spec,
         conversation_summary=conversation_summary,
         user_language=effective_language,
         user_timezone=user.timezone,
         conversation_history=conversation_history,
-        existing_config=existing_config,
         subscription_summaries=subscription_summaries,
     )
 
@@ -840,23 +805,19 @@ def create_conversational_agent(
         model=LiteLlm(model=settings.litellm_model),
         instruction=instruction,
         tools=[
-            finalize_subscription,
-            create_subscription,
-            update_user_spec,
-            validate_source,
+            save_subscription,
+            get_subscriptions,
+            remember,
             add_source,
             remove_source,
             set_user_language,
             set_user_timezone,
-            discover_sources,
-            list_subscriptions,
             trigger_digest_now,
             delete_subscription,
-            emit_status,
         ],
         generate_content_config=types.GenerateContentConfig(temperature=0.2),
     )
-
+    _ = status_queue  # reserved for future per-tool UI events; not used by tools.
     return agent, shared_state
 
 
@@ -865,41 +826,26 @@ async def run_conversational_turn(
     db_session: AsyncSession,
     user: User,
     user_message: str,
-    user_spec: str,
     conversation_summary: str,
     user_language: str | None = None,
-    subscription_id: str | None = None,
 ) -> dict[str, Any]:
-    """Run a single conversational turn and return the result.
+    """Run a single non-streaming turn and return a simple result dict.
 
-    Returns a dict with:
-        agent_message: str -- what to show the user
-        user_spec_updated: bool -- whether user_spec changed
-        new_user_spec: str -- the updated user_spec (if changed)
-        subscription_created: bool
-        created_subscription_id: str | None
-        discovery_triggered: bool
+    Used by tests and non-streaming callers.
     """
     agent, shared_state = create_conversational_agent(
         db_session=db_session,
         user=user,
-        user_spec=user_spec,
         conversation_summary=conversation_summary,
         user_language=user_language,
-        subscription_id=subscription_id,
     )
-
     agent_message = await run_agent_text(
         agent=agent,
         message=user_message,
         user_id=str(user.id),
     )
-
     return {
         "agent_message": agent_message,
-        "user_spec_updated": shared_state["user_spec_updated"],
-        "new_user_spec": shared_state["new_user_spec"],
-        "subscription_created": shared_state["subscription_created"],
         "created_subscription_id": shared_state["created_subscription_id"],
         "discovery_triggered": shared_state["discovery_triggered"],
     }
@@ -910,16 +856,13 @@ async def run_conversation_turn_streaming(
     *,
     db_session: AsyncSession,
     user: User,
-    user_spec: str,
     conversation_summary: str,
     user_language: str | None = None,
-    subscription_id: str | None = None,
-    existing_config: ExistingSubscriptionContext | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
-    """Streaming variant that yields status events and a final done event.
+    """Streaming variant: yields status events, then one final done event.
 
     Events:
-      {"event": "status", "status_key": "...", ...optional kwargs}
+      {"event": "status", "status_key": ..., ...kwargs}
       {"event": "done", "output": {...}, "new_messages": [...]}
       {"event": "error", "detail": "..."}
     """
@@ -937,12 +880,9 @@ async def run_conversation_turn_streaming(
     agent, shared_state = create_conversational_agent(
         db_session=db_session,
         user=user,
-        user_spec=user_spec,
         conversation_summary=conversation_summary,
         user_language=user_language,
-        subscription_id=subscription_id,
         conversation_history=previous_messages,
-        existing_config=existing_config,
         status_queue=status_queue,
         subscription_summaries=subscription_summaries,
     )
@@ -957,44 +897,9 @@ async def run_conversation_turn_streaming(
             while not status_queue.empty():
                 yield status_queue.get_nowait()
             if event["type"] == "tool_call":
-                tool_name = event["name"]
-                if tool_name == "validate_source":
-                    args = event.get("args", {})
-                    url = args.get("url", "")
-                    source_kind = args.get("source_kind", "")
-                    display = _source_display_name(url, source_kind)
-                    yield {
-                        "event": "status",
-                        "status_key": "status_checking_source",
-                        "source": display,
-                    }
-                elif tool_name == "add_source":
-                    args = event.get("args", {})
-                    identifier = args.get("identifier", "")
-                    source_kind = args.get("source_kind", "")
-                    yield {
-                        "event": "status",
-                        "status_key": "status_adding_source",
-                        "source": identifier,
-                        "source_kind": source_kind,
-                    }
-                elif tool_name == "remove_source":
-                    args = event.get("args", {})
-                    identifier = args.get("identifier", "")
-                    source_kind = args.get("source_kind", "")
-                    yield {
-                        "event": "status",
-                        "status_key": "status_removing_source",
-                        "source": identifier,
-                        "source_kind": source_kind,
-                    }
-                elif tool_name == "set_user_timezone":
-                    args = event.get("args", {})
-                    yield {
-                        "event": "status",
-                        "status_key": "status_resolving_timezone",
-                        "query": args.get("query", ""),
-                    }
+                emitted = _status_for_tool_call(event)
+                if emitted is not None:
+                    yield emitted
             elif event["type"] == "final_response":
                 agent_text = event["text"]
         while not status_queue.empty():
@@ -1007,11 +912,48 @@ async def run_conversation_turn_streaming(
     output = AgentTurnOutput(
         message=agent_text,
         status=shared_state["status"],
-        finalized_config=shared_state["finalized_config"],
     )
-    new_messages = [{"role": "assistant", "content": agent_text}]
     yield {
         "event": "done",
         "output": output.model_dump(),
-        "new_messages": new_messages,
+        "new_messages": [{"role": "assistant", "content": agent_text}],
     }
+
+
+def _status_for_tool_call(event: dict[str, Any]) -> dict[str, Any] | None:
+    """Map an ADK tool_call event to a status message for the UI, or None."""
+    tool_name = event.get("name", "")
+    args = event.get("args", {})
+    if tool_name == "add_source":
+        return {
+            "event": "status",
+            "status_key": "status_adding_source",
+            "source": args.get("identifier", ""),
+            "source_kind": args.get("source_kind", ""),
+        }
+    if tool_name == "remove_source":
+        return {
+            "event": "status",
+            "status_key": "status_removing_source",
+            "source": args.get("identifier", ""),
+            "source_kind": args.get("source_kind", ""),
+        }
+    if tool_name == "set_user_timezone":
+        return {
+            "event": "status",
+            "status_key": "status_resolving_timezone",
+            "query": args.get("query", ""),
+        }
+    if tool_name == "save_subscription":
+        return {
+            "event": "status",
+            "status_key": "status_saving_subscription",
+            "subscription_id": args.get("subscription_id", ""),
+        }
+    if tool_name == "trigger_digest_now":
+        return {
+            "event": "status",
+            "status_key": "status_queuing_digest",
+            "subscription_id": args.get("subscription_id", ""),
+        }
+    return None

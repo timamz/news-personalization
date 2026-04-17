@@ -193,64 +193,6 @@ async def test_handle_user_message_clears_conversation_id_and_retries_on_conflic
     save_mock.assert_awaited_once_with(telegram_id, fresh_id)
 
 
-@pytest.mark.asyncio
-async def test_handle_user_message_creates_subscription_on_ready_status(mocker) -> None:
-    telegram_id = random.randint(100000, 999999)
-    message = _make_message(telegram_id, text="digest about AI every morning")
-    api_key = f"key-{uuid.uuid4().hex}"
-    conversation_id = f"conv-{uuid.uuid4().hex}"
-
-    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
-    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=None))
-    mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
-    clear_mock = mocker.patch.object(start, "clear_conversation_id", new=AsyncMock())
-    mocker.patch.object(
-        start,
-        "delivery_webhook_url",
-        return_value="http://bot:8080/deliver/x/1",
-    )
-
-    mocker.patch.object(
-        start.backend,
-        "start_subscription_conversation_stream",
-        return_value=_stream_events(
-            [
-                {
-                    "event": "done",
-                    "conversation_id": conversation_id,
-                    "agent_message": "All set! Creating your subscription...",
-                    "status": "ready",
-                    "finalized_config": {
-                        "delivery_mode": "digest",
-                        "schedule_cron": "0 8 * * *",
-                        "digest_language": "en",
-                        "format_instructions": "brief summary",
-                        "fixed_telegram_channels": [],
-                        "fixed_reddit_subreddits": [],
-                        "fixed_twitter_accounts": [],
-                        "include_discovered_sources": True,
-                    },
-                }
-            ]
-        ),
-    )
-
-    create_events = [
-        {"event": "status", "status_key": "status_looking_for_sources"},
-        {"event": "done", "subscription": {"id": "sub-123"}},
-    ]
-    create_stream = mocker.patch.object(
-        start.backend,
-        "create_subscription_stream",
-        return_value=_stream_events(create_events),
-    )
-
-    await start.handle_user_message(message)
-
-    create_stream.assert_called_once()
-    clear_mock.assert_awaited_once_with(telegram_id)
-
-
 def test_split_returns_single_chunk_for_short_text() -> None:
     assert start._split("short", 4000) == ["short"], (
         "_split should return the input unchanged when it already fits"
