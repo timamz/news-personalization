@@ -41,38 +41,44 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 
 ### Core Agents
 
-| Agent | Location | Trigger | Pattern |
-|---|---|---|---|
-| **Conversational Agent** | `agents/conversational.py` | User message (any interaction) | Tool-use conversation with persistent memory |
-| **Discovery Orchestrator** | `agents/source_discovery/orchestrator.py` | Subscription creation | Planning (decomposes topic into search strategies) |
-| **Generic Source Finder** | `agents/source_discovery/finder.py` | Per strategy (N parallel) | ReAct (search DB, search web, validate/score) |
-| **Source Aggregator** | `agents/source_discovery/aggregator.py` | After finders complete | Pure data processing (merge, dedup, rank) |
-| **Digest Planner** | `agents/digest/planner.py` | Scheduled digest delivery | Planning (creates digest outline) |
-| **Digest Composer** | `agents/digest/composer.py` | After planner / after judge revision | Generator (writes digest following plan) |
-| **Quality Judge** | `agents/digest/judge.py` | After composer produces draft | Critic (scores quality, PASS/REVISE) |
-| **Pipeline Reflector** | `agents/digest/reflector.py` | After digest delivery | Reflection / self-healing |
-| **Batch Event Assessor** | `agents/event/batch_assessor.py` | New items from polling cycle | Batch reasoning (all items per subscription) |
-| **Source Poller** | `tasks/poll_feeds.py` | Celery Beat (every 30 min) | Scheduled data ingestion |
+| Agent | Location | Kind | Trigger | Tools / Outputs |
+|---|---|---|---|---|
+| **Conversational Agent** | `agents/conversational.py` | ADK tool-use loop | Every user message | `finalize_subscription`, `create_subscription`, `update_user_spec`, `validate_source`, `discover_sources`, `list_subscriptions`, `trigger_digest_now`, `delete_subscription`, `emit_status` |
+| **Discovery Agent** | `agents/source_discovery/pipeline.py` | ADK looped agent (max 2 rounds) | Subscription creation / reflector trigger | `run_parallel_search(strategies)` (spawns N parallel finders), `submit_results()` |
+| **Source Finder** | `agents/source_discovery/finder.py` | ADK ReAct, one per strategy | Spawned by Discovery Agent | `search_existing_sources` (pgvector), `tool_search_web` (SearXNG), `validate_and_score_source` (fetch posts, embed, cosine) |
+| **Digest Writer** | `agents/digest/writer.py` | ADK agent (plans + researches + composes in one loop) | Scheduled digest delivery | `fetch_article` (httpx + BeautifulSoup, budgeted), `search_web` (SearXNG, budgeted), `submit_digest(digest_text, used_item_ids)` |
+| **Quality Judge** | `agents/digest/judge.py` | Single structured-output LLM call | After Writer produces draft | Returns `QualityScores` (relevance/format/conciseness 1-5, `PASS` or `REVISE`+feedback) |
+| **Pipeline Reflector** | `agents/digest/reflector.py` | ADK agent | After delivery, when health triggers fire | `remove_source(url, reason)` (auto-discovered only), `trigger_source_discovery(reason)`, `emit_status` |
+| **Batch Event Assessor** | `agents/event/batch_assessor.py` | Single structured-output LLM call | New items from polling cycle | Returns `BatchAssessmentResult` (per-item `is_relevant` + `notification_body`) |
+| **Event Preview** | `agents/event/preview.py` | Single structured-output LLM call | Subscription creation (preview recent events) | Returns relevant items from recent feed history |
+| **Source Poller** | `tasks/poll_feeds.py` | Celery Beat task (no LLM) | Every 30 min | Fetches RSS / Telegram / Reddit / Twitter, embeds new items |
 
 ### Pipeline Flows
 
-**Source Discovery Pipeline** (triggered by Conversational Agent):
+**Source Discovery Pipeline** (triggered by Conversational Agent or Reflector):
 ```
-plan_discovery(topic) -> N x run_finder(strategy) [parallel] -> aggregate_sources()
+discovery_agent.loop:
+  plan strategies -> run_parallel_search(N strategies) -> review results
+                  -> [optional second round]
+                  -> submit_results()
 ```
-The orchestrator analyzes the topic and produces 2-5 search strategies. N GenericFinders execute in parallel, each using SearXNG for web search and pgvector for DB search. The aggregator merges, deduplicates by URL, and ranks by relevance score.
+A single looped Discovery Agent decides on 2-5 initial strategies, fans out to N parallel Source Finders (each running its own ReAct loop with SearXNG + pgvector + validation/scoring), reviews the deduped pool, optionally refines with another round, and finalizes. Capped at 2 rounds; results are deduped by normalized URL and ranked by cosine relevance score.
 
-**Digest Pipeline** (triggered by Celery Beat schedule):
+**Digest Pipeline** (triggered by Celery Beat schedule, `agents/digest/pipeline.py`):
 ```
-fetch_candidates(DB) -> plan_digest() -> [compose_digest() <-> judge_digest()] -> reflect_on_pipeline()
+fetch_candidates(DB, no LLM)
+  -> [write_digest() <-> judge_digest()]   (max 2 revisions)
+  -> validate_used_item_ids + validate_digest_text
+  -> [run_reflector()]                     (only when health triggers fire)
+  -> mark_as_sent()
 ```
-Candidates are fetched via cosine similarity + recency queries (no LLM). The planner creates an outline based on `user_spec`. Composer and judge loop up to 2 times (Generator/Critic pattern). The reflector reviews pipeline health: silently removes dead sources, patches `user_spec` when composer ignores preferences, notifies user only for major issues.
+Candidates are fetched via cosine similarity + recency (no LLM). The Digest Writer is one ADK agent that handles planning, optional research (article fetch + web search), and composition in a single loop. The Judge is a separate structured-output call (Generator/Critic pattern). The Reflector runs only when `_should_reflect` fires (judge failed, verdict ≠ PASS, low source coverage, low avg score, or stale `last_reflected_at`); on its own it is non-blocking and may remove dead auto-discovered sources and queue a discovery task.
 
 **Event Pipeline** (triggered by polling):
 ```
 poll_feeds() -> deliver_event_notifications_batch(item_ids) -> assess_batch_events() per subscription
 ```
-All new items from a polling cycle are batched. One LLM call per subscription evaluates all items together, enabling cross-item deduplication. Reduces N*M calls to M calls.
+All new items from a polling cycle are batched. One LLM call per subscription evaluates all items together (enabling cross-item deduplication and notification-history checks), reducing N*M calls to M calls.
 
 ### Key Design Decisions
 
@@ -82,7 +88,7 @@ All new items from a polling cycle are batched. One LLM call per subscription ev
 
 **SearXNG for web search.** `services/search.py` calls a self-hosted SearXNG instance. No external API keys needed for search. Configurable via `SEARXNG_URL` and `WEB_SEARCH_PROVIDER` settings.
 
-**Google ADK for agentic agents.** Source discovery finders use ADK `Agent` with `LiteLlm` model and tool functions. ADK manages the ReAct loop (LLM call -> tool execution -> result feedback -> repeat).
+**Google ADK for agentic agents.** The Conversational Agent, Discovery Agent, Source Finders, Digest Writer, and Pipeline Reflector are all ADK `Agent` instances with `LiteLlm` models and tool functions. ADK manages the tool-use / ReAct loop (LLM call -> tool execution -> result feedback -> repeat). `agents/adk_runner.py` wraps ADK's `Runner` with `run_agent` (streaming events) and `run_agent_text` (final text). Single-shot structured-output calls (Quality Judge, Batch Event Assessor, Event Preview) bypass ADK and call `core/llm.chat_completion` directly with a Pydantic `response_format`.
 
 **Pipeline observability.** `orchestration/tracing.py` records `PipelineEvent` rows with trace_id, timing, token usage, and input/output summaries. `EvaluationResult` rows store quality scores from the judge for trend analysis.
 

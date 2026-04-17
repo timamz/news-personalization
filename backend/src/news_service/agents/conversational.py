@@ -19,12 +19,15 @@ from typing import Any
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from news_service.agents.adk_runner import run_agent, run_agent_text
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
+from news_service.db.session import async_session_factory
+from news_service.models.source import Source
 from news_service.models.subscription import Subscription
+from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
 from news_service.models.user_spec import extract_topic, validate_user_spec
 from news_service.schemas.conversation import (
@@ -32,6 +35,10 @@ from news_service.schemas.conversation import (
     ExistingSubscriptionContext,
     FinalizedSubscriptionConfig,
 )
+from news_service.services.coverage import ensure_source_coverage
+from news_service.services.reddit import build_reddit_subreddit_url
+from news_service.services.telegram import build_telegram_channel_url
+from news_service.services.twitter import build_twitter_account_url
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -86,6 +93,10 @@ Behavior rules:
 - When all information is gathered, call finalize_subscription with the configuration, \
 then respond with a friendly confirmation message.
 - When the user gives feedback about digest quality, update user_spec with their preferences.
+- When the user asks to add one or more sources to an EXISTING subscription (the context \
+contains a current subscription), call add_source once per source. If the user mentions \
+several sources in a single message, emit the add_source calls in parallel in the same turn \
+instead of serially -- each call validates and attaches independently.
 
 {context_section}\
 """
@@ -189,11 +200,18 @@ def create_conversational_agent(
     conversation_history: list[dict] | None = None,
     existing_config: ExistingSubscriptionContext | None = None,
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
+    session_factory: async_sessionmaker[AsyncSession] | None = None,
 ) -> tuple[Agent, dict[str, Any]]:
     """Create a conversational agent with tools bound to the current DB session.
 
     Returns the agent and a shared state dict that tools write side effects to.
+
+    ``session_factory`` provides a dedicated session per ``add_source`` call so
+    parallel tool invocations do not share the request-scoped ``db_session``
+    (AsyncSession is not safe for concurrent operations). Defaults to the app
+    session factory; tests override it with a fake.
     """
+    source_factory = session_factory or async_session_factory
     shared_state: dict[str, Any] = {
         "user_spec_updated": False,
         "new_user_spec": user_spec,
@@ -335,6 +353,104 @@ def create_conversational_agent(
         except Exception as exc:
             return f"Source {url} ({source_kind}): validation error: {exc}"
 
+    async def add_source(
+        subscription_id: str,
+        identifier: str,
+        source_kind: str,
+    ) -> str:
+        """Attach a source to an existing subscription.
+
+        Validates the source is reachable, upserts it into the sources table,
+        and links it to the subscription as user-specified. Use one call per
+        source; multiple calls in the same turn run in parallel safely.
+
+        Args:
+            subscription_id: UUID of the subscription to modify.
+            identifier: Source identifier with no prefix
+                (channel name for Telegram, subreddit for Reddit, handle for X).
+            source_kind: One of: telegram_channel, reddit_subreddit, twitter_account.
+
+        Returns:
+            Short confirmation or an error message per source.
+        """
+        url_builders = {
+            "telegram_channel": build_telegram_channel_url,
+            "reddit_subreddit": build_reddit_subreddit_url,
+            "twitter_account": build_twitter_account_url,
+        }
+        if source_kind not in url_builders:
+            return f"{identifier}: unsupported source_kind '{source_kind}'."
+
+        cleaned = identifier.strip().lstrip("@").lstrip("#")
+        if cleaned.startswith("r/"):
+            cleaned = cleaned[2:]
+        if not cleaned:
+            return f"{identifier}: empty identifier."
+
+        try:
+            sub_uuid = uuid.UUID(subscription_id)
+        except ValueError:
+            return f"{cleaned}: invalid subscription_id."
+
+        url = url_builders[source_kind](cleaned)
+
+        try:
+            is_valid = await _validate_source_url(url, source_kind=source_kind)
+        except Exception as exc:
+            return f"{cleaned}: validation error: {exc}"
+        if not is_valid:
+            return f"{cleaned}: unreachable or empty."
+
+        from sqlalchemy import select
+
+        async with source_factory() as scoped:
+            sub_result = await scoped.execute(
+                select(Subscription).where(
+                    Subscription.id == sub_uuid,
+                    Subscription.user_id == user.id,
+                )
+            )
+            subscription = sub_result.scalar_one_or_none()
+            if subscription is None:
+                return f"{cleaned}: subscription not found."
+            if not subscription.is_active:
+                return f"{cleaned}: subscription is inactive."
+
+            existing = await scoped.execute(
+                select(SubscriptionSource)
+                .join(Source, Source.id == SubscriptionSource.source_id)
+                .where(
+                    SubscriptionSource.subscription_id == sub_uuid,
+                    Source.url == url,
+                )
+            )
+            if existing.scalar_one_or_none() is not None:
+                return f"{cleaned}: already attached to this subscription."
+
+            try:
+                sources = await ensure_source_coverage(scoped, [cleaned], source_kind)
+            except Exception as exc:
+                logger.exception("add_source: coverage upsert failed for %s", url)
+                return f"{cleaned}: could not register source ({exc})."
+            if not sources:
+                return f"{cleaned}: could not register source."
+
+            scoped.add(
+                SubscriptionSource(
+                    subscription_id=sub_uuid,
+                    source_id=sources[0].id,
+                    is_user_specified=True,
+                )
+            )
+            try:
+                await scoped.commit()
+            except Exception as exc:
+                logger.exception("add_source: commit failed for %s", url)
+                await scoped.rollback()
+                return f"{cleaned}: could not attach source ({exc})."
+
+        return f"{cleaned} ({source_kind}): added."
+
     async def discover_sources(topic: str) -> str:
         """Signal that automatic source discovery should run after this conversation turn.
 
@@ -459,6 +575,7 @@ def create_conversational_agent(
             create_subscription,
             update_user_spec,
             validate_source,
+            add_source,
             discover_sources,
             list_subscriptions,
             trigger_digest_now,
@@ -571,6 +688,16 @@ async def run_conversation_turn_streaming(
                         "event": "status",
                         "status_key": "status_checking_source",
                         "source": display,
+                    }
+                elif tool_name == "add_source":
+                    args = event.get("args", {})
+                    identifier = args.get("identifier", "")
+                    source_kind = args.get("source_kind", "")
+                    yield {
+                        "event": "status",
+                        "status_key": "status_adding_source",
+                        "source": identifier,
+                        "source_kind": source_kind,
                     }
             elif event["type"] == "final_response":
                 agent_text = event["text"]

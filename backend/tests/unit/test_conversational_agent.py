@@ -4,6 +4,7 @@ import asyncio
 import logging
 import uuid
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -95,6 +96,7 @@ def test_create_agent_has_all_tools() -> None:
         "create_subscription",
         "update_user_spec",
         "validate_source",
+        "add_source",
         "discover_sources",
         "list_subscriptions",
         "trigger_digest_now",
@@ -106,7 +108,7 @@ def test_create_agent_has_all_tools() -> None:
     )
 
 
-def test_create_agent_has_nine_tools() -> None:
+def test_create_agent_has_ten_tools() -> None:
     db_session = AsyncMock()
     user = _fake_user()
     agent, _state = create_conversational_agent(
@@ -115,7 +117,7 @@ def test_create_agent_has_nine_tools() -> None:
         user_spec="",
         conversation_summary="",
     )
-    assert len(agent.tools) == 9, f"agent has {len(agent.tools)} tools, expected 9"
+    assert len(agent.tools) == 10, f"agent has {len(agent.tools)} tools, expected 10"
 
 
 def test_shared_state_initial_values() -> None:
@@ -193,3 +195,167 @@ async def test_emit_status_tool_without_queue_does_not_raise() -> None:
     emit_tool = next(t for t in agent.tools if callable(t) and t.__name__ == "emit_status")
     result = await emit_tool(f"Recherche de canaux... {uuid.uuid4().hex[:6]}")
     assert result == "Status emitted.", "emit_status without queue did not return confirmation"
+
+
+def _build_agent_with_factory(
+    *,
+    user: SimpleNamespace,
+    factory_session: AsyncMock,
+) -> tuple[Any, dict[str, Any]]:
+    from news_service.agents.conversational import create_conversational_agent as _create
+
+    class _Factory:
+        def __init__(self, session: AsyncMock) -> None:
+            self._session = session
+
+        def __call__(self) -> Any:
+            mgr = AsyncMock()
+            mgr.__aenter__ = AsyncMock(return_value=self._session)
+            mgr.__aexit__ = AsyncMock(return_value=None)
+            return mgr
+
+    return _create(
+        db_session=AsyncMock(),
+        user=user,
+        user_spec="## Topic\nTest",
+        conversation_summary="",
+        session_factory=_Factory(factory_session),
+    )
+
+
+def _get_tool(agent: Any, name: str):
+    return next(t for t in agent.tools if callable(t) and t.__name__ == name)
+
+
+@pytest.mark.asyncio
+async def test_add_source_rejects_unsupported_source_kind() -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    agent, _state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+    add_source = _get_tool(agent, "add_source")
+    result = await add_source(str(uuid.uuid4()), "some-feed", "rss")
+    assert "unsupported source_kind" in result, (
+        f"add_source did not reject unsupported source_kind: {result!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_source_rejects_malformed_subscription_id() -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    agent, _state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+    add_source = _get_tool(agent, "add_source")
+    result = await add_source("not-a-uuid", "bbcworld", "telegram_channel")
+    assert "invalid subscription_id" in result, (
+        f"add_source did not reject malformed subscription_id: {result!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_source_returns_unreachable_when_validation_fails(mocker) -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    agent, _state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+    mocker.patch(
+        "news_service.agents.conversational._validate_source_url",
+        new=AsyncMock(return_value=False),
+    )
+    add_source = _get_tool(agent, "add_source")
+    result = await add_source(str(uuid.uuid4()), "deadchannel", "telegram_channel")
+    assert "unreachable or empty" in result, (
+        f"add_source did not report unreachable source: {result!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_source_returns_not_found_when_subscription_missing(mocker) -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    scalar_result = MagicMock()
+    scalar_result.scalar_one_or_none.return_value = None
+    scoped_session = AsyncMock()
+    scoped_session.execute = AsyncMock(return_value=scalar_result)
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    mocker.patch(
+        "news_service.agents.conversational._validate_source_url",
+        new=AsyncMock(return_value=True),
+    )
+    add_source = _get_tool(agent, "add_source")
+    result = await add_source(str(uuid.uuid4()), "worldnews", "reddit_subreddit")
+    assert "subscription not found" in result, (
+        f"add_source did not detect missing subscription: {result!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_source_refuses_duplicate_attachment(mocker) -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+    sub.is_active = True
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+    dup_lookup = MagicMock()
+    dup_lookup.scalar_one_or_none.return_value = MagicMock()
+
+    scoped_session = AsyncMock()
+    scoped_session.execute = AsyncMock(side_effect=[sub_lookup, dup_lookup])
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    mocker.patch(
+        "news_service.agents.conversational._validate_source_url",
+        new=AsyncMock(return_value=True),
+    )
+    add_source = _get_tool(agent, "add_source")
+    result = await add_source(str(sub.id), "bbcworld", "telegram_channel")
+    assert "already attached" in result, (
+        f"add_source did not reject duplicate attachment: {result!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_source_attaches_and_commits_on_success(mocker) -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+    sub.is_active = True
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+    dup_lookup = MagicMock()
+    dup_lookup.scalar_one_or_none.return_value = None
+
+    scoped_session = AsyncMock()
+    scoped_session.execute = AsyncMock(side_effect=[sub_lookup, dup_lookup])
+    scoped_session.add = MagicMock()
+    scoped_session.commit = AsyncMock()
+
+    new_source = MagicMock()
+    new_source.id = uuid.uuid4()
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    mocker.patch(
+        "news_service.agents.conversational._validate_source_url",
+        new=AsyncMock(return_value=True),
+    )
+    mocker.patch(
+        "news_service.agents.conversational.ensure_source_coverage",
+        new=AsyncMock(return_value=[new_source]),
+    )
+    add_source = _get_tool(agent, "add_source")
+    result = await add_source(str(sub.id), "@bbcworld", "telegram_channel")
+    assert result.endswith(": added."), f"add_source did not confirm attachment: {result!r}"
+    scoped_session.commit.assert_awaited_once()
+    scoped_session.add.assert_called_once()
