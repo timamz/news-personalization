@@ -17,13 +17,13 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
-        assert raw_prompt == "AI updates every morning in a brief summary"
+    async def fake_ensure_prompt_coverage(session, topic_text, prompt_embedding):  # noqa: ANN001
+        assert topic_text == "AI updates every morning in a brief summary"
         assert prompt_embedding == [2.0] * 1536
         src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
-            source_description=f"Example Feed ({raw_prompt})",
+            source_description=f"Example Feed ({topic_text})",
             source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
@@ -47,7 +47,6 @@ async def test_dispatcher_queues_due_subscription_created_via_api(
             "prompt": "AI updates every morning in a brief summary",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )

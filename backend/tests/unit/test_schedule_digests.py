@@ -49,14 +49,13 @@ def _make_subscription(
     created_at: datetime,
     last_digest_scheduled_at: datetime | None = None,
 ) -> Subscription:
+    topic = f"Новости ИИ {uuid.uuid4().hex[:4]}"
     return Subscription(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
-        raw_prompt=f"Новости ИИ {uuid.uuid4().hex[:4]}",
-        user_spec=f"## Topic\nНовости ИИ {uuid.uuid4().hex[:4]}",
+        user_spec=f"## Topic\n{topic}\n\n## Preferences\nкраткое описание",
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
-        format_instructions="краткое описание",
         delivery_webhook_url=f"http://example.com/hook/{uuid.uuid4().hex[:6]}",
         is_active=True,
         created_at=created_at,

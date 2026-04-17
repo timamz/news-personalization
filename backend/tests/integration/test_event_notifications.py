@@ -37,11 +37,9 @@ async def test_event_notification_delivery_marks_item_as_sent(mocker) -> None:
 
         subscription = Subscription(
             user_id=user.id,
-            raw_prompt="Notify me when a new episode is announced",
             user_spec="## Topic\nSeverance episode announcements",
             delivery_mode="event",
             schedule_cron=None,
-            format_instructions="brief summary",
             digest_language="en",
             delivery_webhook_url="http://frontend.example.test/deliver/1",
             is_active=True,
@@ -131,11 +129,9 @@ async def test_event_notification_skips_non_relevant_event(mocker) -> None:
 
         subscription = Subscription(
             user_id=user.id,
-            raw_prompt="Only Stanislav Drobyshevsky's own lectures",
             user_spec="## Topic\nDrobyshevsky lectures only",
             delivery_mode="event",
             schedule_cron=None,
-            format_instructions="brief summary",
             digest_language="en",
             delivery_webhook_url="http://frontend.example.test/deliver/1",
             is_active=True,
@@ -214,22 +210,18 @@ async def test_event_notification_does_not_skip_when_only_another_subscription_h
 
         old_subscription = Subscription(
             user_id=user.id,
-            raw_prompt="Notify me about Drobyshevsky lectures",
             user_spec="## Topic\nDrobyshevsky lectures",
             delivery_mode="event",
             schedule_cron=None,
-            format_instructions="brief summary",
             digest_language="en",
             delivery_webhook_url="http://frontend.example.test/deliver/1",
             is_active=False,
         )
         current_subscription = Subscription(
             user_id=user.id,
-            raw_prompt="Notify me about Drobyshevsky lectures",
             user_spec="## Topic\nDrobyshevsky lectures",
             delivery_mode="event",
             schedule_cron=None,
-            format_instructions="brief summary",
             digest_language="en",
             delivery_webhook_url="http://frontend.example.test/deliver/1",
             is_active=True,

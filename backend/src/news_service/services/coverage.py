@@ -34,7 +34,7 @@ _SOURCE_TYPE_CONFIG: dict[SourceKind, tuple[Callable[[str], str], str]] = {
 
 async def ensure_prompt_coverage(
     session: AsyncSession,
-    raw_prompt: str,
+    topic_text: str,
     prompt_embedding: list[float],
     subscription_id: uuid.UUID | None = None,
     status_queue: object | None = None,
@@ -48,13 +48,13 @@ async def ensure_prompt_coverage(
     try:
         result = await run_source_discovery(
             session=session,
-            raw_prompt=raw_prompt,
+            topic_text=topic_text,
             prompt_embedding=prompt_embedding,
             removal_history=removal_history,
             status_queue=status_queue,
         )
     except Exception:
-        logger.exception("Source discovery agent failed for prompt: %s", raw_prompt)
+        logger.exception("Source discovery agent failed for prompt: %s", topic_text)
         return []
 
     selected: list[Source] = []

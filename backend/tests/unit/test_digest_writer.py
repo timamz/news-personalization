@@ -93,7 +93,6 @@ async def test_write_digest_returns_composition_with_text_and_item_ids() -> None
             items_text=f"[ID: {item_a}] Headline: A\n\n[ID: {item_b}] Headline: B",
             user_spec="## Topic\nAI \u043d\u043e\u0432\u043e\u0441\u0442\u0438",
             digest_language="ru",
-            format_instructions="\u043a\u0440\u0430\u0442\u043a\u043e",
             recent_digest_summaries="",
         )
 
@@ -121,7 +120,6 @@ async def test_write_digest_raises_when_agent_does_not_submit() -> None:
                 items_text="[ID: x] Headline: Y",
                 user_spec="## Topic\nTest",
                 digest_language="en",
-                format_instructions="brief",
                 recent_digest_summaries="",
             )
 
@@ -162,7 +160,6 @@ async def test_write_digest_respects_fetch_budget() -> None:
             items_text=f"[ID: {item_id}] Headline: Z",
             user_spec="## Topic\nBudget test \u00e9\u00e8",
             digest_language="en",
-            format_instructions="brief",
             recent_digest_summaries="",
         )
 
@@ -208,7 +205,6 @@ async def test_write_digest_respects_search_budget() -> None:
             items_text=f"[ID: {item_id}] Headline: Z",
             user_spec="## Topic\nSearch budget \u00fc\u00f6\u00e4",
             digest_language="de",
-            format_instructions="kurz",
             recent_digest_summaries="",
         )
 
@@ -240,7 +236,6 @@ async def test_write_digest_includes_recent_summaries_in_prompt() -> None:
             items_text=f"[ID: {item_id}] Headline: Something",
             user_spec="## Topic\nAI news",
             digest_language="en",
-            format_instructions="brief",
             recent_digest_summaries=recent_summaries,
         )
 
@@ -275,7 +270,6 @@ async def test_write_digest_incorporates_feedback_on_revision() -> None:
             items_text=f"[ID: {item_id}] Headline: X",
             user_spec="## Topic\nTest \u00e9",
             digest_language="fr",
-            format_instructions="r\u00e9sum\u00e9 bref",
             recent_digest_summaries="",
             feedback=feedback_text,
         )
@@ -325,7 +319,6 @@ async def test_fetch_article_extracts_text_from_html() -> None:
             items_text=f"[ID: {item_id}] Headline: Test",
             user_spec="## Topic\nNews",
             digest_language="en",
-            format_instructions="brief",
             recent_digest_summaries="",
         )
 
@@ -381,7 +374,6 @@ async def test_fetch_article_truncates_long_content() -> None:
             items_text=f"[ID: {item_id}] Headline: Long",
             user_spec="## Topic\nTest",
             digest_language="en",
-            format_instructions="brief",
             recent_digest_summaries="",
         )
 
@@ -421,7 +413,6 @@ async def test_fetch_article_handles_unreachable_url() -> None:
             items_text=f"[ID: {item_id}] Headline: Unreachable",
             user_spec="## Topic\nTest \u00e9\u00e8\u00ea",
             digest_language="en",
-            format_instructions="brief",
             recent_digest_summaries="",
         )
 

@@ -169,7 +169,7 @@ async def test_pipeline_returns_sources_from_finders(mocker) -> None:
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        raw_prompt=f"AI research {uuid.uuid4().hex[:4]}",
+        topic_text=f"AI research {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
     )
 
@@ -209,7 +209,7 @@ async def test_pipeline_handles_finder_failure_gracefully(mocker) -> None:
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        raw_prompt=f"Технологии {uuid.uuid4().hex[:4]}",
+        topic_text=f"Технологии {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
     )
 
@@ -253,7 +253,7 @@ async def test_pipeline_deduplicates_across_rounds(mocker) -> None:
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        raw_prompt=f"ML papers {uuid.uuid4().hex[:4]}",
+        topic_text=f"ML papers {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
     )
 
@@ -294,7 +294,7 @@ async def test_pipeline_sorts_results_by_relevance_descending(mocker) -> None:
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        raw_prompt=f"Тестовый запрос {uuid.uuid4().hex[:4]}",
+        topic_text=f"Тестовый запрос {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
     )
 
@@ -343,7 +343,7 @@ async def test_pipeline_respects_source_target_count(mocker) -> None:
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        raw_prompt=f"Narrow topic {uuid.uuid4().hex[:4]}",
+        topic_text=f"Narrow topic {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
     )
 
@@ -375,7 +375,7 @@ async def test_pipeline_returns_empty_when_all_finders_fail(mocker) -> None:
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        raw_prompt=f"Невозможный запрос {uuid.uuid4().hex[:4]}",
+        topic_text=f"Невозможный запрос {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
     )
 
@@ -406,7 +406,7 @@ async def test_pipeline_sends_status_events_to_queue(mocker) -> None:
 
     await run_source_discovery(
         session=AsyncMock(),
-        raw_prompt=f"Запрос со статусами {uuid.uuid4().hex[:4]}",
+        topic_text=f"Запрос со статусами {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
         status_queue=status_queue,
     )

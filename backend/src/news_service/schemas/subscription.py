@@ -8,7 +8,14 @@ type DeliveryMode = Literal["digest", "event"]
 
 
 class SubscriptionCreate(BaseModel):
-    prompt: str = Field(..., min_length=5, description="Natural language news preference")
+    prompt: str = Field(..., min_length=5, description="Natural language topic / request")
+    preferences: str | None = Field(
+        default=None,
+        description=(
+            "Freeform presentation guidance -- length, format, exclusions, tone. "
+            "Rendered into user_spec's Preferences section."
+        ),
+    )
     delivery_webhook_url: str | None = Field(
         default=None, description="URL where digest will be POSTed"
     )
@@ -49,19 +56,13 @@ class SubscriptionCreate(BaseModel):
         max_length=16,
         description="Override output language for digests and event notifications",
     )
-    format_instructions: str | None = Field(
-        default=None,
-        description="How the user wants to consume news; defaults to 'brief summary'",
-    )
 
 
 class SubscriptionResponse(BaseModel):
     id: uuid.UUID
-    raw_prompt: str
     user_spec: str
     delivery_mode: DeliveryMode
     schedule_cron: str | None
-    format_instructions: str
     digest_language: str
     delivery_webhook_url: str | None
     is_active: bool
@@ -90,10 +91,13 @@ class SubscriptionUpdate(BaseModel):
         min_length=1,
         description="New cron schedule for digest subscriptions; null disables scheduling",
     )
-    format_instructions: str | None = Field(
+    user_spec: str | None = Field(
         default=None,
         min_length=1,
-        description="Updated presentation format instructions",
+        description=(
+            "Updated markdown user_spec. Overwrites the existing document. "
+            "Use when the user wants to change topic, preferences, or format."
+        ),
     )
     delivery_webhook_url: str | None = Field(
         default=None,

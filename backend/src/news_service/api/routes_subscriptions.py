@@ -22,7 +22,6 @@ from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
 from news_service.models.user_spec import UserSpecSections, render_user_spec
-from news_service.schemas.conversation import FinalizedSubscriptionConfig
 from news_service.schemas.subscription import (
     RecentEventAcknowledgeRequest,
     ScheduleParseRequest,
@@ -64,8 +63,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 
-async def _subscription_prompt_embedding(raw_prompt: str) -> list[float]:
-    return await embed_text(raw_prompt)
+async def _subscription_topic_embedding(topic_text: str) -> list[float]:
+    return await embed_text(topic_text)
 
 
 def _normalize_fixed_sources(
@@ -225,16 +224,19 @@ async def _create_subscription_streaming(
         "status_key": "status_analyzing",
         "status_text": "Analyzing your request...",
     }
-    topic_embedding = await _subscription_prompt_embedding(payload.prompt)
+    topic_embedding = await _subscription_topic_embedding(payload.prompt)
 
     subscription = Subscription(
         user_id=user.id,
-        raw_prompt=payload.prompt,
         topic_embedding=topic_embedding,
-        user_spec=render_user_spec(UserSpecSections(topic=payload.prompt)),
+        user_spec=render_user_spec(
+            UserSpecSections(
+                topic=payload.prompt,
+                preferences=(payload.preferences or "").strip(),
+            )
+        ),
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
-        format_instructions=payload.format_instructions or "brief summary",
         digest_language=digest_language,
         delivery_webhook_url=payload.delivery_webhook_url,
     )
@@ -273,7 +275,12 @@ async def _create_subscription_streaming(
             queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
             discovery_task = asyncio.create_task(
-                ensure_prompt_coverage(session, payload.prompt, topic_embedding, status_queue=queue)
+                ensure_prompt_coverage(
+                    session,
+                    topic_text=payload.prompt,
+                    prompt_embedding=topic_embedding,
+                    status_queue=queue,
+                )
             )
 
             # Drain status events from the queue while discovery runs
@@ -436,119 +443,6 @@ async def list_subscriptions(
         )
     )
     return list(result.scalars().all())
-
-
-@router.post("/{subscription_id}/edit/apply-config", response_model=SubscriptionResponse)
-async def apply_subscription_config(
-    subscription_id: str,
-    payload: FinalizedSubscriptionConfig,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-) -> Subscription:
-    """Apply a complete FinalizedSubscriptionConfig to an existing subscription.
-
-    Updates all subscription fields and reconciles linked sources (adds new, removes old).
-    """
-    result = await session.execute(
-        select(Subscription).where(
-            Subscription.id == subscription_id,
-            Subscription.user_id == user.id,
-        )
-    )
-    subscription = result.scalar_one_or_none()
-    if subscription is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
-    if not subscription.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Subscription is inactive",
-        )
-
-    # Update format and language
-    subscription.format_instructions = payload.format_instructions.strip()
-    subscription.digest_language = payload.digest_language
-
-    # Update schedule
-    if payload.delivery_mode == "event" or payload.manual_only:
-        subscription.schedule_cron = None
-    else:
-        subscription.schedule_cron = _validated_schedule_or_422(payload.schedule_cron)
-
-    subscription.delivery_mode = payload.delivery_mode
-
-    # Reconcile sources
-    telegram_channels, reddit_subreddits, twitter_accounts = _normalize_fixed_sources(
-        payload.fixed_telegram_channels,
-        payload.fixed_reddit_subreddits,
-        payload.fixed_twitter_accounts,
-    )
-    desired_urls: set[str] = set()
-    for channel in telegram_channels:
-        desired_urls.add(build_telegram_channel_url(channel))
-    for subreddit in reddit_subreddits:
-        desired_urls.add(build_reddit_subreddit_url(subreddit))
-    for account in twitter_accounts:
-        desired_urls.add(build_twitter_account_url(account))
-
-    current_urls = await _existing_subscription_source_urls(session, subscription.id)
-
-    # Remove sources that are no longer desired
-    urls_to_remove = current_urls - desired_urls
-    if urls_to_remove:
-        source_ids_result = await session.execute(
-            select(Source.id).where(Source.url.in_(urls_to_remove))
-        )
-        source_ids_to_remove = [row[0] for row in source_ids_result.all()]
-        if source_ids_to_remove:
-            links_result = await session.execute(
-                select(SubscriptionSource).where(
-                    SubscriptionSource.subscription_id == subscription.id,
-                    SubscriptionSource.source_id.in_(source_ids_to_remove),
-                )
-            )
-            for link in links_result.scalars().all():
-                await session.delete(link)
-
-    # Add new sources
-    new_telegram = [
-        ch for ch in telegram_channels if build_telegram_channel_url(ch) not in current_urls
-    ]
-    new_reddit = [
-        sub for sub in reddit_subreddits if build_reddit_subreddit_url(sub) not in current_urls
-    ]
-    new_twitter = [
-        acc for acc in twitter_accounts if build_twitter_account_url(acc) not in current_urls
-    ]
-
-    new_sources: dict[uuid.UUID, Source] = {}
-    for identifiers, kind in [
-        (new_telegram, "telegram_channel"),
-        (new_reddit, "reddit_subreddit"),
-        (new_twitter, "twitter_account"),
-    ]:
-        if identifiers:
-            for source in await ensure_source_coverage(session, identifiers, kind):
-                new_sources[source.id] = source
-
-    for source_id in new_sources:
-        session.add(
-            SubscriptionSource(
-                subscription_id=subscription.id,
-                source_id=source_id,
-                is_user_specified=True,
-            )
-        )
-
-    await session.commit()
-    await session.refresh(subscription)
-
-    logger.info(
-        "Applied config edit to subscription %s for user %s",
-        subscription.id,
-        user.id,
-        extra={"subscription_id": str(subscription.id), "user_id": str(user.id)},
-    )
-    return subscription
 
 
 async def _recent_events_preview_streaming(
@@ -736,8 +630,10 @@ async def update_subscription(
         validated_schedule = _validated_schedule_or_422(updates["schedule_cron"])
         _ensure_user_timezone_for_schedule(user, validated_schedule)
         subscription.schedule_cron = validated_schedule
-    if "format_instructions" in updates:
-        subscription.format_instructions = updates["format_instructions"]
+    if "user_spec" in updates:
+        from news_service.models.user_spec import validate_user_spec
+
+        subscription.user_spec = validate_user_spec(updates["user_spec"])
     if "delivery_webhook_url" in updates:
         subscription.delivery_webhook_url = updates["delivery_webhook_url"]
     if "digest_language" in updates:

@@ -18,13 +18,13 @@ async def test_deactivate_subscription_removes_fixed_source_links(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
-        assert raw_prompt == "AI updates every morning"
+    async def fake_ensure_prompt_coverage(session, topic_text, prompt_embedding):  # noqa: ANN001
+        assert topic_text == "AI updates every morning"
         assert prompt_embedding == [2.0] * 1536
         src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
-            source_description=f"Example Feed ({raw_prompt})",
+            source_description=f"Example Feed ({topic_text})",
             source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
@@ -48,7 +48,6 @@ async def test_deactivate_subscription_removes_fixed_source_links(
             "prompt": "AI updates every morning",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )
@@ -95,13 +94,13 @@ async def test_create_event_subscription_forces_schedule_off(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
-        assert raw_prompt == "Notify me when the next episode is announced"
-        assert raw_prompt_embedding == [2.0] * 1536
+    async def fake_ensure_prompt_coverage(session, topic_text, prompt_embedding):  # noqa: ANN001
+        assert topic_text == "Notify me when the next episode is announced"
+        assert prompt_embedding == [2.0] * 1536
         src = Source(
             url="https://example.com/shows.xml",
             title="Shows Feed",
-            source_description=f"Shows Feed ({raw_prompt})",
+            source_description=f"Shows Feed ({topic_text})",
             source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
@@ -126,7 +125,6 @@ async def test_create_event_subscription_forces_schedule_off(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": "event",
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )
@@ -164,7 +162,6 @@ async def test_append_subscription_sources_adds_only_new_links(
             "fixed_telegram_channels": ["fondnauk"],
             "include_discovered_sources": False,
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )

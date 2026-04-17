@@ -14,11 +14,9 @@ def _subscription():
     sub = MagicMock()
     sub.id = uuid.uuid4()
     sub.user_id = uuid.uuid4()
-    sub.user_spec = "## Topic\nMachine learning Neuigkeiten"
-    sub.raw_prompt = "Machine learning Neuigkeiten"
+    sub.user_spec = "## Topic\nMachine learning Neuigkeiten\n\n## Preferences\nbrief summary"
     sub.topic_embedding = [0.1] * 1536
     sub.digest_language = "de"
-    sub.format_instructions = "brief summary"
     sub.schedule_cron = "0 8 * * *"
     sub.last_reflected_at = datetime.now(UTC)
     return sub

@@ -146,7 +146,7 @@ async def test_render_preview_returns_selected_ids_and_body(mocker) -> None:
     mocker.patch(_PREVIEW_PATH, new=AsyncMock(return_value=_fake_completion(parsed)))
 
     result = await render_recent_events_preview(
-        raw_prompt="Только лекции",
+        topic_text="Только лекции",
         target_language="ru",
         lookback_days=7,
         candidate_events=[f"ID: {event_id}\nTitle: Лекция\nURL: {event_url}"],

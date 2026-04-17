@@ -17,13 +17,13 @@ async def _create_user_and_subscription(
     *,
     delivery_mode: str = "digest",
 ) -> tuple[str, uuid.UUID]:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
-        assert raw_prompt == "AI updates every morning in a brief summary"
+    async def fake_ensure_prompt_coverage(session, topic_text, prompt_embedding):  # noqa: ANN001
+        assert topic_text == "AI updates every morning in a brief summary"
         assert prompt_embedding == [2.0] * 1536
         src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
-            source_description=f"Example Feed ({raw_prompt})",
+            source_description=f"Example Feed ({topic_text})",
             source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
@@ -48,7 +48,6 @@ async def _create_user_and_subscription(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": delivery_mode,
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )
@@ -66,21 +65,18 @@ async def test_update_subscription_updates_lightweight_fields(
         headers={"X-API-Key": api_key},
         json={
             "schedule_cron": "0 10 * * 1-5",
-            "format_instructions": "detailed analysis",
             "delivery_webhook_url": None,
         },
     )
 
     assert response.status_code == 200
     assert response.json()["schedule_cron"] == "0 10 * * 1-5"
-    assert response.json()["format_instructions"] == "detailed analysis"
     assert response.json()["delivery_webhook_url"] is None
 
     async with async_session_factory() as session:
         subscription = await session.get(Subscription, subscription_id)
         assert subscription is not None
         assert subscription.schedule_cron == "0 10 * * 1-5"
-        assert subscription.format_instructions == "detailed analysis"
         assert subscription.delivery_webhook_url is None
 
 
@@ -142,13 +138,13 @@ async def test_create_subscription_rejects_invalid_schedule_override(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, raw_prompt_embedding):  # noqa: ANN001
-        assert raw_prompt == "AI updates"
-        assert raw_prompt_embedding == [2.0] * 1536
+    async def fake_ensure_prompt_coverage(session, topic_text, prompt_embedding):  # noqa: ANN001
+        assert topic_text == "AI updates"
+        assert prompt_embedding == [2.0] * 1536
         src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
-            source_description=f"Example Feed ({raw_prompt})",
+            source_description=f"Example Feed ({topic_text})",
             source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
@@ -172,7 +168,6 @@ async def test_create_subscription_rejects_invalid_schedule_override(
             "prompt": "AI updates",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "schedule_cron_override": "not a cron",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )
@@ -185,13 +180,13 @@ async def test_create_subscription_applies_digest_language_override(
     api_client: AsyncClient,
     mocker,
 ) -> None:
-    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
-        assert raw_prompt == "AI updates every morning in a brief summary"
+    async def fake_ensure_prompt_coverage(session, topic_text, prompt_embedding):  # noqa: ANN001
+        assert topic_text == "AI updates every morning in a brief summary"
         assert prompt_embedding == [2.0] * 1536
         src = Source(
             url="https://example.com/rss.xml",
             title="Example Feed",
-            source_description=f"Example Feed ({raw_prompt})",
+            source_description=f"Example Feed ({topic_text})",
             source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
@@ -216,7 +211,6 @@ async def test_create_subscription_applies_digest_language_override(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "digest_language_override": "ru",
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
         },
     )
 

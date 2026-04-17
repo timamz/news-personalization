@@ -54,7 +54,12 @@ from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
-from news_service.models.user_spec import UserSpecSections, extract_topic, render_user_spec
+from news_service.models.user_spec import (
+    UserSpecSections,
+    extract_topic,
+    parse_user_spec,
+    render_user_spec,
+)
 from news_service.schemas.conversation import AgentTurnOutput
 from news_service.services.coverage import ensure_source_coverage
 from news_service.services.reddit import build_reddit_subreddit_url
@@ -96,7 +101,10 @@ one forward-looking question.
 
 Subscription creation via save_subscription:
 - Gather topic, delivery mode (digest vs event -- default digest), schedule, sources, \
-format. When you have enough, call save_subscription without a subscription_id.
+and any presentation preferences (length, format, exclusions, tone). When you have \
+enough, call save_subscription without a subscription_id.
+- Pass format and exclusion guidance via the 'preferences' argument, not a separate \
+field. Example: preferences="three short bullets, skip stock prices, include quotes".
 - Convert schedule text to a 5-field cron internally. Never show cron to the user.
   "every morning" -> "0 8 * * *", "every evening at 9pm" -> "0 21 * * *",
   "every Saturday morning" -> "0 8 * * 6", "every third day" -> "0 8 */3 * *",
@@ -107,12 +115,12 @@ format. When you have enough, call save_subscription without a subscription_id.
 - If the user provided sources, ask whether to also auto-discover more.
 
 Editing existing subscriptions:
-- Use get_subscriptions when you need the full spec of a sub (topic, schedule, format, \
-sources). The pre-loaded one-line summaries in context are enough for disambiguation \
-("the AI one") but not for editing details.
-- To change scalar fields (schedule, language, format, delivery mode, topic) call \
-save_subscription with the subscription_id and the full set of fields you want -- any \
-field you omit falls back to its default, so RESTATE unchanged values explicitly.
+- Use get_subscriptions when you need the full user_spec of a sub (topic, schedule, \
+preferences, sources). The pre-loaded one-line summaries in context are enough for \
+disambiguation ("the AI one") but not for editing details.
+- To change scalar fields (schedule, language, delivery mode) or rewrite the \
+topic/preferences, call save_subscription with the subscription_id and the fields \
+you want to change. Omitting topic or preferences preserves the existing values.
 - For sources on an existing subscription, use add_source / remove_source (not \
 save_subscription).
 
@@ -165,8 +173,8 @@ General behavior:
 - Never show cron expressions, UUIDs, or internal field names to the user.
 - If the user provides enough info in one message, act immediately.
 - Accommodate mid-conversation changes.
-- When the user gives feedback about digest quality, update the subscription with \
-save_subscription and include their preferences in the topic/format.
+- When the user gives feedback about digest quality, update the subscription via \
+save_subscription with an updated 'preferences' string that captures what they want.
 
 {context_section}\
 """
@@ -250,7 +258,7 @@ async def _load_subscription_summaries(
     subs = list(result.scalars().all())
     lines: list[str] = []
     for sub in subs:
-        topic = extract_topic(sub.user_spec or sub.raw_prompt or "") or "(no topic)"
+        topic = extract_topic(sub.user_spec or "") or "(no topic)"
         schedule = sub.schedule_cron or (
             "event mode" if sub.delivery_mode == "event" else "on demand"
         )
@@ -338,10 +346,10 @@ def create_conversational_agent(
     async def save_subscription(
         subscription_id: str = "",
         topic: str = "",
+        preferences: str = "",
         delivery_mode: str = "digest",
         schedule_cron: str = "",
         digest_language: str = "",
-        format_instructions: str = "brief summary",
         fixed_telegram_channels: str = "",
         fixed_reddit_subreddits: str = "",
         fixed_twitter_accounts: str = "",
@@ -350,24 +358,27 @@ def create_conversational_agent(
         """Create a new subscription or update an existing one atomically.
 
         CREATE path (subscription_id empty):
-          topic is required -- it seeds the user_spec and drives auto-discovery.
-          Fixed sources are attached and auto-discovery runs inline if enabled.
+          ``topic`` is required -- it seeds the user_spec and drives
+          auto-discovery. ``preferences`` is optional freeform guidance
+          (format, exclusions, anything the Writer should know). Both are
+          rendered into ``user_spec`` which is the single source of
+          truth for LLM-facing intent.
 
         UPDATE path (subscription_id given):
-          Updates scalar fields only: delivery_mode, schedule_cron,
-          digest_language, format_instructions, and optionally topic.
-          fixed_* and include_discovered_sources are IGNORED on update --
-          use add_source / remove_source for source changes, and trigger a
-          fresh save_subscription with include_discovered_sources=True only
-          when creating.
+          Updates ``delivery_mode``, ``schedule_cron``, ``digest_language``
+          and re-renders the ``user_spec`` when topic or preferences are
+          provided. ``fixed_*`` and ``include_discovered_sources`` are
+          ignored; use add_source / remove_source for source changes.
 
         Args:
             subscription_id: UUID of the subscription to update, or empty to create.
             topic: Subscription topic. Required on create.
+            preferences: Freeform guidance ('brief summary', 'skip stock prices',
+                'three bullets max', 'include quotes'). Goes into user_spec's
+                Preferences section.
             delivery_mode: 'digest' (periodic summary) or 'event' (instant alerts).
             schedule_cron: 5-field cron. Empty = manual / event-only delivery.
             digest_language: ISO code (en, ru, ...). Empty = use the user's language.
-            format_instructions: Freeform guidance like 'brief summary' or 'detailed'.
             fixed_telegram_channels: Comma-separated handles (no @), create only.
             fixed_reddit_subreddits: Comma-separated sub names (no r/), create only.
             fixed_twitter_accounts: Comma-separated X handles (no @), create only.
@@ -380,6 +391,7 @@ def create_conversational_agent(
 
         resolved_language = (digest_language or user.language or "en").strip().lower()
         normalized_cron = schedule_cron.strip() or None
+        preferences_text = preferences.strip()
 
         if subscription_id.strip():
             try:
@@ -399,10 +411,17 @@ def create_conversational_agent(
                 existing.delivery_mode = delivery_mode
                 existing.schedule_cron = normalized_cron
                 existing.digest_language = resolved_language
-                existing.format_instructions = format_instructions
-                if topic.strip():
-                    existing.user_spec = render_user_spec(UserSpecSections(topic=topic.strip()))
-                    existing.raw_prompt = topic.strip()[:500]
+                if topic.strip() or preferences_text:
+                    current = parse_user_spec(existing.user_spec) if existing.user_spec else None
+                    new_topic = topic.strip() or (current.topic if current else "")
+                    new_preferences = (
+                        preferences_text
+                        if preferences_text
+                        else (current.preferences if current else "")
+                    )
+                    existing.user_spec = render_user_spec(
+                        UserSpecSections(topic=new_topic, preferences=new_preferences)
+                    )
                 await scoped.commit()
             return f"subscription {subscription_id}: updated."
 
@@ -422,12 +441,12 @@ def create_conversational_agent(
 
             subscription = Subscription(
                 user_id=user.id,
-                raw_prompt=topic.strip()[:500],
                 topic_embedding=topic_embedding,
-                user_spec=render_user_spec(UserSpecSections(topic=topic.strip())),
+                user_spec=render_user_spec(
+                    UserSpecSections(topic=topic.strip(), preferences=preferences_text)
+                ),
                 delivery_mode=delivery_mode,
                 schedule_cron=normalized_cron,
-                format_instructions=format_instructions,
                 digest_language=resolved_language,
             )
             scoped.add(subscription)
@@ -523,7 +542,7 @@ def create_conversational_agent(
             )
             block = (
                 f"[{sub.id}] {sub.delivery_mode} | schedule={schedule} | "
-                f"language={sub.digest_language} | format={sub.format_instructions}\n"
+                f"language={sub.digest_language}\n"
                 f"sources:\n{chr(10).join(source_lines) if source_lines else '  (none)'}\n"
                 f"user_spec:\n{sub.user_spec}"
             )

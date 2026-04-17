@@ -35,7 +35,6 @@ async def test_subscription_with_telegram_channel_registers_source(
             "fixed_telegram_channels": ["fondnauk"],
             "include_discovered_sources": False,
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )
@@ -83,7 +82,6 @@ async def test_subscription_prompt_extracts_telegram_channel_source(
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "include_discovered_sources": False,
             "schedule_cron_override": "0 8 * * *",
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )

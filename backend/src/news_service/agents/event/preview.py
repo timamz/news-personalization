@@ -55,7 +55,7 @@ class RecentEventsPreviewDecision(BaseModel):
 @with_llm_retry()
 async def render_recent_events_preview(
     *,
-    raw_prompt: str,
+    topic_text: str,
     target_language: str,
     lookback_days: int,
     candidate_events: list[str],
@@ -85,7 +85,7 @@ async def render_recent_events_preview(
                 "content": (
                     f"Target language: {normalized_language}\n"
                     f"Lookback window: last {lookback_days} days\n\n"
-                    f"Original subscription request:\n{raw_prompt}\n\n"
+                    f"Original subscription request:\n{topic_text}\n\n"
                     "Recent notification history:\n"
                     f"{history_block}\n\n"
                     "Candidate events:\n"

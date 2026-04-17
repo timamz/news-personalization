@@ -92,7 +92,7 @@ def _format_summary(sources: list[ScoredSource]) -> str:
 async def run_source_discovery(
     *,
     session: AsyncSession,
-    raw_prompt: str,
+    topic_text: str,
     prompt_embedding: list[float],
     exclude_urls: list[str] | None = None,
     removal_history: str = "",
@@ -132,7 +132,7 @@ async def run_source_discovery(
         logger.info(
             "Discovery agent launching %d finder(s) for topic '%s'",
             len(strategy_list),
-            raw_prompt[:60],
+            topic_text[:60],
         )
 
         if status_queue is not None:
@@ -199,7 +199,7 @@ async def run_source_discovery(
 
     await run_agent_text(
         agent=agent,
-        message=f"Find sources for this topic:\n{raw_prompt}",
+        message=f"Find sources for this topic:\n{topic_text}",
     )
 
     sources = shared_state["sources"]
@@ -208,7 +208,7 @@ async def run_source_discovery(
 
     logger.info(
         "Discovery agent finished for '%s': %d total unique, %d selected",
-        raw_prompt[:60],
+        topic_text[:60],
         len(sources),
         len(selected),
     )

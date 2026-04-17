@@ -70,7 +70,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
 
     query_embedding = subscription.topic_embedding
     if query_embedding is None:
-        query_text = extract_topic(subscription.user_spec or subscription.raw_prompt)
+        query_text = extract_topic(subscription.user_spec or "")
         query_embedding = await embed_text(query_text)
         subscription.topic_embedding = query_embedding
 
@@ -109,7 +109,6 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 items_text=items_text,
                 user_spec=user_spec,
                 digest_language=subscription.digest_language,
-                format_instructions=subscription.format_instructions,
                 recent_digest_summaries=recent_summaries,
                 feedback=feedback,
             )

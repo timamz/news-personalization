@@ -37,7 +37,7 @@ else:
 def mock_event_preview_renderer(mocker) -> None:
     async def _preview_renderer(
         *,
-        raw_prompt: str,
+        topic_text: str,
         target_language: str,
         lookback_days: int,
         candidate_events: list[str],
@@ -46,7 +46,7 @@ def mock_event_preview_renderer(mocker) -> None:
         del target_language, recent_notifications
         selected_ids: list[str] = []
         selected_entries: list[str] = []
-        normalized_prompt = raw_prompt.casefold()
+        normalized_prompt = topic_text.casefold()
         for entry in candidate_events:
             normalized_entry = entry.casefold()
             if (

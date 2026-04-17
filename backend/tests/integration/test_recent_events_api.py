@@ -23,13 +23,13 @@ async def _create_subscription(
 ) -> tuple[str, str, uuid.UUID]:
     source_ref: dict[str, uuid.UUID] = {}
 
-    async def fake_ensure_prompt_coverage(session, raw_prompt, prompt_embedding):  # noqa: ANN001
-        assert raw_prompt == "Notify me about upcoming events"
+    async def fake_ensure_prompt_coverage(session, topic_text, prompt_embedding):  # noqa: ANN001
+        assert topic_text == "Notify me about upcoming events"
         assert prompt_embedding == [2.0] * 1536
         src = Source(
             url="https://example.com/events.xml",
             title="Events Feed",
-            source_description=f"Events Feed ({raw_prompt})",
+            source_description=f"Events Feed ({topic_text})",
             source_description_embedding=[0.0] * 1536,
             is_active=True,
             subscriber_count=1,
@@ -55,7 +55,6 @@ async def _create_subscription(
             "prompt": "Notify me about upcoming events",
             "delivery_webhook_url": "http://frontend.example.test/deliver/1",
             "delivery_mode": delivery_mode,
-            "format_instructions": "brief summary",
             "digest_language_override": "en",
         },
     )
@@ -169,13 +168,13 @@ async def test_recent_events_filters_strict_subscription_with_preview_renderer(
 
     async def _preview_renderer(  # noqa: ANN001
         *,
-        raw_prompt,
+        topic_text,
         target_language,
         lookback_days,
         candidate_events,
         recent_notifications,
     ):
-        del raw_prompt, target_language, lookback_days, recent_notifications
+        del topic_text, target_language, lookback_days, recent_notifications
         selected_item_id = ""
         selected_entry = ""
         for entry in candidate_events:

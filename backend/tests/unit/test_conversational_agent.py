@@ -282,6 +282,7 @@ async def test_save_subscription_updates_scalar_fields(mocker) -> None:
     sub = MagicMock()
     sub.id = uuid.uuid4()
     sub.user_id = user.id
+    sub.user_spec = "## Topic\nold topic"
 
     lookup = MagicMock()
     lookup.scalar_one_or_none.return_value = sub
@@ -297,7 +298,7 @@ async def test_save_subscription_updates_scalar_fields(mocker) -> None:
         delivery_mode="event",
         schedule_cron="",
         digest_language="de",
-        format_instructions="detailed",
+        preferences="detailed",
     )
     assert result.endswith(": updated."), (
         f"save_subscription update path did not confirm: {result!r}"
