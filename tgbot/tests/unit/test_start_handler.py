@@ -33,10 +33,22 @@ async def test_cmd_start_sends_welcome_message(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
-    clear_mock = mocker.patch.object(start, "clear_conversation_id", new=AsyncMock())
+    reset_mock = mocker.patch.object(start.backend, "reset_conversation", new=AsyncMock())
     await start.cmd_start(message)
     message.answer.assert_awaited_once()
-    clear_mock.assert_awaited_once_with(telegram_id)
+    reset_mock.assert_awaited_once_with("key")
+
+
+@pytest.mark.asyncio
+async def test_cmd_start_still_greets_when_backend_reset_fails(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id)
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(
+        start.backend, "reset_conversation", new=AsyncMock(side_effect=RuntimeError("boom"))
+    )
+    await start.cmd_start(message)
+    message.answer.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -62,135 +74,54 @@ async def test_handle_user_message_ignores_empty_text(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_user_message_starts_fresh_conversation_when_none_stored(
-    mocker,
-) -> None:
+async def test_handle_user_message_streams_turn_to_backend(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
-    message = _make_message(telegram_id, text="hello")
+    text = f"hello-{uuid.uuid4().hex[:6]}"
+    message = _make_message(telegram_id, text=text)
     api_key = f"key-{uuid.uuid4().hex}"
-    conversation_id = f"conv-{uuid.uuid4().hex}"
     agent_text = f"pong-{uuid.uuid4().hex[:6]}"
 
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
-    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=None))
-    save_mock = mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
-
-    start_stream = mocker.patch.object(
+    stream_mock = mocker.patch.object(
         start.backend,
-        "start_subscription_conversation_stream",
+        "send_conversation_message_stream",
         return_value=_stream_events(
             [
                 {"event": "status", "status_key": "status_thinking"},
-                {
-                    "event": "done",
-                    "conversation_id": conversation_id,
-                    "agent_message": agent_text,
-                    "status": "in_progress",
-                    "finalized_config": None,
-                },
+                {"event": "done", "agent_message": agent_text},
             ]
         ),
-    )
-    mocker.patch.object(
-        start.backend,
-        "continue_subscription_conversation_stream",
-        new=AsyncMock(),
     )
 
     await start.handle_user_message(message)
 
-    start_stream.assert_called_once_with(api_key, "hello")
-    save_mock.assert_awaited_once_with(telegram_id, conversation_id)
+    stream_mock.assert_called_once_with(api_key, text)
     assert message.answer.await_count == 1, (
         f"handle_user_message sent {message.answer.await_count} messages, expected 1"
     )
 
 
 @pytest.mark.asyncio
-async def test_handle_user_message_continues_existing_conversation(mocker) -> None:
+async def test_handle_user_message_reports_error_when_stream_raises(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
-    message = _make_message(telegram_id, text="what did i say yesterday?")
-    api_key = f"key-{uuid.uuid4().hex}"
-    conversation_id = f"conv-{uuid.uuid4().hex}"
+    message = _make_message(telegram_id, text="hi")
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
 
-    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
-    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=conversation_id))
-    mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
-
-    continue_stream = mocker.patch.object(
-        start.backend,
-        "continue_subscription_conversation_stream",
-        return_value=_stream_events(
-            [
-                {
-                    "event": "done",
-                    "conversation_id": conversation_id,
-                    "agent_message": "ok",
-                    "status": "in_progress",
-                    "finalized_config": None,
-                }
-            ]
-        ),
-    )
-    start_stream = mocker.patch.object(
-        start.backend, "start_subscription_conversation_stream", new=AsyncMock()
-    )
-
-    await start.handle_user_message(message)
-
-    continue_stream.assert_called_once_with(api_key, conversation_id, "what did i say yesterday?")
-    start_stream.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_handle_user_message_clears_conversation_id_and_retries_on_conflict(
-    mocker,
-) -> None:
-    telegram_id = random.randint(100000, 999999)
-    message = _make_message(telegram_id, text="hi again")
-    api_key = f"key-{uuid.uuid4().hex}"
-    stale_id = f"conv-{uuid.uuid4().hex}"
-    fresh_id = f"conv-{uuid.uuid4().hex}"
-
-    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
-    mocker.patch.object(start, "get_conversation_id", new=AsyncMock(return_value=stale_id))
-    save_mock = mocker.patch.object(start, "save_conversation_id", new=AsyncMock())
-
-    import httpx
-
-    conflict = httpx.HTTPStatusError(
-        "Conflict", request=AsyncMock(), response=SimpleNamespace(status_code=409)
-    )
-
-    async def _fail_continue(*_args, **_kwargs):
-        raise conflict
+    async def _raises(*_args, **_kwargs):
+        raise RuntimeError("network dead")
         yield  # pragma: no cover
 
     mocker.patch.object(
         start.backend,
-        "continue_subscription_conversation_stream",
-        side_effect=_fail_continue,
-    )
-    start_stream = mocker.patch.object(
-        start.backend,
-        "start_subscription_conversation_stream",
-        return_value=_stream_events(
-            [
-                {
-                    "event": "done",
-                    "conversation_id": fresh_id,
-                    "agent_message": "hi",
-                    "status": "in_progress",
-                    "finalized_config": None,
-                }
-            ]
-        ),
+        "send_conversation_message_stream",
+        side_effect=_raises,
     )
 
     await start.handle_user_message(message)
-
-    start_stream.assert_called_once_with(api_key, "hi again")
-    save_mock.assert_awaited_once_with(telegram_id, fresh_id)
+    spoken = message.answer.await_args.args[0]
+    assert "wrong" in spoken.lower(), (
+        f"handle_user_message did not surface the stream failure: {spoken!r}"
+    )
 
 
 def test_split_returns_single_chunk_for_short_text() -> None:

@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     content_relevance_top_k: int = 3
     content_db_candidate_threshold: float = 0.80
 
-    conversation_ttl_seconds: int = 1800
+    conversation_ttl_seconds: int = 30 * 24 * 3600
+    conversation_hot_max_bytes: int = 20000
 
     max_concurrent_discoveries: int = 3
     max_concurrent_previews: int = 5

@@ -28,6 +28,7 @@ _EXPECTED_TOOL_NAMES = {
     "set_user_timezone",
     "trigger_digest_now",
     "delete_subscription",
+    "close_scenario",
 }
 
 
@@ -447,28 +448,18 @@ async def test_set_user_timezone_returns_ambiguous_without_persisting(mocker) ->
     scoped = AsyncMock()
     scoped.commit = AsyncMock()
 
-    portland_or = SimpleNamespace(
-        label="Portland, United States", timezone="America/Los_Angeles"
-    )
-    portland_me = SimpleNamespace(
-        label="Portland, United States", timezone="America/New_York"
-    )
+    portland_or = SimpleNamespace(label="Portland, United States", timezone="America/Los_Angeles")
+    portland_me = SimpleNamespace(label="Portland, United States", timezone="America/New_York")
     mocker.patch(
         "news_service.agents.conversational.resolve_timezone",
-        return_value=SimpleNamespace(
-            status="ambiguous", candidates=(portland_or, portland_me)
-        ),
+        return_value=SimpleNamespace(status="ambiguous", candidates=(portland_or, portland_me)),
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
     tool = _get_tool(agent, "set_user_timezone")
     result = await tool("Portland")
-    assert result.startswith("ambiguous:"), (
-        f"set_user_timezone did not flag ambiguity: {result!r}"
-    )
-    assert user.timezone == original, (
-        "ambiguous resolution must not overwrite the user's timezone"
-    )
+    assert result.startswith("ambiguous:"), f"set_user_timezone did not flag ambiguity: {result!r}"
+    assert user.timezone == original, "ambiguous resolution must not overwrite the user's timezone"
     scoped.commit.assert_not_called()
 
 
@@ -489,6 +480,47 @@ async def test_set_user_timezone_returns_not_found_on_unknown_query(mocker) -> N
         f"set_user_timezone did not signal not_found: {result!r}"
     )
     scoped.commit.assert_not_called()
+
+
+# ---------- close_scenario tool ----------
+
+
+@pytest.mark.asyncio
+async def test_close_scenario_records_summary_into_shared_state() -> None:
+    user = _fake_user()
+    agent, shared_state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+    close = _get_tool(agent, "close_scenario")
+    summary = f"created AI digest daily 8am {uuid.uuid4().hex[:6]}"
+    result = await close(summary)
+    assert result == "scenario closed.", f"close_scenario did not confirm: {result!r}"
+    assert shared_state["scenario_close_summary"] == summary, (
+        "close_scenario did not expose the summary via shared_state"
+    )
+
+
+@pytest.mark.asyncio
+async def test_close_scenario_ignores_empty_summary() -> None:
+    user = _fake_user()
+    agent, shared_state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+    close = _get_tool(agent, "close_scenario")
+    result = await close("   ")
+    assert "empty" in result.lower(), f"close_scenario accepted an empty summary: {result!r}"
+    assert shared_state["scenario_close_summary"] is None, (
+        "empty close_scenario call still wrote to shared_state"
+    )
+
+
+def test_build_instruction_renders_compacted_log_when_present() -> None:
+    marker = f"created AI digest daily 8am {uuid.uuid4().hex[:6]}"
+    result = _build_instruction(
+        conversation_summary="",
+        user_language="en",
+        user_timezone="Europe/Berlin",
+        compacted_log=[marker],
+    )
+    assert marker in result, (
+        "instruction did not include the compacted_log entry in the context section"
+    )
 
 
 # ---------- status_queue wiring ----------

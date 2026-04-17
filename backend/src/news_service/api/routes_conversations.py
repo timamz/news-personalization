@@ -1,18 +1,28 @@
-"""Conversation endpoints: start / continue / cancel.
+"""Conversation endpoint: one persistent thread per user.
 
-Every user message flows through the conversational agent. Conversations do
-not have a ``ready`` state -- the agent takes direct actions via tools, so a
-conversation just keeps rolling until the caller cancels it or Redis TTL
-expires. A boundary-flush background task later distills each expiring
-conversation into ``User.conversation_summary``.
+Every user message flows through the conversational agent against a single
+Redis-backed transcript keyed by ``user_id``. There is no ``conversation_id``
+in the API: the user has one ongoing chat and the backend keeps it alive.
+
+After each turn:
+
+- If the agent called ``close_scenario``, the messages up to (but not
+  including) the current exchange are collapsed into a one-line entry in
+  ``compacted_log`` and the hot transcript is reset to just the latest
+  user/assistant pair. That line is rendered back into the next turn's
+  system prompt so continuity is preserved.
+- If the hot transcript crosses ``conversation_hot_max_bytes``, a
+  deterministic guardrail drops the oldest entries as a safety floor.
+
+The long Redis TTL (``conversation_ttl_seconds`` -- 30 days by default) is
+just a dormancy floor; real bounded-size is provided by the agent itself.
 """
 
 import json
 import logging
-import uuid
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,9 +34,8 @@ from news_service.db.session import get_session
 from news_service.models.user import User
 from news_service.schemas.conversation import (
     AgentTurnOutput,
-    ConversationMessageRequest,
-    ConversationStartRequest,
     ConversationState,
+    ConversationTurnRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,39 +43,30 @@ settings = get_settings()
 
 router = APIRouter(prefix="/subscriptions/conversations", tags=["conversations"])
 
-REDIS_KEY_PREFIX = "conv:"
+REDIS_KEY_PREFIX = "conv:user:"
 
 
-def _redis_key(conversation_id: str) -> str:
-    return f"{REDIS_KEY_PREFIX}{conversation_id}"
+def _redis_key(user_id: str) -> str:
+    return f"{REDIS_KEY_PREFIX}{user_id}"
 
 
-async def _load_state(conversation_id: str, user_id: str) -> ConversationState:
+async def _load_state(user_id: str) -> ConversationState:
+    """Return the stored thread or a fresh one if nothing is cached yet."""
     redis = get_redis_client()
     try:
-        raw = await redis.get(_redis_key(conversation_id))
+        raw = await redis.get(_redis_key(user_id))
     finally:
         await redis.aclose()
-
     if raw is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found or expired",
-        )
-    state = ConversationState.model_validate_json(raw)
-    if state.user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied",
-        )
-    return state
+        return ConversationState(user_id=user_id)
+    return ConversationState.model_validate_json(raw)
 
 
-async def _save_state(conversation_id: str, state: ConversationState) -> None:
+async def _save_state(state: ConversationState) -> None:
     redis = get_redis_client()
     try:
         await redis.set(
-            _redis_key(conversation_id),
+            _redis_key(state.user_id),
             state.model_dump_json(),
             ex=settings.conversation_ttl_seconds,
         )
@@ -74,18 +74,53 @@ async def _save_state(conversation_id: str, state: ConversationState) -> None:
         await redis.aclose()
 
 
-async def _delete_state(conversation_id: str) -> None:
+async def _delete_state(user_id: str) -> None:
     redis = get_redis_client()
     try:
-        await redis.delete(_redis_key(conversation_id))
+        await redis.delete(_redis_key(user_id))
     finally:
         await redis.aclose()
 
 
+def _messages_byte_size(messages: list[dict]) -> int:
+    return len(json.dumps(messages, ensure_ascii=False).encode("utf-8"))
+
+
+def _apply_scenario_close(state: ConversationState, summary: str) -> None:
+    """Move messages up to the latest exchange into compacted_log.
+
+    The tail kept live is the last user turn plus the assistant reply to
+    it, so an immediate follow-up still has natural context. Anything
+    older is collapsed into ``summary`` (one line).
+    """
+    cleaned = summary.strip()
+    if not cleaned:
+        return
+    state.compacted_log.append(cleaned)
+    tail_len = 2 if len(state.messages) >= 2 else len(state.messages)
+    state.messages = state.messages[-tail_len:]
+
+
+def _enforce_size_guardrail(state: ConversationState, max_bytes: int) -> None:
+    """Drop the oldest messages until the hot transcript fits in the cap.
+
+    Fires only when the agent forgets to close scenarios. Deterministic,
+    no LLM call. Records one compacted_log entry so the trim is visible.
+    """
+    if _messages_byte_size(state.messages) <= max_bytes:
+        return
+    dropped = 0
+    while len(state.messages) > 2 and _messages_byte_size(state.messages) > max_bytes:
+        state.messages.pop(0)
+        dropped += 1
+    if dropped:
+        state.compacted_log.append(
+            f"[auto-trimmed {dropped} older messages to stay under size cap]"
+        )
+
+
 async def _run_turn_streaming(
-    conversation_id: str,
-    messages: list[dict],
-    conv_state: ConversationState,
+    state: ConversationState,
     *,
     db_session: AsyncSession,
     user: User,
@@ -93,22 +128,29 @@ async def _run_turn_streaming(
     conversation_summary = user.conversation_summary or ""
 
     async for event in run_conversation_turn_streaming(
-        messages,
+        state.messages,
         db_session=db_session,
         user=user,
         conversation_summary=conversation_summary,
-        user_language=conv_state.user_language,
+        user_language=state.user_language,
+        compacted_log=list(state.compacted_log),
     ):
         if event["event"] == "done":
             output = AgentTurnOutput.model_validate(event["output"])
-            messages.extend(event["new_messages"])
-            conv_state.messages = messages
-            await _save_state(conversation_id, conv_state)
+            state.messages.extend(event["new_messages"])
+
+            shared = event.get("shared_state") or {}
+            close_summary = shared.get("scenario_close_summary")
+            if close_summary:
+                _apply_scenario_close(state, close_summary)
+
+            _enforce_size_guardrail(state, settings.conversation_hot_max_bytes)
+
+            await _save_state(state)
             yield (
                 json.dumps(
                     {
                         "event": "done",
-                        "conversation_id": conversation_id,
                         "agent_message": output.message,
                     }
                 )
@@ -119,45 +161,25 @@ async def _run_turn_streaming(
 
 
 @router.post("/stream")
-async def start_conversation_stream(
-    payload: ConversationStartRequest,
+async def send_conversation_message_stream(
+    payload: ConversationTurnRequest,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
-    conversation_id = uuid.uuid4().hex
-    messages: list[dict] = [{"role": "user", "content": payload.message}]
-    conv_state = ConversationState(
-        user_id=str(user.id),
-        messages=messages,
-        user_language=payload.user_language or user.language,
-    )
+    """Send one message against the user's persistent conversation thread."""
+    state = await _load_state(str(user.id))
+    if payload.user_language:
+        state.user_language = payload.user_language
+    elif state.user_language is None:
+        state.user_language = user.language
+    state.messages.append({"role": "user", "content": payload.message})
     return StreamingResponse(
-        _run_turn_streaming(conversation_id, messages, conv_state, db_session=session, user=user),
+        _run_turn_streaming(state, db_session=session, user=user),
         media_type="application/x-ndjson",
     )
 
 
-@router.post("/{conversation_id}/messages/stream")
-async def continue_conversation_stream(
-    conversation_id: str,
-    payload: ConversationMessageRequest,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-) -> StreamingResponse:
-    conv_state = await _load_state(conversation_id, str(user.id))
-    conv_state.messages.append({"role": "user", "content": payload.message})
-    return StreamingResponse(
-        _run_turn_streaming(
-            conversation_id, conv_state.messages, conv_state, db_session=session, user=user
-        ),
-        media_type="application/x-ndjson",
-    )
-
-
-@router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def cancel_conversation(
-    conversation_id: str,
-    user: User = Depends(get_current_user),
-) -> None:
-    await _load_state(conversation_id, str(user.id))
-    await _delete_state(conversation_id)
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_conversation(user: User = Depends(get_current_user)) -> None:
+    """Drop the persistent thread for this user (e.g. on /start)."""
+    await _delete_state(str(user.id))

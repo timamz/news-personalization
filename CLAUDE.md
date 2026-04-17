@@ -43,7 +43,7 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 
 | Agent | Location | Kind | Trigger | Tools / Outputs |
 |---|---|---|---|---|
-| **Conversational Agent** | `agents/conversational.py` | ADK tool-use loop | Every user message | `finalize_subscription`, `create_subscription`, `update_user_spec`, `validate_source`, `discover_sources`, `list_subscriptions`, `trigger_digest_now`, `delete_subscription`, `emit_status` |
+| **Conversational Agent** | `agents/conversational.py` | ADK tool-use loop | Every user message | `save_subscription`, `get_subscriptions`, `remember`, `add_source`, `remove_source`, `set_user_language`, `set_user_timezone`, `trigger_digest_now`, `delete_subscription`, `close_scenario` |
 | **Discovery Agent** | `agents/source_discovery/pipeline.py` | ADK looped agent (max 2 rounds) | Subscription creation / reflector trigger | `run_parallel_search(strategies)` (spawns N parallel finders), `submit_results()` |
 | **Source Finder** | `agents/source_discovery/finder.py` | ADK ReAct, one per strategy | Spawned by Discovery Agent | `search_existing_sources` (pgvector), `tool_search_web` (SearXNG), `validate_and_score_source` (fetch posts, embed, cosine) |
 | **Digest Writer** | `agents/digest/writer.py` | ADK agent (plans + researches + composes in one loop) | Scheduled digest delivery | `fetch_article` (httpx + BeautifulSoup, budgeted), `search_web` (SearXNG, budgeted), `submit_digest(digest_text, used_item_ids)` |
@@ -83,6 +83,8 @@ All new items from a polling cycle are batched. One LLM call per subscription ev
 ### Key Design Decisions
 
 **`user_spec` as source of truth.** Each subscription has a `user_spec` text field — a markdown document the Conversational Agent writes and pipelines read. Contains: topic, preferences, exclusions, format instructions, source reflections. Replaces the old `canonical_prompt`, `prompt_summary`, `short_label` fields.
+
+**One persistent conversation per user.** The backend exposes a single streaming endpoint (`POST /subscriptions/conversations/stream`, user-keyed, no `conversation_id`). Redis stores one `ConversationState` per user under `conv:user:{user_id}` with a long dormancy TTL (`conversation_ttl_seconds`, 30 days default). The agent compacts its own transcript via the `close_scenario` tool when a logical task (onboarding, create/edit subscription, add/remove sources, delete, trigger digest, Q&A, cancellation) finishes; closed scenarios move from hot `messages` into a one-line `compacted_log` entry rendered into the next turn's prompt. A deterministic byte-size guardrail (`conversation_hot_max_bytes`) trims the oldest messages if the agent forgets.
 
 **LiteLLM for all LLM calls.** `core/llm.py` wraps `litellm.acompletion()` and `litellm.aembedding()`. Model configured via `LITELLM_MODEL=openai/gpt-5.4-nano` (or any LiteLLM-supported string). Retry logic in `core/llm_retry.py` catches `litellm` exception types.
 

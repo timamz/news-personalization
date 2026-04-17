@@ -1,13 +1,16 @@
 """Backend HTTP client used by the tgbot.
 
-Only two categories remain after agent unification:
+The backend exposes a single persistent conversation per user (keyed by
+the authenticated user, not by a conversation id). The tgbot therefore
+needs only three calls:
 
 - user registration (first /start per telegram_id)
-- conversational turns (start / continue against the agent)
+- a single streaming message endpoint
+- a thread-reset endpoint (invoked on /start)
 
-Subscription creation / update / delete / source management / timezone / etc.
-are handled entirely by the agent via its tools, so the tgbot never hits
-those endpoints directly.
+Subscription management, source CRUD, timezone, etc. are driven entirely
+by the backend agent's tools, so the tgbot never talks to those
+endpoints directly.
 """
 
 import json
@@ -39,7 +42,7 @@ class BackendClient:
             data = response.json()
             return data["api_key"]
 
-    async def start_subscription_conversation_stream(
+    async def send_conversation_message_stream(
         self,
         api_key: str,
         message: str,
@@ -61,24 +64,10 @@ class BackendClient:
                 if line.strip():
                     yield json.loads(line)
 
-    async def continue_subscription_conversation_stream(
-        self,
-        api_key: str,
-        conversation_id: str,
-        message: str,
-    ) -> AsyncGenerator[dict, None]:
-        async with (
-            httpx.AsyncClient(
-                timeout=httpx.Timeout(self._slow_request_timeout(), connect=10.0),
-            ) as client,
-            client.stream(
-                "POST",
-                f"{self.base_url}/subscriptions/conversations/{conversation_id}/messages/stream",
+    async def reset_conversation(self, api_key: str) -> None:
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.delete(
+                f"{self.base_url}/subscriptions/conversations",
                 headers={"X-API-Key": api_key},
-                json={"message": message},
-            ) as response,
-        ):
+            )
             response.raise_for_status()
-            async for line in response.aiter_lines():
-                if line.strip():
-                    yield json.loads(line)

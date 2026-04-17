@@ -48,5 +48,3 @@ async def test_register_user_posts_to_users_endpoint_and_returns_api_key() -> No
 
     mock_http.post.assert_called_once_with(f"{base}/users")
     assert result == generated_key, "register_user did not return the expected api_key"
-
-

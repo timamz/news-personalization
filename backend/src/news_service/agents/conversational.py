@@ -3,15 +3,29 @@
 One ADK agent handles everything: greeting, help, subscription create / edit,
 source management, language + timezone setup, digest triggering, deletion.
 The agent is respawned fresh each turn; durable state lives in Postgres
-(``User``, ``Subscription``) and Redis (conversation transcript).
+(``User``, ``Subscription``) and Redis (conversation transcript, persistent
+per user, no conversation ids).
 
-Tools come in four groups:
+Memory model:
+
+- ``messages`` in Redis is the hot transcript the agent sees verbatim.
+- ``compacted_log`` is an append-only list of scenario summaries written by
+  ``close_scenario`` when a logical task (onboarding, create subscription,
+  edit, add/remove sources, delete, timezone setup) finishes. Rendered
+  into the system prompt so the agent keeps continuity after the hot
+  messages are trimmed.
+- A byte-size guardrail on the hot transcript trims the oldest entries
+  if the agent forgets to close a scenario.
+
+Tools come in five groups:
 
 - Subscription lifecycle: ``save_subscription``, ``delete_subscription``,
   ``trigger_digest_now``.
 - Source attach/detach: ``add_source``, ``remove_source``.
 - User state: ``set_user_language``, ``set_user_timezone``.
 - Memory / awareness: ``get_subscriptions``, ``remember``.
+- Conversation flow: ``close_scenario`` (mark a task finished so prior
+  messages can be compacted).
 
 Every mutation tool opens its own DB session via ``session_factory`` so the
 model may emit parallel tool calls safely.
@@ -120,6 +134,27 @@ outlive this conversation (they travel often, they prefer short digests, they mu
 weekends, they speak only Russian with family, etc.), call remember with one short \
 sentence. Do not remember transient things ("I'm tired today").
 
+Conversation flow (close_scenario):
+- This is ONE persistent chat with the user. There is no session reset: old messages \
+stay in context until you actively compact them.
+- You know the shape of every task the user can complete. Call close_scenario when \
+one clearly finishes so the transcript stays small and focused on what is active now.
+- Scenarios and their terminal signal:
+  - onboarding: user_language + set_user_timezone set + first save_subscription.
+  - create subscription: save_subscription (no id) succeeded and user acknowledged.
+  - edit subscription: save_subscription (with id) succeeded.
+  - add sources: add_source calls returned successfully for everything the user asked for.
+  - remove sources: remove_source calls returned successfully.
+  - delete subscription: delete_subscription succeeded.
+  - trigger digest: trigger_digest_now succeeded.
+  - one-off Q&A: after you answered an informational question with no pending follow-up.
+  - user cancelled mid-flow ("never mind", "forget it"): close with an abort summary.
+- Do not close a scenario if something is still pending (you are still gathering info, \
+the user has not confirmed, a follow-up question is on the table).
+- The summary you pass to close_scenario must be ONE short sentence, factual, past tense: \
+"created AI digest daily 8am", "updated schedule on AI sub to 9am", "added @bbcworld to \
+news sub", "user cancelled football digest setup".
+
 Help / questions:
 - "How does this work?", "digest vs event?", "what sources?" -- answer inline in \
 2-4 sentences using concrete examples. Do not call tools.
@@ -143,6 +178,7 @@ def _build_instruction(
     user_timezone: str | None,
     conversation_history: list[dict] | None = None,
     subscription_summaries: list[str] | None = None,
+    compacted_log: list[str] | None = None,
 ) -> str:
     parts: list[str] = []
     persisted_bits: list[str] = []
@@ -168,6 +204,11 @@ def _build_instruction(
             )
     if conversation_summary:
         parts.append(f"What you already know about this user:\n{conversation_summary}")
+    if compacted_log:
+        parts.append(
+            "Earlier in this chat (already-closed scenarios, compacted):\n"
+            + "\n".join(f"- {line}" for line in compacted_log)
+        )
     if conversation_history:
         history_lines: list[str] = []
         for msg in conversation_history:
@@ -176,7 +217,7 @@ def _build_instruction(
             if role in ("user", "assistant") and content:
                 history_lines.append(f"{role.capitalize()}: {content}")
         if history_lines:
-            parts.append("Previous conversation:\n" + "\n".join(history_lines))
+            parts.append("Recent messages (hot transcript):\n" + "\n".join(history_lines))
     context_section = ""
     if parts:
         context_section = "Context:\n" + "\n\n".join(parts) + "\n"
@@ -270,18 +311,22 @@ def create_conversational_agent(
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
     session_factory: async_sessionmaker[AsyncSession] | None = None,
     subscription_summaries: list[str] | None = None,
+    compacted_log: list[str] | None = None,
 ) -> tuple[Agent, dict[str, Any]]:
     """Build a fresh ADK agent bound to this turn's DB session and user.
 
     Returns the agent and a shared_state dict. All mutation tools open their
     own DB session via session_factory so the model can emit parallel tool
-    calls safely.
+    calls safely. ``shared_state['scenario_close_summary']`` is set when
+    the agent calls close_scenario; the caller uses that signal to compact
+    the hot transcript after the turn.
     """
     scoped_factory = session_factory or async_session_factory
     shared_state: dict[str, Any] = {
         "status": "in_progress",
         "created_subscription_id": None,
         "discovery_triggered": False,
+        "scenario_close_summary": None,
     }
 
     async def save_subscription(
@@ -394,9 +439,7 @@ def create_conversational_agent(
                 try:
                     coverage = await ensure_source_coverage(scoped, identifiers, kind)
                 except Exception as exc:
-                    logger.exception(
-                        "save_subscription: coverage failed for %s", kind
-                    )
+                    logger.exception("save_subscription: coverage failed for %s", kind)
                     await scoped.rollback()
                     return f"could not register {kind} sources: {exc}."
                 for source in coverage:
@@ -790,6 +833,29 @@ def create_conversational_agent(
         await db_session.flush()
         return f"Subscription {subscription_id} deleted."
 
+    async def close_scenario(summary: str) -> str:
+        """Mark the current logical task as finished so prior messages compact.
+
+        Call this once per turn when a scenario terminates cleanly (see the
+        scenario list in the system instruction). The backend then moves the
+        hot transcript up to this turn into compacted_log, keeping only the
+        very latest exchange live. Do not call if something is still pending.
+
+        Args:
+            summary: One short, factual, past-tense sentence describing the
+                outcome. Examples: "created AI digest daily 8am", "updated
+                schedule on football sub to weekends only", "user cancelled
+                onboarding".
+
+        Returns:
+            Confirmation (or a note that the summary was empty).
+        """
+        cleaned = summary.strip()
+        if not cleaned:
+            return "empty summary; nothing closed."
+        shared_state["scenario_close_summary"] = cleaned[:200]
+        return "scenario closed."
+
     effective_language = user_language or user.language
 
     instruction = _build_instruction(
@@ -798,6 +864,7 @@ def create_conversational_agent(
         user_timezone=user.timezone,
         conversation_history=conversation_history,
         subscription_summaries=subscription_summaries,
+        compacted_log=compacted_log,
     )
 
     agent = Agent(
@@ -814,6 +881,7 @@ def create_conversational_agent(
             set_user_timezone,
             trigger_digest_now,
             delete_subscription,
+            close_scenario,
         ],
         generate_content_config=types.GenerateContentConfig(temperature=0.2),
     )
@@ -858,12 +926,16 @@ async def run_conversation_turn_streaming(
     user: User,
     conversation_summary: str,
     user_language: str | None = None,
+    compacted_log: list[str] | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Streaming variant: yields status events, then one final done event.
 
+    The done event carries the agent's shared_state so the caller can
+    react to ``scenario_close_summary`` and compact the hot transcript.
+
     Events:
       {"event": "status", "status_key": ..., ...kwargs}
-      {"event": "done", "output": {...}, "new_messages": [...]}
+      {"event": "done", "output": {...}, "new_messages": [...], "shared_state": {...}}
       {"event": "error", "detail": "..."}
     """
     previous_messages = messages[:-1] if len(messages) > 1 else []
@@ -885,6 +957,7 @@ async def run_conversation_turn_streaming(
         conversation_history=previous_messages,
         status_queue=status_queue,
         subscription_summaries=subscription_summaries,
+        compacted_log=compacted_log,
     )
 
     agent_text = ""
@@ -917,6 +990,9 @@ async def run_conversation_turn_streaming(
         "event": "done",
         "output": output.model_dump(),
         "new_messages": [{"role": "assistant", "content": agent_text}],
+        "shared_state": {
+            "scenario_close_summary": shared_state.get("scenario_close_summary"),
+        },
     }
 
 

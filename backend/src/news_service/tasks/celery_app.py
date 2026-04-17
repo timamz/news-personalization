@@ -28,10 +28,6 @@ celery_app.conf.update(
             "task": "news_service.tasks.schedule_digests.schedule_due_digests",
             "schedule": 60,
         },
-        "flush-idle-conversations": {
-            "task": "news_service.tasks.boundary_flush.flush_idle_conversations",
-            "schedule": 600,
-        },
     },
 )
 
@@ -98,7 +94,6 @@ def record_failed_task(
         )
 
 
-import news_service.tasks.boundary_flush  # noqa: E402, F401
 import news_service.tasks.deliver_digest  # noqa: E402, F401
 import news_service.tasks.deliver_events  # noqa: E402, F401
 import news_service.tasks.poll_feeds  # noqa: E402, F401
