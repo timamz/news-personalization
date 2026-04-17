@@ -31,18 +31,34 @@ from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.models.user import User
-from news_service.models.user_spec import (
-    UserSpecSections,
-    parse_user_spec,
-    render_user_spec,
-)
 from news_service.services.coverage import ensure_source_coverage
 from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.telegram import build_telegram_channel_url
 from news_service.services.timezones import resolve_timezone
 from news_service.services.twitter import build_twitter_account_url
+from news_service.tasks.celery_app import celery_app
+from news_service.tasks.discover_sources import DISCOVER_SOURCES_TASK
 
 logger = logging.getLogger(__name__)
+
+
+def _enqueue_discovery(subscription_id: uuid.UUID, reason: str) -> None:
+    """Fire-and-forget enqueue of the discovery Celery task."""
+    celery_app.send_task(DISCOVER_SOURCES_TASK, args=[str(subscription_id), reason])
+    logger.info(
+        "Queued source discovery for subscription %s (reason=%r)",
+        subscription_id,
+        reason[:100],
+    )
+
+
+MAX_USER_SPEC_LENGTH = 10_000
+
+_URL_BUILDERS: dict[str, Callable[[str], str]] = {
+    "telegram_channel": build_telegram_channel_url,
+    "reddit_subreddit": build_reddit_subreddit_url,
+    "twitter_account": build_twitter_account_url,
+}
 
 
 def build_tools(
@@ -55,8 +71,8 @@ def build_tools(
     """Return the ordered list of ADK tool callables for this turn."""
 
     async def create_subscription(
-        topic: str,
-        preferences: str = "",
+        user_spec: str,
+        retrieval_query: str,
         delivery_mode: str = "digest",
         schedule_cron: str = "",
         digest_language: str = "",
@@ -67,18 +83,31 @@ def build_tools(
     ) -> str:
         """Create a brand-new subscription.
 
-        Renders ``user_spec`` from ``topic`` + ``preferences`` (single
-        source of truth for LLM-facing intent), embeds the topic for
-        retrieval, attaches fixed sources, optionally queues auto-
-        discovery, and flips the user's ``has_onboarded`` on first
-        success. For edits to an existing subscription call
-        ``update_subscription`` instead.
+        ``user_spec`` is a freeform markdown document you author that
+        captures everything LLM-facing about this subscription: what
+        the user wants to follow, how they want it presented, what to
+        avoid, tone, length, any useful context. Downstream agents
+        (digest writer, source discovery, event assessor) read it
+        verbatim as the single source of truth. You decide the
+        structure; use headings, bullets, prose -- whatever best
+        conveys the intent.
+
+        ``retrieval_query`` is a SEPARATE short string used only to
+        find relevant news via embedding similarity. Write it as a
+        dense description of WHAT news to look for: topic, named
+        entities, angles, regions, adjacent terms that would appear
+        in matching headlines. DO NOT include formatting instructions
+        (length, bullets, tone), exclusions ("skip X"), or delivery
+        preferences -- those shape presentation, not retrieval, and
+        will only pollute the vector. Aim for one sentence or a
+        comma-separated phrase list.
 
         Args:
-            topic: Subscription topic. Required.
-            preferences: Freeform guidance ('brief summary', 'skip stock
-                prices', 'three bullets max', 'include quotes'). Goes
-                into user_spec's Preferences section.
+            user_spec: Freeform markdown describing what the user wants.
+                Required and non-empty.
+            retrieval_query: Short dense query for embedding-based news
+                retrieval. Required and non-empty. Topic and entities
+                only -- no format or tone guidance.
             delivery_mode: 'digest' (periodic summary) or 'event' (instant alerts).
             schedule_cron: 5-field cron. Empty = manual / event-only delivery.
             digest_language: ISO code (en, ru, ...). Empty = use the user's language.
@@ -90,13 +119,18 @@ def build_tools(
         Returns:
             Confirmation with the subscription id, or an error message.
         """
-        clean_topic = topic.strip()
-        if not clean_topic:
-            return "topic is required to create a subscription."
+        spec = user_spec.strip()
+        if not spec:
+            return "user_spec is required to create a subscription."
+        if len(spec) > MAX_USER_SPEC_LENGTH:
+            spec = spec[:MAX_USER_SPEC_LENGTH]
+
+        query = retrieval_query.strip()
+        if not query:
+            return "retrieval_query is required to create a subscription."
 
         resolved_language = (digest_language or user.language or "en").strip().lower()
         normalized_cron = schedule_cron.strip() or None
-        preferences_text = preferences.strip()
 
         telegram = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_telegram_channels)]
         reddit = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_reddit_subreddits)]
@@ -104,17 +138,15 @@ def build_tools(
 
         async with scoped_factory() as scoped:
             try:
-                topic_embedding = await embed_text(clean_topic)
+                query_embedding = await embed_text(query)
             except Exception as exc:
-                logger.exception("create_subscription: topic embedding failed")
-                return f"could not embed topic: {exc}."
+                logger.exception("create_subscription: retrieval_query embedding failed")
+                return f"could not embed retrieval_query: {exc}."
 
             subscription = Subscription(
                 user_id=user.id,
-                topic_embedding=topic_embedding,
-                user_spec=render_user_spec(
-                    UserSpecSections(topic=clean_topic, preferences=preferences_text)
-                ),
+                topic_embedding=query_embedding,
+                user_spec=spec,
                 delivery_mode=delivery_mode,
                 schedule_cron=normalized_cron,
                 digest_language=resolved_language,
@@ -141,10 +173,6 @@ def build_tools(
                     selected[source.id] = source
                     user_specified_ids.add(source.id)
 
-            if include_discovered_sources:
-                shared_state["discovery_triggered"] = True
-                shared_state["discovery_subscription_id"] = str(subscription.id)
-
             for source_id in selected:
                 scoped.add(
                     SubscriptionSource(
@@ -168,6 +196,12 @@ def build_tools(
                     await scoped.commit()
                 user.has_onboarded = True
 
+            if include_discovered_sources:
+                _enqueue_discovery(
+                    subscription.id,
+                    f"Initial discovery on subscription creation. Retrieval query: {query}.",
+                )
+
             return (
                 f"subscription {subscription.id}: created (auto-discovery "
                 f"{'queued' if include_discovered_sources else 'skipped'})."
@@ -175,27 +209,36 @@ def build_tools(
 
     async def update_subscription(
         subscription_id: str,
-        topic: str = "",
-        preferences: str = "",
+        user_spec: str = "",
+        retrieval_query: str = "",
         delivery_mode: str = "",
         schedule_cron: str = "",
         digest_language: str = "",
     ) -> str:
         """Edit an existing subscription's scalar fields and/or user_spec.
 
-        Any parameter left empty is preserved. Changing ``topic``
-        re-embeds the vector used for retrieval so digest candidates
-        follow the new focus. Source changes go through
-        ``add_source`` / ``remove_source`` -- this tool does not touch
-        the source list.
+        Any parameter left empty is preserved. To change how the
+        subscription is interpreted, pass a new full ``user_spec`` --
+        it overwrites the existing one. Read the current spec via
+        ``get_subscriptions`` first so your rewrite only changes what
+        the user actually asked to change.
+
+        Pass ``retrieval_query`` only when the set of news worth
+        surfacing actually shifts (new topic, new entities, different
+        angle). A pure format change ("make digests shorter") does
+        NOT need a new retrieval_query -- retrieval intent is
+        unchanged. When you do pass it, the vector is re-embedded.
+
+        Source changes go through ``add_source`` / ``remove_source`` --
+        this tool does not touch the source list.
 
         Args:
             subscription_id: UUID of the subscription to update.
-            topic: New topic. Empty preserves the existing Topic section.
-            preferences: New preferences. Empty preserves the existing section.
+            user_spec: New full markdown spec. Empty preserves.
+            retrieval_query: New retrieval anchor (topic + entities,
+                no formatting). Empty preserves the existing embedding.
             delivery_mode: 'digest' or 'event'. Empty preserves.
-            schedule_cron: 5-field cron or empty to clear the schedule.
-                Omit entirely (default) to preserve the existing schedule.
+            schedule_cron: 5-field cron. Empty preserves (cannot clear via this tool).
             digest_language: ISO code. Empty preserves.
 
         Returns:
@@ -206,8 +249,10 @@ def build_tools(
         except ValueError:
             return f"invalid subscription_id '{subscription_id}'."
 
-        clean_topic = topic.strip()
-        preferences_text = preferences.strip()
+        new_spec = user_spec.strip()
+        if len(new_spec) > MAX_USER_SPEC_LENGTH:
+            new_spec = new_spec[:MAX_USER_SPEC_LENGTH]
+        new_query = retrieval_query.strip()
 
         async with scoped_factory() as scoped:
             result = await scoped.execute(
@@ -227,20 +272,16 @@ def build_tools(
             if digest_language.strip():
                 existing.digest_language = digest_language.strip().lower()
 
-            if clean_topic or preferences_text:
-                current = parse_user_spec(existing.user_spec) if existing.user_spec else None
-                new_topic = clean_topic or (current.topic if current else "")
-                new_preferences = preferences_text or (current.preferences if current else "")
-                existing.user_spec = render_user_spec(
-                    UserSpecSections(topic=new_topic, preferences=new_preferences)
-                )
-                if clean_topic and (current is None or current.topic != clean_topic):
-                    try:
-                        existing.topic_embedding = await embed_text(clean_topic)
-                    except Exception as exc:
-                        logger.exception("update_subscription: topic embedding failed")
-                        await scoped.rollback()
-                        return f"could not re-embed topic: {exc}."
+            if new_spec and new_spec != (existing.user_spec or ""):
+                existing.user_spec = new_spec
+
+            if new_query:
+                try:
+                    existing.topic_embedding = await embed_text(new_query)
+                except Exception as exc:
+                    logger.exception("update_subscription: retrieval_query embedding failed")
+                    await scoped.rollback()
+                    return f"could not re-embed retrieval_query: {exc}."
 
             await scoped.commit()
         return f"subscription {subscription_id}: updated."
@@ -335,12 +376,7 @@ def build_tools(
         Returns:
             Short confirmation or per-source error.
         """
-        url_builders = {
-            "telegram_channel": build_telegram_channel_url,
-            "reddit_subreddit": build_reddit_subreddit_url,
-            "twitter_account": build_twitter_account_url,
-        }
-        if source_kind not in url_builders:
+        if source_kind not in _URL_BUILDERS:
             return f"{identifier}: unsupported source_kind '{source_kind}'."
 
         cleaned = _clean_identifier(identifier)
@@ -352,7 +388,7 @@ def build_tools(
         except ValueError:
             return f"{cleaned}: invalid subscription_id."
 
-        url = url_builders[source_kind](cleaned)
+        url = _URL_BUILDERS[source_kind](cleaned)
         try:
             is_valid = await _validate_source_url(url, source_kind=source_kind)
         except Exception as exc:
@@ -425,12 +461,7 @@ def build_tools(
         Returns:
             Short confirmation or error.
         """
-        url_builders = {
-            "telegram_channel": build_telegram_channel_url,
-            "reddit_subreddit": build_reddit_subreddit_url,
-            "twitter_account": build_twitter_account_url,
-        }
-        if source_kind not in url_builders:
+        if source_kind not in _URL_BUILDERS:
             return f"{identifier}: unsupported source_kind '{source_kind}'."
 
         cleaned = _clean_identifier(identifier)
@@ -442,7 +473,7 @@ def build_tools(
         except ValueError:
             return f"{cleaned}: invalid subscription_id."
 
-        url = url_builders[source_kind](cleaned)
+        url = _URL_BUILDERS[source_kind](cleaned)
 
         async with scoped_factory() as scoped:
             sub_result = await scoped.execute(
@@ -571,6 +602,58 @@ def build_tools(
         deliver_digest.delay(subscription_id, notify_if_empty=True)
         return f"Digest queued for delivery (subscription {subscription_id})."
 
+    async def trigger_source_discovery(subscription_id: str, reason: str) -> str:
+        """Queue an asynchronous source-discovery run for a subscription.
+
+        Use this when the set of news worth surfacing has meaningfully
+        shifted (user just rewrote the spec toward a new topic, existing
+        sources are stale, user explicitly asked for more sources) or on
+        initial creation. Discovery runs in the background against the
+        subscription's current user_spec + retrieval embedding; accepted
+        sources are persisted as auto-discovered.
+
+        Removing stale sources is a separate concern -- call
+        ``remove_source`` first (after confirming with the user) and then
+        trigger discovery so the replacement search happens against an
+        honest inventory.
+
+        Args:
+            subscription_id: UUID of the subscription to discover for.
+            reason: Short freeform paragraph (1-3 sentences) explaining why
+                discovery is needed now. Be specific: what the user
+                changed, what the old focus was, what the new focus is,
+                any preferences to honour (language, paywall, academic
+                vs consumer). The discovery agent reads this verbatim to
+                shape its strategies.
+
+        Returns:
+            Confirmation or error message.
+        """
+        try:
+            sub_uuid = uuid.UUID(subscription_id.strip())
+        except ValueError:
+            return f"invalid subscription_id '{subscription_id}'."
+
+        cleaned_reason = reason.strip()
+        if not cleaned_reason:
+            return "reason is required to trigger source discovery."
+
+        async with scoped_factory() as scoped:
+            result = await scoped.execute(
+                select(Subscription).where(
+                    Subscription.id == sub_uuid,
+                    Subscription.user_id == user.id,
+                )
+            )
+            sub = result.scalar_one_or_none()
+            if sub is None:
+                return f"subscription {subscription_id}: not found."
+            if not sub.is_active:
+                return f"subscription {subscription_id}: inactive."
+
+        _enqueue_discovery(sub_uuid, cleaned_reason)
+        return f"Source discovery queued for subscription {subscription_id}."
+
     async def delete_subscription(subscription_id: str) -> str:
         """Soft-delete (deactivate) a subscription by id.
 
@@ -636,6 +719,7 @@ def build_tools(
         set_user_language,
         set_user_timezone,
         trigger_digest_now,
+        trigger_source_discovery,
         delete_subscription,
         close_scenario,
     ]

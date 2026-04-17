@@ -31,7 +31,7 @@ def _make_subscription(
     return SimpleNamespace(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
-        user_spec=f"## Topic\n{prompt}",
+        user_spec=prompt,
         delivery_webhook_url=webhook_url,
         digest_language="ru",
         _source_ids=source_ids,

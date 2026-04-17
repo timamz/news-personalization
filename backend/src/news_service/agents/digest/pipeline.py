@@ -24,7 +24,6 @@ from news_service.models.sent_item import SentItem
 from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
-from news_service.models.user_spec import extract_topic
 
 from .candidates import build_items_text, fetch_candidate_items
 from .judge import judge_digest
@@ -70,8 +69,12 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
 
     query_embedding = subscription.topic_embedding
     if query_embedding is None:
-        query_text = extract_topic(subscription.user_spec or "")
-        query_embedding = await embed_text(query_text)
+        logger.warning(
+            "Subscription %s missing topic_embedding; falling back to user_spec",
+            subscription.id,
+            extra={"subscription_id": str(subscription.id)},
+        )
+        query_embedding = await embed_text(subscription.user_spec or "")
         subscription.topic_embedding = query_embedding
 
     published_after = _published_after_for_digest(last_sent_at)
@@ -320,11 +323,13 @@ async def _build_source_info(
 
 
 def _queue_discovery(subscription: Subscription, reason: str) -> None:
-    """Queue an async source discovery task after reflector requests it."""
+    """Queue the real source-discovery task after the reflector requests it."""
     from news_service.tasks.celery_app import celery_app
+    from news_service.tasks.discover_sources import DISCOVER_SOURCES_TASK
 
     celery_app.send_task(
-        "news_service.tasks.poll_feeds.poll_all_feeds",
+        DISCOVER_SOURCES_TASK,
+        args=[str(subscription.id), reason],
     )
     logger.info(
         "Reflector triggered source discovery for subscription %s: %s",

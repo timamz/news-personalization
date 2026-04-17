@@ -12,22 +12,25 @@ from news_service.models.base import Base, TimestampMixin, UUIDPrimaryKey
 class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     """User subscription for news monitoring.
 
-    ``user_spec`` is the single source of truth for every LLM-facing field:
-    topic, preferences, format guidance, exclusions, reflector observations.
-    It is a markdown document with ``## Topic``, ``## Preferences`` and
-    related sections; pipelines read it directly or extract pieces via
-    ``extract_topic`` / ``parse_user_spec`` from ``models.user_spec``.
+    ``user_spec`` is a freeform markdown document authored by the
+    conversational agent. It is the single source of truth for every
+    LLM-facing aspect of this subscription: topic, preferences,
+    format, exclusions, tone, any useful context. Downstream agents
+    read it verbatim -- no structural parsing.
 
     All remaining columns are dispatch/retrieval concerns that do not
     require LLM interpretation: ``delivery_mode``, ``schedule_cron``,
-    ``digest_language``, ``delivery_webhook_url``, ``topic_embedding``,
-    ``is_active``, and the two ``last_*_at`` bookkeeping timestamps.
+    ``digest_language``, ``delivery_webhook_url``, ``topic_embedding``
+    (the embedding of a short ``retrieval_query`` string the agent
+    supplies alongside ``user_spec`` -- topic and entities only, so
+    formatting/exclusions stay out of the vector), ``is_active``, and
+    the two ``last_*_at`` bookkeeping timestamps.
 
     Example usage::
 
         sub = Subscription(
             user_id=user.id,
-            user_spec="## Topic\\nAI news daily\\n\\n## Preferences\\nBrief summary",
+            user_spec="AI safety news, daily, three bullets, skip hype.",
             delivery_mode="digest",
             schedule_cron="0 8 * * *",
             digest_language="en",

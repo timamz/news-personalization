@@ -4,6 +4,19 @@ The discovery agent analyzes the topic, runs parallel search strategies via
 run_parallel_search(), reviews results, optionally refines, and finalizes
 via submit_results(). Replaces the old 3-component orchestrator/finder/aggregator
 architecture with a single agent that loops until satisfied.
+
+Inputs beyond the topic seed:
+
+- ``user_spec`` -- the freeform markdown spec the conversational agent wrote.
+  Gives the finder nuance (tone, exclusions, language, angle) that a bare
+  topic string cannot convey.
+- ``attached_sources`` -- everything currently linked to the subscription, so
+  the agent can diversify across source kinds and avoid proposing near-
+  duplicates. Includes the ``is_user_specified`` flag so the agent knows
+  which sources are pinned by the user.
+- ``reason`` -- a freeform string from whoever triggered discovery
+  (conversational agent, reflector, manual), explaining why now and what
+  just changed. Used to steer strategy.
 """
 
 import asyncio
@@ -24,33 +37,53 @@ from .models import ScoredSource, SourceDiscoveryResult
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+type AttachedSource = tuple[str, str, bool]
+"""(url, source_kind, is_user_specified) for each currently-linked source."""
+
+
 DISCOVERY_AGENT_PROMPT = """\
 You are a news source discovery agent. Your job is to find high-quality sources \
-for a user's subscription topic.
+for a user's subscription.
+
+Inputs you will see in the user message:
+- The user's full spec (what they want followed, tone, exclusions, language).
+- The short retrieval query / topic seed.
+- The list of currently-attached sources with kinds and whether each is \
+user-specified or auto-discovered.
+- A reason explaining why discovery was triggered right now.
 
 You have these tools:
-1. **run_parallel_search(strategies)** — Runs multiple search strategies in parallel. \
+1. **run_parallel_search(strategies)** -- Runs multiple search strategies in parallel. \
 Each strategy is executed by a separate finder that searches the web and existing \
 database, validates sources, and scores them by relevance. Returns results from all \
 strategies combined.
-2. **submit_results()** — Call this when you have enough good sources. \
+2. **submit_results()** -- Call this when you have enough good sources. \
 Finalizes the discovery process.
 
 Workflow:
-1. Analyze the topic and decide on 2-5 initial search strategies. Target different \
-source types: RSS feeds, Telegram channels, Reddit subreddits, Twitter/X accounts.
-2. Call run_parallel_search with your strategies.
-3. Review the results:
+1. Read the spec, attached sources, and reason carefully. Notice which source \
+kinds are already covered well and which are underrepresented -- prefer to \
+diversify rather than stack more of the same kind.
+2. Decide on 2-5 initial search strategies. Target different source types: \
+RSS feeds, Telegram channels, Reddit subreddits, Twitter/X accounts.
+3. Call run_parallel_search with your strategies.
+4. Review the results:
    - How many sources were found? (target: {target_count})
    - Are the relevance scores good? (aim for >0.5)
    - Is there diversity across source types?
-4. If not enough sources or missing a source type, run another round with refined strategies.
-5. When satisfied (or after 2 rounds max), call submit_results.
+5. If not enough sources or missing a source type, run another round with refined strategies.
+6. When satisfied (or after 2 rounds max), call submit_results.
 
 Guidelines:
 - Use specific, targeted search queries: "arxiv RSS feeds about transformer architectures" \
 is better than "academic sources".
 - Adapt to the topic domain: academic -> arxiv/papers, consumer -> social/news, tech -> mixed.
+- Honour exclusions and language constraints stated in the user's spec.
+- Do not propose sources that are already attached (they will be filtered, but \
+strategies should aim elsewhere).
+- Let the reason guide you: if the reason says "user just switched focus from \
+biotech to AI", the old sources are likely stale and AI-focused strategies \
+matter more than round-robin diversity.
 - Maximum 2 rounds of searching.
 {removal_context}\
 """
@@ -67,6 +100,36 @@ def _deduplicate(sources: list[ScoredSource]) -> list[ScoredSource]:
         seen_urls.add(normalized)
         unique.append(source)
     return unique
+
+
+def _format_attached(attached: list[AttachedSource]) -> str:
+    """Render the attached-sources block for the discovery agent's input."""
+    if not attached:
+        return "Currently attached sources: none."
+    lines = ["Currently attached sources:"]
+    for url, kind, is_user in attached:
+        label = "user-specified" if is_user else "auto-discovered"
+        lines.append(f"  - {url} ({kind}, {label})")
+    return "\n".join(lines)
+
+
+def _build_discovery_input(
+    *,
+    topic_text: str,
+    user_spec: str,
+    attached: list[AttachedSource],
+    reason: str,
+) -> str:
+    """Assemble the user-message payload passed to the discovery agent."""
+    parts: list[str] = []
+    if user_spec.strip():
+        parts.append(f"User spec:\n{user_spec.strip()}")
+    parts.append(f"Retrieval topic seed:\n{topic_text.strip() or '(none)'}")
+    parts.append(_format_attached(attached))
+    if reason.strip():
+        parts.append(f"Reason discovery was triggered:\n{reason.strip()}")
+    parts.append("Find high-quality sources that complement what is already attached.")
+    return "\n\n".join(parts)
 
 
 def _format_summary(sources: list[ScoredSource]) -> str:
@@ -94,7 +157,9 @@ async def run_source_discovery(
     session: AsyncSession,
     topic_text: str,
     prompt_embedding: list[float],
-    exclude_urls: list[str] | None = None,
+    user_spec: str = "",
+    attached_sources: list[AttachedSource] | None = None,
+    reason: str = "",
     removal_history: str = "",
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
 ) -> SourceDiscoveryResult:
@@ -105,8 +170,8 @@ async def run_source_discovery(
 
     Returns a SourceDiscoveryResult with scored, validated sources.
     """
-    if exclude_urls is None:
-        exclude_urls = []
+    attached = attached_sources or []
+    exclude_urls = [url for url, _, _ in attached]
 
     shared_state: dict[str, Any] = {
         "sources": [],
@@ -199,7 +264,12 @@ async def run_source_discovery(
 
     await run_agent_text(
         agent=agent,
-        message=f"Find sources for this topic:\n{topic_text}",
+        message=_build_discovery_input(
+            topic_text=topic_text,
+            user_spec=user_spec,
+            attached=attached,
+            reason=reason,
+        ),
     )
 
     sources = shared_state["sources"]

@@ -43,7 +43,7 @@ async def test_write_digest_returns_composition_from_submit_digest_call() -> Non
 
         result = await write_digest(
             items_text=f"[ID: {item_a}] Headline: A\n\n[ID: {item_b}] Headline: B",
-            user_spec="## Topic\nAI \u043d\u043e\u0432\u043e\u0441\u0442\u0438",
+            user_spec="AI \u043d\u043e\u0432\u043e\u0441\u0442\u0438.",
             digest_language="ru",
             recent_digest_summaries="",
         )
@@ -62,7 +62,7 @@ async def test_write_digest_raises_when_agent_never_submits() -> None:
         with pytest.raises(RuntimeError, match="submit_digest"):
             await write_digest(
                 items_text="[ID: x] Headline: Y",
-                user_spec="## Topic\nTest",
+                user_spec="Test topic.",
                 digest_language="en",
                 recent_digest_summaries="",
             )
@@ -96,7 +96,7 @@ async def test_write_digest_enforces_fetch_and_search_budgets() -> None:
 
         await write_digest(
             items_text=f"[ID: {item_id}] Headline: Z",
-            user_spec="## Topic\nBudgets",
+            user_spec="Budgets.",
             digest_language="en",
             recent_digest_summaries="",
         )
@@ -124,7 +124,7 @@ async def test_write_digest_includes_recent_summaries_and_feedback_in_prompt() -
 
         await write_digest(
             items_text=f"[ID: {item_id}] Headline: X",
-            user_spec="## Topic\nAI",
+            user_spec="AI news.",
             digest_language="en",
             recent_digest_summaries=recent_summaries,
             feedback=feedback,
@@ -185,7 +185,7 @@ async def test_fetch_article_extracts_text_truncates_at_cap_and_reports_unreacha
 
         await write_digest(
             items_text=f"[ID: {item_id}] Headline: Test",
-            user_spec="## Topic\nNews",
+            user_spec="News.",
             digest_language="en",
             recent_digest_summaries="",
         )

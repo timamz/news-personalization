@@ -83,3 +83,41 @@ async def _build_source_profile(
     )
     embedding = await embed_text(description)
     return description, embedding
+
+
+async def ensure_source_by_url(
+    session: AsyncSession,
+    *,
+    url: str,
+    title: str,
+    source_kind: SourceKind,
+) -> Source:
+    """Fetch an existing Source by URL or create one with a generated profile.
+
+    Used by the discovery pipeline to persist sources already produced as full
+    URLs by the finders, bypassing the identifier-based ``ensure_source_coverage``.
+    """
+    result = await session.execute(select(Source).where(Source.url == url))
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        existing.subscriber_count += 1
+        existing.is_active = True
+        return existing
+
+    description, embedding = await _build_source_profile(
+        source_kind=source_kind,
+        title=title,
+        url=url,
+    )
+    source = Source(
+        url=url,
+        title=title,
+        source_description=description,
+        source_description_embedding=embedding,
+        is_active=True,
+        subscriber_count=1,
+    )
+    session.add(source)
+    await session.flush()
+    logger.info("Registered %s source via discovery: %s", source_kind, url)
+    return source

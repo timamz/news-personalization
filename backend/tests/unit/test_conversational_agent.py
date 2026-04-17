@@ -116,6 +116,7 @@ def test_create_agent_registers_the_expected_tools() -> None:
         "set_user_language",
         "set_user_timezone",
         "trigger_digest_now",
+        "trigger_source_discovery",
         "delete_subscription",
         "close_scenario",
     }
@@ -168,7 +169,47 @@ def test_append_conversation_summary_dedups_same_fact_and_caps_bytes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_subscription_embeds_topic_and_exposes_id_in_shared_state(mocker) -> None:
+async def test_create_subscription_embeds_retrieval_query_and_queues_discovery(mocker) -> None:
+    user = _fake_user()
+    scoped = AsyncMock()
+    scoped.add = MagicMock()
+    scoped.flush = AsyncMock()
+    scoped.commit = AsyncMock()
+    embed_mock = mocker.patch(
+        "news_service.agents.conversational.tools.embed_text",
+        new=AsyncMock(return_value=[0.0] * 8),
+    )
+    mocker.patch(
+        "news_service.agents.conversational.tools.ensure_source_coverage",
+        new=AsyncMock(return_value=[]),
+    )
+    enqueue_mock = mocker.patch(
+        "news_service.agents.conversational.tools._enqueue_discovery",
+    )
+
+    agent, shared_state = _build_agent_with_factory(user=user, factory_session=scoped)
+    query = f"AI safety, alignment, interpretability {uuid.uuid4().hex[:6]}"
+    result = await _get_tool(agent, "create_subscription")(
+        user_spec="AI safety research. Three bullets, neutral tone. Skip hype.",
+        retrieval_query=query,
+        delivery_mode="digest",
+        schedule_cron="0 8 * * *",
+        include_discovered_sources=True,
+    )
+    assert (
+        ": created" in result
+        and shared_state["created_subscription_id"]
+        and embed_mock.await_args.args[0] == query
+        and enqueue_mock.call_count == 1
+        and query in enqueue_mock.call_args.args[1]
+    ), (
+        "creation must embed retrieval_query, record the id, and enqueue "
+        "discovery with a reason that mentions the query"
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_subscription_skips_discovery_when_not_requested(mocker) -> None:
     user = _fake_user()
     scoped = AsyncMock()
     scoped.add = MagicMock()
@@ -182,15 +223,41 @@ async def test_create_subscription_embeds_topic_and_exposes_id_in_shared_state(m
         "news_service.agents.conversational.tools.ensure_source_coverage",
         new=AsyncMock(return_value=[]),
     )
+    enqueue_mock = mocker.patch(
+        "news_service.agents.conversational.tools._enqueue_discovery",
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    await _get_tool(agent, "create_subscription")(
+        user_spec="News. Brief.",
+        retrieval_query="world news",
+        delivery_mode="digest",
+        include_discovered_sources=False,
+    )
+    assert enqueue_mock.call_count == 0, (
+        "discovery must not fire when include_discovered_sources is False"
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_subscription_rejects_empty_retrieval_query(mocker) -> None:
+    user = _fake_user()
+    scoped = AsyncMock()
+    embed_mock = mocker.patch(
+        "news_service.agents.conversational.tools.embed_text",
+        new=AsyncMock(return_value=[0.0] * 8),
+    )
 
     agent, shared_state = _build_agent_with_factory(user=user, factory_session=scoped)
     result = await _get_tool(agent, "create_subscription")(
-        topic=f"AI {uuid.uuid4().hex[:6]}",
+        user_spec="AI news. Brief bullets.",
+        retrieval_query="   ",
         delivery_mode="digest",
-        schedule_cron="0 8 * * *",
-        include_discovered_sources=True,
     )
-    assert ": created" in result and shared_state["created_subscription_id"]
+    assert "retrieval_query is required" in result, (
+        "empty retrieval_query must be rejected without embedding or DB writes"
+    )
+    assert embed_mock.await_count == 0 and shared_state["created_subscription_id"] is None
 
 
 @pytest.mark.asyncio
@@ -215,7 +282,8 @@ async def test_create_subscription_flips_has_onboarded_on_first_success(mocker) 
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
     await _get_tool(agent, "create_subscription")(
-        topic=f"news {uuid.uuid4().hex[:6]}",
+        user_spec=f"news {uuid.uuid4().hex[:6]}. Daily summary.",
+        retrieval_query=f"world news, headlines, breaking {uuid.uuid4().hex[:4]}",
         delivery_mode="digest",
         schedule_cron="0 8 * * *",
         include_discovered_sources=False,
@@ -226,12 +294,12 @@ async def test_create_subscription_flips_has_onboarded_on_first_success(mocker) 
 
 
 @pytest.mark.asyncio
-async def test_update_subscription_reembeds_only_when_topic_changes(mocker) -> None:
+async def test_update_subscription_reembeds_only_when_retrieval_query_provided(mocker) -> None:
     user = _fake_user()
     sub = MagicMock()
     sub.id = uuid.uuid4()
     sub.user_id = user.id
-    sub.user_spec = "## Topic\nold topic"
+    sub.user_spec = "old spec about biotech"
     sub.topic_embedding = [0.0] * 8
 
     lookup = MagicMock()
@@ -249,14 +317,80 @@ async def test_update_subscription_reembeds_only_when_topic_changes(mocker) -> N
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
     update = _get_tool(agent, "update_subscription")
 
-    await update(subscription_id=str(sub.id), topic="brand new topic")
+    await update(
+        subscription_id=str(sub.id),
+        user_spec="new spec about robotics. Short bullets.",
+        retrieval_query="robotics, humanoid robots, Boston Dynamics, Figure AI",
+    )
     assert sub.topic_embedding == new_vector and embed_mock.await_count == 1, (
-        "topic change did not trigger exactly one re-embed"
+        "retrieval_query change did not trigger exactly one re-embed"
     )
 
     embed_mock.reset_mock()
-    await update(subscription_id=str(sub.id), preferences="short bullets only")
-    assert embed_mock.await_count == 0, "preferences-only update must not re-embed the topic"
+    await update(
+        subscription_id=str(sub.id),
+        user_spec="robotics news. Make it shorter now.",
+    )
+    assert embed_mock.await_count == 0, "user_spec-only edit (no retrieval_query) must not re-embed"
+
+
+@pytest.mark.asyncio
+async def test_trigger_source_discovery_enqueues_with_reason(mocker) -> None:
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+    sub.is_active = True
+
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = sub
+    scoped = AsyncMock()
+    scoped.execute = AsyncMock(return_value=lookup)
+
+    enqueue_mock = mocker.patch(
+        "news_service.agents.conversational.tools._enqueue_discovery",
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    reason = (
+        f"User shifted focus from biotech to AI safety {uuid.uuid4().hex[:6]}. "
+        "Existing sources stale."
+    )
+    result = await _get_tool(agent, "trigger_source_discovery")(
+        subscription_id=str(sub.id),
+        reason=reason,
+    )
+    assert (
+        "queued" in result
+        and enqueue_mock.call_count == 1
+        and enqueue_mock.call_args.args[0] == sub.id
+        and enqueue_mock.call_args.args[1] == reason
+    ), "trigger_source_discovery did not enqueue the task with the given reason"
+
+
+@pytest.mark.asyncio
+async def test_trigger_source_discovery_rejects_empty_reason(mocker) -> None:
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+    sub.is_active = True
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = sub
+    scoped = AsyncMock()
+    scoped.execute = AsyncMock(return_value=lookup)
+    enqueue_mock = mocker.patch(
+        "news_service.agents.conversational.tools._enqueue_discovery",
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    result = await _get_tool(agent, "trigger_source_discovery")(
+        subscription_id=str(sub.id),
+        reason="   ",
+    )
+    assert "reason is required" in result and enqueue_mock.call_count == 0, (
+        "empty reason must be rejected before any Celery dispatch"
+    )
 
 
 # ---------- source tools ----------

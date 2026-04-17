@@ -96,5 +96,6 @@ def record_failed_task(
 
 import news_service.tasks.deliver_digest  # noqa: E402, F401
 import news_service.tasks.deliver_events  # noqa: E402, F401
+import news_service.tasks.discover_sources  # noqa: E402, F401
 import news_service.tasks.poll_feeds  # noqa: E402, F401
 import news_service.tasks.schedule_digests  # noqa: E402, F401

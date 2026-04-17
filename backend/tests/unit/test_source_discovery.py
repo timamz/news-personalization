@@ -58,6 +58,49 @@ def test_format_summary_shows_count_and_type_breakdown_or_empty_notice() -> None
     assert "Found 2 sources" in summary and "rss" in summary and "reddit_subreddit" in summary
 
 
+@pytest.mark.asyncio
+async def test_pipeline_threads_user_spec_attached_sources_and_reason_into_input(mocker) -> None:
+    mocker.patch(
+        "news_service.agents.source_discovery.pipeline.run_finder",
+        new=AsyncMock(return_value=[]),
+    )
+    captured: dict[str, str] = {}
+
+    async def _capture(*, agent, message, user_id="system"):
+        captured["message"] = message
+        tools = {t.__name__: t for t in agent.tools}
+        await tools["submit_results"]()
+        return "Done"
+
+    mocker.patch(
+        "news_service.agents.source_discovery.pipeline.run_agent_text",
+        new=AsyncMock(side_effect=_capture),
+    )
+
+    from news_service.agents.source_discovery.pipeline import run_source_discovery
+
+    spec = f"AI safety research {uuid.uuid4().hex[:6]}. Skip hype."
+    attached_url = f"https://{uuid.uuid4().hex[:8]}.test/biotech"
+    reason = f"User shifted focus {uuid.uuid4().hex[:6]} from biotech to AI"
+
+    await run_source_discovery(
+        session=AsyncMock(),
+        topic_text="AI safety, alignment, interpretability",
+        prompt_embedding=[0.1] * 10,
+        user_spec=spec,
+        attached_sources=[(attached_url, "rss", True)],
+        reason=reason,
+    )
+
+    message = captured["message"]
+    assert (
+        spec in message
+        and attached_url in message
+        and "user-specified" in message
+        and reason in message
+    ), "discovery agent input did not contain user_spec, attached source, and reason"
+
+
 def _fake_adk_runner(strategies: int = 1):
     async def fake(*, agent, message, user_id="system"):
         tools = {t.__name__: t for t in agent.tools}

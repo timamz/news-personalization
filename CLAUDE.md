@@ -82,7 +82,7 @@ All new items from a polling cycle are batched. One LLM call per subscription ev
 
 ### Key Design Decisions
 
-**`user_spec` as source of truth.** Each subscription has a `user_spec` text field — a markdown document the Conversational Agent writes and pipelines read. Contains: topic, preferences, exclusions, format instructions, source reflections. Replaces the old `canonical_prompt`, `prompt_summary`, `short_label` fields.
+**`user_spec` + `retrieval_query` pair.** Each subscription has a freeform `user_spec` markdown document authored by the Conversational Agent and read verbatim by every downstream LLM. No fixed schema — whatever the agent finds useful: topic, presentation, exclusions, tone, language quirks. Separately, the agent supplies a short `retrieval_query` (topic + entities only, no formatting) that is embedded into `topic_embedding` for cosine retrieval. Splitting the two keeps presentation noise out of the vector while letting the spec evolve freely.
 
 **One persistent conversation per user.** The backend exposes a single streaming endpoint (`POST /subscriptions/conversations/stream`, user-keyed, no `conversation_id`). Redis stores one `ConversationState` per user under `conv:user:{user_id}` with a long dormancy TTL (`conversation_ttl_seconds`, 30 days default). The agent compacts its own transcript via the `close_scenario` tool when a logical task (onboarding, create/edit subscription, add/remove sources, delete, trigger digest, Q&A, cancellation) finishes; closed scenarios move from hot `messages` into a one-line `compacted_log` entry rendered into the next turn's prompt. A deterministic byte-size guardrail (`conversation_hot_max_bytes`) trims the oldest messages if the agent forgets.
 

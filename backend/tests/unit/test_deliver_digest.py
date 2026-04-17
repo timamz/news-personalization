@@ -47,7 +47,7 @@ def _make_subscription(delivery_mode: str) -> Subscription:
     return Subscription(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
-        user_spec=f"## Topic\nTopic {uuid.uuid4().hex[:4]}",
+        user_spec=f"Topic {uuid.uuid4().hex[:4]}.",
         delivery_mode=delivery_mode,
         schedule_cron=f"{random.randint(0, 59)} {random.randint(0, 23)} * * *",
         delivery_webhook_url=f"http://frontend-{uuid.uuid4().hex[:8]}.test/deliver",

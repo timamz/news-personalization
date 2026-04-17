@@ -12,7 +12,7 @@ Example usage::
 
     composition = await write_digest(
         items_text="[ID: abc] Headline: GPT-5...",
-        user_spec="## Topic\\nAI news\\n\\n## Preferences\\nBrief summary",
+        user_spec="AI news. Brief summary, three bullets, skip hype.",
         digest_language="en",
         recent_digest_summaries="",
     )
@@ -33,10 +33,7 @@ from pydantic import BaseModel, Field
 from news_service.agents.adk_runner import run_agent_text
 from news_service.core.config import get_settings
 from news_service.core.guardrails import sanitize_for_llm_prompt
-from news_service.models.user_spec import parse_user_spec
 from news_service.services.search import search_web as _search_web
-
-_DEFAULT_FORMAT_GUIDANCE = "brief summary"
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -203,22 +200,11 @@ async def write_digest(
         max_searches=max_searches,
     )
 
-    format_guidance = _DEFAULT_FORMAT_GUIDANCE
-    if user_spec:
-        try:
-            preferences = parse_user_spec(user_spec).preferences
-        except Exception:
-            preferences = ""
-        if preferences.strip():
-            format_guidance = preferences.strip()
-
-    user_parts = [
-        f"Language: {digest_language}",
-        f"Format: {format_guidance}",
-    ]
+    user_parts = [f"Language: {digest_language}"]
     if user_spec:
         user_parts.append(
-            f"User preferences:\n{sanitize_for_llm_prompt('user-preferences', user_spec)}"
+            f"User spec (formatting, tone, exclusions, topic -- honour this):\n"
+            f"{sanitize_for_llm_prompt('user-spec', user_spec)}"
         )
     if recent_digest_summaries:
         user_parts.append(recent_digest_summaries)

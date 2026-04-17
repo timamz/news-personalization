@@ -50,7 +50,6 @@ def create_conversational_agent(
     shared_state: dict[str, Any] = {
         "status": "in_progress",
         "created_subscription_id": None,
-        "discovery_triggered": False,
         "scenario_close_summary": None,
     }
 
@@ -108,7 +107,6 @@ async def run_conversational_turn(
     return {
         "agent_message": agent_message,
         "created_subscription_id": shared_state["created_subscription_id"],
-        "discovery_triggered": shared_state["discovery_triggered"],
     }
 
 

@@ -53,7 +53,7 @@ def _make_subscription(
     return Subscription(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
-        user_spec=f"## Topic\n{topic}\n\n## Preferences\nshort",
+        user_spec=f"{topic}. Short digest.",
         delivery_mode=delivery_mode,
         schedule_cron=schedule_cron,
         delivery_webhook_url=f"http://example.com/hook/{uuid.uuid4().hex[:6]}",

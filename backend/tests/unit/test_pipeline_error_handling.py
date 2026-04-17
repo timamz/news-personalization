@@ -14,7 +14,7 @@ def _subscription():
     sub = MagicMock()
     sub.id = uuid.uuid4()
     sub.user_id = uuid.uuid4()
-    sub.user_spec = "## Topic\nML\n\n## Preferences\nbrief"
+    sub.user_spec = "ML research. Brief digest."
     sub.topic_embedding = [0.1] * 1536
     sub.digest_language = "de"
     sub.schedule_cron = "0 8 * * *"

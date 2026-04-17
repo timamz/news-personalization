@@ -9,9 +9,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.models.subscription import Subscription
-from news_service.models.user_spec import extract_topic
 
 _CONVERSATION_SUMMARY_BYTE_LIMIT = 2048
+_SUBSCRIPTION_PREVIEW_CHARS = 80
+
+
+def _spec_preview(spec: str) -> str:
+    """Return a one-line preview of a user_spec for display summaries.
+
+    Picks the first non-empty, non-heading line and truncates. The full
+    spec is fetched on demand via get_subscriptions; this is only a hint
+    the agent uses to disambiguate which subscription the user means.
+    """
+    for raw_line in (spec or "").splitlines():
+        line = raw_line.strip().lstrip("#").strip()
+        if line:
+            return line[:_SUBSCRIPTION_PREVIEW_CHARS]
+    return ""
 
 
 def _parse_csv_identifiers(raw: str) -> list[str]:
@@ -81,11 +95,11 @@ async def _load_subscription_summaries(
     subs = list(result.scalars().all())
     lines: list[str] = []
     for sub in subs:
-        topic = extract_topic(sub.user_spec or "") or "(no topic)"
+        preview = _spec_preview(sub.user_spec or "") or "(no spec)"
         schedule = sub.schedule_cron or (
             "event mode" if sub.delivery_mode == "event" else "on demand"
         )
-        lines.append(f"[{sub.id}] {sub.delivery_mode} | {schedule} | {topic}")
+        lines.append(f"[{sub.id}] {sub.delivery_mode} | {schedule} | {preview}")
     return lines
 
 
@@ -123,6 +137,12 @@ def _status_for_tool_call(event: dict[str, Any]) -> dict[str, Any] | None:
         return {
             "event": "status",
             "status_key": "status_queuing_digest",
+            "subscription_id": args.get("subscription_id", ""),
+        }
+    if tool_name == "trigger_source_discovery":
+        return {
+            "event": "status",
+            "status_key": "status_queuing_discovery",
             "subscription_id": args.get("subscription_id", ""),
         }
     return None

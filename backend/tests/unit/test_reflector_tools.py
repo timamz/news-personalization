@@ -20,7 +20,7 @@ def _subscription():
     sub = MagicMock()
     sub.id = uuid.uuid4()
     sub.user_id = uuid.uuid4()
-    sub.user_spec = "## Topic\nNeural network research"
+    sub.user_spec = "Neural network research."
     sub.last_reflected_at = None
     return sub
 

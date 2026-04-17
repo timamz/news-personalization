@@ -23,7 +23,7 @@ def _make_subscription(prompt: str, embedding: list[float] | None) -> SimpleName
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         topic_embedding=embedding,
-        user_spec=f"## Topic\n{prompt}\n\n## Preferences\nshort",
+        user_spec=f"{prompt}. Short digest, a few bullets.",
         digest_language="en",
         last_reflected_at=datetime.now(UTC),
     )
@@ -98,7 +98,7 @@ async def test_generate_digest_returns_composed_digest_and_passes_user_spec_to_w
 
     assert result == digest_text, "pipeline did not return the composed digest text"
     passed_spec = write_mock.await_args.kwargs["user_spec"]
-    assert f"## Topic\n{prompt}" in passed_spec, "writer was not called with the user_spec"
+    assert prompt in passed_spec, "writer was not called with the user_spec"
 
 
 @pytest.mark.asyncio
