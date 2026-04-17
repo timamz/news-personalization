@@ -19,7 +19,8 @@ Memory model:
 
 Tools come in five groups:
 
-- Subscription lifecycle: ``save_subscription``, ``delete_subscription``,
+- Subscription lifecycle: ``create_subscription``,
+  ``update_subscription``, ``delete_subscription``,
   ``trigger_digest_now``.
 - Source attach/detach: ``add_source``, ``remove_source``.
 - User state: ``set_user_language``, ``set_user_timezone``.
@@ -99,10 +100,10 @@ Returning users:
 - "Hi" / "what can you do" -> 1-2 examples tailored to what they already have, then \
 one forward-looking question.
 
-Subscription creation via save_subscription:
+Subscription creation via create_subscription:
 - Gather topic, delivery mode (digest vs event -- default digest), schedule, sources, \
 and any presentation preferences (length, format, exclusions, tone). When you have \
-enough, call save_subscription without a subscription_id.
+enough, call create_subscription.
 - Pass format and exclusion guidance via the 'preferences' argument, not a separate \
 field. Example: preferences="three short bullets, skip stock prices, include quotes".
 - Convert schedule text to a 5-field cron internally. Never show cron to the user.
@@ -114,15 +115,16 @@ field. Example: preferences="three short bullets, skip stock prices, include quo
 (not r/sub), X "handle" (not @handle).
 - If the user provided sources, ask whether to also auto-discover more.
 
-Editing existing subscriptions:
-- Use get_subscriptions when you need the full user_spec of a sub (topic, schedule, \
-preferences, sources). The pre-loaded one-line summaries in context are enough for \
-disambiguation ("the AI one") but not for editing details.
+Editing existing subscriptions via update_subscription:
+- Use get_subscriptions when you need the full user_spec of a sub. The pre-loaded \
+one-line summaries in context are enough for disambiguation ("the AI one") but not \
+for editing details.
 - To change scalar fields (schedule, language, delivery mode) or rewrite the \
-topic/preferences, call save_subscription with the subscription_id and the fields \
-you want to change. Omitting topic or preferences preserves the existing values.
+topic/preferences, call update_subscription with the subscription_id and only the \
+fields you want to change. Empty parameters preserve existing values. Changing the \
+topic re-embeds it automatically so retrieval follows.
 - For sources on an existing subscription, use add_source / remove_source (not \
-save_subscription).
+update_subscription).
 
 Parallel tool calls:
 - If the user mentions multiple sources to add or remove in one message, emit the \
@@ -148,9 +150,9 @@ stay in context until you actively compact them.
 - You know the shape of every task the user can complete. Call close_scenario when \
 one clearly finishes so the transcript stays small and focused on what is active now.
 - Scenarios and their terminal signal:
-  - onboarding: user_language + set_user_timezone set + first save_subscription.
-  - create subscription: save_subscription (no id) succeeded and user acknowledged.
-  - edit subscription: save_subscription (with id) succeeded.
+  - onboarding: user_language + set_user_timezone set + first create_subscription.
+  - create subscription: create_subscription succeeded and user acknowledged.
+  - edit subscription: update_subscription succeeded.
   - add sources: add_source calls returned successfully for everything the user asked for.
   - remove sources: remove_source calls returned successfully.
   - delete subscription: delete_subscription succeeded.
@@ -173,8 +175,8 @@ General behavior:
 - Never show cron expressions, UUIDs, or internal field names to the user.
 - If the user provides enough info in one message, act immediately.
 - Accommodate mid-conversation changes.
-- When the user gives feedback about digest quality, update the subscription via \
-save_subscription with an updated 'preferences' string that captures what they want.
+- When the user gives feedback about digest quality, call update_subscription with \
+an updated 'preferences' string that captures what they want.
 
 {context_section}\
 """
@@ -343,9 +345,8 @@ def create_conversational_agent(
         "scenario_close_summary": None,
     }
 
-    async def save_subscription(
-        subscription_id: str = "",
-        topic: str = "",
+    async def create_subscription(
+        topic: str,
         preferences: str = "",
         delivery_mode: str = "digest",
         schedule_cron: str = "",
@@ -355,78 +356,38 @@ def create_conversational_agent(
         fixed_twitter_accounts: str = "",
         include_discovered_sources: bool = True,
     ) -> str:
-        """Create a new subscription or update an existing one atomically.
+        """Create a brand-new subscription.
 
-        CREATE path (subscription_id empty):
-          ``topic`` is required -- it seeds the user_spec and drives
-          auto-discovery. ``preferences`` is optional freeform guidance
-          (format, exclusions, anything the Writer should know). Both are
-          rendered into ``user_spec`` which is the single source of
-          truth for LLM-facing intent.
-
-        UPDATE path (subscription_id given):
-          Updates ``delivery_mode``, ``schedule_cron``, ``digest_language``
-          and re-renders the ``user_spec`` when topic or preferences are
-          provided. ``fixed_*`` and ``include_discovered_sources`` are
-          ignored; use add_source / remove_source for source changes.
+        Renders ``user_spec`` from ``topic`` + ``preferences`` (single
+        source of truth for LLM-facing intent), embeds the topic for
+        retrieval, attaches fixed sources, optionally queues auto-
+        discovery, and flips the user's ``has_onboarded`` on first
+        success. For edits to an existing subscription call
+        ``update_subscription`` instead.
 
         Args:
-            subscription_id: UUID of the subscription to update, or empty to create.
-            topic: Subscription topic. Required on create.
-            preferences: Freeform guidance ('brief summary', 'skip stock prices',
-                'three bullets max', 'include quotes'). Goes into user_spec's
-                Preferences section.
+            topic: Subscription topic. Required.
+            preferences: Freeform guidance ('brief summary', 'skip stock
+                prices', 'three bullets max', 'include quotes'). Goes
+                into user_spec's Preferences section.
             delivery_mode: 'digest' (periodic summary) or 'event' (instant alerts).
             schedule_cron: 5-field cron. Empty = manual / event-only delivery.
             digest_language: ISO code (en, ru, ...). Empty = use the user's language.
-            fixed_telegram_channels: Comma-separated handles (no @), create only.
-            fixed_reddit_subreddits: Comma-separated sub names (no r/), create only.
-            fixed_twitter_accounts: Comma-separated X handles (no @), create only.
-            include_discovered_sources: On create, run auto-discovery for more sources.
+            fixed_telegram_channels: Comma-separated handles (no @).
+            fixed_reddit_subreddits: Comma-separated sub names (no r/).
+            fixed_twitter_accounts: Comma-separated X handles (no @).
+            include_discovered_sources: Run auto-discovery for more sources.
 
         Returns:
             Confirmation with the subscription id, or an error message.
         """
-        from sqlalchemy import select
+        clean_topic = topic.strip()
+        if not clean_topic:
+            return "topic is required to create a subscription."
 
         resolved_language = (digest_language or user.language or "en").strip().lower()
         normalized_cron = schedule_cron.strip() or None
         preferences_text = preferences.strip()
-
-        if subscription_id.strip():
-            try:
-                sub_uuid = uuid.UUID(subscription_id.strip())
-            except ValueError:
-                return f"invalid subscription_id '{subscription_id}'."
-            async with scoped_factory() as scoped:
-                result = await scoped.execute(
-                    select(Subscription).where(
-                        Subscription.id == sub_uuid,
-                        Subscription.user_id == user.id,
-                    )
-                )
-                existing = result.scalar_one_or_none()
-                if existing is None:
-                    return f"subscription {subscription_id}: not found."
-                existing.delivery_mode = delivery_mode
-                existing.schedule_cron = normalized_cron
-                existing.digest_language = resolved_language
-                if topic.strip() or preferences_text:
-                    current = parse_user_spec(existing.user_spec) if existing.user_spec else None
-                    new_topic = topic.strip() or (current.topic if current else "")
-                    new_preferences = (
-                        preferences_text
-                        if preferences_text
-                        else (current.preferences if current else "")
-                    )
-                    existing.user_spec = render_user_spec(
-                        UserSpecSections(topic=new_topic, preferences=new_preferences)
-                    )
-                await scoped.commit()
-            return f"subscription {subscription_id}: updated."
-
-        if not topic.strip():
-            return "topic is required to create a subscription."
 
         telegram = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_telegram_channels)]
         reddit = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_reddit_subreddits)]
@@ -434,16 +395,16 @@ def create_conversational_agent(
 
         async with scoped_factory() as scoped:
             try:
-                topic_embedding = await embed_text(topic.strip())
+                topic_embedding = await embed_text(clean_topic)
             except Exception as exc:
-                logger.exception("save_subscription: topic embedding failed")
+                logger.exception("create_subscription: topic embedding failed")
                 return f"could not embed topic: {exc}."
 
             subscription = Subscription(
                 user_id=user.id,
                 topic_embedding=topic_embedding,
                 user_spec=render_user_spec(
-                    UserSpecSections(topic=topic.strip(), preferences=preferences_text)
+                    UserSpecSections(topic=clean_topic, preferences=preferences_text)
                 ),
                 delivery_mode=delivery_mode,
                 schedule_cron=normalized_cron,
@@ -464,7 +425,7 @@ def create_conversational_agent(
                 try:
                     coverage = await ensure_source_coverage(scoped, identifiers, kind)
                 except Exception as exc:
-                    logger.exception("save_subscription: coverage failed for %s", kind)
+                    logger.exception("create_subscription: coverage failed for %s", kind)
                     await scoped.rollback()
                     return f"could not register {kind} sources: {exc}."
                 for source in coverage:
@@ -486,7 +447,7 @@ def create_conversational_agent(
             try:
                 await scoped.commit()
             except Exception as exc:
-                logger.exception("save_subscription: commit failed")
+                logger.exception("create_subscription: commit failed")
                 await scoped.rollback()
                 return f"could not save subscription: {exc}."
             shared_state["created_subscription_id"] = str(subscription.id)
@@ -502,6 +463,80 @@ def create_conversational_agent(
                 f"subscription {subscription.id}: created (auto-discovery "
                 f"{'queued' if include_discovered_sources else 'skipped'})."
             )
+
+    async def update_subscription(
+        subscription_id: str,
+        topic: str = "",
+        preferences: str = "",
+        delivery_mode: str = "",
+        schedule_cron: str = "",
+        digest_language: str = "",
+    ) -> str:
+        """Edit an existing subscription's scalar fields and/or user_spec.
+
+        Any parameter left empty is preserved. Changing ``topic``
+        re-embeds the vector used for retrieval so digest candidates
+        follow the new focus. Source changes go through
+        ``add_source`` / ``remove_source`` -- this tool does not touch
+        the source list.
+
+        Args:
+            subscription_id: UUID of the subscription to update.
+            topic: New topic. Empty preserves the existing Topic section.
+            preferences: New preferences. Empty preserves the existing section.
+            delivery_mode: 'digest' or 'event'. Empty preserves.
+            schedule_cron: 5-field cron or empty to clear the schedule.
+                Omit entirely (default) to preserve the existing schedule.
+            digest_language: ISO code. Empty preserves.
+
+        Returns:
+            Confirmation or an error message.
+        """
+        from sqlalchemy import select
+
+        try:
+            sub_uuid = uuid.UUID(subscription_id.strip())
+        except ValueError:
+            return f"invalid subscription_id '{subscription_id}'."
+
+        clean_topic = topic.strip()
+        preferences_text = preferences.strip()
+
+        async with scoped_factory() as scoped:
+            result = await scoped.execute(
+                select(Subscription).where(
+                    Subscription.id == sub_uuid,
+                    Subscription.user_id == user.id,
+                )
+            )
+            existing = result.scalar_one_or_none()
+            if existing is None:
+                return f"subscription {subscription_id}: not found."
+
+            if delivery_mode.strip():
+                existing.delivery_mode = delivery_mode.strip()
+            if schedule_cron.strip():
+                existing.schedule_cron = schedule_cron.strip()
+            if digest_language.strip():
+                existing.digest_language = digest_language.strip().lower()
+
+            if clean_topic or preferences_text:
+                current = parse_user_spec(existing.user_spec) if existing.user_spec else None
+                new_topic = clean_topic or (current.topic if current else "")
+                new_preferences = preferences_text or (current.preferences if current else "")
+                existing.user_spec = render_user_spec(
+                    UserSpecSections(topic=new_topic, preferences=new_preferences)
+                )
+                if clean_topic and (current is None or current.topic != clean_topic):
+                    try:
+                        existing.topic_embedding = await embed_text(clean_topic)
+                    except Exception as exc:
+                        logger.exception("update_subscription: topic embedding failed")
+                        await scoped.rollback()
+                        return f"could not re-embed topic: {exc}."
+
+            await scoped.commit()
+        return f"subscription {subscription_id}: updated."
 
     async def get_subscriptions() -> str:
         """Return every active subscription the user has, with full user_spec.
@@ -843,6 +878,8 @@ def create_conversational_agent(
     async def delete_subscription(subscription_id: str) -> str:
         """Soft-delete (deactivate) a subscription by id.
 
+        Safe to call concurrently with other mutation tools -- opens
+        its own scoped session like every other mutation tool.
         Confirm in plain language with the user before calling.
 
         Args:
@@ -853,17 +890,23 @@ def create_conversational_agent(
         """
         from sqlalchemy import select
 
-        result = await db_session.execute(
-            select(Subscription).where(
-                Subscription.id == uuid.UUID(subscription_id),
-                Subscription.user_id == user.id,
+        try:
+            sub_uuid = uuid.UUID(subscription_id)
+        except ValueError:
+            return f"invalid subscription_id '{subscription_id}'."
+
+        async with scoped_factory() as scoped:
+            result = await scoped.execute(
+                select(Subscription).where(
+                    Subscription.id == sub_uuid,
+                    Subscription.user_id == user.id,
+                )
             )
-        )
-        sub = result.scalar_one_or_none()
-        if sub is None:
-            return f"Subscription {subscription_id} not found."
-        sub.is_active = False
-        await db_session.flush()
+            sub = result.scalar_one_or_none()
+            if sub is None:
+                return f"Subscription {subscription_id} not found."
+            sub.is_active = False
+            await scoped.commit()
         return f"Subscription {subscription_id} deleted."
 
     async def close_scenario(summary: str) -> str:
@@ -906,7 +949,8 @@ def create_conversational_agent(
         model=LiteLlm(model=settings.litellm_model),
         instruction=instruction,
         tools=[
-            save_subscription,
+            create_subscription,
+            update_subscription,
             get_subscriptions,
             remember,
             add_source,
@@ -1054,7 +1098,7 @@ def _status_for_tool_call(event: dict[str, Any]) -> dict[str, Any] | None:
             "status_key": "status_resolving_timezone",
             "query": args.get("query", ""),
         }
-    if tool_name == "save_subscription":
+    if tool_name in {"create_subscription", "update_subscription"}:
         return {
             "event": "status",
             "status_key": "status_saving_subscription",

@@ -43,7 +43,7 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 
 | Agent | Location | Kind | Trigger | Tools / Outputs |
 |---|---|---|---|---|
-| **Conversational Agent** | `agents/conversational.py` | ADK tool-use loop | Every user message | `save_subscription`, `get_subscriptions`, `remember`, `add_source`, `remove_source`, `set_user_language`, `set_user_timezone`, `trigger_digest_now`, `delete_subscription`, `close_scenario` |
+| **Conversational Agent** | `agents/conversational.py` | ADK tool-use loop | Every user message | `create_subscription`, `update_subscription`, `get_subscriptions`, `remember`, `add_source`, `remove_source`, `set_user_language`, `set_user_timezone`, `trigger_digest_now`, `delete_subscription`, `close_scenario` |
 | **Discovery Agent** | `agents/source_discovery/pipeline.py` | ADK looped agent (max 2 rounds) | Subscription creation / reflector trigger | `run_parallel_search(strategies)` (spawns N parallel finders), `submit_results()` |
 | **Source Finder** | `agents/source_discovery/finder.py` | ADK ReAct, one per strategy | Spawned by Discovery Agent | `search_existing_sources` (pgvector), `tool_search_web` (SearXNG), `validate_and_score_source` (fetch posts, embed, cosine) |
 | **Digest Writer** | `agents/digest/writer.py` | ADK agent (plans + researches + composes in one loop) | Scheduled digest delivery | `fetch_article` (httpx + BeautifulSoup, budgeted), `search_web` (SearXNG, budgeted), `submit_digest(digest_text, used_item_ids)` |

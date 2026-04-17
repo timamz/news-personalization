@@ -19,7 +19,8 @@ logging.disable(logging.CRITICAL)
 
 
 _EXPECTED_TOOL_NAMES = {
-    "save_subscription",
+    "create_subscription",
+    "update_subscription",
     "get_subscriptions",
     "remember",
     "add_source",
@@ -248,36 +249,36 @@ def test_append_conversation_summary_caps_at_byte_limit() -> None:
     assert "brand new fact" in added, "cap eviction removed the newly-added fact"
 
 
-# ---------- save_subscription tool ----------
+# ---------- create_subscription / update_subscription tools ----------
 
 
 @pytest.mark.asyncio
-async def test_save_subscription_requires_topic_on_create() -> None:
+async def test_create_subscription_requires_topic() -> None:
     user = _fake_user()
     scoped = AsyncMock()
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    save = _get_tool(agent, "save_subscription")
-    result = await save()
+    create = _get_tool(agent, "create_subscription")
+    result = await create(topic="")
     assert "topic is required" in result, (
-        f"save_subscription without topic on create should error: {result!r}"
+        f"create_subscription without topic should error: {result!r}"
     )
     scoped.commit.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_save_subscription_rejects_malformed_id_on_update() -> None:
+async def test_update_subscription_rejects_malformed_id() -> None:
     user = _fake_user()
     scoped = AsyncMock()
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    save = _get_tool(agent, "save_subscription")
-    result = await save(subscription_id="not-a-uuid")
+    update = _get_tool(agent, "update_subscription")
+    result = await update(subscription_id="not-a-uuid")
     assert "invalid subscription_id" in result, (
-        f"save_subscription did not reject malformed id: {result!r}"
+        f"update_subscription did not reject malformed id: {result!r}"
     )
 
 
 @pytest.mark.asyncio
-async def test_save_subscription_updates_scalar_fields(mocker) -> None:
+async def test_update_subscription_updates_scalar_fields(mocker) -> None:
     user = _fake_user()
     sub = MagicMock()
     sub.id = uuid.uuid4()
@@ -292,23 +293,78 @@ async def test_save_subscription_updates_scalar_fields(mocker) -> None:
     scoped.commit = AsyncMock()
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    save = _get_tool(agent, "save_subscription")
-    result = await save(
+    update = _get_tool(agent, "update_subscription")
+    result = await update(
         subscription_id=str(sub.id),
         delivery_mode="event",
-        schedule_cron="",
         digest_language="de",
         preferences="detailed",
     )
-    assert result.endswith(": updated."), (
-        f"save_subscription update path did not confirm: {result!r}"
-    )
+    assert result.endswith(": updated."), f"update_subscription did not confirm: {result!r}"
     assert sub.delivery_mode == "event", "update did not write delivery_mode"
     assert sub.digest_language == "de", "update did not write digest_language"
 
 
 @pytest.mark.asyncio
-async def test_save_subscription_creates_subscription_with_embedding(mocker) -> None:
+async def test_update_subscription_reembeds_when_topic_changes(mocker) -> None:
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+    sub.user_spec = "## Topic\nold topic"
+    sub.topic_embedding = [0.0] * 8
+
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = sub
+    scoped = AsyncMock()
+    scoped.execute = AsyncMock(return_value=lookup)
+    scoped.commit = AsyncMock()
+
+    new_vector = [0.42] * 8
+    embed_mock = mocker.patch(
+        "news_service.agents.conversational.embed_text",
+        new=AsyncMock(return_value=new_vector),
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    update = _get_tool(agent, "update_subscription")
+    await update(subscription_id=str(sub.id), topic="brand new topic")
+
+    assert sub.topic_embedding == new_vector, (
+        "update_subscription did not refresh topic_embedding when the topic changed"
+    )
+    embed_mock.assert_awaited_once_with("brand new topic")
+
+
+@pytest.mark.asyncio
+async def test_update_subscription_does_not_reembed_when_topic_unchanged(mocker) -> None:
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+    sub.user_spec = "## Topic\nstatic topic"
+    sub.topic_embedding = [0.0] * 8
+
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = sub
+    scoped = AsyncMock()
+    scoped.execute = AsyncMock(return_value=lookup)
+    scoped.commit = AsyncMock()
+
+    embed_mock = mocker.patch(
+        "news_service.agents.conversational.embed_text",
+        new=AsyncMock(return_value=[0.99] * 8),
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    update = _get_tool(agent, "update_subscription")
+    await update(subscription_id=str(sub.id), preferences="short bullets only")
+
+    embed_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_subscription_with_embedding(mocker) -> None:
     user = _fake_user()
     scoped = AsyncMock()
     scoped.execute = AsyncMock()
@@ -326,21 +382,21 @@ async def test_save_subscription_creates_subscription_with_embedding(mocker) -> 
     )
 
     agent, shared_state = _build_agent_with_factory(user=user, factory_session=scoped)
-    save = _get_tool(agent, "save_subscription")
-    result = await save(
+    create = _get_tool(agent, "create_subscription")
+    result = await create(
         topic=f"news about AI {uuid.uuid4().hex[:6]}",
         delivery_mode="digest",
         schedule_cron="0 8 * * *",
         include_discovered_sources=True,
     )
-    assert ": created" in result, f"save_subscription did not confirm create: {result!r}"
+    assert ": created" in result, f"create_subscription did not confirm: {result!r}"
     assert shared_state["created_subscription_id"], (
         "shared_state.created_subscription_id was not set after create"
     )
 
 
 @pytest.mark.asyncio
-async def test_save_subscription_flips_has_onboarded_on_first_create(mocker) -> None:
+async def test_create_subscription_flips_has_onboarded(mocker) -> None:
     user = _fake_user(has_onboarded=False)
     persisted = MagicMock()
     persisted.has_onboarded = False
@@ -362,8 +418,8 @@ async def test_save_subscription_flips_has_onboarded_on_first_create(mocker) -> 
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
-    save = _get_tool(agent, "save_subscription")
-    await save(
+    create = _get_tool(agent, "create_subscription")
+    await create(
         topic=f"news {uuid.uuid4().hex[:6]}",
         delivery_mode="digest",
         schedule_cron="0 8 * * *",
@@ -371,10 +427,10 @@ async def test_save_subscription_flips_has_onboarded_on_first_create(mocker) -> 
     )
 
     assert persisted.has_onboarded is True, (
-        "first successful save_subscription did not flip has_onboarded on the persisted user"
+        "first successful create_subscription did not flip has_onboarded on the persisted user"
     )
     assert user.has_onboarded is True, (
-        "first successful save_subscription did not mirror has_onboarded onto the in-memory user"
+        "first successful create_subscription did not mirror has_onboarded onto the in-memory user"
     )
 
 

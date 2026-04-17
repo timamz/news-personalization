@@ -25,7 +25,7 @@ def _random_string(length: int) -> str:
 
 class TestParseUserSpec:
     def test_extracts_topic_from_standard_format(self) -> None:
-        spec = "## Topic\nArtificial intelligence breakthroughs\n\n## Sources\nsome feeds"
+        spec = "## Topic\nArtificial intelligence breakthroughs"
         sections = parse_user_spec(spec)
         assert sections.topic == "Artificial intelligence breakthroughs", (
             "topic was not extracted from standard ## Topic header"
@@ -38,26 +38,16 @@ class TestParseUserSpec:
             "entire text was not used as topic when no headers are present"
         )
 
-    def test_handles_all_six_sections(self) -> None:
+    def test_handles_all_three_sections(self) -> None:
         spec = (
             "## Topic\nBlockchain regulation\n\n"
-            "## Sources\nCoinDesk, Reuters\n\n"
-            "## Schedule\nevery morning at 8\n\n"
             "## Preferences\nshort bullets only\n\n"
-            "## Feedback\ntoo verbose last time\n\n"
             "## Observations\nSource X went offline on 2026-04-10"
         )
         sections = parse_user_spec(spec)
         assert sections.topic == "Blockchain regulation", "topic section was not parsed correctly"
-        assert sections.sources == "CoinDesk, Reuters", "sources section was not parsed correctly"
-        assert sections.schedule == "every morning at 8", (
-            "schedule section was not parsed correctly"
-        )
         assert sections.preferences == "short bullets only", (
             "preferences section was not parsed correctly"
-        )
-        assert sections.feedback == "too verbose last time", (
-            "feedback section was not parsed correctly"
         )
         assert sections.observations == "Source X went offline on 2026-04-10", (
             "observations section was not parsed correctly"
@@ -81,12 +71,16 @@ class TestParseUserSpec:
         )
 
     def test_ignores_unknown_sections(self) -> None:
-        spec = "## Topic\nML papers\n\n## UnknownHeader\nshould be ignored\n\n## Sources\nArXiv"
+        spec = (
+            "## Topic\nML papers\n\n## UnknownHeader\nshould be ignored\n\n## Preferences\nconcise"
+        )
         sections = parse_user_spec(spec)
         assert sections.topic == "ML papers", (
             "topic was not parsed when unknown sections are present"
         )
-        assert sections.sources == "ArXiv", "sources section was lost due to unknown section"
+        assert sections.preferences == "concise", (
+            "preferences section was lost due to unknown section"
+        )
 
     def test_case_insensitive_header_matching(self) -> None:
         spec = "## topic\nLower-case header topic\n\n## PREFERENCES\nall caps preference"
@@ -103,18 +97,12 @@ class TestRenderUserSpec:
     def test_omits_empty_sections(self) -> None:
         sections = UserSpecSections(
             topic="Climate change policy",
-            sources="",
-            schedule="",
             preferences="detailed analysis",
-            feedback="",
             observations="",
         )
         rendered = render_user_spec(sections)
         assert "## Topic" in rendered, "rendered spec did not contain Topic header"
         assert "## Preferences" in rendered, "rendered spec did not contain Preferences header"
-        assert "## Sources" not in rendered, "rendered spec contained empty Sources section"
-        assert "## Schedule" not in rendered, "rendered spec contained empty Schedule section"
-        assert "## Feedback" not in rendered, "rendered spec contained empty Feedback section"
         assert "## Observations" not in rendered, (
             "rendered spec contained empty Observations section"
         )
@@ -123,14 +111,11 @@ class TestRenderUserSpec:
         tag = _random_string(12)
         sections = UserSpecSections(
             topic=f"Robotics {tag}",
-            sources=f"IEEE {tag}",
-            schedule="weekly",
             preferences="concise",
-            feedback="good",
             observations="all green",
         )
         rendered = render_user_spec(sections)
-        for header in ("Topic", "Sources", "Schedule", "Preferences", "Feedback", "Observations"):
+        for header in ("Topic", "Preferences", "Observations"):
             assert f"## {header}" in rendered, f"rendered spec did not contain {header} header"
 
 
@@ -139,19 +124,13 @@ class TestRenderAndParseRoundtrip:
         tag = _random_string(16)
         original = UserSpecSections(
             topic=f"Space exploration {tag}",
-            sources=f"NASA, ESA {tag}",
-            schedule="daily at 7am",
             preferences="include images",
-            feedback="too many duplicates",
             observations=f"Source A healthy {tag}",
         )
         rendered = render_user_spec(original)
         parsed = parse_user_spec(rendered)
         assert parsed.topic == original.topic, "roundtrip did not preserve topic"
-        assert parsed.sources == original.sources, "roundtrip did not preserve sources"
-        assert parsed.schedule == original.schedule, "roundtrip did not preserve schedule"
         assert parsed.preferences == original.preferences, "roundtrip did not preserve preferences"
-        assert parsed.feedback == original.feedback, "roundtrip did not preserve feedback"
         assert parsed.observations == original.observations, (
             "roundtrip did not preserve observations"
         )
@@ -159,7 +138,7 @@ class TestRenderAndParseRoundtrip:
 
 class TestExtractTopic:
     def test_returns_topic_content(self) -> None:
-        spec = "## Topic\nDeep learning hardware\n\n## Sources\nAnandTech"
+        spec = "## Topic\nDeep learning hardware\n\n## Preferences\nconcise"
         result = extract_topic(spec)
         assert result == "Deep learning hardware", (
             "extract_topic did not return topic from structured spec"
@@ -181,7 +160,7 @@ class TestValidateUserSpec:
 
     def test_raises_for_empty_topic(self) -> None:
         with pytest.raises((ValueError, ValidationError)):
-            validate_user_spec("## Topic\n\n## Sources\nSome source")
+            validate_user_spec("## Topic\n\n## Preferences\nshort")
 
     def test_normalises_valid_spec(self) -> None:
         tag = _random_string(10)
@@ -223,17 +202,12 @@ class TestAppendObservations:
 
     def test_preserves_other_sections(self) -> None:
         tag = _random_string(8)
-        spec = (
-            f"## Topic\nQuantum computing {tag}\n\n"
-            f"## Sources\nNature {tag}\n\n"
-            f"## Preferences\nDetailed {tag}"
-        )
+        spec = f"## Topic\nQuantum computing {tag}\n\n## Preferences\nDetailed {tag}"
         result = append_observations(spec, "new reflector note")
         sections = parse_user_spec(result)
         assert sections.topic == f"Quantum computing {tag}", (
             "topic was altered by append_observations"
         )
-        assert sections.sources == f"Nature {tag}", "sources were altered by append_observations"
         assert sections.preferences == f"Detailed {tag}", (
             "preferences were altered by append_observations"
         )

@@ -1,8 +1,18 @@
 """Structured user_spec parsing, validation, and rendering.
 
-The user_spec is a markdown document with sections like ## Topic, ## Sources, etc.
-This module provides a Pydantic model for the sections, functions to parse/render,
-and validation to cap length and enforce structure.
+The user_spec is a markdown document with three sections:
+
+- ``## Topic`` -- required. The subject matter the user cares about.
+  Consumed by retrieval, discovery, and the Writer. Embedded into
+  ``topic_embedding`` for cosine candidate ranking.
+- ``## Preferences`` -- optional. Freeform guidance for the Writer
+  (format, length, exclusions, tone). Anything LLM-facing that shapes
+  how content is presented.
+- ``## Observations`` -- optional. Notes appended by the Pipeline
+  Reflector about past deliveries. Read by the Writer and Reflector.
+
+Dispatch concerns (schedule, language, sources) live in dedicated
+Subscription columns / join tables, not in the markdown.
 """
 
 import re
@@ -12,7 +22,7 @@ from pydantic import BaseModel, Field
 MAX_USER_SPEC_LENGTH = 10_000
 MAX_OBSERVATIONS_LENGTH = 2_000
 
-KNOWN_SECTIONS = ("Topic", "Sources", "Schedule", "Preferences", "Feedback", "Observations")
+KNOWN_SECTIONS = ("Topic", "Preferences", "Observations")
 
 _SECTION_HEADER_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
 
@@ -22,20 +32,16 @@ _SECTION_NAME_MAP: dict[str, str] = {name.lower(): name for name in KNOWN_SECTIO
 class UserSpecSections(BaseModel):
     """Structured representation of the user_spec markdown document.
 
-    Each field corresponds to a ``## SectionName`` block in the markdown.
-    ``topic`` is the only required field; all others default to empty strings.
+    Three fields, one required, two optional.
 
     Example::
 
         sections = UserSpecSections(topic="AI news", preferences="Short bullets")
-        assert sections.sources == ""
+        assert sections.observations == ""
     """
 
     topic: str = Field(..., min_length=1, max_length=500)
-    sources: str = Field(default="", max_length=2000)
-    schedule: str = Field(default="", max_length=500)
     preferences: str = Field(default="", max_length=2000)
-    feedback: str = Field(default="", max_length=2000)
     observations: str = Field(default="", max_length=MAX_OBSERVATIONS_LENGTH)
 
 
@@ -90,7 +96,7 @@ def parse_user_spec(text: str) -> UserSpecSections:
 def render_user_spec(sections: UserSpecSections) -> str:
     """Render structured sections back to markdown, omitting empty sections."""
     parts = [f"## Topic\n{sections.topic}"]
-    for name in ("Sources", "Schedule", "Preferences", "Feedback", "Observations"):
+    for name in ("Preferences", "Observations"):
         value = getattr(sections, name.lower())
         if value.strip():
             parts.append(f"## {name}\n{value}")
@@ -98,11 +104,7 @@ def render_user_spec(sections: UserSpecSections) -> str:
 
 
 def extract_topic(text: str) -> str:
-    """Extract the topic from a user_spec string.
-
-    Centralised replacement for ``_effective_prompt`` and
-    ``_extract_topic_from_user_spec``.
-    """
+    """Extract the topic from a user_spec string."""
     raw = _extract_raw_sections(text)
     topic = raw.get("topic", "")
     return topic if topic else text.strip()[:500]
