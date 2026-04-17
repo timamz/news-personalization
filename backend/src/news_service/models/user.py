@@ -9,6 +9,7 @@ class User(UUIDPrimaryKey, TimestampMixin, Base):
 
     api_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     timezone: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    language: Mapped[str | None] = mapped_column(String(16), nullable=True)
     conversation_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     subscriptions: Mapped[list["Subscription"]] = relationship(  # noqa: F821

@@ -25,6 +25,7 @@ def _fake_user() -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
         timezone="Europe/Moscow",
+        language="en",
         conversation_summary="",
     )
 

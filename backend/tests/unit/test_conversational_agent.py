@@ -21,6 +21,7 @@ def _fake_user() -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
         timezone="Europe/Moscow",
+        language="en",
     )
 
 
@@ -97,6 +98,9 @@ def test_create_agent_has_all_tools() -> None:
         "update_user_spec",
         "validate_source",
         "add_source",
+        "remove_source",
+        "set_user_language",
+        "set_user_timezone",
         "discover_sources",
         "list_subscriptions",
         "trigger_digest_now",
@@ -108,7 +112,7 @@ def test_create_agent_has_all_tools() -> None:
     )
 
 
-def test_create_agent_has_ten_tools() -> None:
+def test_create_agent_has_thirteen_tools() -> None:
     db_session = AsyncMock()
     user = _fake_user()
     agent, _state = create_conversational_agent(
@@ -117,7 +121,7 @@ def test_create_agent_has_ten_tools() -> None:
         user_spec="",
         conversation_summary="",
     )
-    assert len(agent.tools) == 10, f"agent has {len(agent.tools)} tools, expected 10"
+    assert len(agent.tools) == 13, f"agent has {len(agent.tools)} tools, expected 13"
 
 
 def test_shared_state_initial_values() -> None:
@@ -359,3 +363,227 @@ async def test_add_source_attaches_and_commits_on_success(mocker) -> None:
     assert result.endswith(": added."), f"add_source did not confirm attachment: {result!r}"
     scoped_session.commit.assert_awaited_once()
     scoped_session.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_remove_source_rejects_unsupported_source_kind() -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    agent, _state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+    remove_source = _get_tool(agent, "remove_source")
+    result = await remove_source(str(uuid.uuid4()), "some-feed", "rss")
+    assert "unsupported source_kind" in result, (
+        f"remove_source did not reject unsupported source_kind: {result!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_remove_source_returns_not_attached_when_link_missing() -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+    link_lookup = MagicMock()
+    link_lookup.scalar_one_or_none.return_value = None
+
+    scoped_session = AsyncMock()
+    scoped_session.execute = AsyncMock(side_effect=[sub_lookup, link_lookup])
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    remove_source = _get_tool(agent, "remove_source")
+    result = await remove_source(str(sub.id), "bbcworld", "telegram_channel")
+    assert "not attached" in result, f"remove_source did not report missing link: {result!r}"
+
+
+@pytest.mark.asyncio
+async def test_remove_source_deletes_link_and_logs_removal() -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+
+    link = MagicMock()
+    link.source_id = uuid.uuid4()
+
+    source = MagicMock()
+    source.id = link.source_id
+    source.subscriber_count = 2
+    source.is_active = True
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+    link_lookup = MagicMock()
+    link_lookup.scalar_one_or_none.return_value = link
+    source_lookup = MagicMock()
+    source_lookup.scalar_one.return_value = source
+
+    scoped_session = AsyncMock()
+    scoped_session.execute = AsyncMock(side_effect=[sub_lookup, link_lookup, source_lookup])
+    scoped_session.add = MagicMock()
+    scoped_session.delete = AsyncMock()
+    scoped_session.commit = AsyncMock()
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    remove_source = _get_tool(agent, "remove_source")
+    result = await remove_source(str(sub.id), "bbcworld", "telegram_channel")
+    assert result.endswith(": removed."), f"remove_source did not confirm removal: {result!r}"
+    scoped_session.delete.assert_awaited_once_with(link)
+    scoped_session.commit.assert_awaited_once()
+    scoped_session.add.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_set_user_language_persists_normalized_code() -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    persisted_user = MagicMock()
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = persisted_user
+
+    scoped_session = AsyncMock()
+    scoped_session.execute = AsyncMock(return_value=lookup)
+    scoped_session.commit = AsyncMock()
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    set_user_language = _get_tool(agent, "set_user_language")
+    result = await set_user_language("RU-cyrl")
+    assert "ru" in result, f"set_user_language did not normalize code: {result!r}"
+    assert persisted_user.language == "ru", (
+        f"persisted language was not normalized: {persisted_user.language!r}"
+    )
+    assert user.language == "ru", "in-memory user.language was not updated"
+
+
+@pytest.mark.asyncio
+async def test_set_user_language_rejects_too_short_code() -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    agent, _state = _build_agent_with_factory(user=user, factory_session=MagicMock())
+    set_user_language = _get_tool(agent, "set_user_language")
+    result = await set_user_language("x")
+    assert "Invalid" in result, f"set_user_language accepted overly-short code: {result!r}"
+
+
+@pytest.mark.asyncio
+async def test_set_user_timezone_persists_on_resolved(mocker) -> None:
+    from unittest.mock import MagicMock
+
+    user = _fake_user()
+    user.timezone = None
+
+    persisted_user = MagicMock()
+    persisted_user.timezone = None
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = persisted_user
+
+    scoped_session = AsyncMock()
+    scoped_session.execute = AsyncMock(return_value=lookup)
+    scoped_session.commit = AsyncMock()
+
+    candidate = SimpleNamespace(
+        label="Berlin, Germany",
+        timezone="Europe/Berlin",
+        local_time=lambda: SimpleNamespace(
+            strftime=lambda _fmt: "15:30",
+        ),
+    )
+    resolution = SimpleNamespace(status="resolved", candidates=(candidate,))
+    mocker.patch(
+        "news_service.agents.conversational.resolve_timezone",
+        return_value=resolution,
+    )
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    set_user_timezone = _get_tool(agent, "set_user_timezone")
+    result = await set_user_timezone("Berlin")
+    assert result.startswith("resolved:"), (
+        f"set_user_timezone did not prefix resolved status: {result!r}"
+    )
+    assert persisted_user.timezone == "Europe/Berlin", (
+        "persisted timezone was not set to the resolved IANA name"
+    )
+    assert user.timezone == "Europe/Berlin", "in-memory user.timezone was not updated"
+
+
+@pytest.mark.asyncio
+async def test_set_user_timezone_returns_ambiguous_without_persisting(mocker) -> None:
+
+    user = _fake_user()
+    original_timezone = user.timezone
+
+    scoped_session = AsyncMock()
+    scoped_session.commit = AsyncMock()
+
+    portland_or = SimpleNamespace(label="Portland, United States", timezone="America/Los_Angeles")
+    portland_me = SimpleNamespace(label="Portland, United States", timezone="America/New_York")
+    resolution = SimpleNamespace(status="ambiguous", candidates=(portland_or, portland_me))
+    mocker.patch(
+        "news_service.agents.conversational.resolve_timezone",
+        return_value=resolution,
+    )
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    set_user_timezone = _get_tool(agent, "set_user_timezone")
+    result = await set_user_timezone("Portland")
+    assert result.startswith("ambiguous:"), f"set_user_timezone did not flag ambiguity: {result!r}"
+    assert user.timezone == original_timezone, (
+        "ambiguous resolution must not overwrite the user's timezone"
+    )
+    scoped_session.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_set_user_timezone_returns_not_found_on_unknown_query(mocker) -> None:
+
+    user = _fake_user()
+    scoped_session = AsyncMock()
+    scoped_session.commit = AsyncMock()
+
+    resolution = SimpleNamespace(status="not_found", candidates=())
+    mocker.patch(
+        "news_service.agents.conversational.resolve_timezone",
+        return_value=resolution,
+    )
+
+    agent, _state = _build_agent_with_factory(user=user, factory_session=scoped_session)
+    set_user_timezone = _get_tool(agent, "set_user_timezone")
+    result = await set_user_timezone("qzzzx")
+    assert result.startswith("not_found:"), (
+        f"set_user_timezone did not signal not_found: {result!r}"
+    )
+    scoped_session.commit.assert_not_called()
+
+
+def test_build_instruction_flags_first_time_user_when_no_subscriptions() -> None:
+    result = _build_instruction(
+        user_spec="",
+        conversation_summary="",
+        user_language=None,
+        user_timezone=None,
+        subscription_summaries=[],
+    )
+    assert "first-time interaction" in result, (
+        "empty subscription list should trigger first-time greeting context"
+    )
+
+
+def test_build_instruction_lists_active_subscriptions_when_present() -> None:
+    marker = f"[{uuid.uuid4()}] digest | 0 8 * * * | AI research {uuid.uuid4().hex[:6]}"
+    result = _build_instruction(
+        user_spec="",
+        conversation_summary="",
+        user_language="en",
+        user_timezone="Europe/Berlin",
+        subscription_summaries=[marker],
+    )
+    assert marker in result, "instruction did not include the subscription summary line"
