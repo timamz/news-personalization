@@ -80,16 +80,13 @@ services:
         condition: service_started
 
   searxng:
-    image: searxng/searxng:latest
+    build: ./searxng
     ports:
       - "8888:8080"
     environment:
       SEARXNG_SECRET: "news-monorepo-searxng-secret"
       SEARXNG_LIMITER: "false"
       SEARXNG_IMAGE_PROXY: "false"
-    volumes:
-      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
     restart: unless-stopped
 
   db-backup:

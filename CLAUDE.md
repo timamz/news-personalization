@@ -251,13 +251,58 @@ Branch strategy: `main` is always deployable. Feature work happens on short-live
 
 ### Deployment
 
-All deployment targets the **`devbox`** Docker context (`ssh://timamz@100.73.138.67`). Never run `docker compose up` locally with production bot tokens — it will conflict with the remote instance.
+All deployment targets the **`devbox`** Docker context (`ssh://timamz@100.73.138.67`). Never run `docker compose up` locally with production bot tokens -- it will conflict with the remote instance.
 
 ```bash
 docker --context devbox compose up --build -d          # deploy full stack
 docker --context devbox compose up --build -d tgbot     # deploy single service
 docker --context devbox logs -f tgbot                   # check logs
 ```
+
+#### Deploy-time facts worth knowing
+
+- **Compose project name is `news-monorepo`** (derived from the directory name of the compose file on the client machine). Containers are named `news-monorepo-<service>-1`.
+- **pgdata volume is external and legacy-named** `news-personalization_pgdata` (pre-dating the rename to `news-monorepo`), declared `external: true` in `docker-compose.yml`. It must be pre-created before `up`:
+  ```bash
+  docker --context devbox volume create news-personalization_pgdata
+  ```
+  If it does not exist, the stack fails to start with `external volume "news-personalization_pgdata" not found`. The same applies to `news-personalization_tgbot_home`.
+- **Bind mounts resolve on the daemon host, not the client.** When you deploy via `docker --context devbox compose up`, any `- ./foo:/bar` mount looks for `./foo` on the *devbox* filesystem, not your Mac. The repo is not checked out on devbox, so file-based bind mounts silently turn into empty-directory mounts on the container side (Docker auto-creates a directory at the destination when the source is missing). Do not rely on bind mounts for config files -- bake config into the image with a service-local `Dockerfile` instead (see `searxng/Dockerfile`). Directory bind mounts used as scratch space (e.g. `db-backup`'s `/backups`) are fine because an empty directory is the intended state.
+- **Postgres is on pgvector image** (`pgvector/pgvector:pg16`). The pgvector extension must exist in the `news` database. The baseline Alembic migration (`0001_baseline`) runs `CREATE EXTENSION IF NOT EXISTS vector` before creating tables.
+- **App container runs `alembic upgrade head` on startup** (see the compose `command:` for the `app` service). On a fresh DB this applies `0001_baseline` in one pass. On an existing DB at baseline, it is a no-op. Any future schema changes ship as new revision files on top of the baseline.
+
+#### Wiping the DB (zero-state redeploy)
+
+When you want to drop all data and start clean:
+
+```bash
+docker --context devbox compose down
+docker --context devbox volume rm news-personalization_pgdata
+docker --context devbox volume create news-personalization_pgdata
+docker --context devbox compose up --build -d
+```
+
+Verify afterward:
+
+```bash
+docker --context devbox exec news-monorepo-postgres-1 \
+  psql -U news -d news -c 'SELECT version_num FROM alembic_version;' -c '\dt'
+```
+
+`version_num` should be `0001_baseline`; `\dt` should list `alembic_version` plus the 8 model tables (`users`, `subscriptions`, `subscription_sources`, `sources`, `news_items`, `sent_items`, `source_removal_log`, `failed_tasks`). Confirm all are empty with a row-count roll-up if you want to be sure.
+
+#### Troubleshooting
+
+- **`external volume ... not found`**: run the `volume create` command above.
+- **Searxng restarting with `"/etc/searxng/settings.yml" is not a valid file`**: means a stale version of `docker-compose.yml` is bind-mounting the config instead of using `build: ./searxng`. Pull latest and redeploy.
+- **Searxng still broken after a fresh image build**: the upstream `searxng/searxng` image declares `VOLUME /etc/searxng`, so Docker attaches an anonymous volume there. Anonymous volumes persist across container recreates and silently *shadow* any files COPY'd into that path during build. Remove the container *with* its volumes and prune anonymous volumes before recreating:
+  ```bash
+  docker --context devbox compose rm -fsv searxng
+  docker --context devbox volume prune -f
+  docker --context devbox compose up -d searxng
+  ```
+- **SSH connection reset mid-build**: retry. The `docker --context devbox compose up --build` command is idempotent; partial image layers are cached.
+- **Containers from an unrelated project on devbox**: devbox is a shared host running several projects (`bjj_bot`, `link-to-audio-bot`, `news-monorepo`). Always scope commands with `--filter name=news-monorepo` or `docker compose -p news-monorepo`.
 
 ---
 
