@@ -216,39 +216,25 @@ def _source_ctx(
 def test_compute_reflect_reasons_lists_drift_staleness_streak_and_revise_signals() -> None:
     from news_service.agents.digest.pipeline import _compute_reflect_reasons
 
-    sub = MagicMock()
-    sub.last_reflected_at = datetime.now(UTC)
-    now = datetime.now(UTC)
-
     reasons_revise = _compute_reflect_reasons(
-        subscription=sub,
         quality=_revise_quality(),
         source_contexts=[_source_ctx()],
-        now=now,
     )
     reasons_drift = _compute_reflect_reasons(
-        subscription=sub,
         quality=_healthy_quality(),
         source_contexts=[_source_ctx(cos=0.15)],
-        now=now,
     )
     reasons_stale = _compute_reflect_reasons(
-        subscription=sub,
         quality=_healthy_quality(),
         source_contexts=[_source_ctx(days_since=90)],
-        now=now,
     )
     reasons_streak = _compute_reflect_reasons(
-        subscription=sub,
         quality=_healthy_quality(),
         source_contexts=[_source_ctx(streak=15)],
-        now=now,
     )
     reasons_none = _compute_reflect_reasons(
-        subscription=sub,
         quality=_healthy_quality(),
         source_contexts=[_source_ctx()],
-        now=now,
     )
 
     assert (

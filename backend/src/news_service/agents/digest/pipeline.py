@@ -181,10 +181,8 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
             candidates=candidates,
         )
         reasons = _compute_reflect_reasons(
-            subscription=subscription,
             quality=quality,
             source_contexts=source_contexts,
-            now=datetime.now(UTC),
         )
     except Exception:
         logger.exception(
@@ -403,10 +401,8 @@ async def _load_source_contexts(
 
 def _compute_reflect_reasons(
     *,
-    subscription: Subscription,
     quality: object | None,
     source_contexts: list[ReflectorSourceContext],
-    now: datetime,
 ) -> list[str]:
     """Collect human-readable reasons that justify running the Reflector.
 
