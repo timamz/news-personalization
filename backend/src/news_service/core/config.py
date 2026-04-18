@@ -37,8 +37,10 @@ class Settings(BaseSettings):
 
     source_target_count: int = 8
     content_sample_size: int = 10
+    content_sample_window_days: int = 30
     content_relevance_top_k: int = 3
     content_db_candidate_threshold: float = 0.80
+    source_embedding_smoothing: float = 0.9
 
     conversation_ttl_seconds: int = 30 * 24 * 3600
     conversation_hot_max_bytes: int = 20000

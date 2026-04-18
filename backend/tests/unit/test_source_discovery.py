@@ -1,4 +1,4 @@
-"""Tests for the source discovery pipeline."""
+"""Tests for the source discovery pipeline (ReAct orchestrator shape)."""
 
 import asyncio
 import logging
@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from news_service.agents.source_discovery import ScoredSource
-from news_service.agents.source_discovery.pipeline import _deduplicate, _format_summary
 
 logging.disable(logging.CRITICAL)
 
@@ -19,63 +18,32 @@ def _scored(url: str, score: float = 0.8, **kw) -> ScoredSource:
     )
 
 
-@pytest.mark.parametrize(
-    ("url_a", "url_b"),
-    [
-        ("https://a.test/feed", "https://a.test/feed"),
-        ("https://a.test/Feed", "https://a.test/feed"),
-        ("https://a.test/feed", "https://a.test/feed/"),
-    ],
-    ids=["exact", "case_insensitive", "trailing_slash"],
-)
-def test_deduplicate_treats_variants_of_same_url_as_duplicates(url_a: str, url_b: str) -> None:
-    result = _deduplicate([_scored(url_a, 0.8), _scored(url_b, 0.9)])
-    assert len(result) == 1, "deduplicate did not collapse duplicate URL variants"
+def _runner_that(calls):
+    """Build a fake ADK runner that invokes ``calls(tools, message)`` once."""
 
+    captured: dict[str, str] = {}
 
-def test_deduplicate_keeps_first_occurrence_and_preserves_distinct_urls() -> None:
-    url = f"https://{uuid.uuid4().hex[:8]}.test/feed"
-    first = _scored(url, 0.8, title="first")
-    second = _scored(url, 0.9, title="second")
-    distinct = [
-        _scored(f"https://{uuid.uuid4().hex[:8]}.test/{i}", 0.5 + i * 0.1) for i in range(3)
-    ]
+    async def fake(*, agent, message, user_id="system"):
+        captured["message"] = message
+        tools = {t.__name__: t for t in agent.tools}
+        await calls(tools, message)
+        return "Done"
 
-    result = _deduplicate([first, second, *distinct])
-    assert result[0].title == "first" and len(result) == 4, (
-        "deduplicate did not keep the first occurrence while preserving distinct URLs"
-    )
-
-
-def test_format_summary_shows_count_and_type_breakdown_or_empty_notice() -> None:
-    assert "No sources found" in _format_summary([])
-    summary = _format_summary(
-        [
-            _scored(f"https://{uuid.uuid4().hex[:8]}.test/a", source_kind="rss"),
-            _scored(f"https://{uuid.uuid4().hex[:8]}.test/b", source_kind="reddit_subreddit"),
-        ]
-    )
-    assert "Found 2 sources" in summary and "rss" in summary and "reddit_subreddit" in summary
+    return AsyncMock(side_effect=fake), captured
 
 
 @pytest.mark.asyncio
-async def test_pipeline_threads_user_spec_attached_sources_and_reason_into_input(mocker) -> None:
+async def test_pipeline_threads_spec_attached_and_reason_into_input(mocker) -> None:
     mocker.patch(
         "news_service.agents.source_discovery.pipeline.run_finder",
         new=AsyncMock(return_value=[]),
     )
-    captured: dict[str, str] = {}
 
-    async def _capture(*, agent, message, user_id="system"):
-        captured["message"] = message
-        tools = {t.__name__: t for t in agent.tools}
-        await tools["submit_results"]()
-        return "Done"
+    async def _calls(tools, _message):
+        await tools["abort"]("nothing to do")
 
-    mocker.patch(
-        "news_service.agents.source_discovery.pipeline.run_agent_text",
-        new=AsyncMock(side_effect=_capture),
-    )
+    runner, captured = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
 
     from news_service.agents.source_discovery.pipeline import run_source_discovery
 
@@ -101,28 +69,22 @@ async def test_pipeline_threads_user_spec_attached_sources_and_reason_into_input
     ), "discovery agent input did not contain user_spec, attached source, and reason"
 
 
-def _fake_adk_runner(strategies: int = 1):
-    async def fake(*, agent, message, user_id="system"):
-        tools = {t.__name__: t for t in agent.tools}
-        for i in range(strategies):
-            await tools["run_parallel_search"](f"strategy-{i}")
-        await tools["submit_results"]()
-        return "Done"
-
-    return AsyncMock(side_effect=fake)
-
-
 @pytest.mark.asyncio
-async def test_pipeline_returns_sources_and_sorts_by_relevance_descending(mocker) -> None:
-    sources = [_scored(f"https://{uuid.uuid4().hex[:8]}.test", score=s) for s in (0.3, 0.9, 0.6)]
+async def test_pipeline_returns_only_urls_the_orchestrator_selected(mocker) -> None:
+    a = f"https://{uuid.uuid4().hex[:8]}.test/a"
+    b = f"https://{uuid.uuid4().hex[:8]}.test/b"
+    c = f"https://{uuid.uuid4().hex[:8]}.test/c"
     mocker.patch(
         "news_service.agents.source_discovery.pipeline.run_finder",
-        new=AsyncMock(return_value=sources),
+        new=AsyncMock(return_value=[_scored(a, 0.9), _scored(b, 0.6), _scored(c, 0.3)]),
     )
-    mocker.patch(
-        "news_service.agents.source_discovery.pipeline.run_agent_text",
-        new=_fake_adk_runner(),
-    )
+
+    async def _calls(tools, _message):
+        await tools["spawn_finder"]("one strategy")
+        await tools["submit_selection"](f"{a}, {c}")
+
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
 
     from news_service.agents.source_discovery.pipeline import run_source_discovery
 
@@ -131,127 +93,161 @@ async def test_pipeline_returns_sources_and_sorts_by_relevance_descending(mocker
         topic_text=f"Topic {uuid.uuid4().hex[:4]}",
         prompt_embedding=[0.1] * 10,
     )
-
-    scores = [s.relevance_score for s in result.sources]
-    assert scores == sorted(scores, reverse=True) and len(result.sources) == 3
+    urls = {s.url for s in result.sources}
+    assert urls == {a, c}, "result should contain exactly the URLs the orchestrator submitted"
 
 
 @pytest.mark.asyncio
-async def test_pipeline_survives_partial_finder_failure(mocker) -> None:
-    surviving_url = f"https://{uuid.uuid4().hex[:8]}.test/feed"
-    call = 0
-
-    async def _mock_finder(**_):
-        nonlocal call
-        call += 1
-        if call == 1:
-            raise RuntimeError("finder failed")
-        return [_scored(surviving_url, 0.7)]
-
+async def test_spawn_finder_excludes_already_attached_urls_from_pool(mocker) -> None:
+    attached = f"https://{uuid.uuid4().hex[:8]}.test/attached"
+    new_url = f"https://{uuid.uuid4().hex[:8]}.test/new"
     mocker.patch(
         "news_service.agents.source_discovery.pipeline.run_finder",
-        new=AsyncMock(side_effect=_mock_finder),
+        new=AsyncMock(return_value=[_scored(attached, 0.9), _scored(new_url, 0.7)]),
     )
 
-    async def _runner(*, agent, message, user_id="system"):
-        tools = {t.__name__: t for t in agent.tools}
-        await tools["run_parallel_search"]("Strategy A\nStrategy B")
-        await tools["submit_results"]()
-        return "Done"
+    async def _calls(tools, _message):
+        await tools["spawn_finder"]("strategy")
+        rejection = await tools["submit_selection"](attached)
+        assert "not in the candidate pool" in rejection
+        await tools["submit_selection"](new_url)
 
-    mocker.patch(
-        "news_service.agents.source_discovery.pipeline.run_agent_text",
-        new=AsyncMock(side_effect=_runner),
-    )
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
 
     from news_service.agents.source_discovery.pipeline import run_source_discovery
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        topic_text=f"Topic {uuid.uuid4().hex[:4]}",
+        topic_text="topic",
         prompt_embedding=[0.1] * 10,
+        attached_sources=[(attached, "rss", True)],
     )
-    assert len(result.sources) == 1, (
-        "pipeline did not recover and return the surviving finder's source"
+    urls = [s.url for s in result.sources]
+    assert urls == [new_url], (
+        "attached URLs must be filtered from the pool so they cannot be re-accepted"
     )
 
 
 @pytest.mark.asyncio
-async def test_pipeline_deduplicates_across_rounds(mocker) -> None:
-    shared = f"https://{uuid.uuid4().hex[:8]}.test/feed"
-    unique = f"https://{uuid.uuid4().hex[:8]}.test/other"
-    round_counter = 0
-
-    async def _mock_finder(**_):
-        nonlocal round_counter
-        round_counter += 1
-        if round_counter <= 1:
-            return [_scored(shared, 0.8)]
-        return [_scored(shared, 0.8), _scored(unique, 0.6)]
-
+async def test_submit_selection_rejects_urls_not_in_the_pool(mocker) -> None:
+    real = f"https://{uuid.uuid4().hex[:8]}.test/real"
     mocker.patch(
         "news_service.agents.source_discovery.pipeline.run_finder",
-        new=AsyncMock(side_effect=_mock_finder),
+        new=AsyncMock(return_value=[_scored(real, 0.9)]),
     )
-    mocker.patch(
-        "news_service.agents.source_discovery.pipeline.run_agent_text",
-        new=_fake_adk_runner(strategies=2),
-    )
+    rejection_messages: list[str] = []
+
+    async def _calls(tools, _message):
+        await tools["spawn_finder"]("s")
+        rejection_messages.append(await tools["submit_selection"]("https://not-real.test/feed"))
+        await tools["submit_selection"](real)
+
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
 
     from news_service.agents.source_discovery.pipeline import run_source_discovery
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        topic_text=f"Topic {uuid.uuid4().hex[:4]}",
+        topic_text="topic",
         prompt_embedding=[0.1] * 10,
     )
-    assert len(result.sources) == 2, "pipeline did not deduplicate shared sources across rounds"
+    assert any("not in the candidate pool" in m for m in rejection_messages) and [
+        s.url for s in result.sources
+    ] == [real], "invalid URLs must be rejected before the valid submission lands"
 
 
 @pytest.mark.asyncio
-async def test_pipeline_respects_source_target_count(mocker) -> None:
-    sources = [
-        _scored(f"https://{uuid.uuid4().hex[:8]}.test", score=0.5 + i * 0.05) for i in range(20)
-    ]
+async def test_spawn_finder_survives_a_crash_and_returns_error_text(mocker) -> None:
     mocker.patch(
         "news_service.agents.source_discovery.pipeline.run_finder",
-        new=AsyncMock(return_value=sources),
+        new=AsyncMock(side_effect=RuntimeError("network down")),
     )
-    mocker.patch("news_service.agents.source_discovery.pipeline.settings.source_target_count", 3)
-    mocker.patch(
-        "news_service.agents.source_discovery.pipeline.run_agent_text",
-        new=_fake_adk_runner(),
-    )
+    seen: list[str] = []
+
+    async def _calls(tools, _message):
+        seen.append(await tools["spawn_finder"]("strategy"))
+        await tools["abort"]("all finders failed")
+
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
 
     from news_service.agents.source_discovery.pipeline import run_source_discovery
 
     result = await run_source_discovery(
         session=AsyncMock(),
-        topic_text=f"Topic {uuid.uuid4().hex[:4]}",
+        topic_text="topic",
         prompt_embedding=[0.1] * 10,
     )
-    assert len(result.sources) == 3
+    assert result.sources == [] and any("finder crashed" in s for s in seen), (
+        "orchestrator should receive a crash notice, not an exception"
+    )
 
 
 @pytest.mark.asyncio
-async def test_pipeline_returns_empty_when_all_finders_fail(mocker) -> None:
+async def test_inspect_source_returns_content_preview_for_pooled_candidate(mocker) -> None:
+    url = f"https://{uuid.uuid4().hex[:8]}.test/feed"
     mocker.patch(
         "news_service.agents.source_discovery.pipeline.run_finder",
-        new=AsyncMock(side_effect=RuntimeError("total failure")),
+        new=AsyncMock(return_value=[_scored(url, 0.8)]),
     )
+    from news_service.services.relevance import DatedPost
+
+    posts = [DatedPost(text=f"post body {uuid.uuid4().hex[:4]}", published_at=None)]
     mocker.patch(
-        "news_service.agents.source_discovery.pipeline.run_agent_text",
-        new=_fake_adk_runner(),
+        "news_service.agents.source_discovery.pipeline.fetch_source_posts",
+        new=AsyncMock(return_value=posts),
     )
+
+    captured: dict[str, str] = {}
+
+    async def _calls(tools, _message):
+        await tools["spawn_finder"]("s")
+        captured["preview"] = await tools["inspect_source"](url)
+        await tools["submit_selection"](url)
+
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
 
     from news_service.agents.source_discovery.pipeline import run_source_discovery
 
-    result = await run_source_discovery(
+    await run_source_discovery(
         session=AsyncMock(),
-        topic_text=f"Topic {uuid.uuid4().hex[:4]}",
+        topic_text="topic",
         prompt_embedding=[0.1] * 10,
     )
-    assert result.sources == []
+    assert "post body" in captured["preview"] and url in captured["preview"], (
+        "inspect_source preview did not include the fetched content and URL"
+    )
+
+
+@pytest.mark.asyncio
+async def test_inspect_source_refuses_urls_outside_the_pool(mocker) -> None:
+    mocker.patch(
+        "news_service.agents.source_discovery.pipeline.run_finder",
+        new=AsyncMock(return_value=[]),
+    )
+
+    captured: dict[str, str] = {}
+
+    async def _calls(tools, _message):
+        captured["resp"] = await tools["inspect_source"]("https://ghost.test/feed")
+        await tools["abort"]("done")
+
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
+
+    from news_service.agents.source_discovery.pipeline import run_source_discovery
+
+    await run_source_discovery(
+        session=AsyncMock(),
+        topic_text="topic",
+        prompt_embedding=[0.1] * 10,
+    )
+    assert "not in candidate pool" in captured["resp"], (
+        "inspect_source must refuse to fetch URLs the finders did not return"
+    )
 
 
 @pytest.mark.asyncio
@@ -260,22 +256,25 @@ async def test_pipeline_emits_status_events_through_the_queue(mocker) -> None:
         "news_service.agents.source_discovery.pipeline.run_finder",
         new=AsyncMock(return_value=[]),
     )
-    mocker.patch(
-        "news_service.agents.source_discovery.pipeline.run_agent_text",
-        new=_fake_adk_runner(),
-    )
+
+    async def _calls(tools, _message):
+        await tools["spawn_finder"]("s")
+        await tools["abort"]("ok")
+
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
     queue: asyncio.Queue[dict] = asyncio.Queue()
 
     from news_service.agents.source_discovery.pipeline import run_source_discovery
 
     await run_source_discovery(
         session=AsyncMock(),
-        topic_text=f"Topic {uuid.uuid4().hex[:4]}",
+        topic_text="topic",
         prompt_embedding=[0.1] * 10,
         status_queue=queue,
     )
 
-    keys = []
+    keys: list[str] = []
     while not queue.empty():
         keys.append(queue.get_nowait()["status_key"])
     assert "status_planning_discovery" in keys and "status_searching_sources" in keys

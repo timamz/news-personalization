@@ -1,6 +1,9 @@
 """Score source relevance by sampling real content and comparing to the prompt."""
 
 import logging
+import random
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 import feedparser
@@ -18,30 +21,59 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-async def fetch_source_posts(url: str, source_kind: SourceKind) -> list[str]:
-    """Fetch posts from a source and return their text content."""
+@dataclass(slots=True)
+class DatedPost:
+    """Text content plus the publication timestamp we know about it, if any."""
+
+    text: str
+    published_at: datetime | None
+
+
+async def fetch_source_posts(url: str, source_kind: SourceKind) -> list[DatedPost]:
+    """Fetch posts from a source and return their text + published_at."""
     if source_kind == "telegram_channel":
         channel = extract_telegram_channel_from_url(url)
         if channel is None:
             return []
         posts = await fetch_telegram_posts(channel)
-        return [post.body for post in posts if post.body.strip()]
+        return [
+            DatedPost(text=post.body, published_at=post.published_at)
+            for post in posts
+            if post.body.strip()
+        ]
 
     if source_kind == "reddit_subreddit":
         subreddit = extract_reddit_subreddit_from_url(url)
         if subreddit is None:
             return []
         posts = await fetch_reddit_posts(subreddit)
-        return [f"{post.title} {post.body}".strip() for post in posts if post.title.strip()]
+        return [
+            DatedPost(
+                text=f"{post.title} {post.body}".strip(),
+                published_at=post.published_at,
+            )
+            for post in posts
+            if post.title.strip()
+        ]
 
     if source_kind == "twitter_account":
         account = extract_twitter_account_from_url(url)
         if account is None:
             return []
         posts = await fetch_twitter_posts(account)
-        return [f"{post.title} {post.body}".strip() for post in posts if post.body.strip()]
+        return [
+            DatedPost(
+                text=f"{post.title} {post.body}".strip(),
+                published_at=post.published_at,
+            )
+            for post in posts
+            if post.body.strip()
+        ]
 
-    # RSS
+    return await _fetch_rss_posts(url)
+
+
+async def _fetch_rss_posts(url: str) -> list[DatedPost]:
     try:
         async with httpx.AsyncClient(
             timeout=settings.http_timeout_seconds,
@@ -51,25 +83,56 @@ async def fetch_source_posts(url: str, source_kind: SourceKind) -> list[str]:
             if response.status_code != 200:
                 return []
         parsed = feedparser.parse(response.text)
-        texts: list[str] = []
-        for entry in parsed.entries:
-            title = getattr(entry, "title", "") or ""
-            summary = getattr(entry, "summary", "") or ""
-            text = f"{title} {summary}".strip()
-            if text:
-                texts.append(text)
-        return texts
     except Exception:
         logger.debug("Failed to fetch RSS posts from %s", url)
         return []
 
+    dated: list[DatedPost] = []
+    for entry in parsed.entries:
+        title = getattr(entry, "title", "") or ""
+        summary = getattr(entry, "summary", "") or ""
+        text = f"{title} {summary}".strip()
+        if not text:
+            continue
+        published = None
+        raw = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
+        if raw is not None:
+            try:
+                published = datetime(*raw[:6], tzinfo=UTC)
+            except (TypeError, ValueError):
+                published = None
+        dated.append(DatedPost(text=text, published_at=published))
+    return dated
 
-def sample_posts(posts: list[str], sample_size: int) -> list[str]:
-    """Evenly sample posts across the list, not just the latest."""
+
+def sample_recent_posts(
+    posts: list[DatedPost],
+    sample_size: int,
+    *,
+    window_days: int,
+    now: datetime | None = None,
+    rng: random.Random | None = None,
+) -> list[str]:
+    """Pick up to ``sample_size`` random posts from the last ``window_days``.
+
+    Falls back to random sampling across the full pool when the recent
+    window yields fewer items than the sample size (either because the
+    source is sparse or because timestamps are missing). Posts without a
+    ``published_at`` are treated as eligible under the fallback but not
+    the window, since we cannot confirm they are recent.
+    """
+    if not posts:
+        return []
+    rng = rng or random.Random()
+    cutoff = (now or datetime.now(UTC)) - timedelta(days=window_days)
+
+    recent = [p for p in posts if p.published_at is not None and p.published_at >= cutoff]
+    if len(recent) >= sample_size:
+        return [p.text for p in rng.sample(recent, sample_size)]
+
     if len(posts) <= sample_size:
-        return list(posts)
-    step = len(posts) / sample_size
-    return [posts[int(i * step)] for i in range(sample_size)]
+        return [p.text for p in posts]
+    return [p.text for p in rng.sample(posts, sample_size)]
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -115,7 +178,14 @@ async def score_candidate(
     if not posts:
         return 0.0, []
 
-    sampled = sample_posts(posts, settings.content_sample_size)
+    sampled = sample_recent_posts(
+        posts,
+        sample_size=settings.content_sample_size,
+        window_days=settings.content_sample_window_days,
+    )
+    if not sampled:
+        return 0.0, []
+
     score = await score_source_relevance(
         sampled, prompt_embedding, settings.content_relevance_top_k
     )

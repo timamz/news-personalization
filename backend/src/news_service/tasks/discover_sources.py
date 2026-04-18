@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 DISCOVER_SOURCES_TASK = "news_service.tasks.discover_sources.discover_sources_for_subscription"
 
-_REMOVAL_HISTORY_LIMIT = 20
+_REMOVAL_HISTORY_LIMIT = 50
 
 
 @celery_app.task(name=DISCOVER_SOURCES_TASK)
