@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     reflector_drift_similarity_threshold: float = 0.3
     reflector_source_staleness_days: int = 30
     reflector_max_interval_days: int = 30
+    reflector_fetch_source_items_max_limit: int = 50
 
     article_fetch_timeout_seconds: float = 15.0
     article_body_max_chars: int = 50_000

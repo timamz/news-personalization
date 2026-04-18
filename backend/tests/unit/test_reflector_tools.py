@@ -1,6 +1,8 @@
 """Tests for the digest pipeline reflector tools."""
 
 import uuid
+from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -63,6 +65,8 @@ async def test_reflector_does_not_remove_user_specified_source() -> None:
             quality_scores={},
             trigger_reasons=["Drift"],
             source_contexts=[_source_ctx(user_specified=True)],
+            allowed_source_ids={uuid.uuid4()},
+            topic_embedding=[0.1] * 1536,
         )
 
     session.delete.assert_not_called()
@@ -87,6 +91,8 @@ async def test_reflector_returns_shared_state_with_discovery_and_observations() 
             quality_scores={"relevance": 3, "format_score": 3, "conciseness": 3},
             trigger_reasons=["Drift"],
             source_contexts=[_source_ctx()],
+            allowed_source_ids={uuid.uuid4()},
+            topic_embedding=[0.1] * 1536,
         )
 
     assert "discovery_triggered" in shared_state and "observations" in shared_state, (
@@ -120,8 +126,108 @@ async def test_reflector_prompt_carries_trigger_reasons_and_source_contexts() ->
             quality_scores={},
             trigger_reasons=[reason_text],
             source_contexts=[_source_ctx(url=source_url)],
+            allowed_source_ids={uuid.uuid4()},
+            topic_embedding=[0.1] * 1536,
         )
 
     assert reason_text in captured["message"] and source_url in captured["message"], (
         "reflector prompt did not carry both the trigger reason and the source URL"
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_source_items_refuses_sources_outside_this_subscription() -> None:
+    session = _make_session()
+    subscription = _make_subscription()
+    allowed_ids = {uuid.uuid4()}
+    foreign_source_id = uuid.uuid4()
+    assert foreign_source_id not in allowed_ids
+
+    captured_tool: dict[str, str] = {}
+
+    async def _capture(*, agent, message, user_id):
+        for tool in agent.tools:
+            if getattr(tool, "__name__", "") == "fetch_source_items":
+                captured_tool["result"] = await tool(str(foreign_source_id))
+                return "ok"
+        raise AssertionError("fetch_source_items tool missing")
+
+    with patch(
+        "news_service.agents.digest.reflector.run_agent_text",
+        new=AsyncMock(side_effect=_capture),
+    ):
+        from news_service.agents.digest.reflector import run_reflector
+
+        await run_reflector(
+            db_session=session,
+            subscription=subscription,
+            digest_text="digest",
+            user_spec=subscription.user_spec,
+            quality_scores={},
+            trigger_reasons=["Drift"],
+            source_contexts=[],
+            allowed_source_ids=allowed_ids,
+            topic_embedding=[0.1] * 1536,
+        )
+
+    assert "not linked to this subscription" in captured_tool["result"], (
+        "fetch_source_items did not refuse a source outside the subscription's allow-list"
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_source_items_returns_items_with_cosine_and_snippets() -> None:
+    session = _make_session()
+    subscription = _make_subscription()
+    source_id = uuid.uuid4()
+    allowed_ids = {source_id}
+
+    headline = f"Headline {uuid.uuid4().hex[:6]}"
+    body = f"Body prose {uuid.uuid4().hex[:8]} with paragraphs."
+    fake_item = SimpleNamespace(
+        id=uuid.uuid4(),
+        source_id=source_id,
+        headline=headline,
+        body=body,
+        url="http://x.test/a",
+        published_at=datetime(2026, 4, 10, tzinfo=UTC),
+        embedding=[0.1] * 1536,
+    )
+
+    scalars_result = MagicMock()
+    scalars_result.all.return_value = [fake_item]
+    query_result = MagicMock()
+    query_result.scalars.return_value = scalars_result
+    session.execute = AsyncMock(return_value=query_result)
+
+    captured_tool: dict[str, str] = {}
+
+    async def _capture(*, agent, message, user_id):
+        for tool in agent.tools:
+            if getattr(tool, "__name__", "") == "fetch_source_items":
+                captured_tool["result"] = await tool(str(source_id), 30, 5)
+                return "ok"
+        raise AssertionError("fetch_source_items tool missing")
+
+    with patch(
+        "news_service.agents.digest.reflector.run_agent_text",
+        new=AsyncMock(side_effect=_capture),
+    ):
+        from news_service.agents.digest.reflector import run_reflector
+
+        await run_reflector(
+            db_session=session,
+            subscription=subscription,
+            digest_text="digest",
+            user_spec=subscription.user_spec,
+            quality_scores={},
+            trigger_reasons=["Drift"],
+            source_contexts=[],
+            allowed_source_ids=allowed_ids,
+            topic_embedding=[0.1] * 1536,
+        )
+
+    result = captured_tool["result"]
+    assert headline in result and body[:50] in result and "cos=" in result, (
+        "fetch_source_items did not return headline, body snippet, and cosine similarity"
     )

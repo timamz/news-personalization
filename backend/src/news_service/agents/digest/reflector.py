@@ -6,6 +6,7 @@ the specific reasons it was invoked plus rich per-source metadata so it can
 make targeted decisions rather than rediscovering signals.
 
 Tools:
+- fetch_source_items: inspect a source's recent items before deciding
 - remove_source: delete dead or off-topic auto-discovered sources
 - trigger_source_discovery: queue discovery to find new sources
 - emit_status: emit a progress status to the user
@@ -14,7 +15,7 @@ Tools:
 import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from google.adk.agents import Agent
@@ -25,10 +26,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.adk_runner import run_agent_text
 from news_service.core.config import get_settings
+from news_service.models.news_item import NewsItem
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
+from news_service.services.relevance import cosine_similarity
 
 if TYPE_CHECKING:
     from news_service.agents.digest.pipeline import ReflectorSourceContext
@@ -49,20 +52,25 @@ days since last published item.
 - The user's preferences (user_spec), the delivered digest, and judge scores \
 if any.
 
-You have three tools:
-1. **remove_source(url, reason)** -- Remove a dead or off-topic \
+You have four tools:
+1. **fetch_source_items(source_id, since_days_ago, limit)** -- Read recent \
+items from a specific linked source to examine its content before deciding. \
+Always call this before removing a source whose content you have not seen.
+2. **remove_source(url, reason)** -- Remove a dead or off-topic \
 auto-discovered source. NEVER attempt to remove sources marked \
 [user-specified]. Remove only when you have concrete evidence (drift, \
-prolonged silence).
-2. **trigger_source_discovery(reason)** -- Request new sources. Use after \
+prolonged silence, or content inspection via fetch_source_items).
+3. **trigger_source_discovery(reason)** -- Request new sources. Use after \
 removing sources, or when the subscription's source pool is clearly thin \
 or off-topic.
-3. **emit_status(message)** -- Emit a short progress status to the user.
+4. **emit_status(message)** -- Emit a short progress status to the user.
 
 Guidelines:
 - Start from the invocation reasons. They name the specific sources you \
 should investigate first.
-- Be conservative. Do not remove a user-specified source.
+- Prefer inspect before remove: fetch_source_items to verify, then remove.
+- Be conservative. Do not remove a user-specified source or a source that \
+looks healthy on inspection.
 - After removing sources, trigger discovery with a reason naming what was \
 lost so the finder knows what to look for.
 """
@@ -96,6 +104,8 @@ async def run_reflector(
     quality_scores: dict,
     trigger_reasons: list[str],
     source_contexts: list["ReflectorSourceContext"],
+    allowed_source_ids: set[uuid.UUID],
+    topic_embedding: list[float],
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run the Reflector ADK agent; return shared state recording side effects.
@@ -180,6 +190,69 @@ async def run_reflector(
         shared_state["discovery_reason"] = reason
         return f"Source discovery requested: {reason}"
 
+    async def fetch_source_items(
+        source_id: str,
+        since_days_ago: int = 14,
+        limit: int = 10,
+    ) -> str:
+        """Fetch recent items from a specific linked source for inspection.
+
+        Useful before removing a source or to verify drift. The source must
+        be linked to this subscription; cross-subscription access is refused.
+
+        Args:
+            source_id: UUID of the source to inspect.
+            since_days_ago: How far back to look, in days. Default 14.
+            limit: Max number of items to return. Capped at the server limit.
+
+        Returns:
+            Formatted list of items (headline, body snippet, published_at,
+            cosine similarity to the subscription topic) or an error message.
+        """
+        try:
+            sid = uuid.UUID(str(source_id).strip())
+        except (ValueError, AttributeError):
+            return f"Invalid source_id: {source_id!r}."
+        if sid not in allowed_source_ids:
+            return f"Source {sid} is not linked to this subscription."
+
+        max_limit = settings.reflector_fetch_source_items_max_limit
+        effective_limit = max(1, min(int(limit or 10), max_limit))
+        effective_days = max(1, int(since_days_ago or 14))
+        cutoff = datetime.now(UTC) - timedelta(days=effective_days)
+
+        stmt = (
+            select(NewsItem)
+            .where(
+                NewsItem.source_id == sid,
+                NewsItem.published_at.is_not(None),
+                NewsItem.published_at >= cutoff,
+            )
+            .order_by(NewsItem.published_at.desc())
+            .limit(effective_limit)
+        )
+        result = await db_session.execute(stmt)
+        items = list(result.scalars().all())
+        if not items:
+            return f"No items from source {sid} in the last {effective_days} days."
+
+        lines: list[str] = [f"Items from source {sid} (last {effective_days} days):"]
+        for item in items:
+            published = (
+                item.published_at.isoformat() if item.published_at is not None else "unknown"
+            )
+            if item.embedding is not None:
+                try:
+                    sim = cosine_similarity(list(item.embedding), topic_embedding)
+                    sim_str = f"{sim:.2f}"
+                except Exception:
+                    sim_str = "n/a"
+            else:
+                sim_str = "n/a"
+            body_snippet = (item.body or "")[:300].replace("\n", " ").strip()
+            lines.append(f"- [{published}] cos={sim_str} | {item.headline}\n    {body_snippet}")
+        return "\n".join(lines)
+
     async def emit_status(message: str) -> str:
         """Emit a progress status message to the user.
 
@@ -218,7 +291,7 @@ async def run_reflector(
         name=f"reflector_{uuid.uuid4().hex[:6]}",
         model=LiteLlm(model=settings.litellm_model),
         instruction=REFLECTOR_PROMPT,
-        tools=[remove_source, trigger_source_discovery, emit_status],
+        tools=[fetch_source_items, remove_source, trigger_source_discovery, emit_status],
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 

@@ -204,6 +204,8 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 quality_scores=quality.model_dump() if quality else {},
                 trigger_reasons=reasons,
                 source_contexts=source_contexts,
+                allowed_source_ids=source_ids,
+                topic_embedding=list(query_embedding),
             )
 
             subscription.last_reflected_at = datetime.now(UTC)
