@@ -68,42 +68,6 @@ async def test_write_digest_raises_when_agent_never_submits() -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_digest_enforces_search_budget() -> None:
-    item_id = str(uuid.uuid4())
-    digest_body = f"Digest {uuid.uuid4().hex[:8]}"
-    results: list[str] = []
-
-    async def _side_effect(*, agent, message, user_id):
-        tools = {t.__name__: t for t in agent.tools if callable(t)}
-        for i in range(5):
-            results.append(await tools["search_web"](f"q-{i}"))
-        await tools["submit_digest"](digest_body, item_id)
-        return "done"
-
-    with (
-        patch(f"{_WRITER_MODULE}.run_agent_text", new=AsyncMock(side_effect=_side_effect)),
-        patch(f"{_WRITER_MODULE}._search_web", new=AsyncMock(return_value="results")),
-        patch(f"{_WRITER_MODULE}.settings") as mock_settings,
-    ):
-        mock_settings.writer_max_web_searches = 2
-        mock_settings.proxy_url = None
-        mock_settings.litellm_model = "openai/gpt-test"
-
-        from news_service.agents.digest.writer import write_digest
-
-        await write_digest(
-            items_text=f"[ID: {item_id}] Headline: Z",
-            user_spec="Budgets.",
-            digest_language="en",
-            recent_digest_summaries="",
-        )
-
-    assert sum(1 for r in results if r == "Search budget exhausted") == 3, (
-        "search_web did not refuse calls past the configured budget"
-    )
-
-
-@pytest.mark.asyncio
 async def test_write_digest_does_not_expose_fetch_article_tool() -> None:
     item_id = str(uuid.uuid4())
     captured: dict[str, set[str]] = {}

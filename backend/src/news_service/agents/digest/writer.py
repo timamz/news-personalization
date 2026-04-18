@@ -75,8 +75,8 @@ Quality criteria:
 - Do not mention feed names, channel names, site names, or labels \
 other than the required '{source_label}:' line.
 - Return only the digest. No introductions, closings, commentary.
-- Budget: up to {max_searches} web searches. Use them on items that need \
-context not already in the body.
+- Use web search whenever an item needs context that is not already \
+in its body.
 
 IMPORTANT: In submit_digest, list the UUIDs of every news item you included
 as a comma-separated string in used_item_ids.
@@ -103,8 +103,6 @@ async def write_digest(
 
     Raises RuntimeError if the agent finishes without calling submit_digest.
     """
-    max_searches = settings.writer_max_web_searches
-
     search_counter = 0
 
     shared_state: dict[str, Any] = {
@@ -123,11 +121,9 @@ async def write_digest(
             query: The search query string.
 
         Returns:
-            Formatted search results, or an error/budget message.
+            Formatted search results, or an error message.
         """
         nonlocal search_counter
-        if search_counter >= max_searches:
-            return "Search budget exhausted"
         search_counter += 1
         try:
             return await _search_web(query)
@@ -157,10 +153,7 @@ async def write_digest(
 
     is_ru = _is_russian_language(digest_language)
     source_label = "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a" if is_ru else "Source"
-    system_prompt = _WRITER_PROMPT.format(
-        source_label=source_label,
-        max_searches=max_searches,
-    )
+    system_prompt = _WRITER_PROMPT.format(source_label=source_label)
 
     user_parts = [f"Language: {digest_language}"]
     if user_spec:
