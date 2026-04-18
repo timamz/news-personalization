@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from news_service.agents.digest.pipeline import ReflectorSourceContext
+
 
 def _make_session() -> AsyncMock:
     session = AsyncMock()
@@ -25,17 +27,25 @@ def _make_subscription() -> MagicMock:
     return sub
 
 
-def _source_ctx(url: str = "https://example.com/feed", user_specified: bool = False) -> MagicMock:
-    ctx = MagicMock()
-    ctx.source_id = uuid.uuid4()
-    ctx.url = url
-    ctx.title = "T"
-    ctx.is_user_specified = user_specified
-    ctx.contribution_count = 0
-    ctx.cosine_to_topic = 0.2
-    ctx.last_published_at = None
-    ctx.days_since_last_published = 40
-    return ctx
+def _source_ctx(
+    url: str = "https://example.com/feed", user_specified: bool = False
+) -> ReflectorSourceContext:
+    return ReflectorSourceContext(
+        source_id=uuid.uuid4(),
+        url=url,
+        title="T",
+        is_user_specified=user_specified,
+        contribution_count=0,
+        cosine_to_topic=0.2,
+        last_published_at=None,
+        days_since_last_published=40,
+        contributed_last_30_digests=0,
+        contribution_rate=0.0,
+        digests_since_last_contribution=5,
+        item_cosine_p50=0.4,
+        item_cosine_p90=0.7,
+        item_cosine_std=0.15,
+    )
 
 
 @pytest.mark.asyncio

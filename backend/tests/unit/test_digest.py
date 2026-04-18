@@ -33,8 +33,12 @@ def _make_session_with_sources(source_ids: list[uuid.UUID]) -> SimpleNamespace:
     sent_result = SimpleNamespace(all=lambda: [])
     source_result = SimpleNamespace(all=lambda: [(sid,) for sid in source_ids])
     recent_digest_result = SimpleNamespace(all=lambda: [])
+    streak_scalars = SimpleNamespace(all=lambda: [])
+    streak_result = SimpleNamespace(scalars=lambda: streak_scalars)
     return SimpleNamespace(
-        execute=AsyncMock(side_effect=[sent_result, source_result, recent_digest_result]),
+        execute=AsyncMock(
+            side_effect=[sent_result, source_result, recent_digest_result, streak_result]
+        ),
         flush=AsyncMock(),
         add=lambda x: None,
     )

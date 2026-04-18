@@ -40,17 +40,51 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 REFLECTOR_PROMPT = """\
-You are a pipeline quality reflector. After a digest was generated and \
-delivered, review how the pipeline performed and take corrective action on \
-the source pool backing this subscription.
+# Context
+
+This is a personalized news-digest service. A user describes what they want \
+to follow in a freeform spec (topic, tone, exclusions, format). The backend \
+keeps, per subscription, a small pool of sources (RSS feeds, Telegram \
+channels, subreddits, X accounts) -- some added explicitly by the user, \
+others auto-discovered by a separate agent to fill out the pool. Every 30 \
+minutes those sources are polled; new items are embedded and stored.
+
+On the user's schedule (e.g. daily at 8am), the digest pipeline runs:
+  1. Fetch candidate items from the pool via cosine similarity + recency.
+  2. A Writer agent composes a draft digest from those candidates.
+  3. A Judge grades the draft; up to 3 revisions are attempted.
+  4. The digest is delivered to the user via webhook.
+  5. YOU run next, but only when a health signal fires (drift, silent \
+source, REVISE verdict after max revisions, or periodic check).
+
+# Your role
+
+You are the Pipeline Reflector. You do not rewrite digests and you do not \
+touch the user_spec. Your job is to keep the subscription's SOURCE POOL \
+healthy so tomorrow's digest has better material to pull from. Everything \
+else upstream (Writer, Judge, retrieval) re-runs on the next schedule and \
+gets whatever pool you leave behind.
 
 You are given:
 - The specific reasons you were invoked (act on these first).
-- A rich line per linked source: URL, user-specified flag, contribution \
-count in this digest, cosine similarity to the subscription topic, and \
-days since last published item.
-- The user's preferences (user_spec), the delivered digest, and judge scores \
-if any.
+- A rich line per linked source with: URL, user-specified flag, today's \
+contribution count, cosine of the source's long-run content to the \
+subscription topic, days since last published item, how many of the last \
+30 digests this source contributed to, its contribution rate \
+(digest-included items / items published in the last 30 days), how many \
+consecutive digests have passed since it last contributed, and a three-\
+number cosine distribution of its recent items (p50, p90, std).
+- The user's preferences (user_spec), the delivered digest, and judge \
+scores if any.
+
+How to read the source metrics:
+- Low aggregate cosine + high p90 means the source drifts on average but \
+still lands on-topic items occasionally -- consider keeping.
+- High contribution-streak (digests since last contribution) means the \
+Writer keeps skipping this source despite it publishing -- strong \
+removal candidate.
+- Low contribution_rate on a high-volume source signals noise; combined \
+with a high streak, it's a clean remove.
 
 You have four tools:
 1. **fetch_source_items(source_id, since_days_ago, limit)** -- Read recent \
@@ -87,10 +121,21 @@ def _format_source_contexts(contexts: list["ReflectorSourceContext"]) -> str:
             last = "last item: never"
         else:
             last = f"last item: {ctx.days_since_last_published}d ago"
+        dist_parts: list[str] = []
+        if ctx.item_cosine_p50 is not None:
+            dist_parts.append(f"p50={ctx.item_cosine_p50:.2f}")
+        if ctx.item_cosine_p90 is not None:
+            dist_parts.append(f"p90={ctx.item_cosine_p90:.2f}")
+        if ctx.item_cosine_std is not None:
+            dist_parts.append(f"std={ctx.item_cosine_std:.2f}")
+        dist = ",".join(dist_parts) if dist_parts else "n/a"
         lines.append(
             f"- [source_id={ctx.source_id}] {display} [{label}] | "
-            f"contributed: {ctx.contribution_count} items | "
-            f"topic: {drift} | {last}"
+            f"today: {ctx.contribution_count} items | "
+            f"topic: {drift} | item-cos: {dist} | {last} | "
+            f"30d-digests: {ctx.contributed_last_30_digests} | "
+            f"rate: {ctx.contribution_rate:.2f} | "
+            f"streak: {ctx.digests_since_last_contribution}"
         )
     return "\n".join(lines) if lines else "(no sources linked)"
 

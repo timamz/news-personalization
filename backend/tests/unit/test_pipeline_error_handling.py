@@ -190,56 +190,62 @@ def _source_ctx(
     *,
     cos: float | None = 0.8,
     days_since: int | None = 1,
+    streak: int = 0,
     user_specified: bool = False,
-) -> MagicMock:
-    ctx = MagicMock()
-    ctx.source_id = uuid.uuid4()
-    ctx.url = f"https://example.com/{uuid.uuid4().hex[:6]}"
-    ctx.title = "T"
-    ctx.is_user_specified = user_specified
-    ctx.contribution_count = 1
-    ctx.cosine_to_topic = cos
-    ctx.last_published_at = datetime.now(UTC) - timedelta(days=days_since or 0)
-    ctx.days_since_last_published = days_since
-    return ctx
+):
+    from news_service.agents.digest.pipeline import ReflectorSourceContext
+
+    return ReflectorSourceContext(
+        source_id=uuid.uuid4(),
+        url=f"https://example.com/{uuid.uuid4().hex[:6]}",
+        title="T",
+        is_user_specified=user_specified,
+        contribution_count=1,
+        cosine_to_topic=cos,
+        last_published_at=datetime.now(UTC) - timedelta(days=days_since or 0),
+        days_since_last_published=days_since,
+        contributed_last_30_digests=5,
+        contribution_rate=0.1,
+        digests_since_last_contribution=streak,
+        item_cosine_p50=0.4,
+        item_cosine_p90=0.7,
+        item_cosine_std=0.15,
+    )
 
 
-def test_compute_reflect_reasons_lists_drift_staleness_revise_and_periodic_signals() -> None:
+def test_compute_reflect_reasons_lists_drift_staleness_streak_and_revise_signals() -> None:
     from news_service.agents.digest.pipeline import _compute_reflect_reasons
 
-    sub_recent = MagicMock()
-    sub_recent.last_reflected_at = datetime.now(UTC)
-    sub_never = MagicMock()
-    sub_never.last_reflected_at = None
-
+    sub = MagicMock()
+    sub.last_reflected_at = datetime.now(UTC)
     now = datetime.now(UTC)
 
     reasons_revise = _compute_reflect_reasons(
-        subscription=sub_recent,
+        subscription=sub,
         quality=_revise_quality(),
         source_contexts=[_source_ctx()],
         now=now,
     )
     reasons_drift = _compute_reflect_reasons(
-        subscription=sub_recent,
+        subscription=sub,
         quality=_healthy_quality(),
         source_contexts=[_source_ctx(cos=0.15)],
         now=now,
     )
     reasons_stale = _compute_reflect_reasons(
-        subscription=sub_recent,
+        subscription=sub,
         quality=_healthy_quality(),
         source_contexts=[_source_ctx(days_since=90)],
         now=now,
     )
-    reasons_periodic = _compute_reflect_reasons(
-        subscription=sub_never,
+    reasons_streak = _compute_reflect_reasons(
+        subscription=sub,
         quality=_healthy_quality(),
-        source_contexts=[_source_ctx()],
+        source_contexts=[_source_ctx(streak=15)],
         now=now,
     )
     reasons_none = _compute_reflect_reasons(
-        subscription=sub_recent,
+        subscription=sub,
         quality=_healthy_quality(),
         source_contexts=[_source_ctx()],
         now=now,
@@ -249,6 +255,6 @@ def test_compute_reflect_reasons_lists_drift_staleness_revise_and_periodic_signa
         any("REVISE" in r for r in reasons_revise)
         and any("drifted" in r for r in reasons_drift)
         and any("not published" in r for r in reasons_stale)
-        and any("Periodic" in r for r in reasons_periodic)
+        and any("consecutive digests" in r for r in reasons_streak)
         and reasons_none == []
-    ), "reflect-reasons did not produce one reason per signal and stay silent when healthy"
+    ), "reflect-reasons did not fire one reason per signal and stay silent when healthy"

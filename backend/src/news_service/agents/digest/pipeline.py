@@ -219,9 +219,17 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 subscription.id,
             )
 
-    # --- Stage 4: Mark as sent ---
+    # --- Stage 4: Mark as sent, update contribution streaks ---
     used_ids = [uuid.UUID(item_id) for item_id in composition.used_item_ids]
     await _mark_as_sent(session, subscription.id, used_ids)
+
+    used_id_set = set(used_ids)
+    contributing_source_ids = {item.source_id for item in candidates if item.id in used_id_set}
+    await _update_contribution_streaks(
+        session=session,
+        subscription_id=subscription.id,
+        contributing_source_ids=contributing_source_ids,
+    )
 
     logger.info(
         "Generated digest with %d items for subscription %s (reflected: %s)",
@@ -284,6 +292,12 @@ class ReflectorSourceContext:
     cosine_to_topic: float | None
     last_published_at: datetime | None
     days_since_last_published: int | None
+    contributed_last_30_digests: int
+    contribution_rate: float
+    digests_since_last_contribution: int
+    item_cosine_p50: float | None
+    item_cosine_p90: float | None
+    item_cosine_std: float | None
 
 
 async def _load_source_contexts(
@@ -311,19 +325,49 @@ async def _load_source_contexts(
             Source.title,
             Source.source_description_embedding,
             SubscriptionSource.is_user_specified,
+            SubscriptionSource.contributed_last_30_digests,
+            SubscriptionSource.contribution_rate,
+            SubscriptionSource.digests_since_last_contribution,
+            SubscriptionSource.item_cosine_p50,
+            SubscriptionSource.item_cosine_p90,
+            SubscriptionSource.item_cosine_std,
             func.max(NewsItem.published_at).label("last_published_at"),
         )
         .join(SubscriptionSource, SubscriptionSource.source_id == Source.id)
         .outerjoin(NewsItem, NewsItem.source_id == Source.id)
         .where(SubscriptionSource.subscription_id == subscription_id)
         .where(Source.id.in_(list(source_ids)))
-        .group_by(Source.id, Source.url, Source.title, SubscriptionSource.is_user_specified)
+        .group_by(
+            Source.id,
+            Source.url,
+            Source.title,
+            SubscriptionSource.is_user_specified,
+            SubscriptionSource.contributed_last_30_digests,
+            SubscriptionSource.contribution_rate,
+            SubscriptionSource.digests_since_last_contribution,
+            SubscriptionSource.item_cosine_p50,
+            SubscriptionSource.item_cosine_p90,
+            SubscriptionSource.item_cosine_std,
+        )
     )
     result = await session.execute(stmt)
 
     contexts: list[ReflectorSourceContext] = []
     for row in result.all():
-        sid, url, title, emb, is_user_specified, last_pub = row
+        (
+            sid,
+            url,
+            title,
+            emb,
+            is_user_specified,
+            contributed_30,
+            contribution_rate,
+            streak,
+            p50,
+            p90,
+            std,
+            last_pub,
+        ) = row
         cos = None
         if emb is not None:
             try:
@@ -346,6 +390,12 @@ async def _load_source_contexts(
                 cosine_to_topic=cos,
                 last_published_at=last_pub,
                 days_since_last_published=days_since,
+                contributed_last_30_digests=int(contributed_30 or 0),
+                contribution_rate=float(contribution_rate or 0.0),
+                digests_since_last_contribution=int(streak or 0),
+                item_cosine_p50=p50,
+                item_cosine_p90=p90,
+                item_cosine_std=std,
             )
         )
     return contexts
@@ -374,6 +424,7 @@ def _compute_reflect_reasons(
 
     drift_threshold = settings.reflector_drift_similarity_threshold
     staleness_days = settings.reflector_source_staleness_days
+    streak_threshold = settings.reflector_contribution_streak_threshold
     for ctx in source_contexts:
         if ctx.cosine_to_topic is not None and ctx.cosine_to_topic < drift_threshold:
             reasons.append(
@@ -387,17 +438,12 @@ def _compute_reflect_reasons(
             reasons.append(
                 f"Source {ctx.url} has not published for {ctx.days_since_last_published} days."
             )
-
-    if reasons:
-        return reasons
-
-    if subscription.last_reflected_at is None:
-        reasons.append("Periodic reflection: subscription has never been reflected on.")
-        return reasons
-
-    days_since_reflect = (now - subscription.last_reflected_at).days
-    if days_since_reflect >= settings.reflector_max_interval_days:
-        reasons.append(f"Periodic reflection: {days_since_reflect} days since last reflection.")
+        if ctx.digests_since_last_contribution >= streak_threshold:
+            reasons.append(
+                f"Source {ctx.url} has not contributed to "
+                f"{ctx.digests_since_last_contribution} consecutive digests "
+                f"(threshold {streak_threshold})."
+            )
     return reasons
 
 
@@ -442,4 +488,33 @@ async def _mark_as_sent(
 ) -> None:
     for item_id in news_item_ids:
         session.add(SentItem(subscription_id=subscription_id, news_item_id=item_id))
+    await session.flush()
+
+
+async def _update_contribution_streaks(
+    *,
+    session: AsyncSession,
+    subscription_id: uuid.UUID,
+    contributing_source_ids: set[uuid.UUID],
+) -> None:
+    """After a digest ships, reset streak to 0 for contributing sources and
+    increment it for the rest of the pool. Keeps ``digests_since_last_contribution``
+    accurate in real time so the Reflector's streak trigger does not wait for
+    the nightly stats job."""
+    links = (
+        (
+            await session.execute(
+                select(SubscriptionSource).where(
+                    SubscriptionSource.subscription_id == subscription_id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for link in links:
+        if link.source_id in contributing_source_ids:
+            link.digests_since_last_contribution = 0
+        else:
+            link.digests_since_last_contribution = link.digests_since_last_contribution + 1
     await session.flush()

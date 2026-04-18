@@ -32,6 +32,13 @@ celery_app.conf.update(
             "task": "news_service.tasks.update_source_embeddings.update_all_source_embeddings",
             "schedule": 24 * 60 * 60,
         },
+        "update-subscription-source-stats": {
+            "task": (
+                "news_service.tasks.update_subscription_source_stats."
+                "update_all_subscription_source_stats"
+            ),
+            "schedule": 24 * 60 * 60,
+        },
     },
 )
 
@@ -104,3 +111,4 @@ import news_service.tasks.discover_sources  # noqa: E402, F401
 import news_service.tasks.poll_feeds  # noqa: E402, F401
 import news_service.tasks.schedule_digests  # noqa: E402, F401
 import news_service.tasks.update_source_embeddings  # noqa: E402, F401
+import news_service.tasks.update_subscription_source_stats  # noqa: E402, F401
