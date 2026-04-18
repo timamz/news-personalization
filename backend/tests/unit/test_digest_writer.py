@@ -48,10 +48,9 @@ async def test_write_digest_returns_composition_from_submit_digest_call() -> Non
             recent_digest_summaries="",
         )
 
-    assert result.digest_text == digest_body
-    assert item_a in result.used_item_ids and item_b in result.used_item_ids, (
-        "write_digest did not carry through both submitted item IDs"
-    )
+    assert result.digest_text == digest_body and (
+        item_a in result.used_item_ids and item_b in result.used_item_ids
+    ), "write_digest did not carry through both submitted item IDs"
 
 
 @pytest.mark.asyncio
@@ -69,26 +68,24 @@ async def test_write_digest_raises_when_agent_never_submits() -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_digest_enforces_fetch_and_search_budgets() -> None:
+async def test_write_digest_enforces_search_budget() -> None:
     item_id = str(uuid.uuid4())
     digest_body = f"Digest {uuid.uuid4().hex[:8]}"
+    results: list[str] = []
 
     async def _side_effect(*, agent, message, user_id):
         tools = {t.__name__: t for t in agent.tools if callable(t)}
-        fetch_results = [await tools["fetch_article"](f"https://example.com/{i}") for i in range(5)]
-        search_results = [await tools["search_web"](f"q-{i}") for i in range(5)]
+        for i in range(5):
+            results.append(await tools["search_web"](f"q-{i}"))
         await tools["submit_digest"](digest_body, item_id)
-        return fetch_results, search_results
+        return "done"
 
     with (
         patch(f"{_WRITER_MODULE}.run_agent_text", new=AsyncMock(side_effect=_side_effect)),
         patch(f"{_WRITER_MODULE}._search_web", new=AsyncMock(return_value="results")),
         patch(f"{_WRITER_MODULE}.settings") as mock_settings,
     ):
-        mock_settings.writer_max_article_fetches = 2
-        mock_settings.writer_max_web_searches = 1
-        mock_settings.writer_article_fetch_timeout_seconds = 5.0
-        mock_settings.writer_article_max_chars = 500
+        mock_settings.writer_max_web_searches = 2
         mock_settings.proxy_url = None
         mock_settings.litellm_model = "openai/gpt-test"
 
@@ -100,8 +97,38 @@ async def test_write_digest_enforces_fetch_and_search_budgets() -> None:
             digest_language="en",
             recent_digest_summaries="",
         )
-    # Budget enforcement is exercised inside the fake runner; if the tool respected
-    # the limits it returned "exhausted" messages for the overflow calls.
+
+    assert sum(1 for r in results if r == "Search budget exhausted") == 3, (
+        "search_web did not refuse calls past the configured budget"
+    )
+
+
+@pytest.mark.asyncio
+async def test_write_digest_does_not_expose_fetch_article_tool() -> None:
+    item_id = str(uuid.uuid4())
+    captured: dict[str, set[str]] = {}
+
+    async def _capture(*, agent, message, user_id):
+        captured["tool_names"] = {t.__name__ for t in agent.tools if callable(t)}
+        for tool_fn in agent.tools:
+            if getattr(tool_fn, "__name__", "") == "submit_digest":
+                await tool_fn("digest", item_id)
+                return "done"
+        return "done"
+
+    with patch(f"{_WRITER_MODULE}.run_agent_text", new=AsyncMock(side_effect=_capture)):
+        from news_service.agents.digest.writer import write_digest
+
+        await write_digest(
+            items_text=f"[ID: {item_id}] Headline: X",
+            user_spec="AI news.",
+            digest_language="en",
+            recent_digest_summaries="",
+        )
+
+    assert captured["tool_names"] == {"search_web", "submit_digest"}, (
+        "writer must expose only search_web and submit_digest after ingest-time enrichment"
+    )
 
 
 @pytest.mark.asyncio
@@ -130,68 +157,6 @@ async def test_write_digest_includes_recent_summaries_and_feedback_in_prompt() -
             feedback=feedback,
         )
 
-    assert recent_summaries.split("\n")[-1] in captured["message"]
-    assert feedback in captured["message"], (
-        "writer prompt did not carry both the recent summaries and the judge feedback"
-    )
-
-
-@pytest.mark.asyncio
-async def test_fetch_article_extracts_text_truncates_at_cap_and_reports_unreachable() -> None:
-    from bs4 import BeautifulSoup  # noqa: F401
-
-    item_id = str(uuid.uuid4())
-    long_body_marker = f"Important news {uuid.uuid4().hex[:8]}"
-    long_html = f"<html><body><nav>skip</nav><p>{long_body_marker}{'W' * 10_000}</p></body></html>"
-
-    # First fetch: extract + truncate. Second fetch: unreachable.
-    fetched: list[str] = []
-
-    async def _side_effect(*, agent, message, user_id):
-        tools = {t.__name__: t for t in agent.tools if callable(t)}
-        fetched.append(await tools["fetch_article"]("https://example.com/ok"))
-        fetched.append(await tools["fetch_article"]("https://nonexistent.invalid/page"))
-        await tools["submit_digest"]("digest", item_id)
-        return "done"
-
-    successful_response = AsyncMock()
-    successful_response.text = long_html
-    successful_response.status_code = 200
-    successful_response.raise_for_status = lambda: None
-
-    ok_client = AsyncMock()
-    ok_client.get = AsyncMock(return_value=successful_response)
-    ok_client.__aenter__ = AsyncMock(return_value=ok_client)
-    ok_client.__aexit__ = AsyncMock(return_value=False)
-
-    fail_client = AsyncMock()
-    fail_client.get = AsyncMock(side_effect=ConnectionError("DNS failed"))
-    fail_client.__aenter__ = AsyncMock(return_value=fail_client)
-    fail_client.__aexit__ = AsyncMock(return_value=False)
-
-    with (
-        patch(f"{_WRITER_MODULE}.run_agent_text", new=AsyncMock(side_effect=_side_effect)),
-        patch(f"{_WRITER_MODULE}.httpx.AsyncClient", side_effect=[ok_client, fail_client]),
-        patch(f"{_WRITER_MODULE}.settings") as mock_settings,
-    ):
-        mock_settings.writer_max_article_fetches = 5
-        mock_settings.writer_max_web_searches = 2
-        mock_settings.writer_article_fetch_timeout_seconds = 5.0
-        mock_settings.writer_article_max_chars = 500
-        mock_settings.proxy_url = None
-        mock_settings.litellm_model = "openai/gpt-test"
-
-        from news_service.agents.digest.writer import write_digest
-
-        await write_digest(
-            items_text=f"[ID: {item_id}] Headline: Test",
-            user_spec="News.",
-            digest_language="en",
-            recent_digest_summaries="",
-        )
-
-    assert long_body_marker in fetched[0] and len(fetched[0]) <= 500
-    assert "skip" not in fetched[0]
-    assert "Failed to fetch" in fetched[1], (
-        "fetch_article did not report a failure for the unreachable URL"
-    )
+    assert recent_summaries.split("\n")[-1] in captured["message"] and (
+        feedback in captured["message"]
+    ), "writer prompt did not carry both the recent summaries and the judge feedback"

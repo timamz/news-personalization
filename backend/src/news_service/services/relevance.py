@@ -1,5 +1,6 @@
 """Score source relevance by sampling real content and comparing to the prompt."""
 
+import asyncio
 import logging
 import random
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ import httpx
 
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_texts
+from news_service.services.article_fetch import fetch_article_text
 from news_service.services.reddit import extract_reddit_subreddit_from_url, fetch_reddit_posts
 from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
 from news_service.services.twitter import extract_twitter_account_from_url, fetch_twitter_posts
@@ -87,13 +89,11 @@ async def _fetch_rss_posts(url: str) -> list[DatedPost]:
         logger.debug("Failed to fetch RSS posts from %s", url)
         return []
 
-    dated: list[DatedPost] = []
+    entries: list[tuple[str, str, str, datetime | None]] = []
     for entry in parsed.entries:
         title = getattr(entry, "title", "") or ""
         summary = getattr(entry, "summary", "") or ""
-        text = f"{title} {summary}".strip()
-        if not text:
-            continue
+        link = getattr(entry, "link", "") or ""
         published = None
         raw = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
         if raw is not None:
@@ -101,6 +101,28 @@ async def _fetch_rss_posts(url: str) -> list[DatedPost]:
                 published = datetime(*raw[:6], tzinfo=UTC)
             except (TypeError, ValueError):
                 published = None
+        entries.append((link, title, summary, published))
+
+    sem = asyncio.Semaphore(settings.article_fetch_concurrency)
+
+    async def _enrich(link: str) -> str | None:
+        if not link:
+            return None
+        async with sem:
+            return await fetch_article_text(
+                link,
+                timeout_seconds=settings.article_fetch_timeout_seconds,
+                max_chars=settings.article_body_max_chars,
+            )
+
+    article_bodies = await asyncio.gather(*(_enrich(link) for link, *_ in entries))
+
+    dated: list[DatedPost] = []
+    for (_link, title, summary, published), article in zip(entries, article_bodies, strict=True):
+        body = article if article else summary
+        text = f"{title}\n\n{body}".strip()
+        if not text:
+            continue
         dated.append(DatedPost(text=text, published_at=published))
     return dated
 

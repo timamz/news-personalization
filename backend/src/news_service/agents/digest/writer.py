@@ -1,11 +1,13 @@
 """Digest Writer -- ADK agent that plans, researches, and composes news digests.
 
-Replaces the separate planner and composer with a single agent that can
-fetch full articles and search the web for additional context before writing.
+Replaces the separate planner and composer with a single agent. Candidate
+items arrive with their full article body already stored at ingest time,
+so the writer does not need an article-fetch tool; it only reaches for the
+web when it needs fresher or off-item context.
 
 The agent follows a three-phase workflow:
 1. Review candidates and user preferences to plan what to include.
-2. Optionally fetch full articles or search the web for context.
+2. Optionally search the web for additional context.
 3. Write the digest and submit it via the submit_digest tool.
 
 Example usage::
@@ -23,8 +25,6 @@ import logging
 import uuid
 from typing import Any
 
-import httpx
-from bs4 import BeautifulSoup
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
@@ -56,13 +56,15 @@ class DigestComposition(BaseModel):
 
 _WRITER_PROMPT = """\
 You are a news digest writer. Your job is to select the most important items
-from the candidates, research them if needed, and write a well-structured digest.
+from the candidates and write a well-structured digest.
 
 Workflow:
 1. Review all candidate items and the user's preferences.
-2. For items with thin or unclear content, use fetch_article to read the full text.
-3. For items referencing something you need context on, use search_web.
-4. Write the digest and call submit_digest with the final text and item IDs.
+2. For items referencing something you need context on, use search_web.
+3. Write the digest and call submit_digest with the final text and item IDs.
+
+Candidate items already include the full article body that was stored at
+ingest time. You do not need to fetch anything to understand the item.
 
 Quality criteria:
 - Prioritize the most substantive items.
@@ -73,9 +75,8 @@ Quality criteria:
 - Do not mention feed names, channel names, site names, or labels \
 other than the required '{source_label}:' line.
 - Return only the digest. No introductions, closings, commentary.
-- Budget: fetch up to {max_fetches} articles, do up to {max_searches} web searches.
-  Use them on items that need it most -- do not fetch articles that already have \
-good summaries.
+- Budget: up to {max_searches} web searches. Use them on items that need \
+context not already in the body.
 
 IMPORTANT: In submit_digest, list the UUIDs of every news item you included
 as a comma-separated string in used_item_ids.
@@ -96,18 +97,14 @@ async def write_digest(
 ) -> DigestComposition:
     """Run the Digest Writer ADK agent and return the composed digest.
 
-    The agent plans, optionally researches (fetch articles / web search),
-    and composes a digest in a single agentic loop. Returns the same
+    The agent plans, optionally searches the web for fresh context, and
+    composes a digest in a single agentic loop. Returns the same
     DigestComposition type as the old composer for pipeline compatibility.
 
     Raises RuntimeError if the agent finishes without calling submit_digest.
     """
-    max_fetches = settings.writer_max_article_fetches
     max_searches = settings.writer_max_web_searches
-    fetch_timeout = settings.writer_article_fetch_timeout_seconds
-    max_article_chars = settings.writer_article_max_chars
 
-    fetch_counter = 0
     search_counter = 0
 
     shared_state: dict[str, Any] = {
@@ -115,40 +112,6 @@ async def write_digest(
         "digest_text": "",
         "used_item_ids": [],
     }
-
-    async def fetch_article(url: str) -> str:
-        """Fetch the full text of an article from its URL.
-
-        Downloads the page and extracts readable text content.
-        Useful for items whose summaries are too short or unclear.
-
-        Args:
-            url: The article URL to fetch and extract text from.
-
-        Returns:
-            The extracted article text, or an error message on failure.
-        """
-        nonlocal fetch_counter
-        if fetch_counter >= max_fetches:
-            return "Fetch budget exhausted"
-        fetch_counter += 1
-        try:
-            async with httpx.AsyncClient(
-                timeout=fetch_timeout,
-                proxy=settings.proxy_url,
-                follow_redirects=True,
-            ) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
-            for tag in soup(["script", "style", "nav", "header", "footer"]):
-                tag.decompose()
-            text = soup.get_text(separator="\n", strip=True)
-            if len(text) > max_article_chars:
-                text = text[:max_article_chars]
-            return text if text else "No readable text extracted from the page"
-        except Exception as exc:
-            return f"Failed to fetch article: {exc}"
 
     async def search_web(query: str) -> str:
         """Search the web for additional context on a news topic.
@@ -196,7 +159,6 @@ async def write_digest(
     source_label = "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a" if is_ru else "Source"
     system_prompt = _WRITER_PROMPT.format(
         source_label=source_label,
-        max_fetches=max_fetches,
         max_searches=max_searches,
     )
 
@@ -218,7 +180,7 @@ async def write_digest(
         name=f"digest_writer_{uuid.uuid4().hex[:6]}",
         model=LiteLlm(model=settings.litellm_model),
         instruction=system_prompt,
-        tools=[fetch_article, search_web, submit_digest],
+        tools=[search_web, submit_digest],
         generate_content_config=types.GenerateContentConfig(temperature=0.3),
     )
 
@@ -232,9 +194,8 @@ async def write_digest(
         raise RuntimeError("Digest Writer agent finished without calling submit_digest")
 
     logger.info(
-        "Digest Writer composed digest with %d items (fetched=%d, searched=%d)",
+        "Digest Writer composed digest with %d items (searched=%d)",
         len(shared_state["used_item_ids"]),
-        fetch_counter,
         search_counter,
     )
 

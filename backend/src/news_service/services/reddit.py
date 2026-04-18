@@ -41,6 +41,7 @@ class RedditPost:
     title: str
     body: str
     published_at: datetime | None
+    external_url: str | None = None
 
 
 def extract_reddit_subreddits(prompt: str) -> list[str]:
@@ -169,12 +170,20 @@ def parse_reddit_posts(payload: object) -> list[RedditPost]:
         if isinstance(created_utc, int | float):
             published_at = datetime.fromtimestamp(created_utc, tz=UTC)
 
+        is_self = bool(post_data.get("is_self"))
+        external = None
+        if not is_self:
+            raw_external = post_data.get("url")
+            if isinstance(raw_external, str) and raw_external.strip():
+                external = raw_external.strip()
+
         posts.append(
             RedditPost(
                 url=f"https://www.reddit.com{permalink}",
                 title=title,
                 body=str(post_data.get("selftext") or "").strip(),
                 published_at=published_at,
+                external_url=external,
             )
         )
 

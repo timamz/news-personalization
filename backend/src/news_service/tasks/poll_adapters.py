@@ -5,6 +5,7 @@ into NormalizedPost instances that the generic polling loop can process
 identically regardless of source type.
 """
 
+import asyncio
 import email.utils
 import logging
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ import httpx
 
 from news_service.core.config import get_settings
 from news_service.models.source import Source
+from news_service.services.article_fetch import fetch_article_text
 from news_service.services.reddit import fetch_reddit_posts
 from news_service.services.telegram import fetch_telegram_posts
 from news_service.services.twitter import fetch_twitter_posts
@@ -64,20 +66,39 @@ class RssAdapter:
     async def fetch_posts(self) -> list[NormalizedPost]:
         content = await _fetch_rss_feed_content(self._url)
         parsed = feedparser.parse(content)
-        posts: list[NormalizedPost] = []
+
+        entries: list[tuple[str, str, str, datetime | None]] = []
         for entry in parsed.entries:
             url = entry.get("link", "")
             if not url:
                 continue
             headline = entry.get("title", "")
-            body = entry.get("summary", entry.get("description", ""))
-            published_at = _published_at_from_rss_entry(entry)
+            stub = entry.get("summary", entry.get("description", ""))
+            entries.append((url, headline, stub, _published_at_from_rss_entry(entry)))
+
+        sem = asyncio.Semaphore(settings.article_fetch_concurrency)
+
+        async def _enrich(url: str) -> str | None:
+            async with sem:
+                return await fetch_article_text(
+                    url,
+                    timeout_seconds=settings.article_fetch_timeout_seconds,
+                    max_chars=settings.article_body_max_chars,
+                )
+
+        article_bodies = await asyncio.gather(*(_enrich(u) for u, *_ in entries))
+
+        posts: list[NormalizedPost] = []
+        for (url, headline, stub, published_at), article in zip(
+            entries, article_bodies, strict=True
+        ):
+            body = article if article else stub
             posts.append(
                 NormalizedPost(
                     url=url,
                     headline=headline,
                     body=body,
-                    text_to_embed=f"{headline} {body}",
+                    text_to_embed=f"{headline}\n\n{body}".strip(),
                     published_at=published_at,
                 )
             )
@@ -130,15 +151,31 @@ class RedditAdapter:
 
     async def fetch_posts(self) -> list[NormalizedPost]:
         raw_posts = await fetch_reddit_posts(self._subreddit)
+
+        sem = asyncio.Semaphore(settings.article_fetch_concurrency)
+
+        async def _enrich(post) -> str | None:
+            if post.body or not post.external_url:
+                return None
+            async with sem:
+                return await fetch_article_text(
+                    post.external_url,
+                    timeout_seconds=settings.article_fetch_timeout_seconds,
+                    max_chars=settings.article_body_max_chars,
+                )
+
+        article_bodies = await asyncio.gather(*(_enrich(p) for p in raw_posts))
+
         posts: list[NormalizedPost] = []
-        for post in raw_posts:
+        for post, article in zip(raw_posts, article_bodies, strict=True):
+            body = post.body or (article or "")
             headline = post.title[:200] or f"Reddit post from r/{self._subreddit}"
-            text_to_embed = "\n\n".join(part for part in [post.title, post.body] if part).strip()
+            text_to_embed = "\n\n".join(part for part in [post.title, body] if part).strip()
             posts.append(
                 NormalizedPost(
                     url=post.url,
                     headline=headline,
-                    body=post.body,
+                    body=body,
                     text_to_embed=text_to_embed,
                     published_at=post.published_at,
                 )
