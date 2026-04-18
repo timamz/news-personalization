@@ -34,3 +34,5 @@ slides/dist/
 
 backend/backups/*
 !backend/backups/.gitkeep
+
+.claude/
