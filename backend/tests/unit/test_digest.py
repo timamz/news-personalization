@@ -68,6 +68,7 @@ def _patch_happy_path(mocker, digest_text: str, item_ids: list[str]) -> None:
         new=AsyncMock(return_value=_composition(digest_text, item_ids)),
     )
     mocker.patch(f"{_PIPELINE}.judge_digest", new=AsyncMock(return_value=_quality()))
+    mocker.patch(f"{_PIPELINE}._load_source_contexts", new=AsyncMock(return_value=[]))
 
 
 @pytest.mark.asyncio
@@ -156,6 +157,7 @@ async def test_generate_digest_revises_on_judge_feedback_and_returns_revised_tex
     )
     mocker.patch(f"{_PIPELINE}.fetch_candidate_items", new=AsyncMock(return_value=[fake_item]))
     mocker.patch(f"{_PIPELINE}.build_items_text", return_value="items")
+    mocker.patch(f"{_PIPELINE}._load_source_contexts", new=AsyncMock(return_value=[]))
     mocker.patch(
         f"{_PIPELINE}.run_reflector",
         new=AsyncMock(return_value={"discovery_triggered": False}),

@@ -96,6 +96,11 @@ async def test_judge_failure_falls_back_to_unreviewed_draft(_subscription, _sess
             side_effect=RuntimeError("judge model unavailable"),
         ),
         patch(
+            "news_service.agents.digest.pipeline._load_source_contexts",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
             "news_service.agents.digest.pipeline.run_reflector",
             new_callable=AsyncMock,
             return_value={"discovery_triggered": False},
@@ -145,9 +150,9 @@ async def test_reflector_failure_does_not_block_digest(_subscription, _session) 
             return_value=quality,
         ),
         patch(
-            "news_service.agents.digest.pipeline._build_source_info",
+            "news_service.agents.digest.pipeline._load_source_contexts",
             new_callable=AsyncMock,
-            return_value="- source info",
+            return_value=[],
         ),
         patch(
             "news_service.agents.digest.pipeline.run_reflector",
@@ -167,65 +172,83 @@ def _healthy_quality() -> MagicMock:
     quality.relevance = 5
     quality.format_score = 5
     quality.conciseness = 5
+    quality.feedback = ""
     return quality
 
 
-def _mediocre_quality() -> MagicMock:
+def _revise_quality() -> MagicMock:
     quality = MagicMock()
-    quality.verdict = "PASS"
-    quality.relevance = 3
+    quality.verdict = "REVISE"
+    quality.relevance = 2
     quality.format_score = 3
     quality.conciseness = 3
+    quality.feedback = f"Too verbose {uuid.uuid4().hex[:6]}"
     return quality
 
 
-def test_should_reflect_fires_on_unhealthy_signals_and_otherwise_stays_quiet() -> None:
-    from news_service.agents.digest.pipeline import _should_reflect
+def _source_ctx(
+    *,
+    cos: float | None = 0.8,
+    days_since: int | None = 1,
+    user_specified: bool = False,
+) -> MagicMock:
+    ctx = MagicMock()
+    ctx.source_id = uuid.uuid4()
+    ctx.url = f"https://example.com/{uuid.uuid4().hex[:6]}"
+    ctx.title = "T"
+    ctx.is_user_specified = user_specified
+    ctx.contribution_count = 1
+    ctx.cosine_to_topic = cos
+    ctx.last_published_at = datetime.now(UTC) - timedelta(days=days_since or 0)
+    ctx.days_since_last_published = days_since
+    return ctx
+
+
+def test_compute_reflect_reasons_lists_drift_staleness_revise_and_periodic_signals() -> None:
+    from news_service.agents.digest.pipeline import _compute_reflect_reasons
 
     sub_recent = MagicMock()
     sub_recent.last_reflected_at = datetime.now(UTC)
-    sub_old = MagicMock()
-    sub_old.last_reflected_at = datetime.now(UTC) - timedelta(days=2)
     sub_never = MagicMock()
     sub_never.last_reflected_at = None
 
-    source_a, source_b, source_c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    candidate = MagicMock()
-    candidate.source_id = source_a
+    now = datetime.now(UTC)
 
-    # Judge failed (quality is None)
-    assert _should_reflect(
-        subscription=sub_recent, quality=None, candidates=[], source_ids=set()
-    ), "reflector should fire when the judge failed"
-
-    # Low source coverage (1 of 3)
-    assert _should_reflect(
+    reasons_revise = _compute_reflect_reasons(
+        subscription=sub_recent,
+        quality=_revise_quality(),
+        source_contexts=[_source_ctx()],
+        now=now,
+    )
+    reasons_drift = _compute_reflect_reasons(
         subscription=sub_recent,
         quality=_healthy_quality(),
-        candidates=[candidate],
-        source_ids={source_a, source_b, source_c},
-    ), "reflector should fire when only a small fraction of sources contributed"
-
-    # Mediocre quality scores
-    assert _should_reflect(
+        source_contexts=[_source_ctx(cos=0.15)],
+        now=now,
+    )
+    reasons_stale = _compute_reflect_reasons(
         subscription=sub_recent,
-        quality=_mediocre_quality(),
-        candidates=[candidate],
-        source_ids={source_a},
-    ), "reflector should fire when quality scores fall below the threshold"
-
-    # Never reflected before
-    assert _should_reflect(
+        quality=_healthy_quality(),
+        source_contexts=[_source_ctx(days_since=90)],
+        now=now,
+    )
+    reasons_periodic = _compute_reflect_reasons(
         subscription=sub_never,
         quality=_healthy_quality(),
-        candidates=[candidate],
-        source_ids={source_a},
-    ), "reflector should fire when it has never run before"
-
-    # Healthy + recently reflected -> skip
-    assert not _should_reflect(
-        subscription=sub_old,
+        source_contexts=[_source_ctx()],
+        now=now,
+    )
+    reasons_none = _compute_reflect_reasons(
+        subscription=sub_recent,
         quality=_healthy_quality(),
-        candidates=[candidate],
-        source_ids={source_a},
-    ), "reflector should stay quiet when all signals are healthy"
+        source_contexts=[_source_ctx()],
+        now=now,
+    )
+
+    assert (
+        any("REVISE" in r for r in reasons_revise)
+        and any("drifted" in r for r in reasons_drift)
+        and any("not published" in r for r in reasons_stale)
+        and any("Periodic" in r for r in reasons_periodic)
+        and reasons_none == []
+    ), "reflect-reasons did not produce one reason per signal and stay silent when healthy"

@@ -1,17 +1,21 @@
-"""Pipeline Reflector — ADK agent that reviews pipeline health and self-heals.
+"""Pipeline Reflector -- ADK agent that reviews pipeline health and self-heals.
 
-Converted from single-shot structured output to an ADK agent with tools:
-- remove_source: hard-deletes dead auto-discovered sources (guards user-specified)
-- trigger_source_discovery: flags that new sources should be found
+Runs after digest delivery when data-driven triggers (drift, staleness, REVISE
+after max revisions, periodic) indicate a health issue. The Reflector receives
+the specific reasons it was invoked plus rich per-source metadata so it can
+make targeted decisions rather than rediscovering signals.
 
-Runs after digest delivery when data-driven triggers indicate health issues.
+Tools:
+- remove_source: delete dead or off-topic auto-discovered sources
+- trigger_source_discovery: queue discovery to find new sources
+- emit_status: emit a progress status to the user
 """
 
 import asyncio
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
@@ -26,35 +30,61 @@ from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 
+if TYPE_CHECKING:
+    from news_service.agents.digest.pipeline import ReflectorSourceContext
+
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 REFLECTOR_PROMPT = """\
-You are a pipeline quality reflector. After a digest was generated and delivered, \
-review how the pipeline performed and take corrective action.
+You are a pipeline quality reflector. After a digest was generated and \
+delivered, review how the pipeline performed and take corrective action on \
+the source pool backing this subscription.
 
-You receive:
-- The digest that was delivered
-- The user's preferences (user_spec)
-- Quality scores from the judge (empty if judge failed)
-- Source contribution data showing which sources contributed items
+You are given:
+- The specific reasons you were invoked (act on these first).
+- A rich line per linked source: URL, user-specified flag, contribution \
+count in this digest, cosine similarity to the subscription topic, and \
+days since last published item.
+- The user's preferences (user_spec), the delivered digest, and judge scores \
+if any.
 
-You have two tools:
-1. **remove_source(url, reason)** — Remove a dead or useless auto-discovered source. \
-Only use this for sources marked [auto-discovered, removable]. \
-NEVER attempt to remove sources marked [user-specified, DO NOT remove]. \
-Only remove sources that contributed 0 items for 3+ weeks.
-2. **trigger_source_discovery(reason)** — Request that new sources be found. \
-Use after removing sources to find replacements, or when coverage is thin \
-even without removals.
+You have three tools:
+1. **remove_source(url, reason)** -- Remove a dead or off-topic \
+auto-discovered source. NEVER attempt to remove sources marked \
+[user-specified]. Remove only when you have concrete evidence (drift, \
+prolonged silence).
+2. **trigger_source_discovery(reason)** -- Request new sources. Use after \
+removing sources, or when the subscription's source pool is clearly thin \
+or off-topic.
+3. **emit_status(message)** -- Emit a short progress status to the user.
 
 Guidelines:
-- Be conservative with removals — only remove clearly dead sources.
-- After removing sources, trigger discovery with a reason explaining what was lost.
-- If coverage is thin but no sources need removal, still trigger discovery.
-- If the writer ignored user preferences, mention it in your response \
-so the pipeline can update user_spec.
+- Start from the invocation reasons. They name the specific sources you \
+should investigate first.
+- Be conservative. Do not remove a user-specified source.
+- After removing sources, trigger discovery with a reason naming what was \
+lost so the finder knows what to look for.
 """
+
+
+def _format_source_contexts(contexts: list["ReflectorSourceContext"]) -> str:
+    """Render the per-source metadata list passed to the Reflector."""
+    lines: list[str] = []
+    for ctx in contexts:
+        label = "user-specified, DO NOT remove" if ctx.is_user_specified else "auto-discovered"
+        display = f"{ctx.title} ({ctx.url})" if ctx.title else ctx.url
+        drift = f"cos={ctx.cosine_to_topic:.2f}" if ctx.cosine_to_topic is not None else "cos=n/a"
+        if ctx.days_since_last_published is None:
+            last = "last item: never"
+        else:
+            last = f"last item: {ctx.days_since_last_published}d ago"
+        lines.append(
+            f"- [source_id={ctx.source_id}] {display} [{label}] | "
+            f"contributed: {ctx.contribution_count} items | "
+            f"topic: {drift} | {last}"
+        )
+    return "\n".join(lines) if lines else "(no sources linked)"
 
 
 async def run_reflector(
@@ -64,15 +94,16 @@ async def run_reflector(
     digest_text: str,
     user_spec: str,
     quality_scores: dict,
-    source_info: str,
+    trigger_reasons: list[str],
+    source_contexts: list["ReflectorSourceContext"],
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Run the reflector ADK agent and return shared state with side effects.
+    """Run the Reflector ADK agent; return shared state recording side effects.
 
     Returns a dict with:
         discovery_triggered: bool
         discovery_reason: str
-        observations: str — reflector's text response (pipeline health notes)
+        observations: str -- agent's final text response
     """
     shared_state: dict[str, Any] = {
         "discovery_triggered": False,
@@ -87,7 +118,7 @@ async def run_reflector(
 
         Args:
             url: The canonical URL of the source to remove.
-            reason: Why the source should be removed (e.g. 'no content for 3+ weeks').
+            reason: Why the source should be removed.
 
         Returns:
             Confirmation or rejection message.
@@ -136,11 +167,11 @@ async def run_reflector(
     async def trigger_source_discovery(reason: str) -> str:
         """Request that the discovery pipeline find new sources.
 
-        Does not execute discovery immediately — sets a flag so the caller
+        Does not execute discovery immediately -- sets a flag so the caller
         knows to queue a discovery task after the reflector finishes.
 
         Args:
-            reason: Why new sources are needed (e.g. 'removed dead ML feed, need replacement').
+            reason: Why new sources are needed.
 
         Returns:
             Confirmation that discovery was requested.
@@ -152,11 +183,8 @@ async def run_reflector(
     async def emit_status(message: str) -> str:
         """Emit a progress status message to the user.
 
-        Call this when starting a significant operation to keep the user informed.
-
         Args:
-            message: A short, friendly progress message
-                (e.g. "Reviewing pipeline health...")
+            message: A short, friendly progress message.
 
         Returns:
             Confirmation that the status was emitted.
@@ -171,10 +199,18 @@ async def run_reflector(
             )
         return "Status emitted."
 
+    reasons_block = (
+        "\n".join(f"- {reason}" for reason in trigger_reasons)
+        if trigger_reasons
+        else "- (none given)"
+    )
+    source_block = _format_source_contexts(source_contexts)
+
     input_message = (
+        f"You were invoked because:\n{reasons_block}\n\n"
+        f"Linked sources:\n{source_block}\n\n"
         f"User preferences (user_spec):\n{user_spec}\n\n"
         f"Quality scores: {quality_scores}\n\n"
-        f"Linked sources:\n{source_info}\n\n"
         f"Delivered digest:\n{digest_text}"
     )
 

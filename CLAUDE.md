@@ -67,7 +67,7 @@ A single looped Discovery Agent decides on 2-5 initial strategies, fans out to N
 **Digest Pipeline** (triggered by Celery Beat schedule, `agents/digest/pipeline.py`):
 ```
 fetch_candidates(DB, no LLM)
-  -> [write_digest() <-> judge_digest()]   (max 2 revisions)
+  -> [write_digest() <-> judge_digest()]   (max 3 revisions)
   -> validate_used_item_ids + validate_digest_text
   -> [run_reflector()]                     (only when health triggers fire)
   -> mark_as_sent()

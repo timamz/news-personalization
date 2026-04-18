@@ -10,6 +10,7 @@ Error handling follows the tiered policy:
 import logging
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
@@ -24,6 +25,7 @@ from news_service.models.sent_item import SentItem
 from news_service.models.source import Source
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
+from news_service.services.relevance import cosine_similarity
 
 from .candidates import build_items_text, fetch_candidate_items
 from .judge import judge_digest
@@ -33,7 +35,7 @@ from .writer import write_digest
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-_MAX_REVISIONS = 2
+_MAX_REVISIONS = 3
 _RECENT_DIGEST_LIMIT = 15
 
 
@@ -42,7 +44,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
 
     Pipeline stages:
     1. Fetch candidates (DB queries, no LLM)
-    2. Write + Judge loop (max 2 revisions) -- writer raises, judge degrades gracefully
+    2. Write + Judge loop (max 3 revisions) -- writer raises, judge degrades gracefully
     3. Reflect on pipeline health (Reflector ADK agent) -- non-blocking
     4. Mark items as sent
 
@@ -170,24 +172,38 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
     composition.digest_text = validate_digest_text(composition.digest_text)
 
     # --- Stage 3: Reflect (data-driven trigger, non-blocking) ---
-    should_reflect = _should_reflect(
-        subscription=subscription,
-        quality=quality,
-        candidates=candidates,
-        source_ids=source_ids,
-    )
+    try:
+        source_contexts = await _load_source_contexts(
+            session=session,
+            subscription_id=subscription.id,
+            source_ids=source_ids,
+            topic_embedding=list(query_embedding),
+            candidates=candidates,
+        )
+        reasons = _compute_reflect_reasons(
+            subscription=subscription,
+            quality=quality,
+            source_contexts=source_contexts,
+            now=datetime.now(UTC),
+        )
+    except Exception:
+        logger.exception(
+            "Failed to compute reflector triggers for subscription %s",
+            subscription.id,
+        )
+        reasons, source_contexts = [], []
 
+    should_reflect = bool(reasons)
     if should_reflect:
         try:
-            source_info = await _build_source_info(session, subscription.id, source_ids, candidates)
-
             shared_state = await run_reflector(
                 db_session=session,
                 subscription=subscription,
                 digest_text=composition.digest_text,
                 user_spec=user_spec,
                 quality_scores=quality.model_dump() if quality else {},
-                source_info=source_info,
+                trigger_reasons=reasons,
+                source_contexts=source_contexts,
             )
 
             subscription.last_reflected_at = datetime.now(UTC)
@@ -254,72 +270,133 @@ async def _build_recent_digest_summaries(
     return "\n".join(lines)
 
 
-def _should_reflect(
+@dataclass(slots=True)
+class ReflectorSourceContext:
+    """Per-source metadata shown to the Reflector and used to compute triggers."""
+
+    source_id: uuid.UUID
+    url: str
+    title: str
+    is_user_specified: bool
+    contribution_count: int
+    cosine_to_topic: float | None
+    last_published_at: datetime | None
+    days_since_last_published: int | None
+
+
+async def _load_source_contexts(
     *,
-    subscription: Subscription,
-    quality: object | None,
-    candidates: list,
-    source_ids: set[uuid.UUID],
-) -> bool:
-    """Decide whether to run the reflector based on pipeline health signals."""
-    pipeline_struggled = quality is None or getattr(quality, "verdict", None) != "PASS"
-    if pipeline_struggled:
-        return True
-
-    contributing_source_ids = {item.source_id for item in candidates}
-    source_coverage = len(contributing_source_ids) / len(source_ids) if source_ids else 1.0
-    if source_coverage < settings.reflector_coverage_threshold:
-        return True
-
-    relevance = getattr(quality, "relevance", 5)
-    format_score = getattr(quality, "format_score", 5)
-    conciseness = getattr(quality, "conciseness", 5)
-    avg_score = (relevance + format_score + conciseness) / 3
-    if avg_score < settings.reflector_quality_threshold:
-        return True
-
-    if subscription.last_reflected_at is None:
-        return True
-
-    days_since = (datetime.now(UTC) - subscription.last_reflected_at).days
-    return days_since >= settings.reflector_max_interval_days
-
-
-async def _build_source_info(
     session: AsyncSession,
     subscription_id: uuid.UUID,
     source_ids: set[uuid.UUID],
+    topic_embedding: list[float],
     candidates: list,
-) -> str:
-    """Build labeled source info string for the reflector prompt."""
+    now: datetime | None = None,
+) -> list[ReflectorSourceContext]:
+    """Load rich per-source metadata for the Reflector in a single query."""
+    if not source_ids:
+        return []
+    effective_now = now or datetime.now(UTC)
+
     contribution_counts: dict[uuid.UUID, int] = {}
     for item in candidates:
         contribution_counts[item.source_id] = contribution_counts.get(item.source_id, 0) + 1
-    for sid in source_ids:
-        contribution_counts.setdefault(sid, 0)
 
-    links_result = await session.execute(
-        select(SubscriptionSource.source_id, SubscriptionSource.is_user_specified).where(
-            SubscriptionSource.subscription_id == subscription_id
+    stmt = (
+        select(
+            Source.id,
+            Source.url,
+            Source.title,
+            Source.source_description_embedding,
+            SubscriptionSource.is_user_specified,
+            func.max(NewsItem.published_at).label("last_published_at"),
         )
+        .join(SubscriptionSource, SubscriptionSource.source_id == Source.id)
+        .outerjoin(NewsItem, NewsItem.source_id == Source.id)
+        .where(SubscriptionSource.subscription_id == subscription_id)
+        .where(Source.id.in_(list(source_ids)))
+        .group_by(Source.id, Source.url, Source.title, SubscriptionSource.is_user_specified)
     )
-    user_specified: dict[uuid.UUID, bool] = {row[0]: row[1] for row in links_result.all()}
+    result = await session.execute(stmt)
 
-    source_result = await session.execute(
-        select(Source.id, Source.url, Source.title).where(Source.id.in_(list(source_ids)))
-    )
-    source_details = {row[0]: (row[1], row[2]) for row in source_result.all()}
+    contexts: list[ReflectorSourceContext] = []
+    for row in result.all():
+        sid, url, title, emb, is_user_specified, last_pub = row
+        cos = None
+        if emb is not None:
+            try:
+                cos = cosine_similarity(list(emb), topic_embedding)
+            except Exception:
+                cos = None
 
-    lines: list[str] = []
-    for sid in source_ids:
-        url, title = source_details.get(sid, ("unknown", "unknown"))
-        is_user = user_specified.get(sid, False)
-        label = "user-specified, DO NOT remove" if is_user else "auto-discovered, removable"
-        count = contribution_counts.get(sid, 0)
-        display = f"{title} ({url})" if title else url
-        lines.append(f"- {display} [{label}] -- {count} candidates")
+        days_since = None
+        if last_pub is not None:
+            delta = effective_now - last_pub
+            days_since = max(delta.days, 0)
 
-    return "\n".join(lines)
+        contexts.append(
+            ReflectorSourceContext(
+                source_id=sid,
+                url=url,
+                title=title or "",
+                is_user_specified=bool(is_user_specified),
+                contribution_count=contribution_counts.get(sid, 0),
+                cosine_to_topic=cos,
+                last_published_at=last_pub,
+                days_since_last_published=days_since,
+            )
+        )
+    return contexts
+
+
+def _compute_reflect_reasons(
+    *,
+    subscription: Subscription,
+    quality: object | None,
+    source_contexts: list[ReflectorSourceContext],
+    now: datetime,
+) -> list[str]:
+    """Collect human-readable reasons that justify running the Reflector.
+
+    Callers run the Reflector iff the returned list is non-empty. The list is
+    also passed into the Reflector prompt so the agent knows why it was
+    invoked without re-discovering the signals.
+    """
+    reasons: list[str] = []
+
+    if quality is not None and getattr(quality, "verdict", None) != "PASS":
+        feedback = getattr(quality, "feedback", "") or ""
+        snippet = feedback[:160].strip()
+        suffix = f" Feedback: {snippet}" if snippet else ""
+        reasons.append(f"Final digest verdict was REVISE after max revisions.{suffix}")
+
+    drift_threshold = settings.reflector_drift_similarity_threshold
+    staleness_days = settings.reflector_source_staleness_days
+    for ctx in source_contexts:
+        if ctx.cosine_to_topic is not None and ctx.cosine_to_topic < drift_threshold:
+            reasons.append(
+                f"Source {ctx.url} drifted from the subscription topic "
+                f"(cos sim {ctx.cosine_to_topic:.2f} < {drift_threshold:.2f})."
+            )
+        if (
+            ctx.days_since_last_published is not None
+            and ctx.days_since_last_published >= staleness_days
+        ):
+            reasons.append(
+                f"Source {ctx.url} has not published for {ctx.days_since_last_published} days."
+            )
+
+    if reasons:
+        return reasons
+
+    if subscription.last_reflected_at is None:
+        reasons.append("Periodic reflection: subscription has never been reflected on.")
+        return reasons
+
+    days_since_reflect = (now - subscription.last_reflected_at).days
+    if days_since_reflect >= settings.reflector_max_interval_days:
+        reasons.append(f"Periodic reflection: {days_since_reflect} days since last reflection.")
+    return reasons
 
 
 def _queue_discovery(subscription: Subscription, reason: str) -> None:

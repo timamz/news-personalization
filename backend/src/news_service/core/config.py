@@ -49,8 +49,8 @@ class Settings(BaseSettings):
 
     llm_max_context_chars: int = 1_200_000
 
-    reflector_coverage_threshold: float = 0.5
-    reflector_quality_threshold: float = 4.0
+    reflector_drift_similarity_threshold: float = 0.3
+    reflector_source_staleness_days: int = 30
     reflector_max_interval_days: int = 30
 
     article_fetch_timeout_seconds: float = 15.0
