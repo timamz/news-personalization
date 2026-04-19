@@ -73,6 +73,27 @@ async def _discover(subscription_id: uuid.UUID, reason: str) -> dict:
             removal_history=removal_history,
         )
 
+        # Discovery can take minutes (LLM finders + validation). The
+        # subscription may have been deleted or deactivated in the meantime;
+        # re-check before persisting to avoid an FK-violation crash.
+        sub_recheck = await session.execute(
+            select(Subscription.is_active).where(Subscription.id == subscription_id)
+        )
+        is_active_now = sub_recheck.scalar_one_or_none()
+        if not is_active_now:
+            logger.warning(
+                "Discovery results dropped: subscription %s was removed or "
+                "deactivated during the run (discovered=%d).",
+                subscription_id,
+                len(result.sources),
+            )
+            return {
+                "status": "skipped",
+                "reason": "subscription_gone_after_discovery",
+                "discovered": len(result.sources),
+                "persisted": 0,
+            }
+
         persisted = 0
         for scored in result.sources:
             source = await ensure_source_by_url(

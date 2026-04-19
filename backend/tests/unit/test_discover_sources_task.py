@@ -62,7 +62,12 @@ async def test_discover_loads_context_invokes_pipeline_and_persists_new_links(mo
     link_lookup = MagicMock()
     link_lookup.scalar_one_or_none.return_value = None
 
-    session.execute = AsyncMock(side_effect=[sub_lookup, attached_rows, removal_rows, link_lookup])
+    sub_recheck = MagicMock()
+    sub_recheck.scalar_one_or_none.return_value = True
+
+    session.execute = AsyncMock(
+        side_effect=[sub_lookup, attached_rows, removal_rows, sub_recheck, link_lookup]
+    )
 
     _patch_session_factory(mocker, session)
     mocker.patch(
@@ -130,3 +135,46 @@ async def test_discover_skips_when_subscription_has_no_embedding(mocker) -> None
     assert result == {"status": "skipped", "reason": "no_embedding"} and (
         pipeline.await_count == 0
     ), "subscription without embedding must skip before invoking pipeline"
+
+
+@pytest.mark.asyncio
+async def test_discover_drops_results_when_subscription_deactivated_mid_run(mocker) -> None:
+    sub = _fake_subscription()
+    session = MagicMock()
+    session.commit = AsyncMock()
+    session.add = MagicMock()
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+
+    attached_rows = MagicMock()
+    attached_rows.all.return_value = []
+
+    removal_rows = MagicMock()
+    removal_rows.all.return_value = []
+
+    sub_recheck = MagicMock()
+    sub_recheck.scalar_one_or_none.return_value = False
+
+    session.execute = AsyncMock(side_effect=[sub_lookup, attached_rows, removal_rows, sub_recheck])
+
+    _patch_session_factory(mocker, session)
+    mocker.patch(
+        "news_service.tasks.discover_sources.run_source_discovery",
+        new=AsyncMock(return_value=_result("https://late.test/feed")),
+    )
+    ensure_mock = mocker.patch(
+        "news_service.tasks.discover_sources.ensure_source_by_url",
+        new=AsyncMock(),
+    )
+
+    from news_service.tasks.discover_sources import _discover
+
+    result = await _discover(sub.id, "reason")
+    assert (
+        result["status"] == "skipped"
+        and result["reason"] == "subscription_gone_after_discovery"
+        and result["persisted"] == 0
+        and ensure_mock.await_count == 0
+        and session.commit.await_count == 0
+    ), "discovery must not persist when the subscription disappears mid-run"
