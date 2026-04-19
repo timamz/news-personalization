@@ -41,7 +41,16 @@ Use your tools to:
 Rules:
 - Focus on the source types mentioned in your strategy.
 - Validate only your top candidates, not every search result.
-- Stop once you have 3-4 validated sources with scores above 0.5.
+- Aim for AS MANY good sources as you can within this strategy. More \
+is better than fewer. Target at least 5 validated sources before \
+stopping; keep going (more queries, more validations) if you are \
+still finding plausible URLs. Only stop short of 5 if you have \
+genuinely exhausted plausible leads (3+ distinct search phrasings \
+all returning nothing relevant).
+- Never return fewer than 2 validated sources unless you have tried \
+at least 3 distinct search phrasings and at least 3 validate_and_ \
+score_source calls; the orchestrator needs diverse material to \
+work with.
 - Skip sources that are in the exclude list.
 - Never emit Markdown bold syntax (**...**) in any text you produce. \
 The frontend does not render it and the asterisks appear literally. \

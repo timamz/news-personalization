@@ -79,8 +79,15 @@ returned is useful). Pass a short explanation.
 Orchestration guidance:
 - Target roughly {target_count} final sources, but use judgment. Fewer \
 great sources beats many mediocre ones.
-- Start by planning 2-5 diverse strategies. Emit them as parallel \
+- Start by planning 4-6 diverse strategies. Emit them as parallel \
 spawn_finder calls in the SAME turn whenever possible.
+- REQUIRED coverage of source kinds: unless the user's spec \
+explicitly excludes a kind (e.g. "no Twitter"), your FIRST round \
+MUST spawn at least one finder for EACH of the four kinds -- RSS, \
+Telegram, Reddit, Twitter/X. Do not skip Reddit or Telegram just \
+because the topic sounds "mainstream"; good sources live on every \
+kind. If one kind comes back empty, that is information for round \
+two, not a reason to have skipped it.
 - When you pick the final set, avoid stacking many finds from a single \
 strategy -- if one strategy over-contributed because it found more, \
 prefer cross-strategy diversity unless one strategy's results are \
