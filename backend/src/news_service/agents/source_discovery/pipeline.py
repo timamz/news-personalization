@@ -97,6 +97,19 @@ than raw diversity.
 - There is no hard cap on rounds -- keep searching or inspecting until \
 you are satisfied, but be efficient. Do not re-run strategies that \
 already returned good results.
+- Persistence rule: if your FIRST round of finders returns zero \
+candidates (e.g. "0 found" across every strategy), DO NOT abort. \
+Spawn a second round with MATERIALLY DIFFERENT strategies: drop any \
+angle that returned nothing, broaden the queries (fewer qualifiers, \
+plainer phrasing), and try source kinds you did not try yet. Only \
+abort after you have spawned at least two distinct rounds of finders \
+AND still have an empty pool. "Nothing on round one" is a signal to \
+adjust strategy, not to give up.
+- Prefer submit_selection with at least one source over abort. If the \
+pool has even a couple of moderately-scoring candidates that match \
+the spec's language and topic, select them and finish -- the user \
+can refine later. Abort is only for the case where the pool is \
+genuinely empty after retries.
 - Never emit Markdown bold syntax (**...**) in any text you produce. \
 The frontend does not render it and the asterisks appear literally. \
 Use plain text -- no bold markers at all.

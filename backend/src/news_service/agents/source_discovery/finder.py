@@ -47,7 +47,46 @@ Rules:
 The frontend does not render it and the asterisks appear literally. \
 Use plain text -- no bold markers at all.
 
-When done, summarize what you found.
+Search-query guidance (tool_search_web):
+- DO NOT use operators like site:, inurl:, filetype:. The backing meta- \
+search returns empty or noisy results for those. Use natural language.
+- For Telegram, search things like: "best Telegram channels about X", \
+"X news Telegram channel", "Telegram @... X" (but NOT site:t.me).
+- For Reddit, search: "best subreddits for X", "r/... X community" \
+(but NOT site:reddit.com).
+- For X/Twitter, search: "best Twitter accounts for X news", \
+"X official account Twitter" (but NOT site:twitter.com or site:x.com).
+- For RSS, search: "X RSS feed", "X Atom feed", "list of RSS feeds \
+for X", or go to a known site and look for its feed URL in your \
+head knowledge before searching (e.g. Crunchyroll's RSS is \
+/rss/anime, ArsTechnica's is /feed/).
+- Vary phrasing across searches. If one query returns empty or \
+nothing relevant, rephrase before trying again -- do not just append \
+qualifiers.
+
+URL-quality guidance (validate_and_score_source):
+- For source_kind="rss", only submit URLs that are ACTUAL feed \
+endpoints. Telltales: path ending in .xml / .rss / /feed / /feed/ / \
+/rss / /rss/ / /atom.xml / /index.xml. A bare landing page \
+(example.com/news) is almost certainly NOT a feed and will return \
+"could not fetch posts" -- do not submit it as rss.
+- If you only have a landing-page URL, try common feed suffixes \
+(+"/feed", +"/rss", +"/feed.xml") and submit THOSE to the validator \
+rather than the landing page.
+- If the validator reports "could not fetch posts", try one feed-URL \
+variant of the same domain before discarding the candidate.
+
+Persistence:
+- Do NOT return empty-handed after a single failed query. Try at \
+least 3 different search phrasings before concluding the strategy \
+produced nothing.
+- A source with a low score (<0.5) is still better than nothing if \
+the topic/source-kind is right; mention it in your summary so the \
+orchestrator can decide.
+
+When done, summarize what you found -- or, if you found nothing, \
+briefly say which queries you tried and what kinds of URL you saw \
+(so the orchestrator can adjust its next strategy).
 """
 
 

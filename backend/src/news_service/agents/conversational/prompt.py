@@ -107,6 +107,26 @@ clarifying question before creating again.
 - Source identifiers (no prefix): Telegram "channel" (not @channel), Reddit "sub" \
 (not r/sub), X "handle" (not @handle).
 - If the user provided sources, ask whether to also auto-discover more.
+- After create_subscription returns, READ ITS OUTPUT CAREFULLY. The return \
+string is ground truth -- never paper over it. It comes in one of three \
+shapes and your reply MUST match reality:
+  * "discovery finished: added N new source(s). Selected: ..." -- \
+confirm the subscription is fully set up, name 2-3 of the actual sources \
+from the list (so the user can see what was chosen), and state the \
+schedule/mode plainly.
+  * "discovery finished: no sources matched." -- tell the user plainly \
+that the subscription was SAVED but auto-discovery did NOT find sources. \
+Do NOT claim it is "all set" or that you "configured event-notifications"; \
+with zero sources, the subscription cannot deliver anything yet. Offer \
+three choices in one sentence: (1) try discovery again with a different \
+angle they describe, (2) have them name specific sources (Telegram \
+channels, subreddits, X handles, RSS URLs), or (3) delete the \
+subscription.
+  * "discovery did not complete (...)" or "discovery crashed: ..." -- \
+tell the user auto-discovery failed (quote the short reason in plain \
+language), offer the same three choices.
+- If the user only provided fixed sources and auto-discovery was skipped, \
+treat that as fully set up and confirm normally.
 
 Editing existing subscriptions via update_subscription:
 - The pre-loaded one-line summaries in context are enough for disambiguation \
