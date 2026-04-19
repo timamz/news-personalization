@@ -36,20 +36,59 @@ from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.telegram import build_telegram_channel_url
 from news_service.services.timezones import resolve_timezone
 from news_service.services.twitter import build_twitter_account_url
-from news_service.tasks.celery_app import celery_app
-from news_service.tasks.discover_sources import DISCOVER_SOURCES_TASK
+from news_service.tasks.discover_sources import run_and_persist_discovery
 
 logger = logging.getLogger(__name__)
 
 
-def _enqueue_discovery(subscription_id: uuid.UUID, reason: str) -> None:
-    """Fire-and-forget enqueue of the discovery Celery task."""
-    celery_app.send_task(DISCOVER_SOURCES_TASK, args=[str(subscription_id), reason])
-    logger.info(
-        "Queued source discovery for subscription %s (reason=%r)",
-        subscription_id,
-        reason[:100],
-    )
+def _format_discovery_result(result: dict[str, Any]) -> str:
+    """Render the run_and_persist_discovery dict into a string for the LLM."""
+    status = result.get("status")
+    if status != "ok":
+        reason = result.get("reason") or "unknown"
+        return f"discovery did not complete ({reason})."
+    sources = result.get("selected_sources") or []
+    persisted = result.get("persisted", 0)
+    if not sources:
+        return "discovery finished: no sources matched."
+    lines = [f"discovery finished: added {persisted} new source(s). Selected:"]
+    for src in sources[:20]:
+        title = (src.get("title") or src.get("url") or "").strip()
+        url = src.get("url", "")
+        kind = src.get("source_kind", "")
+        lines.append(f"- {title} ({kind}) {url}")
+    if len(sources) > 20:
+        lines.append(f"... and {len(sources) - 20} more.")
+    return "\n".join(lines)
+
+
+async def _run_inline_discovery(
+    *,
+    scoped_factory: async_sessionmaker[AsyncSession],
+    subscription_id: uuid.UUID,
+    reason: str,
+    shared_state: dict[str, Any],
+) -> dict[str, Any]:
+    """Run discovery inline inside a tool call and return the raw result dict.
+
+    Exceptions are caught and surfaced as a {"status": "skipped"} payload so
+    the tool can still commit the subscription and tell the LLM what went
+    wrong instead of crashing the whole turn.
+    """
+    status_queue = shared_state.get("status_queue")
+    language = shared_state.get("display_language") or "en"
+    try:
+        async with scoped_factory() as discovery_session:
+            return await run_and_persist_discovery(
+                discovery_session,
+                subscription_id,
+                reason,
+                status_queue=status_queue,
+                display_language=language,
+            )
+    except Exception as exc:
+        logger.exception("Inline discovery crashed for subscription %s", subscription_id)
+        return {"status": "skipped", "reason": f"discovery crashed: {exc}"}
 
 
 MAX_USER_SPEC_LENGTH = 10_000
@@ -196,16 +235,20 @@ def build_tools(
                     await scoped.commit()
                 user.has_onboarded = True
 
-            if include_discovered_sources:
-                _enqueue_discovery(
-                    subscription.id,
-                    f"Initial discovery on subscription creation. Retrieval query: {query}.",
-                )
+            subscription_id = subscription.id
 
-            return (
-                f"subscription {subscription.id}: created (auto-discovery "
-                f"{'queued' if include_discovered_sources else 'skipped'})."
-            )
+        if not include_discovered_sources:
+            return f"subscription {subscription_id}: created (auto-discovery skipped)."
+
+        discovery_result = await _run_inline_discovery(
+            scoped_factory=scoped_factory,
+            subscription_id=subscription_id,
+            reason=(f"Initial discovery on subscription creation. Retrieval query: {query}."),
+            shared_state=shared_state,
+        )
+        return f"subscription {subscription_id}: created.\n" + _format_discovery_result(
+            discovery_result
+        )
 
     async def update_subscription(
         subscription_id: str,
@@ -609,14 +652,15 @@ def build_tools(
         return f"Digest queued for delivery (subscription {subscription_id})."
 
     async def trigger_source_discovery(subscription_id: str, reason: str) -> str:
-        """Queue an asynchronous source-discovery run for a subscription.
+        """Run source discovery inline for a subscription and return the findings.
 
         Use this when the set of news worth surfacing has meaningfully
         shifted (user just rewrote the spec toward a new topic, existing
-        sources are stale, user explicitly asked for more sources) or on
-        initial creation. Discovery runs in the background against the
-        subscription's current user_spec + retrieval embedding; accepted
-        sources are persisted as auto-discovered.
+        sources are stale, user explicitly asked for more sources).
+        Discovery runs inside the current turn (live progress is streamed
+        to the user); when this tool returns, the new sources are already
+        saved and the return string lists them so the reply can be
+        specific about what was added.
 
         Removing stale sources is a separate concern -- call
         ``remove_source`` first (after confirming with the user) and then
@@ -633,7 +677,7 @@ def build_tools(
                 shape its strategies.
 
         Returns:
-            Confirmation or error message.
+            A summary of what discovery found, or an error message.
         """
         try:
             sub_uuid = uuid.UUID(subscription_id.strip())
@@ -657,8 +701,13 @@ def build_tools(
             if not sub.is_active:
                 return f"subscription {subscription_id}: inactive."
 
-        _enqueue_discovery(sub_uuid, cleaned_reason)
-        return f"Source discovery queued for subscription {subscription_id}."
+        discovery_result = await _run_inline_discovery(
+            scoped_factory=scoped_factory,
+            subscription_id=sub_uuid,
+            reason=cleaned_reason,
+            shared_state=shared_state,
+        )
+        return _format_discovery_result(discovery_result)
 
     async def delete_subscription(subscription_id: str) -> str:
         """Soft-delete (deactivate) a subscription by id.

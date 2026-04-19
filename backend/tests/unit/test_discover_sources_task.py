@@ -74,16 +74,16 @@ async def test_discover_loads_context_invokes_pipeline_and_persists_new_links(mo
         "news_service.tasks.discover_sources.run_source_discovery",
         new=AsyncMock(return_value=_result(discovered_url)),
     )
-    ensured = SimpleNamespace(id=uuid.uuid4(), url=discovered_url)
+    ensured = SimpleNamespace(id=uuid.uuid4(), url=discovered_url, title=discovered_url)
     ensure_mock = mocker.patch(
         "news_service.tasks.discover_sources.ensure_source_by_url",
         new=AsyncMock(return_value=ensured),
     )
 
-    from news_service.tasks.discover_sources import _discover
+    from news_service.tasks.discover_sources import run_and_persist_discovery
 
     reason = f"User pivoted to AI {uuid.uuid4().hex[:6]}"
-    result = await _discover(sub.id, reason)
+    result = await run_and_persist_discovery(session, sub.id, reason)
 
     assert (
         result["status"] == "ok"
@@ -106,9 +106,9 @@ async def test_discover_skips_when_subscription_missing(mocker) -> None:
         new=AsyncMock(),
     )
 
-    from news_service.tasks.discover_sources import _discover
+    from news_service.tasks.discover_sources import run_and_persist_discovery
 
-    result = await _discover(uuid.uuid4(), "irrelevant")
+    result = await run_and_persist_discovery(session, uuid.uuid4(), "irrelevant")
     assert result == {"status": "skipped", "reason": "not_found_or_inactive"} and (
         pipeline.await_count == 0
     ), "missing subscription should short-circuit before invoking the pipeline"
@@ -129,9 +129,9 @@ async def test_discover_skips_when_subscription_has_no_embedding(mocker) -> None
         new=AsyncMock(),
     )
 
-    from news_service.tasks.discover_sources import _discover
+    from news_service.tasks.discover_sources import run_and_persist_discovery
 
-    result = await _discover(sub.id, "reason")
+    result = await run_and_persist_discovery(session, sub.id, "reason")
     assert result == {"status": "skipped", "reason": "no_embedding"} and (
         pipeline.await_count == 0
     ), "subscription without embedding must skip before invoking pipeline"
@@ -168,9 +168,9 @@ async def test_discover_drops_results_when_subscription_deactivated_mid_run(mock
         new=AsyncMock(),
     )
 
-    from news_service.tasks.discover_sources import _discover
+    from news_service.tasks.discover_sources import run_and_persist_discovery
 
-    result = await _discover(sub.id, "reason")
+    result = await run_and_persist_discovery(session, sub.id, "reason")
     assert (
         result["status"] == "skipped"
         and result["reason"] == "subscription_gone_after_discovery"

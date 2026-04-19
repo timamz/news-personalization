@@ -274,7 +274,9 @@ async def test_pipeline_emits_status_events_through_the_queue(mocker) -> None:
         status_queue=queue,
     )
 
-    keys: list[str] = []
+    phases: list[str] = []
     while not queue.empty():
-        keys.append(queue.get_nowait()["status_key"])
-    assert "status_planning_discovery" in keys and "status_searching_sources" in keys
+        phases.append(queue.get_nowait()["phase"])
+    assert "planning" in phases and "searching" in phases, (
+        "pipeline did not emit the expected discovery_progress phases onto the queue"
+    )

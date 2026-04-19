@@ -47,10 +47,13 @@ def create_conversational_agent(
     the hot transcript after the turn.
     """
     scoped_factory = session_factory or async_session_factory
+    effective_language = user_language or user.language or "en"
     shared_state: dict[str, Any] = {
         "status": "in_progress",
         "created_subscription_id": None,
         "scenario_close_summary": None,
+        "status_queue": status_queue,
+        "display_language": effective_language,
     }
 
     tools = build_tools(
@@ -77,7 +80,6 @@ def create_conversational_agent(
         tools=tools,
         generate_content_config=types.GenerateContentConfig(temperature=0.2),
     )
-    _ = status_queue  # reserved for future per-tool UI events; not used by tools.
     return agent, shared_state
 
 
@@ -110,6 +112,9 @@ async def run_conversational_turn(
     }
 
 
+_ADK_SENTINEL = object()
+
+
 async def run_conversation_turn_streaming(
     messages: list[dict],
     *,
@@ -121,18 +126,22 @@ async def run_conversation_turn_streaming(
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Streaming variant: yields status events, then one final done event.
 
-    The done event carries the agent's shared_state so the caller can
-    react to ``scenario_close_summary`` and compact the hot transcript.
+    Uses a single merged queue so progress events emitted by a tool
+    mid-execution (e.g. the inline source-discovery run) reach the HTTP
+    stream even while ADK is blocked awaiting the tool result. ADK
+    events are pushed onto the queue by a background task; tool status
+    puts land on the same queue directly via ``shared_state["status_queue"]``.
 
     Events:
       {"event": "status", "status_key": ..., ...kwargs}
+      {"event": "discovery_progress", "phase": ..., "display_text": ..., ...}
       {"event": "done", "output": {...}, "new_messages": [...], "shared_state": {...}}
       {"event": "error", "detail": "..."}
     """
     previous_messages = messages[:-1] if len(messages) > 1 else []
     current_message = messages[-1]["content"] if messages else ""
 
-    status_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    events_queue: asyncio.Queue[Any] = asyncio.Queue()
 
     try:
         subscription_summaries = await _load_subscription_summaries(db_session, user.id)
@@ -146,31 +155,51 @@ async def run_conversation_turn_streaming(
         conversation_summary=conversation_summary,
         user_language=user_language,
         conversation_history=previous_messages,
-        status_queue=status_queue,
+        status_queue=events_queue,
         subscription_summaries=subscription_summaries,
         compacted_log=compacted_log,
     )
 
     agent_text = ""
+    agent_error: BaseException | None = None
+
+    async def pump_adk() -> None:
+        nonlocal agent_text, agent_error
+        try:
+            async for event in run_agent(
+                agent=agent,
+                message=current_message,
+                user_id=str(user.id),
+            ):
+                await events_queue.put((_ADK_SENTINEL, event))
+        except BaseException as exc:
+            agent_error = exc
+        finally:
+            await events_queue.put(None)
+
+    task = asyncio.create_task(pump_adk())
+
     try:
-        async for event in run_agent(
-            agent=agent,
-            message=current_message,
-            user_id=str(user.id),
-        ):
-            while not status_queue.empty():
-                yield status_queue.get_nowait()
-            if event["type"] == "tool_call":
-                emitted = _status_for_tool_call(event)
-                if emitted is not None:
-                    yield emitted
-            elif event["type"] == "final_response":
-                agent_text = event["text"]
-        while not status_queue.empty():
-            yield status_queue.get_nowait()
-    except Exception as exc:
-        logger.exception("Conversational agent streaming failed")
-        yield {"event": "error", "detail": f"Agent error: {exc}"}
+        while True:
+            item = await events_queue.get()
+            if item is None:
+                break
+            if isinstance(item, tuple) and len(item) == 2 and item[0] is _ADK_SENTINEL:
+                event = item[1]
+                if event["type"] == "tool_call":
+                    emitted = _status_for_tool_call(event)
+                    if emitted is not None:
+                        yield emitted
+                elif event["type"] == "final_response":
+                    agent_text = event["text"]
+            elif isinstance(item, dict):
+                yield item
+    finally:
+        await task
+
+    if agent_error is not None:
+        logger.exception("Conversational agent streaming failed", exc_info=agent_error)
+        yield {"event": "error", "detail": f"Agent error: {agent_error}"}
         return
 
     output = AgentTurnOutput(

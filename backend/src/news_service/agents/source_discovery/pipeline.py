@@ -108,6 +108,56 @@ def _normalize_url(url: str) -> str:
     return url.rstrip("/").lower()
 
 
+_PROGRESS_STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "starting": "🔎 Looking for sources...",
+        "planning": "🧭 Planning search strategies...",
+        "searching": "🌐 Searching: {strategy}",
+        "searching_generic": "🌐 Searching for sources...",
+        "finished": "✓ Discovery finished: {count} source(s) selected",
+        "finished_empty": "✓ Discovery finished: no sources matched",
+        "aborted": "⚠️ Discovery stopped: {reason}",
+    },
+    "ru": {
+        "starting": "🔎 Ищу источники...",
+        "planning": "🧭 Планирую стратегии поиска...",
+        "searching": "🌐 Ищу: {strategy}",
+        "searching_generic": "🌐 Ищу источники...",
+        "finished": "✓ Поиск завершён: выбрано источников — {count}",
+        "finished_empty": "✓ Поиск завершён: подходящих источников не найдено",
+        "aborted": "⚠️ Поиск остановлен: {reason}",
+    },
+}
+
+
+def _progress_text(language: str, key: str, **fmt: Any) -> str:
+    table = _PROGRESS_STRINGS.get(language) or _PROGRESS_STRINGS["en"]
+    template = table.get(key) or _PROGRESS_STRINGS["en"].get(key) or ""
+    try:
+        return template.format(**fmt)
+    except (KeyError, IndexError):
+        return template
+
+
+def _emit_progress(
+    queue: asyncio.Queue[dict[str, Any]] | None,
+    language: str,
+    phase: str,
+    **extra: Any,
+) -> None:
+    if queue is None:
+        return
+    key = extra.pop("_text_key", phase)
+    text = _progress_text(language, key, **extra)
+    event: dict[str, Any] = {
+        "event": "discovery_progress",
+        "phase": phase,
+        "display_text": text,
+    }
+    event.update(extra)
+    queue.put_nowait(event)
+
+
 def _format_scored(sources: list[ScoredSource]) -> str:
     """Compact one-line-per-source listing for a finder return value."""
     if not sources:
@@ -160,6 +210,7 @@ async def run_source_discovery(
     reason: str = "",
     removal_history: str = "",
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
+    display_language: str = "en",
 ) -> SourceDiscoveryResult:
     """Run the source discovery ReAct agent and return its chosen selection.
 
@@ -175,8 +226,8 @@ async def run_source_discovery(
     selected_urls: list[str] = []
     aborted: dict[str, str] = {"reason": ""}
 
-    if status_queue is not None:
-        status_queue.put_nowait({"event": "status", "status_key": "status_planning_discovery"})
+    _emit_progress(status_queue, display_language, "starting")
+    _emit_progress(status_queue, display_language, "planning")
 
     async def spawn_finder(strategy: str) -> str:
         """Launch one search strategy against the user's retrieval embedding.
@@ -201,8 +252,12 @@ async def run_source_discovery(
             return "empty strategy; nothing spawned."
 
         logger.info("Discovery spawning finder for strategy '%s'", trimmed[:80])
-        if status_queue is not None:
-            status_queue.put_nowait({"event": "status", "status_key": "status_searching_sources"})
+        _emit_progress(
+            status_queue,
+            display_language,
+            "searching",
+            strategy=trimmed[:80],
+        )
 
         try:
             found = await run_finder(
@@ -352,6 +407,12 @@ async def run_source_discovery(
             topic_text[:60],
             aborted["reason"],
         )
+        _emit_progress(
+            status_queue,
+            display_language,
+            "aborted",
+            reason=aborted["reason"],
+        )
         return SourceDiscoveryResult(sources=[])
 
     selected = [
@@ -364,6 +425,13 @@ async def run_source_discovery(
         topic_text[:60],
         len(candidate_pool),
         len(selected),
+    )
+    _emit_progress(
+        status_queue,
+        display_language,
+        "finished",
+        _text_key="finished" if selected else "finished_empty",
+        count=len(selected),
     )
     return SourceDiscoveryResult(sources=selected)
 

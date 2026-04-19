@@ -1,5 +1,6 @@
 """Tests for the conversational agent: prompt assembly + tool behavior."""
 
+import asyncio
 import logging
 import uuid
 from types import SimpleNamespace
@@ -12,6 +13,7 @@ from news_service.agents.conversational import (
     _append_conversation_summary,
     _build_instruction,
     create_conversational_agent,
+    run_conversation_turn_streaming,
 )
 
 logging.disable(logging.CRITICAL)
@@ -185,7 +187,9 @@ def test_append_conversation_summary_dedups_same_fact_and_caps_bytes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_subscription_embeds_retrieval_query_and_queues_discovery(mocker) -> None:
+async def test_create_subscription_embeds_retrieval_query_and_runs_inline_discovery(
+    mocker,
+) -> None:
     user = _fake_user()
     scoped = AsyncMock()
     scoped.add = MagicMock()
@@ -199,8 +203,20 @@ async def test_create_subscription_embeds_retrieval_query_and_queues_discovery(m
         "news_service.agents.conversational.tools.ensure_source_coverage",
         new=AsyncMock(return_value=[]),
     )
-    enqueue_mock = mocker.patch(
-        "news_service.agents.conversational.tools._enqueue_discovery",
+    discovery_mock = mocker.patch(
+        "news_service.agents.conversational.tools.run_and_persist_discovery",
+        new=AsyncMock(
+            return_value={
+                "status": "ok",
+                "subscription_id": "sub-id",
+                "discovered": 2,
+                "persisted": 2,
+                "selected_sources": [
+                    {"url": "https://example.com/a", "title": "A", "source_kind": "rss"},
+                    {"url": "https://example.com/b", "title": "B", "source_kind": "rss"},
+                ],
+            }
+        ),
     )
 
     agent, shared_state = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -214,13 +230,16 @@ async def test_create_subscription_embeds_retrieval_query_and_queues_discovery(m
     )
     assert (
         ": created" in result
+        and "discovery finished" in result
+        and "https://example.com/a" in result
         and shared_state["created_subscription_id"]
         and embed_mock.await_args.args[0] == query
-        and enqueue_mock.call_count == 1
-        and query in enqueue_mock.call_args.args[1]
+        and discovery_mock.await_count == 1
+        and query in discovery_mock.await_args.args[2]
     ), (
-        "creation must embed retrieval_query, record the id, and enqueue "
-        "discovery with a reason that mentions the query"
+        "creation must embed retrieval_query, record the id, run discovery "
+        "inline with a query-referencing reason, and include its findings in "
+        "the tool return"
     )
 
 
@@ -239,8 +258,9 @@ async def test_create_subscription_skips_discovery_when_not_requested(mocker) ->
         "news_service.agents.conversational.tools.ensure_source_coverage",
         new=AsyncMock(return_value=[]),
     )
-    enqueue_mock = mocker.patch(
-        "news_service.agents.conversational.tools._enqueue_discovery",
+    discovery_mock = mocker.patch(
+        "news_service.agents.conversational.tools.run_and_persist_discovery",
+        new=AsyncMock(return_value={"status": "ok", "selected_sources": []}),
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -250,7 +270,7 @@ async def test_create_subscription_skips_discovery_when_not_requested(mocker) ->
         delivery_mode="digest",
         include_discovered_sources=False,
     )
-    assert enqueue_mock.call_count == 0, (
+    assert discovery_mock.await_count == 0, (
         "discovery must not fire when include_discovered_sources is False"
     )
 
@@ -363,8 +383,17 @@ async def test_trigger_source_discovery_enqueues_with_reason(mocker) -> None:
     scoped = AsyncMock()
     scoped.execute = AsyncMock(return_value=lookup)
 
-    enqueue_mock = mocker.patch(
-        "news_service.agents.conversational.tools._enqueue_discovery",
+    discovery_mock = mocker.patch(
+        "news_service.agents.conversational.tools.run_and_persist_discovery",
+        new=AsyncMock(
+            return_value={
+                "status": "ok",
+                "persisted": 1,
+                "selected_sources": [
+                    {"url": "https://found.example/feed", "title": "Found", "source_kind": "rss"},
+                ],
+            }
+        ),
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -377,11 +406,12 @@ async def test_trigger_source_discovery_enqueues_with_reason(mocker) -> None:
         reason=reason,
     )
     assert (
-        "queued" in result
-        and enqueue_mock.call_count == 1
-        and enqueue_mock.call_args.args[0] == sub.id
-        and enqueue_mock.call_args.args[1] == reason
-    ), "trigger_source_discovery did not enqueue the task with the given reason"
+        "discovery finished" in result
+        and "https://found.example/feed" in result
+        and discovery_mock.await_count == 1
+        and discovery_mock.await_args.args[1] == sub.id
+        and discovery_mock.await_args.args[2] == reason
+    ), "trigger_source_discovery did not run the inline pipeline with the given reason"
 
 
 @pytest.mark.asyncio
@@ -395,8 +425,9 @@ async def test_trigger_source_discovery_rejects_empty_reason(mocker) -> None:
     lookup.scalar_one_or_none.return_value = sub
     scoped = AsyncMock()
     scoped.execute = AsyncMock(return_value=lookup)
-    enqueue_mock = mocker.patch(
-        "news_service.agents.conversational.tools._enqueue_discovery",
+    discovery_mock = mocker.patch(
+        "news_service.agents.conversational.tools.run_and_persist_discovery",
+        new=AsyncMock(return_value={"status": "ok", "selected_sources": []}),
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -404,8 +435,8 @@ async def test_trigger_source_discovery_rejects_empty_reason(mocker) -> None:
         subscription_id=str(sub.id),
         reason="   ",
     )
-    assert "reason is required" in result and enqueue_mock.call_count == 0, (
-        "empty reason must be rejected before any Celery dispatch"
+    assert "reason is required" in result and discovery_mock.await_count == 0, (
+        "empty reason must be rejected before the inline pipeline runs"
     )
 
 
@@ -542,4 +573,79 @@ async def test_close_scenario_records_summary_and_ignores_empty() -> None:
     await close("   ")
     assert shared_state["scenario_close_summary"] is None, (
         "empty summary must not be written to shared_state"
+    )
+
+
+# ---------- streaming runner: tool status drains while tool is mid-execution ----------
+
+
+@pytest.mark.asyncio
+async def test_streaming_runner_yields_tool_status_while_adk_is_waiting_on_tool(mocker) -> None:
+    """Tool puts onto shared_state['status_queue'] must surface BEFORE the tool returns.
+
+    The bug we are guarding against: earlier the runner drained the queue only between
+    ADK events, so a long-running tool (e.g. inline source discovery) could not push
+    progress frames until it had already finished. This asserts true interleaving.
+    """
+    user = _fake_user()
+    tool_running = asyncio.Event()
+    tool_may_finish = asyncio.Event()
+    yielded_progress = asyncio.Event()
+
+    async def fake_run_agent(**_: Any):
+        queue = getattr(fake_run_agent, "_queue", None)
+        assert queue is not None, "streaming runner did not publish the status queue to the tool"
+        yield {"type": "tool_call", "name": "create_subscription", "args": {}}
+        tool_running.set()
+        queue.put_nowait(
+            {"event": "discovery_progress", "phase": "searching", "display_text": "searching..."}
+        )
+        await tool_may_finish.wait()
+        yield {"type": "final_response", "text": "done"}
+
+    def capture_agent(*, status_queue, **_: Any):
+        fake_run_agent._queue = status_queue
+        agent = MagicMock()
+        agent.tools = []
+        return agent, {"status": "in_progress", "scenario_close_summary": None}
+
+    mocker.patch(
+        "news_service.agents.conversational.agent.run_agent",
+        new=fake_run_agent,
+    )
+    mocker.patch(
+        "news_service.agents.conversational.agent.create_conversational_agent",
+        new=capture_agent,
+    )
+    mocker.patch(
+        "news_service.agents.conversational.agent._load_subscription_summaries",
+        new=AsyncMock(return_value=[]),
+    )
+
+    async def consume() -> list[dict]:
+        events: list[dict] = []
+        gen = run_conversation_turn_streaming(
+            messages=[{"role": "user", "content": "hi"}],
+            db_session=AsyncMock(),
+            user=user,
+            conversation_summary="",
+        )
+        async for ev in gen:
+            events.append(ev)
+            if ev.get("event") == "discovery_progress":
+                yielded_progress.set()
+                tool_may_finish.set()
+        return events
+
+    task = asyncio.create_task(consume())
+    try:
+        await asyncio.wait_for(yielded_progress.wait(), timeout=2.0)
+    finally:
+        tool_may_finish.set()
+        events = await asyncio.wait_for(task, timeout=2.0)
+
+    phases = [e.get("phase") for e in events if e.get("event") == "discovery_progress"]
+    final = [e for e in events if e.get("event") == "done"]
+    assert "searching" in phases and len(final) == 1 and final[0]["output"]["message"] == "done", (
+        "runner must interleave tool-emitted progress with the final ADK response"
     )

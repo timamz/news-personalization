@@ -10,9 +10,11 @@ of re-greeting them.
 
 import contextlib
 import logging
+import time
 
 from aiogram import Router, types
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
 
 from tgbot.client import BackendClient
@@ -27,6 +29,7 @@ backend = BackendClient()
 
 _ERROR_TEXT = "Something went wrong. Please try again in a moment."
 _TELEGRAM_MESSAGE_LIMIT = 4000
+_PROGRESS_EDIT_MIN_INTERVAL_SECONDS = 1.0
 
 _WELCOME_TEXT = (
     "<b>Hi — I'm your personal news assistant.</b>\n"
@@ -145,47 +148,107 @@ async def handle_user_message(message: types.Message) -> None:
     await _safe_typing(message)
 
     try:
-        agent_message = await _stream_turn(api_key, text, message)
+        await _stream_turn(api_key, text, message)
     except Exception:
         logger.exception("Conversation turn failed")
         await message.answer(_ERROR_TEXT)
         return
-
-    if agent_message:
-        await _send_long_message(message, agent_message)
 
 
 async def _stream_turn(
     api_key: str,
     text: str,
     message: types.Message,
-) -> str:
+) -> None:
     agent_message = ""
+    progress_msg: types.Message | None = None
+    last_edit_text = ""
+    last_edit_ts = 0.0
+
     async for event in backend.send_conversation_message_stream(api_key, text):
         kind = event.get("event")
         if kind == "status":
             await _safe_typing(message)
-        elif kind == "done":
+            continue
+        if kind == "discovery_progress":
+            display_text = (event.get("display_text") or "").strip()
+            if not display_text:
+                continue
+            if progress_msg is None:
+                with contextlib.suppress(Exception):
+                    progress_msg = await message.answer(
+                        display_text,
+                        disable_web_page_preview=True,
+                    )
+                    last_edit_text = display_text
+                    last_edit_ts = time.monotonic()
+                continue
+            if display_text == last_edit_text:
+                continue
+            now = time.monotonic()
+            if now - last_edit_ts < _PROGRESS_EDIT_MIN_INTERVAL_SECONDS:
+                continue
+            try:
+                await progress_msg.edit_text(
+                    display_text,
+                    disable_web_page_preview=True,
+                )
+                last_edit_text = display_text
+                last_edit_ts = now
+            except TelegramBadRequest:
+                pass
+            except Exception:
+                logger.exception("Failed to edit progress message")
+            continue
+        if kind == "done":
             agent_message = event.get("agent_message") or ""
         elif kind == "error":
             agent_message = event.get("detail") or _ERROR_TEXT
-    return agent_message
+
+    if not agent_message:
+        return
+    await _finalize_turn(message, progress_msg, agent_message)
 
 
-async def _safe_typing(message: types.Message) -> None:
-    with contextlib.suppress(Exception):
-        await message.bot.send_chat_action(message.chat.id, "typing")
+async def _finalize_turn(
+    message: types.Message,
+    progress_msg: types.Message | None,
+    agent_message: str,
+) -> None:
+    """Render the agent's final message, replacing the progress bubble if any."""
+    rendered = render_html_message(agent_message)
+    chunks = list(split_for_telegram(rendered, _TELEGRAM_MESSAGE_LIMIT))
+    if not chunks:
+        return
 
+    if progress_msg is not None and len(chunks) == 1:
+        try:
+            await progress_msg.edit_text(
+                chunks[0],
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+            )
+            return
+        except TelegramBadRequest:
+            pass
+        except Exception:
+            logger.exception("Failed to replace progress message with final reply")
 
-async def _send_long_message(message: types.Message, text: str) -> None:
-    """Split on paragraph boundaries if the message exceeds the Telegram limit."""
-    rendered = render_html_message(text)
-    for chunk in split_for_telegram(rendered, _TELEGRAM_MESSAGE_LIMIT):
+    if progress_msg is not None:
+        with contextlib.suppress(Exception):
+            await progress_msg.delete()
+
+    for chunk in chunks:
         await message.answer(
             chunk,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
         )
+
+
+async def _safe_typing(message: types.Message) -> None:
+    with contextlib.suppress(Exception):
+        await message.bot.send_chat_action(message.chat.id, "typing")
 
 
 async def _send_static_html(message: types.Message, html_text: str) -> None:

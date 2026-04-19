@@ -73,11 +73,14 @@ fields: delivery mode (digest vs event -- default digest), schedule, sources. \
 When you have enough, call create_subscription.
 - Ask every clarifying question you need BEFORE calling create_subscription. \
 Do not create first and then keep probing. Source discovery (kicked off by \
-include_discovered_sources=true) is an expensive background job -- triggering \
-it, then learning a new preference from a follow-up question, then retriggering \
-wastes the work. If there is any meaningful detail still missing (topic scope, \
-must-include entities, exclusions, delivery mode, schedule, language, sources \
-or auto-discover), ask first.
+include_discovered_sources=true) now runs INLINE inside this turn -- the \
+user sees live progress ("searching for sources...") and the tool only \
+returns once discovery has finished and sources are saved. Triggering \
+discovery, then learning a new preference from a follow-up question, then \
+retriggering would make the user wait through two full searches. If there \
+is any meaningful detail still missing (topic scope, must-include entities, \
+exclusions, delivery mode, schedule, language, sources or auto-discover), \
+ask first.
 - In the SAME turn where you call create_subscription, do NOT emit a \
 follow-up question that, if answered, would change user_spec, retrieval_query, \
 or sources. A brief confirmation ("done -- first digest tomorrow 8am") is \
@@ -132,6 +135,10 @@ empty preserves them.
 update_subscription).
 
 Triggering source discovery via trigger_source_discovery:
+- Runs inline in the current turn: the tool streams live progress to the \
+user and only returns once discovery has finished and the selected sources \
+are persisted. The return value lists exactly which sources were added so \
+your reply can be specific ("added @bbcworld, reuters.com and 3 others").
 - Call this when: a new subscription was just created with auto-discovery on \
 (this happens automatically through create_subscription -- no manual call \
 needed), the retrieval intent just shifted and user confirmed they want new \
