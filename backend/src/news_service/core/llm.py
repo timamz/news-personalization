@@ -6,6 +6,7 @@ any other provider supported by LiteLLM.
 """
 
 import logging
+import os
 from typing import Any
 
 import httpx
@@ -25,7 +26,14 @@ EMBEDDING_BATCH_SIZE = 6
 _http_client = httpx.AsyncClient(proxy=settings.proxy_url) if settings.proxy_url else None
 _openai_client: AsyncOpenAI | None = None
 if settings.proxy_url:
-    _openai_client = AsyncOpenAI(http_client=_http_client)
+    # The OpenAI SDK reads OPENAI_BASE_URL but not OPENAI_API_BASE, while
+    # LiteLLM reads the latter. Forward whichever is set so the proxy-aware
+    # client targets the same endpoint LiteLLM does (e.g. NeuroAPI).
+    _base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_BASE")
+    _openai_kwargs: dict[str, Any] = {"http_client": _http_client}
+    if _base_url:
+        _openai_kwargs["base_url"] = _base_url
+    _openai_client = AsyncOpenAI(**_openai_kwargs)
 
 
 async def chat_completion(
@@ -39,7 +47,10 @@ async def chat_completion(
     """Run a chat completion via LiteLLM with structured output support.
 
     Returns the raw litellm response object. Callers should access
-    ``response.choices[0].message`` for the result.
+    ``response.choices[0].message`` for the result. When ``response_format``
+    is a Pydantic ``BaseModel`` subclass, ``message.parsed`` is populated
+    with a validated instance (LiteLLM only returns the JSON string in
+    ``content`` and does not set ``parsed`` itself).
     """
     kwargs: dict[str, Any] = {
         "model": model or settings.litellm_model,
@@ -53,7 +64,31 @@ async def chat_completion(
         kwargs["tools"] = tools
     if _openai_client is not None:
         kwargs["client"] = _openai_client
-    return await litellm.acompletion(**kwargs)
+    response = await litellm.acompletion(**kwargs)
+
+    if response_format is not None and _is_pydantic_model(response_format):
+        for choice in response.choices:
+            message = choice.message
+            content = getattr(message, "content", None)
+            if not content:
+                continue
+            try:
+                parsed = response_format.model_validate_json(content)
+            except Exception:
+                logger.exception("Failed to parse structured LLM output as %s", response_format)
+                continue
+            try:
+                message.parsed = parsed
+            except (AttributeError, ValueError):
+                object.__setattr__(message, "parsed", parsed)
+
+    return response
+
+
+def _is_pydantic_model(candidate: Any) -> bool:
+    from pydantic import BaseModel
+
+    return isinstance(candidate, type) and issubclass(candidate, BaseModel)
 
 
 def _normalize_embedding_text(content: str) -> str:

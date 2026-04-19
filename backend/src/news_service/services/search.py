@@ -14,10 +14,10 @@ _SEARXNG_MAX_RESULTS = 10
 
 async def search_web(query: str) -> str:
     """Query SearXNG and return results formatted for LLM consumption."""
-    async with httpx.AsyncClient(
-        timeout=settings.http_timeout_seconds,
-        proxy=settings.proxy_url,
-    ) as client:
+    # SearXNG is reached over the internal Docker network (e.g. http://searxng:8080),
+    # so the SOCKS5 proxy used for external traffic must NOT be applied here -- it
+    # cannot resolve the compose-internal hostname.
+    async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
         response = await client.get(
             f"{settings.searxng_url}/search",
             params={

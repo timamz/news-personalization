@@ -253,6 +253,8 @@ Branch strategy: `main` is always deployable. Feature work happens on short-live
 
 All deployment targets the **`devbox`** Docker context (`ssh://timamz@100.73.138.67`). Never run `docker compose up` locally with production bot tokens -- it will conflict with the remote instance.
 
+**There is no local stack. Do not start one.** All testing, smoke tests, and manual verification must hit the devbox containers that are already running. The API is reachable at `http://100.73.138.67:8000` (Tailscale). Postgres at `100.73.138.67:5432` (`news`/`news`/`news`). If a code change needs to be exercised, rebuild the affected service on devbox (`docker --context devbox compose up --build -d <service>`) -- never `docker compose up` locally. The token in `tgbot/.env` is the production bot token and will conflict with the devbox bot if run locally.
+
 ```bash
 docker --context devbox compose up --build -d          # deploy full stack
 docker --context devbox compose up --build -d tgbot     # deploy single service

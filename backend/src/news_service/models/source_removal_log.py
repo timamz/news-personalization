@@ -8,7 +8,7 @@ was recently removed and why, letting the LLM decide whether to re-discover.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,5 +24,5 @@ class SourceRemovalLog(UUIDPrimaryKey, TimestampMixin, Base):
         nullable=False,
     )
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
-    removed_at: Mapped[datetime] = mapped_column(nullable=False)
+    removed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     removal_reason: Mapped[str] = mapped_column(Text, default="", server_default="")
