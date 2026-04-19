@@ -388,7 +388,10 @@ def build_tools(
         except ValueError:
             return f"{cleaned}: invalid subscription_id."
 
-        url = _URL_BUILDERS[source_kind](cleaned)
+        try:
+            url = _URL_BUILDERS[source_kind](cleaned)
+        except ValueError as exc:
+            return f"{cleaned}: invalid identifier ({exc})."
         try:
             is_valid = await _validate_source_url(url, source_kind=source_kind)
         except Exception as exc:
@@ -473,7 +476,10 @@ def build_tools(
         except ValueError:
             return f"{cleaned}: invalid subscription_id."
 
-        url = _URL_BUILDERS[source_kind](cleaned)
+        try:
+            url = _URL_BUILDERS[source_kind](cleaned)
+        except ValueError as exc:
+            return f"{cleaned}: invalid identifier ({exc})."
 
         async with scoped_factory() as scoped:
             sub_result = await scoped.execute(

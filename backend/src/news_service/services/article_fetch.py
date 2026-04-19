@@ -51,6 +51,11 @@ async def fetch_article_text(
             response = await client.get(url)
             if response.status_code != 200:
                 return None
+            content_type = response.headers.get("content-type", "").lower()
+            if content_type and not any(
+                marker in content_type for marker in ("html", "xml", "text/plain")
+            ):
+                return None
             html = response.text
     except Exception:
         logger.debug("Article fetch failed for %s", url)

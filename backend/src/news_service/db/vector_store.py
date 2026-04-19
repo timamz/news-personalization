@@ -106,10 +106,10 @@ async def upsert_news_item(
 
     item = NewsItem(
         source_id=source_id,
-        headline=headline,
-        body=body,
+        headline=_sanitize_text(headline),
+        body=_sanitize_text(body),
         url=url,
-        source=source,
+        source=_sanitize_text(source),
         published_at=published_at,
         fetched_at=fetched_at,
         embedding=embedding,
@@ -117,3 +117,17 @@ async def upsert_news_item(
     session.add(item)
     await session.flush()
     return item
+
+
+def _sanitize_text(value: str) -> str:
+    """Strip NUL bytes (Postgres TEXT cannot hold them).
+
+    Adapters occasionally pull binary blobs (e.g. an image masquerading as an
+    article body) and pass them through here; without this the whole polling
+    batch aborts on ``CharacterNotInRepertoireError`` for one bad item.
+    """
+    if not value:
+        return value
+    if "\x00" in value:
+        return value.replace("\x00", "")
+    return value
