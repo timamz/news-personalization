@@ -68,7 +68,7 @@ async def test_write_digest_raises_when_agent_never_submits() -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_digest_does_not_expose_fetch_article_tool() -> None:
+async def test_write_digest_exposes_only_search_fetch_and_submit_tools() -> None:
     item_id = str(uuid.uuid4())
     captured: dict[str, set[str]] = {}
 
@@ -90,8 +90,8 @@ async def test_write_digest_does_not_expose_fetch_article_tool() -> None:
             recent_digest_summaries="",
         )
 
-    assert captured["tool_names"] == {"search_web", "submit_digest"}, (
-        "writer must expose only search_web and submit_digest after ingest-time enrichment"
+    assert captured["tool_names"] == {"search_web", "fetch_page", "submit_digest"}, (
+        "writer must expose search_web, fetch_page (its search-companion), and submit_digest"
     )
 
 

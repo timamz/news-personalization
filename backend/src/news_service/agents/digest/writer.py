@@ -31,6 +31,7 @@ from google.genai import types
 from pydantic import BaseModel, Field
 
 from news_service.agents.adk_runner import run_agent_text
+from news_service.agents.web_tools import fetch_page as _fetch_page
 from news_service.core.config import get_settings
 from news_service.core.guardrails import sanitize_for_llm_prompt
 from news_service.services.search import search_web as _search_web
@@ -60,7 +61,10 @@ from the candidates and write a well-structured digest.
 
 Workflow:
 1. Review all candidate items and the user's preferences.
-2. For items referencing something you need context on, use search_web.
+2. For items referencing something you need context on, use search_web \
+for short snippets, and fetch_page on a specific URL when the snippet \
+is not enough (e.g. when you need the full article body or a source \
+page that explains a reference).
 3. Write the digest and call submit_digest with the final text and item IDs.
 
 Candidate items already include the full article body that was stored at
@@ -176,7 +180,7 @@ async def write_digest(
         name=f"digest_writer_{uuid.uuid4().hex[:6]}",
         model=LiteLlm(model=settings.litellm_model),
         instruction=system_prompt,
-        tools=[search_web, submit_digest],
+        tools=[search_web, _fetch_page, submit_digest],
         generate_content_config=types.GenerateContentConfig(temperature=0.3),
     )
 

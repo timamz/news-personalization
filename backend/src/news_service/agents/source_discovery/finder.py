@@ -20,6 +20,7 @@ from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.adk_runner import run_agent_text
+from news_service.agents.web_tools import fetch_page as _fetch_page
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_text, find_similar_sources
 from news_service.services.relevance import score_candidate
@@ -35,8 +36,12 @@ You are a news source finder. Execute the search strategy you've been given.
 
 Use your tools to:
 1. Search the existing source database for matches.
-2. Search the web for new sources using varied, specific queries.
-3. Validate and score the most promising candidates.
+2. Search the web to find pages that RECOMMEND sources on this topic \
+(curated listicles, "best X" posts, community round-ups) and fetch \
+the most promising of those pages to read the full list.
+3. Harvest concrete source URLs (feed URLs, Telegram channel links, \
+subreddit URLs, Twitter/X handles) from the fetched pages.
+4. Validate and score the most promising candidates.
 
 Rules:
 - Focus on the source types mentioned in your strategy.
@@ -56,19 +61,27 @@ work with.
 The frontend does not render it and the asterisks appear literally. \
 Use plain text -- no bold markers at all.
 
+Primary tactic (curator harvesting) -- use this first:
+- Instead of guessing at URLs, let the web recommend them. Search for \
+curated lists: "best RSS feeds for X", "top X subreddits", "best \
+Telegram channels about X", "X official Twitter accounts list", \
+"awesome X sources", "X news feed roundup".
+- Call fetch_page on the 1-3 most promising results (listicles from \
+blogs, GitHub "awesome-lists", Reddit threads, Medium articles, \
+category pages on aggregators).
+- Harvest every concrete source URL or handle from the fetched text: \
+feed URLs ending in .xml/.rss/feed/atom, t.me/... Telegram links, \
+reddit.com/r/... subreddit URLs, twitter.com/... or x.com/... handles.
+- Submit the harvested URLs to validate_and_score_source with the \
+right source_kind. This is MUCH better than guessing feed paths -- \
+the curator has already verified the URL works.
+
 Search-query guidance (tool_search_web):
 - DO NOT use operators like site:, inurl:, filetype:. The backing meta- \
 search returns empty or noisy results for those. Use natural language.
-- For Telegram, search things like: "best Telegram channels about X", \
-"X news Telegram channel", "Telegram @... X" (but NOT site:t.me).
-- For Reddit, search: "best subreddits for X", "r/... X community" \
-(but NOT site:reddit.com).
-- For X/Twitter, search: "best Twitter accounts for X news", \
-"X official account Twitter" (but NOT site:twitter.com or site:x.com).
-- For RSS, search: "X RSS feed", "X Atom feed", "list of RSS feeds \
-for X", or go to a known site and look for its feed URL in your \
-head knowledge before searching (e.g. Crunchyroll's RSS is \
-/rss/anime, ArsTechnica's is /feed/).
+- Prefer curator-list queries over direct-source queries. "best X \
+Telegram channels" outperforms "X Telegram channel"; "list of RSS \
+feeds for X" outperforms "X RSS".
 - Vary phrasing across searches. If one query returns empty or \
 nothing relevant, rephrase before trying again -- do not just append \
 qualifiers.
@@ -79,16 +92,19 @@ endpoints. Telltales: path ending in .xml / .rss / /feed / /feed/ / \
 /rss / /rss/ / /atom.xml / /index.xml. A bare landing page \
 (example.com/news) is almost certainly NOT a feed and will return \
 "could not fetch posts" -- do not submit it as rss.
-- If you only have a landing-page URL, try common feed suffixes \
-(+"/feed", +"/rss", +"/feed.xml") and submit THOSE to the validator \
-rather than the landing page.
+- If a candidate is a landing page, try fetch_page on it first: \
+many sites link to their feed via <link rel="alternate"> or a visible \
+"RSS" link. Harvest the feed URL from that HTML rather than guessing.
+- If fetch_page does not reveal a feed URL, probe common suffixes \
+(/feed, /rss, /feed.xml) and submit THOSE to validate_and_score_source \
+-- never the landing page itself.
 - If the validator reports "could not fetch posts", try one feed-URL \
 variant of the same domain before discarding the candidate.
 
 Persistence:
 - Do NOT return empty-handed after a single failed query. Try at \
-least 3 different search phrasings before concluding the strategy \
-produced nothing.
+least 3 different search phrasings AND fetch at least one curator \
+page before concluding the strategy produced nothing.
 - A source with a low score (<0.5) is still better than nothing if \
 the topic/source-kind is right; mention it in your summary so the \
 orchestrator can decide.
@@ -208,7 +224,12 @@ async def run_finder(
         name=f"finder_{uuid.uuid4().hex[:6]}",
         model=LiteLlm(model=settings.litellm_model),
         instruction=FINDER_PROMPT + exclude_note,
-        tools=[search_existing_sources, tool_search_web, validate_and_score_source],
+        tools=[
+            search_existing_sources,
+            tool_search_web,
+            _fetch_page,
+            validate_and_score_source,
+        ],
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 
