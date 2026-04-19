@@ -43,6 +43,9 @@ Rules:
 - Validate only your top candidates, not every search result.
 - Stop once you have 3-4 validated sources with scores above 0.5.
 - Skip sources that are in the exclude list.
+- Never emit Markdown bold syntax (**...**) in any text you produce. \
+The frontend does not render it and the asterisks appear literally. \
+Use plain text -- no bold markers at all.
 
 When done, summarize what you found.
 """

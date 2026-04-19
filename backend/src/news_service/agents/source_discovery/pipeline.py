@@ -97,6 +97,9 @@ than raw diversity.
 - There is no hard cap on rounds -- keep searching or inspecting until \
 you are satisfied, but be efficient. Do not re-run strategies that \
 already returned good results.
+- Never emit Markdown bold syntax (**...**) in any text you produce. \
+The frontend does not render it and the asterisks appear literally. \
+Use plain text -- no bold markers at all.
 {removal_context}\
 """
 

@@ -34,6 +34,9 @@ Rules:
 a concise title, timing if known, 1-2 sentence summary, and the source URL.
 - Keep each notification suitable for a chat message.
 - Return assessments for ALL items (both relevant and not relevant).
+- Never emit Markdown bold syntax (**...**) anywhere in notification_body. \
+The frontend does not render it and the asterisks appear literally. \
+Use plain text -- no bold markers at all.
 """
 
 

@@ -107,6 +107,9 @@ should investigate first.
 looks healthy on inspection.
 - After removing sources, trigger discovery with a reason naming what was \
 lost so the finder knows what to look for.
+- Never emit Markdown bold syntax (**...**) in emit_status messages or any \
+other user-visible text. The frontend does not render it and the asterisks \
+appear literally. Use plain text -- no bold markers at all.
 """
 
 

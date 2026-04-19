@@ -25,6 +25,10 @@ Then decide:
 - Otherwise: verdict = "REVISE" and provide specific feedback for improvement.
 
 Be strict but fair. A score of 3 means acceptable, 4 means good, 5 means excellent.
+
+Never emit Markdown bold syntax (**...**) in your feedback text. The writer \
+reads it verbatim and would copy the markers into the user-visible digest, \
+where the frontend does not render them.
 """
 
 
