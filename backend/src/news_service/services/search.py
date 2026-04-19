@@ -23,7 +23,7 @@ async def search_web(query: str) -> str:
             params={
                 "q": query,
                 "format": "json",
-                "engines": "google,bing,duckduckgo",
+                "engines": "brave,bing",
             },
         )
         response.raise_for_status()
