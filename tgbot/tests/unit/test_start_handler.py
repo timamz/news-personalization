@@ -30,12 +30,25 @@ async def _stream_events(events: list[dict]):
 
 
 @pytest.mark.asyncio
-async def test_cmd_start_sends_welcome_message(mocker) -> None:
+async def test_cmd_start_relays_to_agent_and_forwards_reply(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
-    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    api_key = f"key-{uuid.uuid4().hex}"
+    agent_text = f"greeting-{uuid.uuid4().hex[:6]}"
+
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    stream_mock = mocker.patch.object(
+        start.backend,
+        "send_conversation_message_stream",
+        return_value=_stream_events([{"event": "done", "agent_message": agent_text}]),
+    )
+
     await start.cmd_start(message)
-    message.answer.assert_awaited_once()
+
+    stream_mock.assert_called_once_with(api_key, "/start")
+    assert message.answer.await_count == 1, (
+        f"cmd_start sent {message.answer.await_count} messages, expected 1"
+    )
 
 
 @pytest.mark.asyncio
@@ -43,6 +56,11 @@ async def test_cmd_start_does_not_touch_the_conversation_thread(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(
+        start.backend,
+        "send_conversation_message_stream",
+        return_value=_stream_events([{"event": "done", "agent_message": "hi"}]),
+    )
     reset_mock = mocker.patch.object(start.backend, "reset_conversation", new=AsyncMock())
     await start.cmd_start(message)
     reset_mock.assert_not_awaited()
@@ -58,6 +76,29 @@ async def test_cmd_start_reports_error_when_registration_fails(mocker) -> None:
     spoken_text = message.answer.await_args.args[0]
     assert "wrong" in spoken_text.lower(), (
         f"cmd_start did not surface an error to the user: {spoken_text!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_cmd_start_reports_error_when_stream_raises(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id)
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+
+    async def _raises(*_args, **_kwargs):
+        raise RuntimeError("network dead")
+        yield  # pragma: no cover
+
+    mocker.patch.object(
+        start.backend,
+        "send_conversation_message_stream",
+        side_effect=_raises,
+    )
+
+    await start.cmd_start(message)
+    spoken = message.answer.await_args.args[0]
+    assert "wrong" in spoken.lower(), (
+        f"cmd_start did not surface the stream failure: {spoken!r}"
     )
 
 

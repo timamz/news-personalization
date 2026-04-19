@@ -25,23 +25,33 @@ logger = logging.getLogger(__name__)
 router = Router()
 backend = BackendClient()
 
-_WELCOME_TEXT = "What can I help you with?"
 _ERROR_TEXT = "Something went wrong. Please try again in a moment."
 _TELEGRAM_MESSAGE_LIMIT = 4000
+_START_TURN_TEXT = "/start"
 
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message) -> None:
-    """Ensure the user has an API key and greet. Never touches the thread."""
+    """Ensure the user has an API key, then let the agent greet."""
     telegram_id = message.from_user.id
     try:
-        await ensure_api_key(telegram_id, backend)
+        api_key = await ensure_api_key(telegram_id, backend)
     except Exception:
         logger.exception("Failed to register user for telegram_id=%d", telegram_id)
         await message.answer(_ERROR_TEXT)
         return
 
-    await message.answer(_WELCOME_TEXT)
+    await _safe_typing(message)
+
+    try:
+        agent_message = await _stream_turn(api_key, _START_TURN_TEXT, message)
+    except Exception:
+        logger.exception("Start turn failed for telegram_id=%d", telegram_id)
+        await message.answer(_ERROR_TEXT)
+        return
+
+    if agent_message:
+        await _send_long_message(message, agent_message)
 
 
 @router.message()
