@@ -48,3 +48,52 @@ async def test_register_user_posts_to_users_endpoint_and_returns_api_key() -> No
 
     mock_http.post.assert_called_once_with(f"{base}/users")
     assert result == generated_key, "register_user did not return the expected api_key"
+
+
+@pytest.mark.asyncio
+async def test_acknowledge_onboarding_posts_with_api_key_header() -> None:
+    base = f"http://test-{uuid.uuid4().hex[:8]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(204)
+    mock_http = _make_http_mock("post", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        await client.acknowledge_onboarding(api_key)
+
+    mock_http.post.assert_called_once_with(
+        f"{base}/users/me/acknowledge-onboarding",
+        headers={"X-API-Key": api_key},
+    )
+
+
+@pytest.mark.asyncio
+async def test_api_key_is_valid_returns_true_on_200() -> None:
+    base = f"http://test-{uuid.uuid4().hex[:8]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(200, {"id": uuid.uuid4().hex})
+    mock_http = _make_http_mock("get", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        result = await client.api_key_is_valid(api_key)
+
+    mock_http.get.assert_called_once_with(
+        f"{base}/users/me",
+        headers={"X-API-Key": api_key},
+    )
+    assert result is True, "api_key_is_valid returned False for a 200 response"
+
+
+@pytest.mark.asyncio
+async def test_api_key_is_valid_returns_false_on_401() -> None:
+    base = f"http://test-{uuid.uuid4().hex[:8]}:8000"
+    api_key = f"stale-{uuid.uuid4().hex}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(401)
+    mock_http = _make_http_mock("get", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        result = await client.api_key_is_valid(api_key)
+
+    assert result is False, "api_key_is_valid did not treat 401 as an invalid key"

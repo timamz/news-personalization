@@ -55,6 +55,22 @@ async def update_user_profile(
     return user
 
 
+@router.post("/me/acknowledge-onboarding", status_code=status.HTTP_204_NO_CONTENT)
+async def acknowledge_onboarding(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Mark the caller as onboarded so the conversational agent skips the
+    first-time greeting. Frontends that render their own onboarding screen
+    (e.g. the Telegram bot's /start message) call this immediately after
+    showing it so the user's very first message to the agent is treated
+    as a returning-user turn.
+    """
+    if not user.has_onboarded:
+        user.has_onboarded = True
+        await session.commit()
+
+
 @router.post("/resolve-timezone", response_model=TimezoneResolveResponse)
 async def resolve_user_timezone(
     payload: TimezoneResolveRequest,

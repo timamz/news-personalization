@@ -1,4 +1,4 @@
-"""Tests for the /start command and the generic text-message relay handler."""
+"""Tests for /start, /help, and the generic text-message relay handler."""
 
 import logging
 import random
@@ -30,40 +30,66 @@ async def _stream_events(events: list[dict]):
 
 
 @pytest.mark.asyncio
-async def test_cmd_start_relays_to_agent_and_forwards_reply(mocker) -> None:
+async def test_cmd_start_sends_fixed_welcome_text(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
-    api_key = f"key-{uuid.uuid4().hex}"
-    agent_text = f"greeting-{uuid.uuid4().hex[:6]}"
-
-    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
-    stream_mock = mocker.patch.object(
-        start.backend,
-        "send_conversation_message_stream",
-        return_value=_stream_events([{"event": "done", "agent_message": agent_text}]),
-    )
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(start.backend, "acknowledge_onboarding", new=AsyncMock())
 
     await start.cmd_start(message)
 
-    stream_mock.assert_called_once_with(api_key, "/start")
-    assert message.answer.await_count == 1, (
-        f"cmd_start sent {message.answer.await_count} messages, expected 1"
+    assert message.answer.await_count >= 1, "cmd_start did not answer the user"
+    spoken = "".join(call.args[0] for call in message.answer.await_args_list)
+    assert "personal news assistant" in spoken.lower(), (
+        f"cmd_start did not surface the onboarding text: {spoken!r}"
     )
 
 
 @pytest.mark.asyncio
-async def test_cmd_start_does_not_touch_the_conversation_thread(mocker) -> None:
+async def test_cmd_start_acknowledges_onboarding_with_the_users_api_key(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id)
+    api_key = f"key-{uuid.uuid4().hex}"
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    ack = mocker.patch.object(start.backend, "acknowledge_onboarding", new=AsyncMock())
+
+    await start.cmd_start(message)
+
+    ack.assert_awaited_once_with(api_key)
+
+
+@pytest.mark.asyncio
+async def test_cmd_start_does_not_call_the_conversation_endpoint(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id)
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(start.backend, "acknowledge_onboarding", new=AsyncMock())
+    stream_mock = mocker.patch.object(
+        start.backend, "send_conversation_message_stream", new=AsyncMock()
+    )
+
+    await start.cmd_start(message)
+
+    stream_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cmd_start_still_sends_welcome_if_acknowledge_onboarding_fails(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
     mocker.patch.object(
         start.backend,
-        "send_conversation_message_stream",
-        return_value=_stream_events([{"event": "done", "agent_message": "hi"}]),
+        "acknowledge_onboarding",
+        new=AsyncMock(side_effect=RuntimeError("backend down")),
     )
-    reset_mock = mocker.patch.object(start.backend, "reset_conversation", new=AsyncMock())
+
     await start.cmd_start(message)
-    reset_mock.assert_not_awaited()
+
+    spoken = "".join(call.args[0] for call in message.answer.await_args_list)
+    assert "personal news assistant" in spoken.lower(), (
+        f"cmd_start dropped the welcome text when acknowledge failed: {spoken!r}"
+    )
 
 
 @pytest.mark.asyncio
@@ -71,8 +97,9 @@ async def test_cmd_start_reports_error_when_registration_fails(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(side_effect=RuntimeError("boom")))
+
     await start.cmd_start(message)
-    assert message.answer.await_args is not None, "cmd_start did not answer the user"
+
     spoken_text = message.answer.await_args.args[0]
     assert "wrong" in spoken_text.lower(), (
         f"cmd_start did not surface an error to the user: {spoken_text!r}"
@@ -80,25 +107,17 @@ async def test_cmd_start_reports_error_when_registration_fails(mocker) -> None:
 
 
 @pytest.mark.asyncio
-async def test_cmd_start_reports_error_when_stream_raises(mocker) -> None:
+async def test_cmd_help_sends_fixed_help_text(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
-    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    ensure_mock = mocker.patch.object(start, "ensure_api_key", new=AsyncMock())
 
-    async def _raises(*_args, **_kwargs):
-        raise RuntimeError("network dead")
-        yield  # pragma: no cover
+    await start.cmd_help(message)
 
-    mocker.patch.object(
-        start.backend,
-        "send_conversation_message_stream",
-        side_effect=_raises,
-    )
-
-    await start.cmd_start(message)
-    spoken = message.answer.await_args.args[0]
-    assert "wrong" in spoken.lower(), (
-        f"cmd_start did not surface the stream failure: {spoken!r}"
+    ensure_mock.assert_not_awaited()
+    spoken = "".join(call.args[0] for call in message.answer.await_args_list)
+    assert "help" in spoken.lower() and "subscriptions" in spoken.lower(), (
+        f"cmd_help did not surface the help text: {spoken!r}"
     )
 
 
@@ -107,7 +126,9 @@ async def test_handle_user_message_ignores_empty_text(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id, text="   ")
     ensure_mock = mocker.patch.object(start, "ensure_api_key", new=AsyncMock())
+
     await start.handle_user_message(message)
+
     ensure_mock.assert_not_awaited()
 
 
@@ -156,6 +177,7 @@ async def test_handle_user_message_reports_error_when_stream_raises(mocker) -> N
     )
 
     await start.handle_user_message(message)
+
     spoken = message.answer.await_args.args[0]
     assert "wrong" in spoken.lower(), (
         f"handle_user_message did not surface the stream failure: {spoken!r}"
