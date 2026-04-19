@@ -71,6 +71,17 @@ Subscription creation via create_subscription:
 - Gather enough to author user_spec plus retrieval_query plus the dispatch \
 fields: delivery mode (digest vs event -- default digest), schedule, sources. \
 When you have enough, call create_subscription.
+- create_subscription is for a BRAND-NEW topic only. Never call it twice for \
+the same topic in one conversation. If you just called create_subscription \
+and the user immediately refines that same topic (adds anime titles, asks \
+you to "also find sources yourself", wants per-episode alerts on top of \
+announcements, changes schedule, tweaks tone, narrows or broadens scope), \
+treat that as an edit of the subscription you just created: call \
+update_subscription on its id (and/or trigger_source_discovery, add_source, \
+remove_source) -- NOT a second create_subscription. A new create is only \
+warranted when the user clearly wants a SEPARATE subscription on a DIFFERENT \
+topic. When unsure whether it is a refinement or a new topic, ask one short \
+clarifying question before creating again.
 - Convert schedule text to a 5-field cron internally. Never show cron to the user.
   "every morning" -> "0 8 * * *", "every evening at 9pm" -> "0 21 * * *",
   "every Saturday morning" -> "0 8 * * 6", "every third day" -> "0 8 */3 * *",

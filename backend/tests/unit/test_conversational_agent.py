@@ -78,6 +78,14 @@ def test_build_instruction_renders_all_context_sections() -> None:
     )
 
 
+def test_prompt_forbids_a_second_create_subscription_for_a_just_created_topic() -> None:
+    from news_service.agents.conversational.prompt import CONVERSATIONAL_AGENT_PROMPT
+
+    assert "Never call it twice for the same topic" in CONVERSATIONAL_AGENT_PROMPT, (
+        "prompt is missing the guard against duplicate create_subscription calls"
+    )
+
+
 def test_build_instruction_flags_first_time_user_when_not_onboarded() -> None:
     result = _build_instruction(
         conversation_summary="",
