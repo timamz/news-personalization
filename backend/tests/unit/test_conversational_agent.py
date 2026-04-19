@@ -86,6 +86,14 @@ def test_prompt_forbids_a_second_create_subscription_for_a_just_created_topic() 
     )
 
 
+def test_prompt_forbids_clarifying_questions_after_create_subscription() -> None:
+    from news_service.agents.conversational.prompt import CONVERSATIONAL_AGENT_PROMPT
+
+    assert "Ask every clarifying question you need BEFORE" in CONVERSATIONAL_AGENT_PROMPT, (
+        "prompt is missing the up-front-questions rule that prevents re-triggering discovery"
+    )
+
+
 def test_build_instruction_flags_first_time_user_when_not_onboarded() -> None:
     result = _build_instruction(
         conversation_summary="",
