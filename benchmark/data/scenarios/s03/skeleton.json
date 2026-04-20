@@ -1,0 +1,1516 @@
+{
+  "scenario_id": "s03",
+  "persona": {
+    "language": "en",
+    "timezone": "Europe/Berlin",
+    "tech_literacy": "high",
+    "verbosity": "low",
+    "can_suggest_urls": false
+  },
+  "goals": [
+    {
+      "goal_id": "rare_earth_events",
+      "description": "Real-time event notifications about rare-earth supply-chain disruptions: export bans/quotas, sanctions, mine/plant closures, force-majeure declarations, stockpile and offtake announcements. EXCLUDE: routine spot price updates, general analysis, explainers/backgrounders, opinion pieces. English only.",
+      "expected_user_spec_keywords": [
+        "rare earth",
+        "supply",
+        "event",
+        "export"
+      ],
+      "expected_delivery_mode": "event",
+      "expected_schedule_cron": null,
+      "expected_digest_language": null,
+      "expected_webhook_url": "https://bench.invalid/sub/rare_earth_events/event",
+      "expected_sources_min": 3,
+      "expected_sources_max": 8
+    }
+  ],
+  "simulated_days": 30,
+  "start_date_iso": "2026-03-01T00:00:00",
+  "source_universe": [
+    {
+      "url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "source_type": "rss",
+      "description": "Reuters metals wire",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.bloomberg.com/feeds/metals.xml",
+      "source_type": "rss",
+      "description": "Bloomberg metals",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.argusmedia.com/rss/rare-earths",
+      "source_type": "rss",
+      "description": "Argus rare earths",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.fastmarkets.com/rss/rare-earths",
+      "source_type": "rss",
+      "description": "Fastmarkets rare earths",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://t.me/s/rare_earth_watch",
+      "source_type": "telegram",
+      "description": "Rare-earth watch channel",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://techcrunch.com/feed/",
+      "source_type": "rss",
+      "description": "Tech blog",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "source_type": "reddit",
+      "description": "Global talk subreddit",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://t.me/s/random_finance",
+      "source_type": "telegram",
+      "description": "Random finance channel",
+      "should_be_picked_by_finder": false
+    }
+  ],
+  "timeline": [
+    {
+      "fake_ts": "2026-03-01T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "China halts dysprosium exports citing national security review",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Lynas processing plant in Malaysia hit by fire, operations suspended",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Myanmar bans rare-earth mining in Kachin state",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Neodymium spot price jumps 14 percent on Chinese export curbs",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Strike shuts down Mountain Pass rare-earth mine in California",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T08:00:00",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "BREAKING: Vietnamese cabinet approves emergency rare-earth export licence revocation",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Russia sanctions target lanthanum-containing metallurgical exports",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Pentagon signs $320M offtake agreement tied to Australian processor",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Japan establishes strategic stockpile to cover nine-month dysprosium demand",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "MP Materials halts shipment from Chinese refining partner",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "European Commission invokes Critical Raw Materials Act safeguard clause",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Korea-Mongolia MoU secures 20% of Seoul's projected rare-earth demand",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Seaborne shipment delayed at Durban after dispute over export manifest",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T08:00:00",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Hint: rumors swirl around production cut at Sichuan refinery",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Cerium smelter in Inner Mongolia temporarily closes after environmental inspection",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Brazilian Araxá project faces force majeure on three-month export shipment",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Greenland grants exploration licence for monazite deposit near Narsaq",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "OpenAI releases new reasoning API pricing tier",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "What's the deal with French pension reform lately?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Weekly fund flows recap: equities +2B, bonds -800M",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Framework laptop ships new AMD option",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Recommend me books on 20th century diplomatic history",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Bitcoin dominance at 61 percent, altseason delayed",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Y Combinator announces W26 demo day schedule",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Why are trains in Germany so bad now?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Forex: USD/JPY tests 150 level again",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "AWS updates Bedrock console with agent templates",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Just got my first apartment in Lisbon, tips?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Oil: Brent steady at $84 amid OPEC communiqué",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "React Server Components stabilise in Next.js 15.4",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Best way to learn Japanese in six months?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Gold: spot testing $2100 after Fed comments",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Apple Vision Pro gets developer-preview enterprise tools",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Anyone here attended the Porto marathon?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Copper: LME three-month at $9250, steady",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "TypeScript 5.6 RC lands with control-flow improvements",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Best budget airlines in Southeast Asia?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Agri: wheat futures down 3% on Russian production upside",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Rust Foundation announces new security bounty program",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "How do you budget in a dual-income household?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T08:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Silver: spot at $24, testing resistance",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Google rolls out Gemini Nano to Pixel 10 devices",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "What flowers grow best in Frankfurt climate?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "GitHub Copilot rolls out workspace-level context",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Music recommendations for studying?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Kubernetes 1.31 release candidate ships",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Good bakeries in Berlin Mitte?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T08:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Cloudflare launches new bot-mitigation API",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T08:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Why is Formula 1 so popular in the US now?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Neodymium spot closes at 87 USD/kg, flat on the week",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "MP Materials publishes Q1 production guidance",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Analysis: long-term rare-earth demand hinges on EV penetration",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Mining equipment maker Sandvik raises FY guidance",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Cobalt prices stabilise after recent drawdown",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "China releases 2025 rare-earth production quota unchanged YoY",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Tantalum exports from DRC resume at pre-conflict levels",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Nickel market oversupplied through 2027 says Wood Mackenzie",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Lithium spodumene prices slip on Chinese converter inventories",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Scandium export permits revived in Kazakhstan",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T08:00:00",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Chart: 10-year neodymium price history vs EV sales",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Graphite suppliers warn of Q3 tightness",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rio Tinto announces dividend in line with consensus",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Platinum prices rebound on auto-catalyst demand",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Gallium supply picture for 2027 looks balanced",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Indium prices at two-year high on semiconductor demand",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Uranium enrichment capacity constrained through 2028",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Molybdenum market shrugs off Chinese production outage",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Tin inventories at LME remain at multi-decade lows",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Commentary: why rare-earth prices will normalise by year end",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Long read: how Mountain Pass came back from bankruptcy",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Explainer: what rare-earth magnets actually do",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Podcast: our monthly metals roundtable",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rare-earth ETF flows hit six-month low",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Opinion: time to diversify critical-mineral supply chains",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth weekly wrap: praseodymium flat, terbium steady",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "MP Materials guides Q2 rare-earth output toward prior-quarter figure",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth shipments from Malaysia resume routine schedule",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T08:00:00",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Rare-earth chart of the day: 30-day moving average",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Rare-earth ETFs see small net outflows on the week",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth feature: inside a Sichuan processing plant tour",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rare-earth conference in Perth wraps with industry-panel recap",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth inventory data from Shanghai Metals Market released",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Rare-earth mining equipment firm reports steady earnings",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth recycling startup raises Series B funding",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T08:00:00",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "URGENT: MASSIVE rare-earth export ban, details inside",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": true,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Shocking truth about dysprosium shortages nobody is telling you",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": true,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T08:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Opinion: the rare-earth crisis is overblown",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "opinion",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Commentary: time to rethink critical minerals policy",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "opinion",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T08:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "China halts dysprosium exports under security review",
+      "difficulty": "duplicate",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T08:00:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Beijing confirms dysprosium export halt",
+      "difficulty": "duplicate",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T08:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Vietnam cabinet revokes rare-earth export licences",
+      "difficulty": "duplicate",
+      "should_notify_per_sub": {
+        "rare_earth_events": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    }
+  ],
+  "search_corpus": [
+    {
+      "query_prefix": "rare earth supply chain news RSS",
+      "curated_results": [
+        {
+          "title": "Argus Media — Rare Earths",
+          "url": "https://www.argusmedia.com/rss/rare-earths",
+          "snippet": "Specialist rare-earths pricing and supply-chain coverage."
+        },
+        {
+          "title": "Fastmarkets — Rare Earths",
+          "url": "https://www.fastmarkets.com/rss/rare-earths",
+          "snippet": "Daily rare-earth spot prices and disruption news."
+        },
+        {
+          "title": "Reuters metals wire",
+          "url": "https://www.reuters.com/pf/api/v3/feed/metals",
+          "snippet": "Global metals and mining news from Reuters."
+        }
+      ],
+      "fluff_count": 4,
+      "fluff_topic_hint": "generic commodities news and base metals"
+    },
+    {
+      "query_prefix": "dysprosium neodymium export restrictions",
+      "curated_results": [
+        {
+          "title": "Argus: dysprosium export review timeline",
+          "url": "https://www.argusmedia.com/rss/rare-earths",
+          "snippet": "Timeline of Chinese export-licence decisions on heavy rare earths."
+        }
+      ],
+      "fluff_count": 3,
+      "fluff_topic_hint": "EV battery materials, lithium policy"
+    }
+  ],
+  "scripted_turns": [
+    {
+      "fake_day": 0,
+      "message": "Hi — I work at a commodities desk. I need real-time alerts when a named supply-chain event hits the rare-earth market: export bans, plant closures, sanctions, force majeure. NOT routine price moves, NOT general analysis pieces, NOT opinion. One alert per event.",
+      "comment": ""
+    }
+  ],
+  "assertions": [
+    {
+      "kind": "subscription_exists_matching",
+      "payload": {
+        "goal_id": "rare_earth_events",
+        "expected_user_spec_keywords": [
+          "rare earth",
+          "supply",
+          "event"
+        ],
+        "expected_delivery_mode": "event"
+      }
+    },
+    {
+      "kind": "failed_tasks_zero",
+      "payload": {}
+    },
+    {
+      "kind": "sources_within_bounds",
+      "payload": {
+        "goal_id": "rare_earth_events",
+        "min": 3,
+        "max": 8
+      }
+    }
+  ]
+}

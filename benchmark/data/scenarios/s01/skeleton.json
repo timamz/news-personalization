@@ -1,0 +1,1753 @@
+{
+  "scenario_id": "s01",
+  "persona": {
+    "language": "en",
+    "timezone": "Europe/Brussels",
+    "tech_literacy": "medium",
+    "verbosity": "medium",
+    "can_suggest_urls": false
+  },
+  "goals": [
+    {
+      "goal_id": "eu_energy_digest",
+      "description": "Weekly Monday 09:00 Europe/Brussels digest about EU (27-member-state) energy policy and EU climate regulation SPECIFICALLY: electricity markets, grid, renewables, gas, hydrogen, decarbonisation directives, methane rules, carbon border adjustment, state-aid for clean energy. EXCLUDE: non-EU geographies (UK, US, Norway, Switzerland, Russia, Asia), non-energy EU regulation (digital, agricultural, financial, customs, transport, pharma), opinion pieces and editorials, climate-science papers without policy relevance. English only.",
+      "expected_user_spec_keywords": [
+        "EU",
+        "energy",
+        "climate",
+        "regulation",
+        "policy"
+      ],
+      "expected_delivery_mode": "digest",
+      "expected_schedule_cron": "0 9 * * 1",
+      "expected_digest_language": "en",
+      "expected_webhook_url": "https://bench.invalid/sub/eu_energy_digest/digest",
+      "expected_sources_min": 3,
+      "expected_sources_max": 10
+    }
+  ],
+  "simulated_days": 30,
+  "start_date_iso": "2026-03-01T00:00:00",
+  "source_universe": [
+    {
+      "url": "https://www.euractiv.com/section/energy/feed/",
+      "source_type": "rss",
+      "description": "Euractiv energy policy wire",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.politico.eu/section/energy/feed/",
+      "source_type": "rss",
+      "description": "Politico Europe energy",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "source_type": "rss",
+      "description": "Reuters EU energy wire",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "source_type": "rss",
+      "description": "Bloomberg EU energy feed",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://euobserver.com/feeds/energy.rss",
+      "source_type": "rss",
+      "description": "EU Observer energy desk",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "source_type": "rss",
+      "description": "Euronews climate desk",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://reneweconomy.com.au/feed/",
+      "source_type": "rss",
+      "description": "Renew Economy EU coverage",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.entsog.eu/rss",
+      "source_type": "rss",
+      "description": "ENTSOG infrastructure updates",
+      "should_be_picked_by_finder": true
+    },
+    {
+      "url": "https://www.techcrunch.com/feed/",
+      "source_type": "rss",
+      "description": "Tech industry blog",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://www.politico.com/rss/politics.xml",
+      "source_type": "rss",
+      "description": "US politics",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://www.tmz.com/rss.xml",
+      "source_type": "rss",
+      "description": "Celebrity news",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://www.reddit.com/r/gardening/.rss",
+      "source_type": "reddit",
+      "description": "Gardening subreddit",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://t.me/s/crypto_whispers",
+      "source_type": "telegram",
+      "description": "Crypto channel",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://www.espn.com/espn/rss/news",
+      "source_type": "rss",
+      "description": "Sports news",
+      "should_be_picked_by_finder": false
+    },
+    {
+      "url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "source_type": "reddit",
+      "description": "History Q&A subreddit",
+      "should_be_picked_by_finder": false
+    }
+  ],
+  "timeline": [
+    {
+      "fake_ts": "2026-03-02T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "EU adopts binding 2030 energy efficiency regulation",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "European Parliament passes Renewable Energy Directive amendment",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "EU climate commissioner sets new methane emissions rules for gas importers",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T09:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "EU energy ministers approve capacity mechanism reforms",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T09:00:00",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "Brussels finalises REPowerEU implementation guidance for 2026",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "EU Commission proposes revised state-aid rules for decarbonisation projects",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T09:00:00",
+      "source_url": "https://www.entsog.eu/rss",
+      "headline": "EU gas network operators publish joint decarbonisation roadmap",
+      "difficulty": "easy_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "Member states clash over grid-fee harmonisation proposal",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T09:00:00",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Hydrogen backbone plan advances as Germany and Netherlands sign MoU",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Capacity auctions restructured to favour battery storage in Iberian corridor",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "Commissioner signals tighter rules on cross-border renewable PPAs",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Carbon border adjustment mechanism review finds limited leakage",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T09:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "Council compromise text on electricity market reform leaks",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T09:00:00",
+      "source_url": "https://www.entsog.eu/rss",
+      "headline": "Grid operators warn of congestion bottlenecks in southern corridor",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T09:00:00",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "New permitting rules could accelerate offshore wind buildout",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T09:00:00",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Just Transition Fund disbursement schedule updated for coal regions",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "Energy-intensive industries cluster seeks emergency price cap extension",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Heat pump deployment targets tightened under revised EPBD",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "ACER proposes new methodology for calculating network tariffs",
+      "difficulty": "hard_positive",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T09:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Startup raises $50M to build AI-powered warehouse robots",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T09:00:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Reality TV star spotted at LAX with new boyfriend",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T09:00:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "NFL quarterback signs three-year extension with Chiefs",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T09:00:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Ask: my tomato plants wilting despite regular watering",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T09:00:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "BREAKING: Whale wallet moves 4000 BTC to exchange",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T09:00:00",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "Why did the Bronze Age collapse happen so suddenly?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T09:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "OpenAI releases new developer API tier with caching",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T09:00:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Oscar winner spotted buying coffee in Soho",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T09:00:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "LeBron passes 41000 career points in Lakers win",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T09:00:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Best mulch for heavy clay soil in zone 7?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T09:00:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Altcoin rally continues as Solana hits new ATH",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T09:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Framework laptop ships new modular GPU option",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T09:00:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Tennis: Djokovic advances to Indian Wells final",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T09:00:00",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "How did medieval cities handle sanitation?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T09:00:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Show-off: my first daffodils of the year",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T09:00:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Pop star cancels tour dates citing laryngitis",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T09:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "AWS re:Invent 2026 keynote dates announced",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T09:00:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Degen plays: memecoin of the week recap",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T09:00:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Formula 1: Verstappen takes pole in Melbourne",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T09:00:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Tips for starting seeds indoors under grow lights",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T09:00:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Royal family photo controversy resurfaces",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T09:00:00",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "Were vikings really as brutal as depicted on TV?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T09:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "New React 20 release candidate drops this week",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T09:00:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Ethereum L2 fees drop after Dencun anniversary",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T09:00:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Champions League: Real Madrid dispatches Leipzig 3-1",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T09:00:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Reality show drama as couple separates on air",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T09:00:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "What to do with leftover compost in March?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T09:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Y Combinator unveils new AI-safety track for W26",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T09:00:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "NBA trade deadline recap: winners and losers",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T09:00:00",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "Why did Byzantium survive while the West fell?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T09:00:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Japan ETF flows hit new weekly record",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T09:00:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Raised beds versus in-ground for a new gardener",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "Biden administration proposes new US LNG export rules",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "US Senate debates clean electricity tax credit extension",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "FERC approves interconnection queue reform at federal level",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "California updates state-level cap-and-trade design",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "Texas grid operator warns of summer reliability risk",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "New York SEQRA changes may slow offshore wind permitting",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Russia-Ukraine gas transit deal expires with no replacement agreed",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "OPEC+ considers further production cuts amid oil glut",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "China's coal-plant approvals reach decade high",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Australia announces new critical-minerals export strategy",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T09:00:00",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Indian solar auction attracts record-low bids",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T09:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "African Development Bank fund for grid projects expands to $3B",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "UN IPCC publishes Working Group III synthesis draft",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Paper in Nature Climate finds slower Amazon carbon uptake",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Glaciologists report record-low Arctic sea ice for March",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "UK government consults on contracts-for-difference round 7",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Norway's sovereign wealth fund divests from thermal coal holdings",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T09:00:00",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Chile proposes green hydrogen export pricing framework",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "South Korea unveils new nuclear buildout plan",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T09:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "Japanese trading houses bet heavy on LNG long-term offtake",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "US DOE launches $2B grid-resilience grant program",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "EPA finalises power plant greenhouse gas rules",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Climate scientists call for 1.5C trajectory update",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Saudi Aramco expands petrochemicals investment into Asia",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T09:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "Global battery-metal prices rebound after 18-month slump",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T09:00:00",
+      "source_url": "https://www.politico.com/rss/politics.xml",
+      "headline": "US House Republicans block IRA-related spending bill",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T09:00:00",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Indonesian geothermal projects win World Bank backing",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "UK passes its own Climate and Energy Security Act outside EU framework",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Norway updates its offshore wind regulation for North Sea operations",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Brussels court delivers ruling on financial-services regulation",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "EU agricultural policy reform advances in Council",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "European Commission opens infringement case over data-retention directive",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Switzerland signs bilateral electricity agreement with EU without joining market",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "EU foreign policy chief meets Chinese counterpart on climate diplomacy",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "EU digital services regulation takes effect for large platforms",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T09:00:00",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "European Court of Auditors releases report on cohesion fund spending",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T09:00:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Turkey announces energy-strategy update referencing EU neighbour policy",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Climate activists stage protest outside European Parliament on transport policy",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "EU customs regulation update affects cross-border e-commerce traders",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "European Investment Bank reports record lending for SME programs",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T09:00:00",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "Brussels proposes new framework for pharmaceutical regulation",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "EU competition commissioner clears telecom merger with remedies",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "The EU's energy policy is a disaster and here is why",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "opinion",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T09:00:00",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "Opinion: Brussels' climate agenda sacrifices working families",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "opinion",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "Shocking secret about REPowerEU that Brussels wont tell you",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": true,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Brussels cancels all energy regulation, sources say",
+      "difficulty": "adversarial",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": true,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T09:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "EU climate commissioner sets new methane emissions rules for gas importers (updated)",
+      "difficulty": "duplicate",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T09:00:00",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "New methane rules for EU gas importers take effect",
+      "difficulty": "duplicate",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T09:00:00",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "European Parliament passes Renewable Energy Directive amendment (wire)",
+      "difficulty": "duplicate",
+      "should_notify_per_sub": {
+        "eu_energy_digest": true
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": true
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    }
+  ],
+  "search_corpus": [
+    {
+      "query_prefix": "EU energy policy RSS",
+      "curated_results": [
+        {
+          "title": "Euractiv Energy — EU energy policy wire",
+          "url": "https://www.euractiv.com/section/energy/feed/",
+          "snippet": "Daily wire covering EU energy policy, regulation, and grids."
+        },
+        {
+          "title": "Politico Europe — Energy",
+          "url": "https://www.politico.eu/section/energy/feed/",
+          "snippet": "Brussels-focused energy and climate reporting."
+        },
+        {
+          "title": "EU Observer — Energy desk",
+          "url": "https://euobserver.com/feeds/energy.rss",
+          "snippet": "Independent Brussels reporting on EU energy regulation."
+        }
+      ],
+      "fluff_count": 4,
+      "fluff_topic_hint": "general energy news; not EU-specific"
+    },
+    {
+      "query_prefix": "best RSS feeds EU climate regulation",
+      "curated_results": [
+        {
+          "title": "Euronews — Climate vertical",
+          "url": "https://www.euronews.com/rss?level=vertical&name=climate",
+          "snippet": "EU-focused climate policy reporting in English."
+        },
+        {
+          "title": "Reuters — EU energy wire",
+          "url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+          "snippet": "Reuters dedicated EU energy reporting feed."
+        }
+      ],
+      "fluff_count": 4,
+      "fluff_topic_hint": "general climate science blogs; not EU policy"
+    },
+    {
+      "query_prefix": "REPowerEU implementation status",
+      "curated_results": [
+        {
+          "title": "EU Observer: REPowerEU 2026 implementation",
+          "url": "https://euobserver.com/feeds/energy.rss",
+          "snippet": "Roll-up of REPowerEU status reports."
+        }
+      ],
+      "fluff_count": 3,
+      "fluff_topic_hint": "US energy policy"
+    },
+    {
+      "query_prefix": "EU methane emissions rules gas importers",
+      "curated_results": [
+        {
+          "title": "Euractiv: new methane rules for EU importers",
+          "url": "https://www.euractiv.com/section/energy/feed/",
+          "snippet": "Summary of the new methane rules proposed by DG ENER."
+        }
+      ],
+      "fluff_count": 3,
+      "fluff_topic_hint": "US methane policy and oil-and-gas industry news"
+    },
+    {
+      "query_prefix": "hydrogen backbone plan Germany Netherlands",
+      "curated_results": [
+        {
+          "title": "Renew Economy: Germany–NL hydrogen MoU",
+          "url": "https://reneweconomy.com.au/feed/",
+          "snippet": "Coverage of the joint hydrogen-backbone MoU."
+        }
+      ],
+      "fluff_count": 3,
+      "fluff_topic_hint": "hydrogen industry generally; not EU policy"
+    }
+  ],
+  "scripted_turns": [
+    {
+      "fake_day": 0,
+      "message": "Hi — I'm a policy analyst at a Brussels NGO. I want a weekly newsletter, in English, covering EU energy policy and climate regulation. I don't want opinion pieces, just reporting. Can you set that up to arrive on Monday mornings?",
+      "comment": "Initial onboarding — triggers Conversational -> Discovery."
+    }
+  ],
+  "assertions": [
+    {
+      "kind": "subscription_exists_matching",
+      "payload": {
+        "goal_id": "eu_energy_digest",
+        "expected_user_spec_keywords": [
+          "EU",
+          "energy",
+          "climate",
+          "regulation"
+        ],
+        "expected_schedule_cron": "0 9 * * 1",
+        "expected_delivery_mode": "digest",
+        "expected_digest_language": "en"
+      }
+    },
+    {
+      "kind": "failed_tasks_zero",
+      "payload": {}
+    },
+    {
+      "kind": "digest_webhooks_delivered",
+      "payload": {
+        "goal_id": "eu_energy_digest",
+        "min_count": 4,
+        "max_count": 5
+      }
+    },
+    {
+      "kind": "sources_within_bounds",
+      "payload": {
+        "goal_id": "eu_energy_digest",
+        "min": 3,
+        "max": 10
+      }
+    },
+    {
+      "kind": "sources_are_from_good_pool",
+      "payload": {
+        "goal_id": "eu_energy_digest",
+        "max_noise_sources": 1
+      }
+    }
+  ]
+}

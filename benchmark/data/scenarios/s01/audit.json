@@ -1,0 +1,31 @@
+{
+  "tier_counts": {
+    "easy_positive": 7,
+    "hard_positive": 12,
+    "easy_negative": 32,
+    "near_miss_negative": 42,
+    "adversarial": 4,
+    "duplicate": 3
+  },
+  "tier_shortfalls": {},
+  "positive_rate_per_sub": {
+    "eu_energy_digest": 0.22
+  },
+  "stupid_baseline_f1_per_sub": {
+    "eu_energy_digest": 0.5819047619047619
+  },
+  "lexical_overlap_per_sub": {
+    "eu_energy_digest": 0.26582278481012656
+  },
+  "label_consistency_per_sub": {
+    "eu_energy_digest": {
+      "sample_size": 19,
+      "disagreements": 0,
+      "disagreement_rate": 0.0,
+      "examples": []
+    }
+  },
+  "temporal_max_week_share": 0.28,
+  "warnings": [],
+  "hard_failures": []
+}
