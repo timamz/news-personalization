@@ -3,22 +3,22 @@
     "easy_positive": 7,
     "hard_positive": 12,
     "easy_negative": 86,
-    "near_miss_negative": 104,
+    "near_miss_negative": 136,
     "adversarial": 4,
     "duplicate": 3
   },
   "tier_shortfalls": {},
   "positive_rate_per_sub": {
-    "eu_energy_digest": 0.10185185185185185
+    "eu_energy_digest": 0.08870967741935484
   },
   "stupid_baseline_f1_per_sub": {
-    "eu_energy_digest": 0.6333333333333333
+    "eu_energy_digest": 0.6124242424242424
   },
   "lexical_overlap_per_sub": {
-    "eu_energy_digest": 0.19047619047619047
+    "eu_energy_digest": 0.16279069767441862
   },
   "label_consistency_per_sub": {},
-  "temporal_max_week_share": 0.2638888888888889,
+  "temporal_max_week_share": 0.2661290322580645,
   "warnings": [],
   "hard_failures": []
 }

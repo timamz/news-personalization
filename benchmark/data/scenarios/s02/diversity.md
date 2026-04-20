@@ -1,8 +1,8 @@
-# Scenario `s01` diversity report
+# Scenario `s02` diversity report
 
-- Total timeline items: 216
+- Total timeline items: 248
 - Simulated days: 30
-- Temporal top-week share: 26%
+- Temporal top-week share: 27%
 
 ## Tier counts
 
@@ -11,7 +11,7 @@
 | easy_positive | 7 | 6 ✓ |
 | hard_positive | 12 | 10 ✓ |
 | easy_negative | 86 | 80 ✓ |
-| near_miss_negative | 104 | 100 ✓ |
+| near_miss_negative | 136 | 100 ✓ |
 | adversarial | 4 | 4 ✓ |
 | duplicate | 3 | 3 ✓ |
 
@@ -19,7 +19,7 @@
 
 ### `eu_energy_digest`
 
-- Positive rate: **10.2%** (target 4%–15%)
-- Stupid-baseline (TF-IDF + LR, 5-fold CV) F1: **0.63**
+- Positive rate: **8.9%** (target 4%–15%)
+- Stupid-baseline (TF-IDF + LR, 5-fold CV) F1: **0.61**
   (target band 0.50–0.70)
-- Positive/negative lexical overlap (Jaccard top-50): **0.19**
+- Positive/negative lexical overlap (Jaccard top-50): **0.16**

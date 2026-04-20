@@ -59,25 +59,60 @@ async def drop_bench_db(cfg: BenchmarkConfig, run_id: str) -> None:
 
 
 def run_alembic_upgrade(async_url: str) -> None:
-    """Run `alembic upgrade head` against `async_url`."""
-    import alembic.config
+    """Create the full schema in a subprocess, then stamp alembic to head.
 
-    sync_url = async_url.replace("+asyncpg", "")
-    prev = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = async_url
-    try:
-        alembic.config.main(
-            argv=[
-                "-c",
-                str(_BACKEND_ROOT / "alembic.ini"),
-                "-x",
-                f"sqlalchemy.url={sync_url}",
-                "upgrade",
-                "head",
-            ]
+    The backend's baseline migration (0001_baseline) does a full
+    ``Base.metadata.create_all`` using the *current* SQLAlchemy model
+    definitions. Subsequent migrations (0002, 0003, ...) then try to
+    ALTER those same tables and fail because the baseline already
+    installed them with the current shape. For a throwaway bench DB
+    we skip the alembic history entirely: install pgvector, run
+    create_all, and stamp alembic_version to head so models work.
+    """
+    import subprocess
+    import sys
+    import textwrap
+
+    env = dict(os.environ)
+    env["DATABASE_URL"] = async_url
+
+    program = textwrap.dedent(
+        """
+        import asyncio
+        from sqlalchemy.ext.asyncio import create_async_engine
+        from news_service.core.config import get_settings
+        from news_service.models import Base
+
+        async def main():
+            settings = get_settings()
+            engine = create_async_engine(settings.database_url, echo=False)
+            async with engine.begin() as conn:
+                await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
+                await conn.run_sync(Base.metadata.create_all)
+                await conn.exec_driver_sql(
+                    "CREATE TABLE IF NOT EXISTS alembic_version "
+                    "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
+                )
+                await conn.exec_driver_sql(
+                    "INSERT INTO alembic_version (version_num) "
+                    "SELECT '0003_user_delivery_webhook_url' "
+                    "WHERE NOT EXISTS (SELECT 1 FROM alembic_version)"
+                )
+            await engine.dispose()
+
+        asyncio.run(main())
+        """
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", program],
+        env=env,
+        cwd=str(_BACKEND_ROOT),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"schema install failed (rc={result.returncode}):\n"
+            f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
         )
-    finally:
-        if prev is None:
-            os.environ.pop("DATABASE_URL", None)
-        else:
-            os.environ["DATABASE_URL"] = prev

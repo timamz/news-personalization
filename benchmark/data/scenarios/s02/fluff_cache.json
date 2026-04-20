@@ -1,0 +1,97 @@
+{
+  "18ae0881a03fb56b370f": [
+    {
+      "title": "Energy market update: oil prices slip as traders weigh demand outlook",
+      "url": "https://www.marketwatch.com/story/oil-prices-slip-as-traders-weigh-demand-outlook-2026-04-18",
+      "snippet": "Investors reacted to mixed economic data and refinery utilization forecasts, sending crude lower in early trading. Analysts say volatility could continue as global demand expectations are revised day-to-day, with attention on OPEC headlines and shipping rates."
+    },
+    {
+      "title": "U.S. grid reliability report highlights new investments in transmission lines",
+      "url": "https://www.utilitydive.com/news/grid-reliability-transmission-investments-report-2026/",
+      "snippet": "A new report argues that faster permitting and targeted upgrades to transmission can reduce outage risk during peak seasons. It also outlines how utilities are planning substation modernization and wildfire hardening, citing recent weather-driven disruptions."
+    },
+    {
+      "title": "House of Representatives passes a bill aimed at expanding clean hydrogen incentives",
+      "url": "https://www.reuters.com/world/us/us-lawmakers-pass-bill-expand-clean-hydrogen-incentives-2026-04-16",
+      "snippet": "Lawmakers moved forward with legislation that would create tax credits for hydrogen projects and support early-stage offtake agreements. Industry groups called the measure a “step change,” while critics warned about cost impacts and implementation details."
+    },
+    {
+      "title": "What is an RSS feed? A beginner guide to reading and publishing updates",
+      "url": "https://www.digitaltrends.com/computing/what-is-rss-feed/",
+      "snippet": "This beginner explainer walks through how RSS works, why it still matters for news aggregation, and how to use RSS readers to follow topics like technology updates and energy headlines. Includes screenshots and common troubleshooting tips."
+    }
+  ],
+  "66ed0524d62bd537386a": [
+    {
+      "title": "How to Build a Personal Weather & Climate RSS Reader (No Matter Your Country)",
+      "url": "https://www.weatherbyteblog.com/build-rss-reader-climate",
+      "snippet": "A step-by-step guide to setting up RSS in your browser for tracking atmospheric events, temperature anomalies, and seasonal forecasts. Includes a starter list of RSS sources and tips for avoiding duplicate alerts—focused on general climate science, not EU policy."
+    },
+    {
+      "title": "Global Temperature Anomalies Explained: A Friendly RSS Starter Pack",
+      "url": "https://www.climateclarity.org/rss-temperature-anomalies",
+      "snippet": "An educational post that breaks down how anomaly charts work and why different datasets can look different. Links to several science blogs that publish frequently, making it a solid RSS workflow reference for curious readers worldwide."
+    },
+    {
+      "title": "Ocean Heat Content and Why It Matters (Plus Weekly Reading Recommendations)",
+      "url": "https://www.blueplanetupdates.net/ocean-heat-content-rss",
+      "snippet": "Discusses ocean heat content, thermocline dynamics, and the observational challenges of monitoring long-term change. The article ends with “weekly reads” via RSS from assorted climate science writers and educators."
+    },
+    {
+      "title": "Reddit Thread: Best Climate Science Blogs to Follow via RSS",
+      "url": "https://www.reddit.com/r/climatescience/comments/best_rss_climate_blogs/",
+      "snippet": "Community-curated recommendations for climate blogs that post regularly—covering topics like clouds, aerosols, and extreme events. Comments emphasize general science updates and how to manage RSS feed clutter."
+    }
+  ],
+  "fb98c101b0a7337e132d": [
+    {
+      "title": "US Department of Energy releases updated grid resilience funding guidance for 2025",
+      "url": "https://www.energy.gov/articles/us-department-energy-releases-updated-grid-resilience-funding-guidance-2025",
+      "snippet": "The DOE outlined new application requirements and timelines for resilience projects, emphasizing cybersecurity and interconnection upgrades—details that some analysts say could influence how EU utilities structure cross-border readiness plans. REPowerEU implementation status remains separate but often compared to US grid modernization efforts."
+    },
+    {
+      "title": "White House fact sheet: new tax incentives for clean hydrogen and domestic manufacturing",
+      "url": "https://www.whitehouse.gov/briefing-room/statements-releases/2025/04/10/fact-sheet-new-tax-incentives-for-clean-hydrogen-and-domestic-manufacturing/",
+      "snippet": "The announcement highlights production credits and investment support for hydrogen supply chains, including permitting timelines and reporting. While the policy is US-focused, commenters draw parallels to how member states track progress under broader European energy-security initiatives."
+    },
+    {
+      "title": "Senate hearing transcript explores oil and gas leasing reforms amid energy affordability concerns",
+      "url": "https://www.eenews.net/articles/senate-hearing-explores-oil-gas-leasing-reforms-amid-energy-affordability-concerns",
+      "snippet": "A recent hearing covered leasing reforms, royalty structures, and the impact on gasoline prices. Energy policy watchers noted that stakeholder mapping and implementation tracking methods resemble the way EU countries document progress—though this article does not directly address REPowerEU."
+    }
+  ],
+  "1b0d9c6026ad42c7f246": [
+    {
+      "title": "US EPA updates methane “super-emitters” rules amid pushback from oil & gas groups",
+      "url": "https://www.euractiv.com/section/energy/news/us-epa-methane-super-emitters-rules-face-political-scrutiny/",
+      "snippet": "A new round of compliance guidance from the U.S. EPA tightens reporting expectations for methane “super-emitters.” Industry stakeholders argue the timelines are unrealistic, while environmental groups say enforcement is overdue—raising questions about how methane policy will shape cross-border trade."
+    },
+    {
+      "title": "Permian operators shift leak detection programs as investors demand lower methane intensity",
+      "url": "https://www.reuters.com/business/energy/permians-operators-shift-leak-detection-investors-demand-lower-methane-intensity-2026-04-07/",
+      "snippet": "Reuters reports that several Permian Basin operators are expanding continuous monitoring and voluntary repairs to satisfy institutional investors. The move follows recent U.S. enforcement activity and could affect equipment suppliers and service contractors across the oil-and-gas supply chain."
+    },
+    {
+      "title": "Oilfield flaring declines in North Dakota after state guidance on gas capture expands",
+      "url": "https://www.theverge.com/energy/2026/04/12/north-dakota-gas-capture-flaring-declines",
+      "snippet": "North Dakota’s updated guidance encouraging gas capture over routine flaring is credited with reducing emissions in some producing counties. Analysts note that while methane is the headline, flaring controls can also influence overall greenhouse-gas footprints and operating costs for producers."
+    }
+  ],
+  "22f7d1d8e2d1976bacb8": [
+    {
+      "title": "Germany’s H2 pipeline projects hit new supply chain hurdles in 2024",
+      "url": "https://www.energyinsightdaily.com/germany-hydrogen-pipeline-supply-chain-2024",
+      "snippet": "Pipeline developers in Germany are reporting delays tied to compressor availability and steel lead times, even as regional hydrogen backbone plans move forward. Analysts say storage sites and safety permitting are now the main bottlenecks."
+    },
+    {
+      "title": "How Dutch ports are preparing for hydrogen bunkering—timeline and costs",
+      "url": "https://portsandfuelsblog.nl/hydrogen-bunkering-dutch-ports-timeline",
+      "snippet": "A practical look at retrofitting berths, tank farms, and bunkering logistics in the Netherlands. The article outlines expected capex ranges and discusses fuel certification steps for early adopters shipping operators."
+    },
+    {
+      "title": "What is a hydrogen backbone network? A guide for investors and operators",
+      "url": "https://www.investopedia.com/terms/h/hydrogen-backbone-network",
+      "snippet": "Background explainer covering the concept of trunk pipelines, offtake hubs, and interconnection models. While not focused on EU policy, it compares business structures used in Europe’s emerging hydrogen industry."
+    }
+  ]
+}

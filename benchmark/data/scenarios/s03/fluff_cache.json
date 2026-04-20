@@ -1,4 +1,41 @@
 {
-  "19823e3706f6e5b03f12": [],
-  "eca734a2da7eb3a47e37": []
+  "19823e3706f6e5b03f12": [
+    {
+      "title": "Base Metals Weekly: Copper, Nickel, and Zinc Movers to Watch as China Demand Shifts",
+      "url": "https://www.metalsinsider.com/weekly/base-metals-weekly-copper-nickel-zinc-demand",
+      "snippet": "A roundup-style commodities update focusing on copper, nickel, and zinc fundamentals, market positioning, and macro signals that can influence broader industrial metals. Not specific to rare earths, but traders often connect these moves to downstream electrification themes."
+    },
+    {
+      "title": "Global Commodities News RSS: What You Can Expect From the Weekly Feeds",
+      "url": "https://www.commoditypulse.example/rss/global-commodities-news-weekly-feeds",
+      "snippet": "Explains how commodity news RSS feeds are structured for copper, aluminum, and other base metals—highlighting common data points like inventory levels, transport costs, and delivery timelines. Useful for RSS readers tracking metals volatility."
+    },
+    {
+      "title": "LME Warehouse Stocks Fall—Could Drive Another Round of Base Metal Price Volatility?",
+      "url": "https://www.lmewatchdaily.com/news/lme-warehouse-stocks-fall-price-volatility",
+      "snippet": "Reports on warehouse stock changes across several LME-tracked metals and discusses how tight supply can trigger short-term price swings. The article stays general and does not address rare earth separation or refining capacity directly."
+    },
+    {
+      "title": "Reddit Thread: Investors Discuss Rare Earth Alternatives and the Role of Lithium in Electrification",
+      "url": "https://www.reddit.com/r/investing/comments/rare-earth-alternatives_lithium_electrification/",
+      "snippet": "Community discussion debating whether lithium and other battery-adjacent materials could offset concerns around critical mineral supply chains. Includes tangential references to general commodities markets and risk hedging, with no detailed rare earth sourcing coverage."
+    }
+  ],
+  "eca734a2da7eb3a47e37": [
+    {
+      "title": "EU Critical Raw Materials Act: How lithium and cobalt sourcing rules could affect battery supply chains",
+      "url": "https://www.euractiv.com/section/energy-environment/news/eu-critical-raw-materials-act-how-lithium-and-cobalt-sourcing-rules-could-affect-battery-supply-chains/",
+      "snippet": "A closer look at the EU’s Critical Raw Materials Act, including export controls, risk mapping, and strategic stockpiles—plus what it means for EV battery makers relying on lithium policy and upstream refining capacity."
+    },
+    {
+      "title": "What are neodymium and dysprosium? Rare earth magnets explained for electric motors and EVs",
+      "url": "https://www.energy.gov/eere/articles/what-are-neodymium-and-dysprosium-rare-earth-magnets-explained-electric-motors-evs",
+      "snippet": "A plain-language overview of neodymium and dysprosium usage in high-performance permanent magnets, with discussion of supply chain challenges and how industrial policy in battery minerals can indirectly influence procurement planning."
+    },
+    {
+      "title": "Reddit thread: EV battery mineral trade—why lithium policy matters more than people think",
+      "url": "https://www.reddit.com/r/electricvehicles/comments/abcd12/ev_battery_mineral_trade_why_lithium_policy_matters_more_than_people_think/",
+      "snippet": "Community discussion connecting lithium export rules to broader battery material shortages, including comments about upstream refining, freight costs, and geopolitical constraints that sometimes spill over into rare-earth procurement schedules."
+    }
+  ]
 }

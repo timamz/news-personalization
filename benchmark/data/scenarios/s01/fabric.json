@@ -218,10 +218,100 @@
     "f36c0da794c11d64a8eb": "Pretoria has approved incentives for a coal-to-hydrogen demonstration project, according to government notices published on Monday. The package targets a pilot plant planned for commissioning in 2027, with support structured around capped electricity and feedstock costs, plus a per-kilogram production subsidy for hydrogen delivered to offtakers. The scheme, administered through South Africa’s industrial and energy departments, covers up to 36 months of operating costs starting when the project reaches full production, and requires monthly emissions reporting and verified water use data. The incentives are conditional on achieving specified reductions in CO2 intensity relative to baseline coal supply chains, with penalties if performance targets are missed during quarterly audits. Officials said the measures aim to bridge the gap to cleaner pathways while building experience in hydrogen handling, storage and compression for industrial customers. The pilot is expected to produce several thousand tonnes of hydrogen per year, with an option to expand capacity in 2029 subject to an independent technical and financial review."
   },
   "search_fluff_by_prefix": {
-    "EU energy policy RSS": [],
-    "best RSS feeds EU climate regulation": [],
-    "REPowerEU implementation status": [],
-    "EU methane emissions rules gas importers": [],
-    "hydrogen backbone plan Germany Netherlands": []
+    "EU energy policy RSS": [
+      {
+        "title": "Asia Pacific LNG prices dip as demand softens amid mild winter",
+        "url": "https://www.energyworlddaily.com/lng-prices-dip-demand-softens-mild-winter",
+        "snippet": "Analysts report LNG spot prices eased this week as temperatures stayed higher than forecast. Traders pointed to weaker industrial demand and shifting shipping schedules. The article also notes how storage levels in major hubs are influencing near-term contracts."
+      },
+      {
+        "title": "U.S. utility announces pilot program to modernize grid with advanced metering",
+        "url": "https://www.gridtechinsights.org/us-utility-modernize-grid-advanced-metering-pilot",
+        "snippet": "A regional utility has launched a pilot upgrading meters and improving outage detection using real-time telemetry. Coverage highlights expected reductions in restoration time and potential benefits for demand response participation."
+      },
+      {
+        "title": "China approves new offshore wind corridor as developers seek faster permitting",
+        "url": "https://www.renewablewatch.com/china-approves-offshore-wind-corridor-permitting",
+        "snippet": "Renewable developers welcomed a new offshore wind planning corridor designed to streamline approvals. Reporting focuses on project timelines, interconnection capacity, and how grid upgrades may affect commissioning dates."
+      },
+      {
+        "title": "What is energy policy RSS? A brief guide to finding reliable energy feeds",
+        "url": "https://www.reddit.com/r/energy/comments/abc123/what_is_energy_policy_rss_a_brief_guide/",
+        "snippet": "A community post explains how to locate RSS feeds related to energy policy, power markets, and renewables. Users recommend aggregators, suggest search keywords, and share a few example sources they say update consistently."
+      }
+    ],
+    "best RSS feeds EU climate regulation": [
+      {
+        "title": "A Guide to Finding the Best Climate Science RSS Feeds (2026 Edition)",
+        "url": "https://climatescope.blog/rss-feeds-guide",
+        "snippet": "Looking for fresh climate research without doomscrolling? This roundup explains how to filter RSS by topic—ocean heat content, extreme weather, and carbon cycle updates—plus recommended feed readers for Windows and macOS."
+      },
+      {
+        "title": "Ocean Heat Content Explained: The Data Behind Climate Change Signals",
+        "url": "https://www.oceanclimatewatch.org/blog/ocean-heat-content-rss",
+        "snippet": "A beginner-friendly post that connects satellite observations to the ocean’s heat uptake, with an RSS widget that auto-refreshes whenever new charts are published."
+      },
+      {
+        "title": "Greenhouse Gases 101: CO₂, Methane, and Why Trends Matter More Than Headlines",
+        "url": "https://carboncyclecorner.com/greenhouse-gases-101",
+        "snippet": "An educational deep dive into greenhouse gases and how scientists track concentration changes over time. Includes a “follow this RSS feed” section for recurring monthly explainers."
+      },
+      {
+        "title": "Reddit: What Climate Science Blogs Have the Most Useful RSS Updates?",
+        "url": "https://www.reddit.com/r/climate/comments/abcd12/best_climate_science_rss_feeds",
+        "snippet": "Community thread collecting recommendations for climate science blogs with consistent posting. Commenters discuss feed reliability, article frequency, and whether updates include datasets or only commentary."
+      }
+    ],
+    "REPowerEU implementation status": [
+      {
+        "title": "Biden Administration Energy Strategy Update: What Changed in 2024 and What’s Next",
+        "url": "https://www.eenews.net/articles/biden-administration-energy-strategy-update-2024",
+        "snippet": "A policy round-up of recent U.S. energy initiatives, including power market rule revisions and permitting reform. Analysts compare progress timelines to broader EU decarbonization programs, but note that U.S. implementation schedules remain highly state-dependent."
+      },
+      {
+        "title": "Federal Tax Credits Explained: How US Clean Energy Incentives Are Being Implemented",
+        "url": "https://www.investopedia.com/clean-energy-tax-credits-implementation-6384193",
+        "snippet": "An explainer on the Inflation Reduction Act’s clean energy tax credits and the practical hurdles companies face when claiming benefits. The article discusses interagency guidance and compliance timelines, offering a side-by-side context with European energy package rollout approaches."
+      },
+      {
+        "title": "Why US Grid Reliability Depends on State Planning: A Guide to Interconnection and Permitting",
+        "url": "https://www.rtoinsider.com/state-grid-planning-interconnection-permitting-guide",
+        "snippet": "RTO Insider breaks down how interconnection queues, transmission build-out, and local permitting rules affect renewable deployment in the U.S. Readers looking for implementation status updates may find parallels, but the focus stays on U.S. energy policy mechanics and stakeholder processes."
+      }
+    ],
+    "EU methane emissions rules gas importers": [
+      {
+        "title": "EPA proposes tighter methane leak limits for oil and gas facilities in 2026 rulemaking",
+        "url": "https://www.reuters.com/world/us/epa-proposes-tighter-methane-leak-limits-oil-gas-2026-rulemaking-2024-11-12",
+        "snippet": "U.S. regulators unveiled a new proposal that would expand measurement requirements and tighten leak detection timelines for upstream and midstream operators. Industry groups said compliance costs could rise, while environmental advocates called it overdue—an update that often overlaps with how companies discuss methane rules for international gas supply chains."
+      },
+      {
+        "title": "US LNG export boom raises questions about methane intensity reporting",
+        "url": "https://www.eenews.net/articles/us-lng-export-boom-raises-questions-about-methane-intensity-reporting",
+        "snippet": "A closer look at how U.S. LNG projects handle “methane intensity” disclosures, including third-party monitoring approaches and the reliability of measurement data. The story highlights recurring disputes over verification methods, which can be relevant when comparing U.S. reporting practices with EU requirements for importers."
+      },
+      {
+        "title": "Pipeline safety memo: why leak detection technology matters more as regulations tighten",
+        "url": "https://www.npr.org/2024/09/18/1201234560/pipeline-safety-memo-leak-detection-technology-matters",
+        "snippet": "Public safety experts discuss advancements in sensors, continuous monitoring, and maintenance schedules that reduce emissions and improve pipeline integrity. While the focus is domestic U.S. infrastructure, readers often connect the technology trends to broader methane policy debates and cross-border compliance expectations."
+      }
+    ],
+    "hydrogen backbone plan Germany Netherlands": [
+      {
+        "title": "Hydrogen Backbone Projects in Germany: Where Pipelines Are Planned Next",
+        "url": "https://www.energytransitionhub.com/hydrogen-backbone-germany-plan",
+        "snippet": "An overview of proposed H2 corridors in northern and western Germany, including how developers are sequencing permits, compressor stations, and safety studies—focused on project execution rather than EU governance."
+      },
+      {
+        "title": "Why the Netherlands Is Betting on Hydrogen Storage Instead of Long Pipelines",
+        "url": "https://www.gridandstorageblog.nl/blog/hydrogen-storage-netherlands",
+        "snippet": "Industry commentary on salt-cavern storage, seasonal demand balancing, and how operators compare linepack versus underground storage for blue/green hydrogen—useful background for anyone tracking infrastructure beyond networks."
+      },
+      {
+        "title": "Green Hydrogen Industry Update: Turbines, Electrolyzers, and Price Trends (2026)",
+        "url": "https://www.hydrogeninsider.com/news/green-hydrogen-industry-update-2026",
+        "snippet": "A roundup of market signals impacting hydrogen production costs—electrolyzer deployments, equipment lead times, and merchant pricing—often cited by pipeline planners when estimating throughput and utilization."
+      }
+    ]
   }
 }

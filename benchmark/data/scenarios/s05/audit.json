@@ -1,0 +1,33 @@
+{
+  "tier_counts": {
+    "easy_positive": 20,
+    "hard_positive": 32,
+    "easy_negative": 219,
+    "near_miss_negative": 256,
+    "adversarial": 8,
+    "duplicate": 6
+  },
+  "tier_shortfalls": {},
+  "positive_rate_per_sub": {
+    "eu_ai_regulation_digest": 0.14953271028037382,
+    "eu_energy_digest": 0.10185185185185185,
+    "rare_earth_events": 0.09174311926605505
+  },
+  "stupid_baseline_f1_per_sub": {
+    "eu_ai_regulation_digest": 0.7542857142857142,
+    "eu_energy_digest": 0.6342857142857143,
+    "rare_earth_events": 0.7174603174603175
+  },
+  "lexical_overlap_per_sub": {
+    "eu_ai_regulation_digest": 0.17647058823529413,
+    "eu_energy_digest": 0.19047619047619047,
+    "rare_earth_events": 0.0989010989010989
+  },
+  "label_consistency_per_sub": {},
+  "temporal_max_week_share": 0.25693160813308685,
+  "warnings": [
+    "subscription 'eu_ai_regulation_digest': stupid baseline F1 0.75 too high — scenario is lexically separable; add more near_miss_negatives",
+    "subscription 'rare_earth_events': lexical overlap 0.10 too low — positive/negative pools use disjoint vocabularies"
+  ],
+  "hard_failures": []
+}

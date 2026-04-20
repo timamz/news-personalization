@@ -1,0 +1,114 @@
+{
+  "18ae0881a03fb56b370f": [
+    {
+      "title": "Wall Street Journal — Natural Gas Prices Fluctuate on Weather-Driven Demand",
+      "url": "https://www.wsj.com/articles/natural-gas-prices-fluctuate-weather-driven-demand-1165432100",
+      "snippet": "Traders watch forecast shifts as storage levels and industrial demand move natural gas benchmarks. The article also notes how changing power-plant fuel switching can impact wholesale electricity costs."
+    },
+    {
+      "title": "Bloomberg: Oil Markets Test Support as OPEC+ Signals Cautious Output Changes",
+      "url": "https://www.bloomberg.com/news/articles/2026-04-18/oil-markets-test-support-as-opec-signals-cautious-output-changes",
+      "snippet": "Oil prices edged higher after weekend headlines about production discipline. Analysts discuss refinery run rates and shipping constraints that can quickly tighten or loosen supply."
+    },
+    {
+      "title": "Reuters — Texas Grid Operators Issue Conservation Advisory During Peak Demand",
+      "url": "https://www.reuters.com/world/us/texas-grid-operators-issue-conservation-advisory-peak-demand-2026-04-19/",
+      "snippet": "Utility officials ask consumers to reduce usage during the evening peak. Coverage focuses on demand management, rotating outages risk, and how heat waves stress transmission capacity."
+    },
+    {
+      "title": "EnergySage Blog: How Home Solar Tax Credits Work (and What to Watch Next Year)",
+      "url": "https://news.energysage.com/how-home-solar-tax-credits-work-what-to-watch-next-year",
+      "snippet": "A practical overview of federal incentives, eligibility thresholds, and financing options. Readers also get guidance on common paperwork pitfalls when applying for residential renewable energy credits."
+    }
+  ],
+  "66ed0524d62bd537386a": [
+    {
+      "title": "5 Climate Data Feeds to Track CO₂ Trends (Beginner-Friendly Guide)",
+      "url": "https://www.climatedatajournal.com/blog/rss-feeds-co2-trends",
+      "snippet": "Looking for the best RSS feeds to follow atmospheric CO₂ updates? This guide rounds up dashboards and research feeds, including NOAA-related sources and weekly anomaly summaries—great if you’re into climate science rather than policy specifics."
+    },
+    {
+      "title": "The Ocean Warming RSS Starter Pack: Heat Content, El Niño, and More",
+      "url": "https://www.oceanweatherblog.org/subscribe/rss-ocean-warming",
+      "snippet": "Want a steady stream of ocean heat and El Niño/La Niña coverage? We list several RSS options from ocean-observing groups and university labs, with tips on filtering out seasonal posts."
+    },
+    {
+      "title": "Reddit: Best RSS Feeds for Climate Model Updates & Papers",
+      "url": "https://www.reddit.com/r/climatechange/comments/best_rss_feeds_model_updates/",
+      "snippet": "Community thread where users swap RSS feed links for climate modeling news, arXiv digests, and research summaries. Focuses on scientific papers and model releases rather than EU regulatory timelines."
+    },
+    {
+      "title": "Wikipedia: RSS (Really Simple Syndication) — How Feeds Work",
+      "url": "https://en.wikipedia.org/wiki/RSS",
+      "snippet": "A general overview of RSS technology, including feed formats and typical use cases. While not tied to EU climate regulation, it’s useful if you’re setting up your own reader for climate science sources."
+    }
+  ],
+  "fb98c101b0a7337e132d": [
+    {
+      "title": "REPowerEU: What’s happening in Europe vs. US energy transition plans (analysis)",
+      "url": "https://www.energyindustryinsights.com/realtime/repowereu-implementation-status",
+      "snippet": "A policy round-up comparing Europe’s REPowerEU rollout timelines with US state-level clean power deadlines. The article cites grid modernization constraints, permitting delays, and supply-chain bottlenecks—drawing parallels to recent US federal discussions on LNG export approvals and transmission siting."
+    },
+    {
+      "title": "US DOE quarterly update: grid reliability, interconnection queues, and permitting",
+      "url": "https://www.usenergy.gov/blog/interconnection-queues-grid-reliability",
+      "snippet": "The Department of Energy’s blog post summarizes recent progress on reducing interconnection study backlogs and improving interagency coordination. While not focused on Europe, it references EU-style reforms as examples, including how faster authorization can unlock renewables deployment."
+    },
+    {
+      "title": "Reddit: Are US IRA incentives “working” yet? People debate near-term outcomes",
+      "url": "https://www.reddit.com/r/energymarket/comments/ira_incentives_working_yet/",
+      "snippet": "A thread where commenters discuss whether US Inflation Reduction Act incentives are already translating into measurable investment and jobs. Users mention similar EU programs and ask whether REPowerEU is seeing comparable acceleration, but most replies focus on domestic permitting, tax credit uptake, and project financing."
+    }
+  ],
+  "1b0d9c6026ad42c7f246": [
+    {
+      "title": "EPA finalizes methane leak rule for existing oil and gas facilities—what changes for operators",
+      "url": "https://www.reuters.com/business/energy/epa-finalizes-methane-leak-rule-existing-oil-gas-facilities-2024-11-07/",
+      "snippet": "U.S. operators face new monitoring and repair requirements as EPA moves ahead with methane-focused standards. Analysts say compliance costs could vary by basin while investors watch for automation and leak-detection upgrades."
+    },
+    {
+      "title": "U.S. oil & gas lobby pushes methane rules timeline delays amid industry protests",
+      "url": "https://www.wsj.com/articles/us-oil-gas-lobby-methane-rules-timeline-delays-2025-02-18",
+      "snippet": "Industry groups argue that accelerated methane reporting requirements are difficult to implement nationwide. The article details proposed adjustments and how companies plan to phase in new measurement tools."
+    },
+    {
+      "title": "How the US IRA’s methane fee could affect natural gas prices and pipeline economics",
+      "url": "https://www.eia.gov/todayinenergy/detail.php?id=2027_04_ira_methane_fee_gas_prices",
+      "snippet": "Energy experts break down the mechanics of the methane emissions fee and its potential implications for production, routing, and contract pricing. The piece compares scenarios for large operators versus smaller producers."
+    }
+  ],
+  "22f7d1d8e2d1976bacb8": [
+    {
+      "title": "Germany’s Hydrogen Backbone: How Network Operators Plan Pipeline Rollouts (2023)",
+      "url": "https://www.energygridbrief.com/germany-hydrogen-backbone-pipeline-rollouts",
+      "snippet": "Analysis of proposed hydrogen pipeline corridors and compressor stations, including a timeline for early industrial hubs. Includes interviews with grid operators and a discussion of material choices like steel grades and leak detection—useful context for anyone tracking hydrogen infrastructure build-outs."
+    },
+    {
+      "title": "The Netherlands’ Industrial Hydrogen Clusters: Storage, Ammonia Imports, and Safety",
+      "url": "https://www.portrenewablesjournal.com/netherlands-industrial-hydrogen-clusters-ammonia-imports",
+      "snippet": "A deep dive into how Dutch ports and industrial estates are preparing for hydrogen use via storage caverns, conversion to ammonia, and safety standards. Covers real project constraints such as permitting and retrofitting pipelines from natural gas service."
+    },
+    {
+      "title": "Hydrogen Production Costs Explained: Why Electrolyzers Aren’t the Only Variable",
+      "url": "https://www.renewablefuelinsights.org/hydrogen-production-costs-electrolyzer-variable",
+      "snippet": "Overview of major cost drivers in hydrogen production—electricity prices, capacity factor, water sourcing, and utilization planning. Mentions how transport and blending can impact delivered cost, with a practical guide to reading capacity and “backbone” network assumptions."
+    }
+  ],
+  "397e9fdbf6a0d90e1cc9": [
+    {
+      "title": "White House releases updated draft guidance on AI risk management—what changes for developers",
+      "url": "https://www.brookings.edu/blog/techtank/2026/03/12/white-house-updates-ai-risk-guidance-for-developers/",
+      "snippet": "New draft guidance from U.S. officials emphasizes model evaluations, incident reporting, and vendor transparency. Experts compare the proposals to emerging EU AI compliance expectations and note how product teams can prepare without waiting for final rules."
+    },
+    {
+      "title": "How US agencies are coordinating on AI oversight: NIST, FTC, and the emerging enforcement playbook",
+      "url": "https://www.nist.gov/blogs/nist-explains/2026/02/how-us-agencies-are-coordinating-ai-oversight",
+      "snippet": "A practical overview of recent coordination efforts among U.S. agencies. The post summarizes enforcement trends, common documentation requests, and parallels to global governance frameworks being shaped in Europe and elsewhere."
+    },
+    {
+      "title": "Global AI industry news: chipmakers, cloud providers, and compliance services rush to scale audit tooling",
+      "url": "https://www.reuters.com/technology/global-ai-industry-audit-tooling-race-2026-04-05/",
+      "snippet": "Report details the latest scramble by major vendors to offer AI audit logs, risk scoring dashboards, and compliance automation. Analysts say U.S. policy signals are influencing investment decisions worldwide—even when EU regulation is the headline focus."
+    }
+  ]
+}

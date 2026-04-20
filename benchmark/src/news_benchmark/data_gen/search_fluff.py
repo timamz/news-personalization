@@ -60,37 +60,55 @@ class SearchFluffGenerator:
         return out
 
     async def _fluff(self, prefix: str, count: int, hint: str) -> list[dict[str, str]]:
+        """Generate `count` distractor snippets for a query prefix.
+
+        Uses an explicit `{"results": [...]}` schema. Small OpenAI-compatible
+        models under `response_format=json_object` sometimes collapse a
+        requested array into a single flat object, so we demand a named
+        wrapper key and parse it out.
+        """
         system = (
             "You generate realistic-looking but OFF-TOPIC search result snippets. "
-            "Return exactly "
-            f"{count}"
-            " JSON objects in a JSON array. Each object has keys title, url, snippet. "
-            "Snippets must read as if they came from a real search engine but be "
-            "tangentially related at best — they are distractors. URLs must look real "
-            "but be plausible domains (news sites, blogs, wikipedia, reddit, etc.)."
+            "Return a JSON object with exactly one key, 'results', whose value is a "
+            f"JSON array of exactly {count} objects. Each object in the array has "
+            "keys 'title', 'url', 'snippet'. Snippets must read as if they came "
+            "from a real search engine but be tangentially related at best — they "
+            "are distractors. URLs must look real but be plausible domains "
+            "(news sites, blogs, wikipedia, reddit, etc.)."
         )
         user = (
             f"Query prefix: {prefix}\nTopic hint for the distractors: {hint}\n"
-            "Return the JSON array only."
+            "Return the JSON object only."
         )
         resp = await litellm.acompletion(
             model=self.model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             temperature=0.6,
-            max_tokens=800,
+            max_tokens=900,
             response_format={"type": "json_object"},
         )
         raw = resp["choices"][0]["message"]["content"] or "{}"
-        parsed = json.loads(raw)
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return []
+
+        rows: list[dict[str, object]] = []
         if isinstance(parsed, dict):
-            for v in parsed.values():
-                if isinstance(v, list):
-                    parsed = v
-                    break
-        if not isinstance(parsed, list):
-            parsed = []
+            if isinstance(parsed.get("results"), list):
+                rows = parsed["results"]
+            elif all(k in parsed for k in ("title", "url")):
+                rows = [parsed]
+            else:
+                for v in parsed.values():
+                    if isinstance(v, list):
+                        rows = v
+                        break
+        elif isinstance(parsed, list):
+            rows = parsed
+
         cleaned: list[dict[str, str]] = []
-        for r in parsed[:count]:
+        for r in rows[:count]:
             if isinstance(r, dict) and "title" in r and "url" in r:
                 cleaned.append(
                     {

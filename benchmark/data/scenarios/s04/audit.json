@@ -1,0 +1,26 @@
+{
+  "tier_counts": {
+    "easy_positive": 7,
+    "hard_positive": 13,
+    "easy_negative": 89,
+    "near_miss_negative": 105,
+    "adversarial": 4,
+    "duplicate": 3
+  },
+  "tier_shortfalls": {},
+  "positive_rate_per_sub": {
+    "rare_earth_events": 0.10407239819004525
+  },
+  "stupid_baseline_f1_per_sub": {
+    "rare_earth_events": 0.5955555555555555
+  },
+  "lexical_overlap_per_sub": {
+    "rare_earth_events": 0.13636363636363635
+  },
+  "label_consistency_per_sub": {},
+  "temporal_max_week_share": 0.2579185520361991,
+  "warnings": [
+    "subscription 'rare_earth_events': lexical overlap 0.14 too low — positive/negative pools use disjoint vocabularies"
+  ],
+  "hard_failures": []
+}
