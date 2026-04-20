@@ -184,6 +184,7 @@ def build_tools(
                 delivery_mode=delivery_mode,
                 schedule_cron=normalized_cron,
                 digest_language=resolved_language,
+                delivery_webhook_url=user.delivery_webhook_url,
             )
             scoped.add(subscription)
             await scoped.flush()

@@ -2,6 +2,7 @@ import logging
 import random
 import uuid
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -137,3 +138,19 @@ async def test_deliver_digest_skips_event_mode_subscription_without_invoking_gen
     assert generate_mock.await_count == 0, (
         "event-mode subscription should short-circuit before invoking the digest generator"
     )
+
+
+@pytest.mark.asyncio
+async def test_deliver_digest_falls_back_to_the_users_default_webhook_url(mocker) -> None:
+    subscription = _make_subscription("digest")
+    webhook_url = f"http://tgbot-{uuid.uuid4().hex[:8]}.test/deliver"
+    digest_text = f"D {uuid.uuid4().hex[:6]}"
+    subscription.delivery_webhook_url = None
+    subscription.__dict__["user"] = SimpleNamespace(delivery_webhook_url=webhook_url)
+    _patch_session(mocker, subscription)
+    mocker.patch.object(deliver_digest, "generate_digest", new=AsyncMock(return_value=digest_text))
+    deliver_mock = mocker.patch.object(deliver_digest, "deliver", new=AsyncMock())
+
+    await deliver_digest._deliver_digest(subscription.id, notify_if_empty=False)
+
+    deliver_mock.assert_awaited_once_with(webhook_url, "", digest_text)

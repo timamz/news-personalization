@@ -10,6 +10,7 @@ class User(UUIDPrimaryKey, TimestampMixin, Base):
     api_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     timezone: Mapped[str | None] = mapped_column(String(255), nullable=True)
     language: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    delivery_webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     conversation_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     has_onboarded: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"

@@ -3,6 +3,7 @@ import logging
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from news_service.agents.digest import generate_digest
 from news_service.core.exceptions import DigestPipelineError
@@ -22,7 +23,9 @@ def deliver_digest(subscription_id: str, notify_if_empty: bool = False) -> dict:
 async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = False) -> dict:
     async with get_task_session() as session:
         result = await session.execute(
-            select(Subscription).where(Subscription.id == subscription_id)
+            select(Subscription)
+            .options(selectinload(Subscription.user))
+            .where(Subscription.id == subscription_id)
         )
         subscription = result.scalar_one_or_none()
 
@@ -49,14 +52,20 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
 
         if digest_text is None:
             if notify_if_empty:
+                webhook_url = subscription.delivery_webhook_url
+                if webhook_url is None and subscription.user is not None:
+                    webhook_url = subscription.user.delivery_webhook_url
                 await deliver(
-                    subscription.delivery_webhook_url,
+                    webhook_url,
                     "No new updates right now",
                     "No new articles since your last digest. Try again a bit later.",
                 )
                 return {"status": "notified", "reason": "no_new_items"}
             return {"status": "skipped", "reason": "no_new_items"}
-        await deliver(subscription.delivery_webhook_url, "", digest_text)
+        webhook_url = subscription.delivery_webhook_url
+        if webhook_url is None and subscription.user is not None:
+            webhook_url = subscription.user.delivery_webhook_url
+        await deliver(webhook_url, "", digest_text)
 
         await session.commit()
         return {"status": "delivered", "subscription_id": str(subscription_id)}

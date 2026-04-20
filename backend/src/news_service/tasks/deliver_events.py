@@ -10,6 +10,7 @@ import logging
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from news_service.agents.event.batch_assessor import (
     BatchAssessmentResult,
@@ -58,6 +59,7 @@ async def _deliver_event_notifications_batch(news_item_ids: list[uuid.UUID]) -> 
         source_ids = {item.source_id for item in items}
         sub_result = await session.execute(
             select(Subscription)
+            .options(selectinload(Subscription.user))
             .join(SubscriptionSource, SubscriptionSource.subscription_id == Subscription.id)
             .where(
                 Subscription.is_active.is_(True),
@@ -176,8 +178,14 @@ async def _assess_and_deliver_for_subscription(
         )
         return 0, 1
 
-    batch_result, dropped_item_ids = await _judge_and_revise(
-        assessment=batch_result,
+    relevant_batch = BatchAssessmentResult(
+        assessments=[a for a in batch_result.assessments if a.is_relevant]
+    )
+    if not relevant_batch.assessments:
+        return 0, 0
+
+    relevant_batch, dropped_item_ids = await _judge_and_revise(
+        assessment=relevant_batch,
         items_for_llm=items_for_llm,
         user_spec=user_spec,
         target_language=subscription.digest_language,
@@ -189,9 +197,7 @@ async def _assess_and_deliver_for_subscription(
     delivered = 0
     failed = 0
 
-    for assessment in batch_result.assessments:
-        if not assessment.is_relevant:
-            continue
+    for assessment in relevant_batch.assessments:
         if assessment.item_id in dropped_item_ids:
             logger.info(
                 "Dropping item %s from delivery after %d failed revisions",
@@ -217,7 +223,10 @@ async def _assess_and_deliver_for_subscription(
             continue
 
         try:
-            await deliver(subscription.delivery_webhook_url, "", validated_body)
+            webhook_url = subscription.delivery_webhook_url
+            if webhook_url is None and subscription.user is not None:
+                webhook_url = subscription.user.delivery_webhook_url
+            await deliver(webhook_url, "", validated_body)
             session.add(SentItem(subscription_id=subscription.id, news_item_id=item.id))
             await session.commit()
             delivered += 1
@@ -243,17 +252,17 @@ async def _judge_and_revise(
 ) -> tuple[BatchAssessmentResult, set[str]]:
     """Run the judge critic loop over the assessor's output.
 
-    Skips the judge entirely when no items are relevant (common case for
-    event subs). Runs up to ``event_judge_max_revisions`` revision turns;
-    on each turn, re-invokes the assessor only for items the judge flagged
-    REVISE and merges the refined assessments back.
+    Expects only relevant items. Runs up to ``event_judge_max_revisions``
+    revision turns; on each turn, re-invokes the assessor only for items
+    the judge flagged REVISE and replaces the current relevant-only batch
+    with the revised one.
 
     Returns the final assessment and the set of item_ids that remain REVISE
     after the loop and must be dropped from delivery. Judge exceptions are
     swallowed (tier-2 fail-open per CLAUDE.md) and the unreviewed assessment
     is returned with no dropped items.
     """
-    if not any(a.is_relevant for a in assessment.assessments):
+    if not assessment.assessments:
         return assessment, set()
 
     items_by_id = {item["item_id"]: item for item in items_for_llm}
@@ -307,8 +316,6 @@ async def _judge_and_revise(
             )
             return current, revise_ids
 
-        revised_by_id = {a.item_id: a for a in revised.assessments}
-        merged = [revised_by_id.get(a.item_id, a) for a in current.assessments]
-        current = BatchAssessmentResult(assessments=merged)
+        current = revised
 
     return current, set()

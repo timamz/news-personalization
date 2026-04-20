@@ -104,9 +104,7 @@ def build_fetch_source_items_tool(
                         sim_str = "n/a"
                 else:
                     sim_str = "n/a"
-                lines.append(
-                    f"- [{published}] cos={sim_str} | {item.headline}\n    {body_snippet}"
-                )
+                lines.append(f"- [{published}] cos={sim_str} | {item.headline}\n    {body_snippet}")
             else:
                 lines.append(f"- [{published}] {item.headline}\n    {body_snippet}")
         return "\n".join(lines)

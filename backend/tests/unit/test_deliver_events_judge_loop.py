@@ -46,10 +46,7 @@ async def test_judge_loop_is_skipped_when_no_items_are_relevant(mocker) -> None:
         new=AsyncMock(side_effect=AssertionError("judge must not be called")),
     )
     sub_id = uuid.uuid4()
-    assessment = _assessment(
-        (str(uuid.uuid4()), False, ""),
-        (str(uuid.uuid4()), False, ""),
-    )
+    assessment = BatchAssessmentResult(assessments=[])
 
     final, dropped = await _judge_and_revise(
         assessment=assessment,
@@ -61,12 +58,12 @@ async def test_judge_loop_is_skipped_when_no_items_are_relevant(mocker) -> None:
     )
 
     assert judge_spy.call_count == 0 and final is assessment and dropped == set(), (
-        "judge loop did not short-circuit on an all-irrelevant batch"
+        "judge loop did not short-circuit on an empty relevant-only batch"
     )
 
 
 @pytest.mark.asyncio
-async def test_judge_loop_reruns_assessor_only_for_revise_items_and_merges(mocker) -> None:
+async def test_judge_loop_reruns_assessor_only_for_revise_items(mocker) -> None:
     good = str(uuid.uuid4())
     bad = str(uuid.uuid4())
     initial = _assessment((good, True, "Хороший body"), (bad, True, "**Жирный** body"))
@@ -113,14 +110,13 @@ async def test_judge_loop_reruns_assessor_only_for_revise_items_and_merges(mocke
     )
 
     bad_result = next(a for a in final.assessments if a.item_id == bad)
-    good_result = next(a for a in final.assessments if a.item_id == good)
     revise_call_kwargs = assessor_spy.call_args.kwargs
     assert (
         bad_result.notification_body == revised_body
-        and good_result.notification_body == "Хороший body"
+        and len(final.assessments) == 1
         and dropped == set()
         and [i["item_id"] for i in revise_call_kwargs["items"]] == [bad]
-    ), "judge loop did not merge revised REVISE item while leaving PASS item untouched"
+    ), "judge loop did not keep operating on the relevant REVISE subset only"
 
 
 @pytest.mark.asyncio

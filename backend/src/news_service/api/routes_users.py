@@ -42,13 +42,16 @@ async def update_user_profile(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    try:
-        user.timezone = normalize_timezone_name(payload.timezone)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    if payload.timezone is not None:
+        try:
+            user.timezone = normalize_timezone_name(payload.timezone)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+    if payload.delivery_webhook_url is not None:
+        user.delivery_webhook_url = payload.delivery_webhook_url
 
     await session.commit()
     await session.refresh(user)

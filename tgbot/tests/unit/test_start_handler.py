@@ -34,6 +34,7 @@ async def test_cmd_start_sends_fixed_welcome_text(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
     mocker.patch.object(start.backend, "acknowledge_onboarding", new=AsyncMock())
 
     await start.cmd_start(message)
@@ -51,6 +52,7 @@ async def test_cmd_start_acknowledges_onboarding_with_the_users_api_key(mocker) 
     message = _make_message(telegram_id)
     api_key = f"key-{uuid.uuid4().hex}"
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
     ack = mocker.patch.object(start.backend, "acknowledge_onboarding", new=AsyncMock())
 
     await start.cmd_start(message)
@@ -59,10 +61,26 @@ async def test_cmd_start_acknowledges_onboarding_with_the_users_api_key(mocker) 
 
 
 @pytest.mark.asyncio
+async def test_cmd_start_syncs_the_delivery_webhook_with_the_users_api_key(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id)
+    api_key = f"key-{uuid.uuid4().hex}"
+    expected_url = start.delivery_webhook_url(message.chat.id)
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    mocker.patch.object(start.backend, "acknowledge_onboarding", new=AsyncMock())
+    sync = mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
+
+    await start.cmd_start(message)
+
+    sync.assert_awaited_once_with(api_key, delivery_webhook_url=expected_url)
+
+
+@pytest.mark.asyncio
 async def test_cmd_start_does_not_call_the_conversation_endpoint(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
     mocker.patch.object(start.backend, "acknowledge_onboarding", new=AsyncMock())
     stream_mock = mocker.patch.object(
         start.backend, "send_conversation_message_stream", new=AsyncMock()
@@ -78,6 +96,7 @@ async def test_cmd_start_still_sends_welcome_if_acknowledge_onboarding_fails(moc
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
     mocker.patch.object(
         start.backend,
         "acknowledge_onboarding",
@@ -97,6 +116,7 @@ async def test_cmd_start_reports_error_when_registration_fails(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id)
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(side_effect=RuntimeError("boom")))
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
 
     await start.cmd_start(message)
 
@@ -126,6 +146,7 @@ async def test_handle_user_message_ignores_empty_text(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id, text="   ")
     ensure_mock = mocker.patch.object(start, "ensure_api_key", new=AsyncMock())
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
 
     await start.handle_user_message(message)
 
@@ -139,8 +160,10 @@ async def test_handle_user_message_streams_turn_to_backend(mocker) -> None:
     message = _make_message(telegram_id, text=text)
     api_key = f"key-{uuid.uuid4().hex}"
     agent_text = f"pong-{uuid.uuid4().hex[:6]}"
+    expected_url = start.delivery_webhook_url(message.chat.id)
 
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    sync = mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
     stream_mock = mocker.patch.object(
         start.backend,
         "send_conversation_message_stream",
@@ -154,6 +177,7 @@ async def test_handle_user_message_streams_turn_to_backend(mocker) -> None:
 
     await start.handle_user_message(message)
 
+    sync.assert_awaited_once_with(api_key, delivery_webhook_url=expected_url)
     stream_mock.assert_called_once_with(api_key, text)
     assert message.answer.await_count == 1, (
         f"handle_user_message sent {message.answer.await_count} messages, expected 1"
@@ -165,6 +189,7 @@ async def test_handle_user_message_reports_error_when_stream_raises(mocker) -> N
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id, text="hi")
     mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value="key"))
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
 
     async def _raises(*_args, **_kwargs):
         raise RuntimeError("network dead")

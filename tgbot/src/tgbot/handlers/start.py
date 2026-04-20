@@ -21,6 +21,7 @@ from tgbot.client import BackendClient
 from tgbot.telegram_format import render_html_message
 from tgbot.text_split import split_for_telegram
 from tgbot.user_registry import ensure_api_key
+from tgbot.webhook_server import delivery_webhook_url
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,8 @@ async def cmd_start(message: types.Message) -> None:
         await message.answer(_ERROR_TEXT)
         return
 
+    await _sync_delivery_webhook(api_key, message.chat.id)
+
     try:
         await backend.acknowledge_onboarding(api_key)
     except Exception:
@@ -144,6 +147,8 @@ async def handle_user_message(message: types.Message) -> None:
         logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
         await message.answer(_ERROR_TEXT)
         return
+
+    await _sync_delivery_webhook(api_key, message.chat.id)
 
     await _safe_typing(message)
 
@@ -263,3 +268,14 @@ async def _send_static_html(message: types.Message, html_text: str) -> None:
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
         )
+
+
+async def _sync_delivery_webhook(api_key: str, chat_id: int) -> None:
+    """Tell the backend where to deliver digests and notifications for this chat."""
+    try:
+        await backend.update_profile(
+            api_key,
+            delivery_webhook_url=delivery_webhook_url(chat_id),
+        )
+    except Exception:
+        logger.exception("Failed to sync delivery webhook for chat_id=%d", chat_id)

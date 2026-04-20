@@ -28,6 +28,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from news_service.agents.event.verifier import (
     MissedEvent,
@@ -111,7 +112,11 @@ async def _verify_one(*, sub_id: uuid.UUID, sem: asyncio.Semaphore) -> dict:
     """Run the verifier for a single subscription in its own DB session."""
     async with sem, get_task_session() as session:
         sub = (
-            await session.execute(select(Subscription).where(Subscription.id == sub_id))
+            await session.execute(
+                select(Subscription)
+                .options(selectinload(Subscription.user))
+                .where(Subscription.id == sub_id)
+            )
         ).scalar_one()
 
         history = await load_recent_notification_history(
@@ -267,7 +272,10 @@ async def _deliver_and_record_miss(
         return
 
     body_text = _format_catch_up_body(miss)
-    await deliver(subscription.delivery_webhook_url, "", body_text)
+    webhook_url = subscription.delivery_webhook_url
+    if webhook_url is None and subscription.user is not None:
+        webhook_url = subscription.user.delivery_webhook_url
+    await deliver(webhook_url, "", body_text)
     session.add(SentItem(subscription_id=subscription.id, news_item_id=news_item.id))
     await session.flush()
 

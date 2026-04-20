@@ -8,9 +8,9 @@ needs only three calls:
 - a single streaming message endpoint
 - a thread-reset endpoint (invoked on /start)
 
-Subscription management, source CRUD, timezone, etc. are driven entirely
-by the backend agent's tools, so the tgbot never talks to those
-endpoints directly.
+Subscription management, source CRUD, timezone, and webhook registration
+are driven by the backend agent and profile endpoints, so the tgbot never
+talks to those subscription endpoints directly.
 """
 
 import json
@@ -52,6 +52,26 @@ class BackendClient:
             response = await client.post(
                 f"{self.base_url}/users/me/acknowledge-onboarding",
                 headers={"X-API-Key": api_key},
+            )
+            response.raise_for_status()
+
+    async def update_profile(
+        self,
+        api_key: str,
+        *,
+        delivery_webhook_url: str | None = None,
+    ) -> None:
+        payload: dict[str, str] = {}
+        if delivery_webhook_url is not None:
+            payload["delivery_webhook_url"] = delivery_webhook_url
+        if not payload:
+            return
+
+        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
+            response = await client.patch(
+                f"{self.base_url}/users/me",
+                headers={"X-API-Key": api_key},
+                json=payload,
             )
             response.raise_for_status()
 

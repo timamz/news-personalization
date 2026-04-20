@@ -21,13 +21,15 @@ class TimezoneResolveResponse(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    timezone: str = Field(..., min_length=1, max_length=255)
+    timezone: str | None = Field(default=None, min_length=1, max_length=255)
+    delivery_webhook_url: str | None = Field(default=None, min_length=1, max_length=2048)
 
 
 class UserResponse(BaseModel):
     id: uuid.UUID
     api_key: str
     timezone: str | None
+    delivery_webhook_url: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

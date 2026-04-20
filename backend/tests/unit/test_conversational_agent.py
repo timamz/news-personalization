@@ -24,6 +24,7 @@ def _fake_user(*, has_onboarded: bool = True) -> SimpleNamespace:
         id=uuid.uuid4(),
         timezone="Europe/Moscow",
         language="en",
+        delivery_webhook_url=None,
         conversation_summary="",
         has_onboarded=has_onboarded,
     )
@@ -240,6 +241,42 @@ async def test_create_subscription_embeds_retrieval_query_and_runs_inline_discov
         "creation must embed retrieval_query, record the id, run discovery "
         "inline with a query-referencing reason, and include its findings in "
         "the tool return"
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_subscription_copies_the_users_delivery_webhook_url(mocker) -> None:
+    webhook_url = f"http://tgbot-{uuid.uuid4().hex[:8]}.test/deliver/abc/123"
+    user = _fake_user()
+    user.delivery_webhook_url = webhook_url
+
+    captured: list[Any] = []
+    scoped = AsyncMock()
+    scoped.add = MagicMock(side_effect=captured.append)
+    scoped.flush = AsyncMock()
+    scoped.commit = AsyncMock()
+    mocker.patch(
+        "news_service.agents.conversational.tools.embed_text",
+        new=AsyncMock(return_value=[0.0] * 8),
+    )
+    mocker.patch(
+        "news_service.agents.conversational.tools.ensure_source_coverage",
+        new=AsyncMock(return_value=[]),
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    await _get_tool(agent, "create_subscription")(
+        user_spec="AI news. Brief bullets.",
+        retrieval_query="AI news",
+        delivery_mode="digest",
+        include_discovered_sources=False,
+    )
+
+    created = next(
+        obj for obj in captured if getattr(obj, "__class__", None).__name__ == "Subscription"
+    )
+    assert created.delivery_webhook_url == webhook_url, (
+        "create_subscription did not copy the user's delivery webhook URL"
     )
 
 

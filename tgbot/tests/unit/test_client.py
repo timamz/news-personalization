@@ -68,6 +68,25 @@ async def test_acknowledge_onboarding_posts_with_api_key_header() -> None:
 
 
 @pytest.mark.asyncio
+async def test_update_profile_patches_delivery_webhook_url() -> None:
+    base = f"http://test-{uuid.uuid4().hex[:8]}:8000"
+    api_key = f"key-{uuid.uuid4().hex}"
+    webhook_url = f"http://tgbot-{uuid.uuid4().hex[:8]}.test/deliver/{uuid.uuid4().hex[:4]}"
+    client = BackendClient(base_url=base)
+    resp = _make_response(204)
+    mock_http = _make_http_mock("patch", resp)
+
+    with patch("tgbot.client.httpx.AsyncClient", return_value=mock_http):
+        await client.update_profile(api_key, delivery_webhook_url=webhook_url)
+
+    mock_http.patch.assert_called_once_with(
+        f"{base}/users/me",
+        headers={"X-API-Key": api_key},
+        json={"delivery_webhook_url": webhook_url},
+    )
+
+
+@pytest.mark.asyncio
 async def test_api_key_is_valid_returns_true_on_200() -> None:
     base = f"http://test-{uuid.uuid4().hex[:8]}:8000"
     api_key = f"key-{uuid.uuid4().hex}"
