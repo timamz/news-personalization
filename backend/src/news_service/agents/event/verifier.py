@@ -26,18 +26,17 @@ Tools:
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.adk_runner import run_agent_text
+from news_service.agents.tools.source_inspection import build_fetch_source_items_tool
 from news_service.core.config import get_settings
-from news_service.models.news_item import NewsItem
 from news_service.models.subscription import Subscription
 from news_service.services.search import search_web
 
@@ -218,45 +217,12 @@ async def run_event_verifier(
             )
         return await search_web(query)
 
-    async def fetch_source_items_tool(
-        source_id: str,
-        since_days_ago: int = 14,
-        limit: int = 10,
-    ) -> str:
-        """Read recent items from a linked source to check coverage."""
-        try:
-            sid = uuid.UUID(str(source_id).strip())
-        except (ValueError, AttributeError):
-            return f"Invalid source_id: {source_id!r}."
-        if sid not in allowed_source_ids:
-            return f"Source {sid} is not linked to this subscription."
-        effective_limit = max(
-            1, min(int(limit or 10), settings.reflector_fetch_source_items_max_limit)
-        )
-        effective_days = max(1, int(since_days_ago or 14))
-        cutoff = datetime.now(UTC) - timedelta(days=effective_days)
-        stmt = (
-            select(NewsItem)
-            .where(
-                NewsItem.source_id == sid,
-                NewsItem.published_at.is_not(None),
-                NewsItem.published_at >= cutoff,
-            )
-            .order_by(NewsItem.published_at.desc())
-            .limit(effective_limit)
-        )
-        result = await db_session.execute(stmt)
-        items = list(result.scalars().all())
-        if not items:
-            return f"No items from source {sid} in the last {effective_days} days."
-        lines: list[str] = [f"Items from source {sid} (last {effective_days} days):"]
-        for item in items:
-            published = (
-                item.published_at.isoformat() if item.published_at is not None else "unknown"
-            )
-            body_snippet = (item.body or "")[:300].replace("\n", " ").strip()
-            lines.append(f"- [{published}] {item.headline}\n    {body_snippet}")
-        return "\n".join(lines)
+    fetch_source_items_tool = build_fetch_source_items_tool(
+        db_session=db_session,
+        allowed_source_ids=allowed_source_ids,
+        topic_embedding=None,
+        name="fetch_source_items_tool",
+    )
 
     async def trigger_source_discovery_tool(reason: str) -> str:
         """Queue a source discovery run for this subscription."""

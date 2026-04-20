@@ -15,7 +15,7 @@ Tools:
 import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from google.adk.agents import Agent
@@ -25,13 +25,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.adk_runner import run_agent_text
+from news_service.agents.tools.source_inspection import build_fetch_source_items_tool
 from news_service.core.config import get_settings
-from news_service.models.news_item import NewsItem
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
-from news_service.services.relevance import cosine_similarity
 
 if TYPE_CHECKING:
     from news_service.agents.digest.pipeline import ReflectorSourceContext
@@ -238,68 +237,12 @@ async def run_reflector(
         shared_state["discovery_reason"] = reason
         return f"Source discovery requested: {reason}"
 
-    async def fetch_source_items(
-        source_id: str,
-        since_days_ago: int = 14,
-        limit: int = 10,
-    ) -> str:
-        """Fetch recent items from a specific linked source for inspection.
-
-        Useful before removing a source or to verify drift. The source must
-        be linked to this subscription; cross-subscription access is refused.
-
-        Args:
-            source_id: UUID of the source to inspect.
-            since_days_ago: How far back to look, in days. Default 14.
-            limit: Max number of items to return. Capped at the server limit.
-
-        Returns:
-            Formatted list of items (headline, body snippet, published_at,
-            cosine similarity to the subscription topic) or an error message.
-        """
-        try:
-            sid = uuid.UUID(str(source_id).strip())
-        except (ValueError, AttributeError):
-            return f"Invalid source_id: {source_id!r}."
-        if sid not in allowed_source_ids:
-            return f"Source {sid} is not linked to this subscription."
-
-        max_limit = settings.reflector_fetch_source_items_max_limit
-        effective_limit = max(1, min(int(limit or 10), max_limit))
-        effective_days = max(1, int(since_days_ago or 14))
-        cutoff = datetime.now(UTC) - timedelta(days=effective_days)
-
-        stmt = (
-            select(NewsItem)
-            .where(
-                NewsItem.source_id == sid,
-                NewsItem.published_at.is_not(None),
-                NewsItem.published_at >= cutoff,
-            )
-            .order_by(NewsItem.published_at.desc())
-            .limit(effective_limit)
-        )
-        result = await db_session.execute(stmt)
-        items = list(result.scalars().all())
-        if not items:
-            return f"No items from source {sid} in the last {effective_days} days."
-
-        lines: list[str] = [f"Items from source {sid} (last {effective_days} days):"]
-        for item in items:
-            published = (
-                item.published_at.isoformat() if item.published_at is not None else "unknown"
-            )
-            if item.embedding is not None:
-                try:
-                    sim = cosine_similarity(list(item.embedding), topic_embedding)
-                    sim_str = f"{sim:.2f}"
-                except Exception:
-                    sim_str = "n/a"
-            else:
-                sim_str = "n/a"
-            body_snippet = (item.body or "")[:300].replace("\n", " ").strip()
-            lines.append(f"- [{published}] cos={sim_str} | {item.headline}\n    {body_snippet}")
-        return "\n".join(lines)
+    fetch_source_items = build_fetch_source_items_tool(
+        db_session=db_session,
+        allowed_source_ids=allowed_source_ids,
+        topic_embedding=topic_embedding,
+        name="fetch_source_items",
+    )
 
     async def emit_status(message: str) -> str:
         """Emit a progress status message to the user.
