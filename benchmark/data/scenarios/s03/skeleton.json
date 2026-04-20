@@ -1442,6 +1442,1911 @@
       "body_style_hint": "newsroom",
       "body_adversarial": false,
       "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T10:00:00",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "OpenAI launches prompt-caching v2 API",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T01:12:37.894737",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Anthropic releases context-compaction tools for developers",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T16:25:15.789474",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Vercel raises at $30B valuation in tender round",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T07:37:53.684211",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Datadog acquires observability startup for $240M",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T22:50:31.578947",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Nvidia ships new workstation GPU for AI dev boxes",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T14:03:09.473684",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "GitHub Copilot adds pull-request review mode",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T05:15:47.368421",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Microsoft rolls out Windows 12 insider preview",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T20:28:25.263158",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Apple Vision Pro 2 rumored for October launch",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T11:41:03.157895",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Reddit revenue grows 38% YoY in Q1 report",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T02:53:41.052632",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Slack launches AI-generated channel summaries",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T18:06:18.947368",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Zoom debuts workspace-level persistent rooms",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T09:18:56.842105",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "AWS outage hits us-east-1 for 42 minutes",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T00:31:34.736842",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Google rolls out Gemini Workspace to all education users",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T15:44:12.631579",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Cloudflare blocks record-size DDoS attack",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T06:56:50.526316",
+      "source_url": "https://techcrunch.com/feed/",
+      "headline": "Perplexity launches enterprise search product",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T22:09:28.421053",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "How do you organize group travel with 10+ people?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T13:22:06.315789",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Advice on moving to Lisbon with kids",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T04:34:44.210526",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Does meal prepping actually save money in the long run?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T19:47:22.105263",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Best podcasts for language learning?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T11:00:00",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "How do you deal with noisy neighbors?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T02:12:37.894737",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Rising rents in Berlin — rent control working?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T17:25:15.789474",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Cheap ways to see Patagonia before it gets too touristy",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T08:37:53.684211",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Anyone tried the new fasting protocol from that paper?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T23:50:31.578947",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Why is mail so slow in Germany?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T15:03:09.473684",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "How to network when you work fully remote?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T06:15:47.368421",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Recommend me a good biography of Napoleon",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T21:28:25.263158",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Best coffee beans online in EU?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T12:41:03.157895",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "How did we end up with so many streaming services?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T03:53:41.052632",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Tips for surviving a long-haul flight in economy?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T19:06:18.947368",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Thoughts on the new Formula 1 regulations?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T10:18:56.842105",
+      "source_url": "https://www.reddit.com/r/GlobalTalk/.rss",
+      "headline": "Where do you buy vintage clothes in Frankfurt?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T01:31:34.736842",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Weekly fund flows: bonds +$800M, equities -$200M",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T16:44:12.631579",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "DXY strengthens 0.4% after Fed minutes release",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T07:56:50.526316",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Gold sees third straight weekly gain on safe-haven flows",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T23:09:28.421053",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Bitcoin consolidates near $72k, options expiry ahead",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T14:22:06.315789",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Japan 10-year yield drifts higher after BoJ comments",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T05:34:44.210526",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "ECB speakers lean dovish ahead of June meeting",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T20:47:22.105263",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Copper sees outflows despite supply tightness narrative",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T12:00:00",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Silver ETF flows flip negative for third week",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T03:12:37.894737",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Wheat futures roll: spread narrows on exporter competition",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T18:25:15.789474",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Natural gas: EU storage ends winter at 61%",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T09:37:53.684211",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "USD/JPY: intervention threat returns above 155",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T00:50:31.578947",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Emerging markets rally on weaker dollar narrative",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T16:03:09.473684",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Brent crude: API report shows unexpected build",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T07:15:47.368421",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Soft commodities: cocoa softens 4% on Ghana output beat",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T22:28:25.263158",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Dry bulk: BDI slips 8% on Capesize weakness",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T13:41:03.157895",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Credit: HY spreads tighten to YTD low",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T04:53:41.052632",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Investment-grade issuance sets monthly record in March",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T20:06:18.947368",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "FX volatility index hits multi-month trough",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T11:18:56.842105",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Equity vol: VIX closes below 13 for first time since Jan",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T02:31:34.736842",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Agri futures: soybean complex follows crude lower",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T17:44:12.631579",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Real estate: JLL reports office vacancy ticked down in Q1",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T08:56:50.526316",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Private equity: secondary-market volumes hit record in Q1",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T00:09:28.421053",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Venture capital: AI-infra deals dominate March funding",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T15:22:06.315789",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Syndicated loans: leveraged supply up 22% QoQ",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T06:34:44.210526",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Municipal bonds: taxable issuance dips after tax changes",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T21:47:22.105263",
+      "source_url": "https://t.me/s/random_finance",
+      "headline": "Convertibles: issuance window opens for software names",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T14:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth weekly wrap: terbium flat, praseodymium +1%",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T02:56:34.285714",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth monthly: March prices broadly unchanged",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T15:53:08.571429",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth Q1 volume ticks up at Chinese refiners",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T04:49:42.857143",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth order book thin ahead of May holiday",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T17:46:17.142857",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth inventory levels normalise in Shanghai",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T06:42:51.428571",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth magnet makers guide volumes flat for Q2",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T19:39:25.714286",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth feature: inside the Lynas Kalgoorlie expansion",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T08:36:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth recycling paper in Nature covers lab-scale yields",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T21:32:34.285714",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth trader Citic reports in-line quarterly results",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T10:29:08.571429",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Rare-earth-focused ETF sees modest outflows in April",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T23:25:42.857143",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth explainer: what actually qualifies as heavy?",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T12:22:17.142857",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth long-read: three decades of Chinese dominance",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T01:18:51.428571",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth podcast: quarterly supply-chain roundup",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T14:15:25.714286",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth chart: neodymium vs EV sales through 2030",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T03:12:00",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth backgrounder: what Pentagon stockpile actually does",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T16:08:34.285714",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth commentary: market has over-reacted before",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T05:05:08.571429",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth analyst note: price base case unchanged",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T18:01:42.857143",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth sector outlook: steady through 2027",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T06:58:17.142857",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth CEO profile: interview with Lynas head",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T19:54:51.428571",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Rare-earth market structure primer",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T08:51:25.714286",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Rare-earth stocks: MP Materials guides in-line Q2",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T21:48:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Rare-earth miner reports steady production guidance",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T10:44:34.285714",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Rare-earth ETF flows marginally positive month-to-date",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T23:41:08.571429",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Rare-earth demand modelling debated at mining conference",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T12:37:42.857143",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Rare-earth investor day: company restates long-term targets",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T01:34:17.142857",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rare-earth scholarship fund launched for metallurgy students",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T14:30:51.428571",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rare-earth trade mission attends Tokyo critical-minerals summit",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T03:27:25.714286",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rare-earth conference: panel discusses recycling economics",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T16:24:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rare-earth producer renews offtake with Asian magnet maker",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T05:20:34.285714",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Rare-earth lobby group publishes policy recommendations",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T18:17:08.571429",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Rare-earth chart of the day: 90-day moving average",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T07:13:42.857143",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Rare-earth observation: DR congestion on typical spread",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T20:10:17.142857",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Rare-earth volume update: LME warehouse levels steady",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T09:06:51.428571",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Rare-earth tweet: routine market commentary",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T22:03:25.714286",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Rare-earth note: month-on-month pricing delta minimal",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T11:00:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Lithium spot prices drop 6% as Chinese inventories rise",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T23:56:34.285714",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Cobalt sees renewed buying interest from battery makers",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T12:53:08.571429",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Nickel market oversupplied through year-end",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T01:49:42.857143",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Copper LME price tests $9500 resistance",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T14:46:17.142857",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Tin market continues to tighten on Indonesia exports",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T03:42:51.428571",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Graphite suppliers warn of Q3 tightness in flake market",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T16:39:25.714286",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Platinum and palladium diverge on auto-demand split",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T05:36:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Tungsten spot premium widens for European buyers",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T18:32:34.285714",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Vanadium prices stabilise after first-quarter drawdown",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T07:29:08.571429",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Gallium market balanced after German scrap flows resume",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T20:25:42.857143",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Indium hits two-year high on semiconductor demand",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T09:22:17.142857",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Molybdenum shrugs off Chinese production outage news",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T22:18:51.428571",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Uranium spot prices test $110 on supply anxieties",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T11:15:25.714286",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Cadmium prices quiet in thin market conditions",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T00:12:00",
+      "source_url": "https://www.fastmarkets.com/rss/rare-earths",
+      "headline": "Selenium premium narrows as Korean demand eases",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T13:08:34.285714",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Bismuth sees export tax hike in China, 10% from May",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T02:05:08.571429",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Antimony prices rally as sanctions bite Russian exporters",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T15:01:42.857143",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Germanium secondary smelter announces maintenance",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T03:58:17.142857",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Beryllium quotes nudge higher on US Defense demand",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T16:54:51.428571",
+      "source_url": "https://www.argusmedia.com/rss/rare-earths",
+      "headline": "Zirconium market quiet ahead of EV OEM orders",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T05:51:25.714286",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Lithium miners guide volumes slightly higher for Q2",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T18:48:00",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Nickel mining costs rise in Indonesia on nickel royalties",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T07:44:34.285714",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Copper smelter TCs at multi-year highs as supply tightens",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T20:41:08.571429",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Iron ore: Singapore futures recover after 6% weekly drop",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T09:37:42.857143",
+      "source_url": "https://www.bloomberg.com/feeds/metals.xml",
+      "headline": "Steel margins: Chinese mills guide Q2 output lower",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T22:34:17.142857",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Lithium analysis: why the IRA has not moved the needle",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T11:30:51.428571",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Commentary: the cobalt story is about the DRC, as always",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T00:27:25.714286",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Explainer: why copper is trading like a bond proxy",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T13:24:00",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Opinion: rare earths grab headlines, lithium grabs volume",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T02:20:34.285714",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "headline": "Long-read: inside a Ganfeng lithium processing facility",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T15:17:08.571429",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Lithium spot: six-week trend continues down-up-down",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T04:13:42.857143",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Cobalt chart: DRC export-volume moving average",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T17:10:17.142857",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Nickel observation: LME inventories versus price divergence",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T06:06:51.428571",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Uranium quick take: volatility crushed post-event",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T19:03:25.714286",
+      "source_url": "https://t.me/s/rare_earth_watch",
+      "headline": "Commodity roundup: unchanged week across rare metals",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "rare_earth_events": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "rare_earth_events": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
     }
   ],
   "search_corpus": [

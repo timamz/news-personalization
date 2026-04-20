@@ -1620,6 +1620,1746 @@
       "body_style_hint": "wire",
       "body_adversarial": false,
       "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T10:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Anthropic releases Claude 5 with 10M context window",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T01:53:20",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Vercel acquires design-systems startup for $180M",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T17:46:40",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Databricks lands $10B secondary at $62B valuation",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T09:40:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Nvidia H300 launch expected Q3 per supply chain leak",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T01:33:20",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "GitLab lays off 7% of workforce as it pivots to AI",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T17:26:40",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Microsoft Copilot gets agent-marketplace tab",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T09:20:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Figma raises prices after IPO",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T01:13:20",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Stripe reports record-breaking quarterly volume",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T17:06:40",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Y Combinator reveals Fall 26 batch demo-day schedule",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T09:00:00",
+      "source_url": "https://www.techcrunch.com/feed/",
+      "headline": "Hugging Face hits 2 million open-weight checkpoints",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T00:53:20",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Celebrity couple announces surprise engagement on Instagram",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T16:46:40",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Reality TV star launches skincare line",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T08:40:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Oscar nominee spotted at Coachella with mystery partner",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T00:33:20",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Pop star tour cancellation refund policy details released",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T16:26:40",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Late-night host announces exit after 15-year run",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T08:20:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Streaming show renewed for sixth season",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T00:13:20",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Awards committee finalises hosts for the next ceremony",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T16:06:40",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Pop star denies tour cancellation rumours",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T08:00:00",
+      "source_url": "https://www.tmz.com/rss.xml",
+      "headline": "Reality contestant sparks debate with wedding speech",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T23:53:20",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Champions League: Bayern edges Arsenal in extra time",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T15:46:40",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "NFL: Chiefs trade star receiver to Dolphins",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T07:40:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "NBA: Wembanyama posts career-high 54 points",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T23:33:20",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Olympic qualifier wraps: team USA tops medal tally",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T15:26:40",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Cricket World Cup: India defends title in nail-biter final",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T07:20:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Formula E adds Seoul street circuit to 2027 schedule",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T23:13:20",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Rugby: All Blacks announce squad changes for autumn tour",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T15:06:40",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Boxing: heavyweight title unification set for December",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T07:00:00",
+      "source_url": "https://www.espn.com/espn/rss/news",
+      "headline": "Tennis: next-gen final showcases 21-year-old stars",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T22:53:20",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Raised beds: best drainage layer materials debated",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T14:46:40",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Companion planting guide for tomatoes this season",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T06:40:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "What fertilizer for blueberry bushes in zone 6?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T22:33:20",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Show-off: finally pruned that hedge after three years",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T14:26:40",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Pest control without pesticides — share tips",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T06:20:00",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "Seed swap in Ghent next weekend — anyone coming?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T22:13:20",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "First azalea bloom of the year photo thread",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T14:06:40",
+      "source_url": "https://www.reddit.com/r/gardening/.rss",
+      "headline": "How do you protect seedlings from late frost?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T06:00:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Bitcoin ETF weekly flows: $1.2B net inflow",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T21:53:20",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Altcoin of the week: Jupiter Exchange pumps 40%",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T13:46:40",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Whale watch: 3200 BTC moved to Coinbase",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T05:40:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Ethereum staking yield drops below 3%",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T21:33:20",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Degen plays: new memecoin launch on Solana",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T13:26:40",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Regulatory: SEC delays Solana ETF decision",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T05:20:00",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Stablecoin supply crosses $250B milestone",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T21:13:20",
+      "source_url": "https://t.me/s/crypto_whispers",
+      "headline": "Layer-2 roundup: Arbitrum beats Optimism in TVL again",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T13:06:40",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "Why did the Ottomans fail to take Vienna in 1683?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T05:00:00",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "How accurate is the Vikings TV show?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T20:53:20",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "What was daily life like for a medieval peasant?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T12:46:40",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "Did Rome really salt Carthage's fields?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T04:40:00",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "Who invented the umbrella, and why so late?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T20:33:20",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "How did Genghis Khan organise his army?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T12:26:40",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "What caused the fall of Knossos?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "reddit",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T04:20:00",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "Was the Library of Alexandria really destroyed by fire?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "telegram",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T20:13:20",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "How did samurai actually live in peacetime?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T12:06:40",
+      "source_url": "https://www.reddit.com/r/AskHistorians/.rss",
+      "headline": "When did forks become standard cutlery in Europe?",
+      "difficulty": "easy_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-01T13:00:00",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "EU pharmaceutical regulation revision enters trilogue",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T03:13:32.903226",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "EU Commission unveils AI Liability Directive amendments",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-02T17:27:05.806452",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "European Council adopts new sanctions package over Belarus",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T07:40:38.709677",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "EU foreign policy chief visits Addis Ababa for trade talks",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-03T21:54:11.612903",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "European Central Bank keeps rates unchanged at April meeting",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-04T12:07:44.516129",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "EU migration pact implementation status report published",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T02:21:17.419355",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "EU fisheries council agrees 2027 quota for North Sea",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T16:34:50.322581",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Brussels proposes minimum corporate tax floor revisions",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T06:48:23.225806",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "EU ombudsman launches inquiry into lobbying disclosure rules",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-05T21:01:56.129032",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "European Parliament adopts resolution on media freedom",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-06T11:15:29.032258",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "Commission proposes changes to Erasmus programme funding",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T01:29:01.935484",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "EU justice ministers discuss cross-border digital evidence",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-07T15:42:34.838710",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "ECJ ruling clarifies GDPR cross-border enforcement mechanism",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T05:56:07.741935",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "EU telecom ministers debate 5G rollout targets",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-08T20:09:40.645161",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "European Investment Bank backs rail-infrastructure upgrade",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T10:23:13.548387",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "EU competition authority clears airline merger with remedies",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T00:36:46.451613",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "UK energy secretary announces North Sea licensing round",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-09T14:50:19.354839",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "US Senate votes down clean-energy tax credit extension",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T05:03:52.258065",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Norway expands offshore wind tender to Sørlige Nordsjø",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-10T19:17:25.161290",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Switzerland extends nuclear operating permits",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T09:30:58.064516",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Turkey signs LNG supply deal with Azerbaijan",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-11T23:44:30.967742",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Japan restarts Kashiwazaki-Kariwa reactor unit",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T13:58:03.870968",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Australia approves new offshore LNG export project",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T04:11:36.774194",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Canada Energy Regulator approves pipeline expansion",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-12T18:25:09.677419",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Saudi Aramco raises capex guidance for 2027",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T08:38:42.580645",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "South Korea announces nuclear export roadmap",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-13T22:52:15.483871",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Indonesia scales back coal plant pipeline",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-14T13:05:48.387097",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Argentina opens Vaca Muerta to new operators",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T03:19:21.290323",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Russia extends oil export duty reduction",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-15T17:32:54.193548",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "China's NEA publishes revised solar capacity targets",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T07:46:27.096774",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "Global LNG prices slide on weaker Asian demand",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T22:00:00",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "US Henry Hub gas futures close at 14-month low",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-16T12:13:32.903226",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "OPEC+ technical committee convenes ahead of June meet",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T02:27:05.806452",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "Singapore bunker-fuel prices reach multi-year peak",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-17T16:40:38.709677",
+      "source_url": "https://www.bloomberg.com/feeds/podcasts/etf_iq.xml",
+      "headline": "IEA revises global oil-demand outlook upward",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T06:54:11.612903",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "IPCC publishes regional assessment for South Asia",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-18T21:07:44.516129",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Nature Climate paper links permafrost thaw to methane surge",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-19T11:21:17.419355",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Arctic sea-ice volume hits March low per NSIDC",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T01:34:50.322581",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Amazon rainforest carbon sink weaker than modeled",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T15:48:23.225806",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Scientific report: coral bleaching accelerates on GBR",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T06:01:56.129032",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Researchers map record-low Antarctic sea-ice extent",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-20T20:15:29.032258",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Cloud-feedback paper rekindles climate-sensitivity debate",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-21T10:29:01.935484",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Study identifies tipping-point threshold for West Antarctic ice",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T00:42:34.838710",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Ocean heat content sets new annual record, study finds",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-22T14:56:07.741935",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "New attribution study ties 2025 heat wave to climate change",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T05:09:40.645161",
+      "source_url": "https://www.euractiv.com/section/energy/feed/",
+      "headline": "Opinion: the problem with EU industrial policy is timing",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T19:23:13.548387",
+      "source_url": "https://www.politico.eu/section/energy/feed/",
+      "headline": "Commentary: why the EU must rethink its trade strategy",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T09:36:46.451613",
+      "source_url": "https://euobserver.com/feeds/energy.rss",
+      "headline": "Op-ed: Brussels' digital rules squeeze startups",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-23T23:50:19.354839",
+      "source_url": "https://www.euronews.com/rss?level=vertical&name=climate",
+      "headline": "Editorial: the case for a looser fiscal framework in the EU",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-24T14:03:52.258065",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Long-read: five years of REPowerEU — what worked, what didn't",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T04:17:25.161290",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Analysis: why auction design matters more than headline targets",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-25T18:30:58.064516",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Backgrounder: how the CBAM calculation actually works",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T08:44:30.967742",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Explainer: electricity market reform jargon decoded",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-26T22:58:03.870968",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Analysis: the offshore wind supply-chain bottleneck",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T13:11:36.774194",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Podcast recap: monthly EU energy-policy roundtable",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T03:25:09.677419",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Methodology note: calculating national heat-pump uptake",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-27T17:38:42.580645",
+      "source_url": "https://reneweconomy.com.au/feed/",
+      "headline": "Research digest: papers on electricity market design",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T07:52:15.483871",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "UK passes Climate and Energy Security Act standalone of EU",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-28T22:05:48.387097",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Washington DC climate summit concludes without binding deal",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-29T12:19:21.290323",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Moscow announces new energy-efficiency targets for industry",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "techcrunch",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T02:32:54.193548",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Ankara unveils domestic solar manufacturing scheme",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "newsroom",
+      "body_adversarial": false,
+      "body_language": "en"
+    },
+    {
+      "fake_ts": "2026-03-30T16:46:27.096774",
+      "source_url": "https://www.reuters.com/pf/api/v3/feed/eu-energy",
+      "headline": "Pretoria grants incentives for coal-to-hydrogen pilot",
+      "difficulty": "near_miss_negative",
+      "should_notify_per_sub": {
+        "eu_energy_digest": false
+      },
+      "should_contribute_to_digest_per_sub": {
+        "eu_energy_digest": false
+      },
+      "body_style_hint": "wire",
+      "body_adversarial": false,
+      "body_language": "en"
     }
   ],
   "search_corpus": [
