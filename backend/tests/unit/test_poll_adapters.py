@@ -11,7 +11,6 @@ from news_service.tasks.poll_adapters import (
     RedditAdapter,
     RssAdapter,
     TelegramAdapter,
-    TwitterAdapter,
 )
 
 
@@ -130,39 +129,24 @@ def test_rss_adapter_source_name_uses_title_or_url_fallback() -> None:
 
 
 @pytest.mark.asyncio
-async def test_telegram_and_twitter_adapters_take_headline_from_first_body_line() -> None:
+async def test_telegram_adapter_takes_headline_from_first_body_line() -> None:
     tg_src = _make_source("https://t.me/s/testchannel", "\u0422\u0435\u0441\u0442")
-    tw_src = _make_source("https://x.com/testaccount")
 
     tg_post = MagicMock()
     tg_post.url = "https://t.me/testchannel/42"
     tg_post.body = "First line headline\nSecond line body"
     tg_post.published_at = datetime(2026, 3, 10, tzinfo=UTC)
 
-    tweet = MagicMock()
-    tweet.url = "https://x.com/testaccount/status/12345"
-    tweet.body = "Tweet headline\nRest of text"
-    tweet.published_at = datetime(2026, 3, 10, tzinfo=UTC)
-
-    with (
-        patch(
-            "news_service.tasks.poll_adapters.fetch_telegram_posts",
-            new_callable=AsyncMock,
-            return_value=[tg_post],
-        ),
-        patch(
-            "news_service.tasks.poll_adapters.fetch_twitter_posts",
-            new_callable=AsyncMock,
-            return_value=[tweet],
-        ),
+    with patch(
+        "news_service.tasks.poll_adapters.fetch_telegram_posts",
+        new_callable=AsyncMock,
+        return_value=[tg_post],
     ):
         tg_posts = await TelegramAdapter(tg_src, "testchannel").fetch_posts()
-        tw_posts = await TwitterAdapter(tw_src, "testaccount").fetch_posts()
 
     assert (
         tg_posts[0].headline == "First line headline" and tg_posts[0].text_to_embed == tg_post.body
     )
-    assert tw_posts[0].headline == "Tweet headline" and tw_posts[0].text_to_embed == tweet.body
 
 
 @pytest.mark.asyncio

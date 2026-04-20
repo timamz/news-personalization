@@ -2,7 +2,7 @@
 
 Any agent that can call ``search_web`` should also be able to click
 through to a result and read the page body -- otherwise it only ever
-sees SearXNG's short snippets and has to guess at what the source
+sees the search provider's short snippets and has to guess at what the source
 actually contains. ``fetch_page`` is that counterpart: give the LLM
 a URL, get back the readable article text.
 
@@ -26,7 +26,7 @@ async def fetch_page(url: str) -> str:
     Pair with search_web: when a search result looks promising (e.g.
     a "best RSS feeds for X" listicle, a curator's blog post, a news
     article you need full context on) call this to read the full page
-    instead of relying on the short SearXNG snippet. Pass a single URL
+    instead of relying on the short search-result snippet. Pass a single URL
     per call.
 
     Args:
@@ -43,6 +43,7 @@ async def fetch_page(url: str) -> str:
         cleaned,
         timeout_seconds=settings.article_fetch_timeout_seconds,
         max_chars=settings.article_body_max_chars,
+        use_browser_fallback=True,
     )
     if text is None or not text.strip():
         return f"could not fetch {url}."

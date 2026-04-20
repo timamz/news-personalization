@@ -20,7 +20,6 @@ from news_service.models.source import Source
 from news_service.services.article_fetch import fetch_article_text
 from news_service.services.reddit import fetch_reddit_posts
 from news_service.services.telegram import fetch_telegram_posts
-from news_service.services.twitter import fetch_twitter_posts
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -177,37 +176,6 @@ class RedditAdapter:
                     headline=headline,
                     body=body,
                     text_to_embed=text_to_embed,
-                    published_at=post.published_at,
-                )
-            )
-        return posts
-
-
-class TwitterAdapter:
-    """Adapter for Twitter/X accounts."""
-
-    def __init__(self, src: Source, account: str) -> None:
-        self._src = src
-        self._account = account
-
-    def source_name(self) -> str:
-        return self._src.title or f"X @{self._account}"
-
-    def log_label(self) -> str:
-        return f"Twitter/X account @{self._account}"
-
-    async def fetch_posts(self) -> list[NormalizedPost]:
-        raw_posts = await fetch_twitter_posts(self._account)
-        posts: list[NormalizedPost] = []
-        for post in raw_posts:
-            lines = post.body.splitlines()
-            headline = lines[0][:200] if lines else f"Post from @{self._account}"
-            posts.append(
-                NormalizedPost(
-                    url=post.url,
-                    headline=headline,
-                    body=post.body,
-                    text_to_embed=post.body,
                     published_at=post.published_at,
                 )
             )

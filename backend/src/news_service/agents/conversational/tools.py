@@ -35,7 +35,6 @@ from news_service.services.coverage import ensure_source_coverage
 from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.telegram import build_telegram_channel_url
 from news_service.services.timezones import resolve_timezone
-from news_service.services.twitter import build_twitter_account_url
 from news_service.tasks.discover_sources import run_and_persist_discovery
 
 logger = logging.getLogger(__name__)
@@ -96,7 +95,6 @@ MAX_USER_SPEC_LENGTH = 10_000
 _URL_BUILDERS: dict[str, Callable[[str], str]] = {
     "telegram_channel": build_telegram_channel_url,
     "reddit_subreddit": build_reddit_subreddit_url,
-    "twitter_account": build_twitter_account_url,
 }
 
 
@@ -117,7 +115,6 @@ def build_tools(
         digest_language: str = "",
         fixed_telegram_channels: str = "",
         fixed_reddit_subreddits: str = "",
-        fixed_twitter_accounts: str = "",
         include_discovered_sources: bool = True,
     ) -> str:
         """Create a brand-new subscription.
@@ -152,7 +149,6 @@ def build_tools(
             digest_language: ISO code (en, ru, ...). Empty = use the user's language.
             fixed_telegram_channels: Comma-separated handles (no @).
             fixed_reddit_subreddits: Comma-separated sub names (no r/).
-            fixed_twitter_accounts: Comma-separated X handles (no @).
             include_discovered_sources: Run auto-discovery for more sources.
 
         Returns:
@@ -173,7 +169,6 @@ def build_tools(
 
         telegram = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_telegram_channels)]
         reddit = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_reddit_subreddits)]
-        twitter = [_clean_identifier(s) for s in _parse_csv_identifiers(fixed_twitter_accounts)]
 
         async with scoped_factory() as scoped:
             try:
@@ -198,7 +193,6 @@ def build_tools(
             for identifiers, kind in [
                 (telegram, "telegram_channel"),
                 (reddit, "reddit_subreddit"),
-                (twitter, "twitter_account"),
             ]:
                 if not identifiers:
                     continue
@@ -414,7 +408,7 @@ def build_tools(
         Args:
             subscription_id: UUID of the subscription to modify.
             identifier: Handle / name with no prefix (channel, sub, handle).
-            source_kind: telegram_channel | reddit_subreddit | twitter_account.
+            source_kind: telegram_channel | reddit_subreddit.
 
         Returns:
             Short confirmation or per-source error.
@@ -502,7 +496,7 @@ def build_tools(
         Args:
             subscription_id: UUID of the subscription to modify.
             identifier: Handle / name with no prefix.
-            source_kind: telegram_channel | reddit_subreddit | twitter_account.
+            source_kind: telegram_channel | reddit_subreddit.
 
         Returns:
             Short confirmation or error.

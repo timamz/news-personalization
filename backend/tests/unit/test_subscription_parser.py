@@ -126,13 +126,9 @@ async def test_streaming_yields_error_event_on_agent_failure() -> None:
 def test_source_display_name_formats_each_kind_correctly() -> None:
     tg_handle = uuid.uuid4().hex[:8]
     sub = uuid.uuid4().hex[:8]
-    x_handle = uuid.uuid4().hex[:8]
     assert (
         _source_display_name(f"https://t.me/s/{tg_handle}", "telegram_channel") == f"@{tg_handle}"
     )
     assert (
         _source_display_name(f"https://reddit.com/r/{sub}/new/", "reddit_subreddit") == f"r/{sub}"
-    )
-    assert (
-        _source_display_name(f"https://x.com/{x_handle}", "twitter_account") == f"x.com/{x_handle}"
     )

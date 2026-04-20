@@ -12,11 +12,6 @@ class Settings(BaseSettings):
     reddit_fetch_timeout_seconds: float = 45.0
     reddit_fetch_attempts: int = 2
     reddit_listing_limit: int = 25
-    twitter_fetch_timeout_seconds: float = 20.0
-    twitter_fetch_attempts: int = 3
-    twitter_listing_limit: int = 20
-    twitter_fetch_retry_backoff_seconds: float = 1.0
-    twitter_fetch_max_rate_limit_wait_seconds: float = 30.0
     news_item_max_age_days: int = 7
 
     proxy_url: str | None = None
@@ -28,6 +23,10 @@ class Settings(BaseSettings):
     litellm_judge_model: str = "openai/gpt-5.4-nano"
     embedding_dimensions: int = 1536
     recent_event_match_concurrency: int = 8
+    event_judge_max_revisions: int = 2
+    event_reflector_interval_days: int = 7
+    event_verifier_lookback_days: int = 7
+    event_verifier_max_searches: int = 5
 
     llm_retry_max_attempts: int = 3
     llm_retry_base_delay_seconds: float = 1.0
@@ -46,6 +45,9 @@ class Settings(BaseSettings):
     conversation_hot_max_bytes: int = 20000
 
     max_concurrent_discoveries: int = 3
+    max_concurrent_web_searches: int = 2
+    source_validation_timeout_seconds: float = 30.0
+    discovery_backfill_min_score: float = 0.4
 
     llm_max_context_chars: int = 1_200_000
 
@@ -58,7 +60,8 @@ class Settings(BaseSettings):
     article_body_max_chars: int = 50_000
     article_fetch_concurrency: int = 10
 
-    searxng_url: str = "http://searxng:8080"
+    yandex_search_api_key: str
+    yandex_search_type: str = "COM"
 
 
 def get_settings() -> Settings:

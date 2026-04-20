@@ -79,16 +79,6 @@ services:
       app:
         condition: service_started
 
-  searxng:
-    build: ./searxng
-    ports:
-      - "8888:8080"
-    environment:
-      SEARXNG_SECRET: "news-monorepo-searxng-secret"
-      SEARXNG_LIMITER: "false"
-      SEARXNG_IMAGE_PROXY: "false"
-    restart: unless-stopped
-
   db-backup:
     image: pgvector/pgvector:pg16
     environment:

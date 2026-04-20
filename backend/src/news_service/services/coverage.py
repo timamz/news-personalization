@@ -12,7 +12,6 @@ from news_service.models.source import Source
 from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.source_descriptions import describe_source
 from news_service.services.telegram import build_telegram_channel_url
-from news_service.services.twitter import build_twitter_account_url
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -20,7 +19,6 @@ settings = get_settings()
 _SOURCE_TYPE_CONFIG: dict[SourceKind, tuple[Callable[[str], str], str]] = {
     "telegram_channel": (build_telegram_channel_url, "Telegram @{}"),
     "reddit_subreddit": (build_reddit_subreddit_url, "Reddit r/{}"),
-    "twitter_account": (build_twitter_account_url, "X @{}"),
 }
 
 

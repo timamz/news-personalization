@@ -35,16 +35,6 @@ def _make_source(url: str, title: str = "") -> SimpleNamespace:
             "r/{sub}",
         ),
         (
-            "https://x.com/{account}",
-            "",
-            "@{account}",
-        ),
-        (
-            "https://twitter.com/elonmusk",
-            "",
-            "@elonmusk",
-        ),
-        (
             "https://example.com/rss/feed.xml",
             "{title}",
             "{title}",
@@ -64,8 +54,6 @@ def _make_source(url: str, title: str = "") -> SimpleNamespace:
         "telegram_url_returns_at_channel",
         "telegram_url_with_cyrillic_title_returns_channel",
         "reddit_url_returns_r_subreddit",
-        "twitter_x_url_returns_at_account",
-        "twitter_classic_url_returns_at_account",
         "generic_rss_with_title_returns_title",
         "generic_rss_no_title_returns_url",
         "generic_rss_none_title_returns_url",
@@ -77,13 +65,11 @@ def test_source_display_name_returns_expected_format(
     tag = uuid.uuid4().hex[:6]
     channel = f"testchannel{tag}"
     sub = f"testsub{tag}"
-    account = f"user{tag}"
     title_val = f"Новости России {tag}"
 
     replacements = {
         "{channel}": channel,
         "{sub}": sub,
-        "{account}": account,
         "{title}": title_val,
         "{tag}": tag,
     }

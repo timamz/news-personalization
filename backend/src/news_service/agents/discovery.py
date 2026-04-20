@@ -18,18 +18,12 @@ from news_service.services.telegram import (
     fetch_telegram_posts,
     normalize_telegram_channel,
 )
-from news_service.services.twitter import (
-    build_twitter_account_url,
-    extract_twitter_account_from_url,
-    fetch_twitter_posts,
-    normalize_twitter_account,
-)
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
+type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit"]
 
 
 class DiscoveredSourceItem(BaseModel):
@@ -65,22 +59,11 @@ def normalize_source_url(url: str, *, source_kind: SourceKind) -> str | None:
                 return None
         return build_reddit_subreddit_url(subreddit)
 
-    if source_kind == "twitter_account":
-        candidate = url.strip()
-        account = extract_twitter_account_from_url(candidate)
-        if account is None:
-            try:
-                account = normalize_twitter_account(candidate)
-            except ValueError:
-                return None
-        return build_twitter_account_url(account)
-
     normalized = url.strip()
     if (
         not normalized
         or extract_telegram_channel_from_url(normalized) is not None
         or extract_reddit_subreddit_from_url(normalized) is not None
-        or extract_twitter_account_from_url(normalized) is not None
     ):
         return None
     return normalized
@@ -97,11 +80,6 @@ async def validate_source_url(url: str, *, source_kind: SourceKind) -> bool:
         if subreddit is None:
             return False
         return await validate_reddit_subreddit(subreddit)
-    if source_kind == "twitter_account":
-        account = extract_twitter_account_from_url(url)
-        if account is None:
-            return False
-        return await validate_twitter_account(account)
     return await validate_feed_url(url)
 
 
@@ -137,13 +115,4 @@ async def validate_reddit_subreddit(subreddit: str) -> bool:
         return len(posts) > 0
     except Exception:
         logger.exception("Reddit subreddit validation failed for r/%s", subreddit)
-        return False
-
-
-async def validate_twitter_account(account: str) -> bool:
-    try:
-        posts = await fetch_twitter_posts(account, limit=1)
-        return len(posts) > 0
-    except Exception:
-        logger.exception("Twitter/X account validation failed for @%s", account)
         return False

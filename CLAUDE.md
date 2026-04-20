@@ -12,7 +12,7 @@ Development guide for humans and AI agents working on this codebase.
 
 **The backend is agnostic to any frontend.** The backend exposes a generic REST API and delivers digests via webhooks to arbitrary URLs. It has zero knowledge of Telegram, web, mobile, or any other interface. Frontend services are responsible for registering webhook URLs and translating backend payloads into their native format. This separation is a core architectural principle — never introduce frontend-specific logic into the backend.
 
-**Provider-agnostic LLM stack.** All LLM calls go through LiteLLM, all web search goes through SearXNG, and agents are built on Google ADK. The entire system can run on OpenAI, Gemini, Anthropic, self-hosted models, or any LiteLLM-supported provider by changing one config string.
+**Provider-agnostic LLM stack.** All LLM calls go through LiteLLM, all web search goes through the Yandex Cloud Search API (REST), and agents are built on Google ADK. The entire system can run on OpenAI, Gemini, Anthropic, self-hosted models, or any LiteLLM-supported provider by changing one config string.
 
 ---
 
@@ -23,8 +23,6 @@ Development guide for humans and AI agents working on this codebase.
   docker-compose.yml   — orchestrates all services (single entry point)
   CLAUDE.md            — this file
   README.md            — project overview and quick start
-  searxng/             — SearXNG metasearch engine config
-    settings.yml       — engine configuration (google, bing, duckduckgo, brave)
   backend/             — FastAPI backend, Celery workers, LLM agents
     .env.example       — backend environment variables template
   tgbot/               — Telegram bot frontend (aiogram)
@@ -45,12 +43,14 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 |---|---|---|---|---|
 | **Conversational Agent** | `agents/conversational/agent.py` (tools in `agents/conversational/tools.py`) | ADK tool-use loop | Every user message | `create_subscription`, `update_subscription`, `get_subscriptions`, `remember`, `add_source`, `remove_source`, `set_user_language`, `set_user_timezone`, `trigger_digest_now`, `trigger_source_discovery`, `delete_subscription`, `close_scenario` |
 | **Discovery Agent** | `agents/source_discovery/pipeline.py` | ADK looped agent (no hard round cap) | Subscription creation / reflector trigger | `spawn_finder(strategy)` (launches one Finder per call, ADK invokes in parallel), `inspect_source(url)`, `submit_selection(urls)`, `abort(reason)` |
-| **Source Finder** | `agents/source_discovery/finder.py` | ADK ReAct, one per strategy | Spawned by Discovery Agent via `spawn_finder` | `search_existing_sources` (pgvector), `tool_search_web` (SearXNG), `validate_and_score_source` (fetch posts, embed, cosine) |
-| **Digest Writer** | `agents/digest/writer.py` | ADK agent (plans + optionally researches + composes in one loop) | Scheduled digest delivery | `search_web` (SearXNG), `submit_digest(digest_text, used_item_ids)` -- items already arrive with full article body from ingest time, so no fetch tool is needed |
+| **Source Finder** | `agents/source_discovery/finder.py` | ADK ReAct, one per strategy | Spawned by Discovery Agent via `spawn_finder` | `search_existing_sources` (pgvector), `tool_search_web` (Yandex Search API), `validate_and_score_source` (fetch posts, embed, cosine) |
+| **Digest Writer** | `agents/digest/writer.py` | ADK agent (plans + optionally researches + composes in one loop) | Scheduled digest delivery | `search_web` (Yandex Search API), `submit_digest(digest_text, used_item_ids)` -- items already arrive with full article body from ingest time, so no fetch tool is needed |
 | **Quality Judge** | `agents/digest/judge.py` | Single structured-output LLM call | After Writer produces draft | Returns `QualityScores` (relevance/format/conciseness 1-5, `PASS` or `REVISE`+feedback) |
 | **Pipeline Reflector** | `agents/digest/reflector.py` | ADK agent | After delivery, only when a health trigger fires | `fetch_source_items(source_id, since_days_ago, limit)`, `remove_source(url, reason)` (auto-discovered only), `trigger_source_discovery(reason)`, `emit_status` |
-| **Batch Event Assessor** | `agents/event/batch_assessor.py` | Single structured-output LLM call | New items from polling cycle | Returns `BatchAssessmentResult` (per-item `is_relevant` + `notification_body`) |
-| **Source Poller** | `tasks/poll_feeds.py` | Celery Beat task (no LLM) | Every 30 min | Fetches RSS / Telegram / Reddit / Twitter, enriches each item with the full article body at ingest time, embeds new items |
+| **Batch Event Assessor** | `agents/event/batch_assessor.py` | Single structured-output LLM call | New items from polling cycle | Returns `BatchAssessmentResult` (per-item `is_relevant` + `notification_body`); accepts optional `critic_feedback_per_item` for judge revision turns |
+| **Event Judge** | `agents/event/judge.py` | Single structured-output LLM call | After Batch Assessor when any item is relevant | Returns `BatchJudgeResult` with per-item `PASS`/`REVISE`+feedback; `overall` is REVISE iff any item is |
+| **Event Verifier** | `agents/event/verifier.py` | ADK agent | Weekly per active event sub (beat daily, self-throttled via `last_reflected_at`) | `web_search`, `fetch_source_items(source_id, since_days_ago, limit)`, `trigger_source_discovery(reason)`, `emit_missed_event(title, summary, source_url, happened_at)`, `emit_status` |
+| **Source Poller** | `tasks/poll_feeds.py` | Celery Beat task (no LLM) | Every 30 min | Fetches RSS / Telegram / Reddit, enriches each item with the full article body at ingest time, embeds new items |
 
 ### Pipeline Flows
 
@@ -62,7 +62,7 @@ discovery_agent.loop:
                   -> optionally inspect_source(url) or spawn more finders
                   -> submit_selection(urls) or abort(reason)
 ```
-A single looped Discovery Agent. The prompt suggests starting with 2-5 diverse strategies emitted as parallel `spawn_finder` calls, each of which runs one Source Finder (ReAct loop with SearXNG + pgvector + validation/scoring). The agent then reviews the deduped pool, may inspect candidates or spawn more finders, and finalizes via `submit_selection` (or `abort`). There is no hard round cap; results are deduped by normalized URL and ranked by cosine relevance score.
+A single looped Discovery Agent. The prompt suggests starting with 3 diverse strategies emitted as parallel `spawn_finder` calls, each of which runs one Source Finder (ReAct loop with Yandex Search API + pgvector + validation/scoring). The agent then reviews the deduped pool, may inspect candidates or spawn more finders, and finalizes via `submit_selection` (or `abort`). If the orchestrator under-picks (selects fewer than `source_target_count` out of the pool), `run_source_discovery` backfills by descending relevance score, gated by `discovery_backfill_min_score` (default 0.4), to protect against LLM over-filtering.
 
 **Digest Pipeline** (triggered by Celery Beat schedule, `agents/digest/pipeline.py`):
 ```
@@ -76,9 +76,29 @@ Candidates are fetched via cosine similarity + recency (no LLM). The Digest Writ
 
 **Event Pipeline** (triggered by polling):
 ```
-poll_feeds() -> deliver_event_notifications_batch(item_ids) -> assess_batch_events() per subscription
+poll_feeds() -> deliver_event_notifications_batch(item_ids):
+  for each subscription:
+    assess_batch_events(items, history)
+    if any relevant:
+        [judge_batch_events() <-> assess_batch_events(only REVISE items, critic_feedback_per_item)]
+          (max `event_judge_max_revisions`, default 2; items still REVISE afterwards are dropped)
+    deliver() + insert SentItem  for every PASS relevant item
 ```
-All new items from a polling cycle are batched. One LLM call per subscription evaluates all items together (enabling cross-item deduplication and notification-history checks), reducing N*M calls to M calls.
+All new items from a polling cycle are batched. One LLM call per subscription evaluates all items together (enabling cross-item deduplication and notification-history checks), reducing N*M calls to M calls. When at least one item is relevant, an Event Judge (`agents/event/judge.py`) critiques the assessor's output per item. On REVISE, the assessor re-runs for only those items with the critic feedback injected; items still REVISE after the bounded loop are dropped from delivery rather than forced through. The Judge is fail-open (tier 2): on exception the loop falls through with the unreviewed assessor output.
+
+**Event Verification Pipeline** (weekly outcome-check):
+```
+Celery Beat (daily) -> reflect_event_subscriptions():
+  select event subs where last_reflected_at < now - event_reflector_interval_days
+  for each:
+    run_event_verifier(user_spec, notification_history, source_contexts, lookback)
+    for each missed_event the agent emitted:
+        insert synthetic NewsItem (source=sentinel "_verifier") + SentItem
+        deliver catch-up via webhook
+    for each discovery_reason: celery_app.send_task(DISCOVER_SOURCES_TASK, (sub_id, reason))
+    stamp last_reflected_at
+```
+The Event Verifier is the event-subscription analog of the Digest Pipeline Reflector — an autonomous ADK agent that decides, per confirmed miss, whether to deliver a catch-up and whether to queue source discovery, using `fetch_source_items` to distinguish "source did not cover it" from "assessor missed it." A single confirmed miss caused by a coverage gap is sufficient to trigger discovery; no quota threshold. Non-blocking (tier 3): per-sub failures are logged and swallowed.
 
 ### Key Design Decisions
 
@@ -88,9 +108,9 @@ All new items from a polling cycle are batched. One LLM call per subscription ev
 
 **LiteLLM for all LLM calls.** `core/llm.py` wraps `litellm.acompletion()` and `litellm.aembedding()`. Model configured via `LITELLM_MODEL=openai/gpt-5.4-nano` (or any LiteLLM-supported string). Retry logic in `core/llm_retry.py` catches `litellm` exception types.
 
-**SearXNG for web search.** `services/search.py` calls a self-hosted SearXNG instance. No external API keys needed for search. Configurable via the `SEARXNG_URL` setting.
+**Yandex Cloud Search API for web search.** `services/search.py` POSTs to `https://searchapi.api.cloud.yandex.net/v2/web/search` with an `Api-Key` header, decodes the base64-encoded XML in the response's `rawData` field, and returns up to ten formatted results. Configured via `YANDEX_SEARCH_API_KEY` (issued in the Yandex Cloud console for a service account with the `search-api.executor` role) and `YANDEX_SEARCH_TYPE` (default `COM` -- Yandex.com international index; other valid values: `RU`, `KK`, `TR`, `BY`, `UZ`). No folder ID is required: the REST endpoint accepts the API key on its own because the key already carries the folder binding server-side.
 
-**Google ADK for agentic agents.** The Conversational Agent, Discovery Agent, Source Finders, Digest Writer, and Pipeline Reflector are all ADK `Agent` instances with `LiteLlm` models and tool functions. ADK manages the tool-use / ReAct loop (LLM call -> tool execution -> result feedback -> repeat). `agents/adk_runner.py` wraps ADK's `Runner` with `run_agent` (streaming events) and `run_agent_text` (final text). Single-shot structured-output calls (Quality Judge, Batch Event Assessor) bypass ADK and call `core/llm.chat_completion` directly with a Pydantic `response_format`.
+**Google ADK for agentic agents.** The Conversational Agent, Discovery Agent, Source Finders, Digest Writer, Pipeline Reflector, and Event Verifier are all ADK `Agent` instances with `LiteLlm` models and tool functions. ADK manages the tool-use / ReAct loop (LLM call -> tool execution -> result feedback -> repeat). `agents/adk_runner.py` wraps ADK's `Runner` with `run_agent` (streaming events) and `run_agent_text` (final text). Single-shot structured-output calls (Digest Judge, Event Judge, Batch Event Assessor) bypass ADK and call `core/llm.chat_completion` directly with a Pydantic `response_format`.
 
 **Content guardrails.** `orchestration/guardrails.py` wraps external content in `<untrusted-content>` boundary tags, scans for injection patterns, validates LLM outputs (phantom item IDs, cron expressions, notification body length).
 
@@ -100,9 +120,8 @@ All new items from a polling cycle are batched. One LLM call per subscription ev
 
 The system is composed of independent services that communicate over HTTP:
 
-- **Backend** (`backend/`) — the core service. Manages users, subscriptions, source ingestion (RSS + public Telegram channels + Reddit subreddits + public X/Twitter accounts), news items, embeddings, digest generation, and event notifications. Delivers digests and event alerts by POSTing to webhook URLs.
+- **Backend** (`backend/`) — the core service. Manages users, subscriptions, source ingestion (RSS + public Telegram channels + Reddit subreddits), news items, embeddings, digest generation, and event notifications. Delivers digests and event alerts by POSTing to webhook URLs.
 - **Telegram Bot** (`tgbot/`) — a frontend. Translates Telegram commands into backend API calls and receives digest webhooks to forward to users.
-- **SearXNG** (`searxng/`) — self-hosted metasearch engine for provider-independent web search.
 - **Future frontends** — web app, mobile app, email service, etc. Each is a sibling directory with the same pattern: call the backend API, expose a webhook endpoint for deliveries.
 
 The backend never imports from or depends on any frontend. Frontends depend only on the backend's public REST API.
@@ -147,7 +166,7 @@ Three tiers for pipeline stages:
 General rules:
 - Fail loudly and early. Raise specific exceptions, not bare `Exception`.
 - Never silently swallow errors. Log then re-raise or handle explicitly.
-- External calls (LLM, SearXNG, RSS/Telegram sources, DB) must have explicit timeout and retry logic.
+- External calls (LLM, Yandex Search API, RSS/Telegram sources, DB) must have explicit timeout and retry logic.
 - Use `@with_llm_retry()` for LLM calls; the decorator handles transient errors.
 - After retries are exhausted, raise a typed exception (never bare `Exception`).
 - Broad `except Exception` is acceptable only at task boundaries (Celery tasks, API route handlers) where you must prevent an unhandled crash.
@@ -269,7 +288,7 @@ docker --context devbox logs -f tgbot                   # check logs
   docker --context devbox volume create news-personalization_pgdata
   ```
   If it does not exist, the stack fails to start with `external volume "news-personalization_pgdata" not found`. The same applies to `news-personalization_tgbot_home`.
-- **Bind mounts resolve on the daemon host, not the client.** When you deploy via `docker --context devbox compose up`, any `- ./foo:/bar` mount looks for `./foo` on the *devbox* filesystem, not your Mac. The repo is not checked out on devbox, so file-based bind mounts silently turn into empty-directory mounts on the container side (Docker auto-creates a directory at the destination when the source is missing). Do not rely on bind mounts for config files -- bake config into the image with a service-local `Dockerfile` instead (see `searxng/Dockerfile`). Directory bind mounts used as scratch space (e.g. `db-backup`'s `/backups`) are fine because an empty directory is the intended state.
+- **Bind mounts resolve on the daemon host, not the client.** When you deploy via `docker --context devbox compose up`, any `- ./foo:/bar` mount looks for `./foo` on the *devbox* filesystem, not your Mac. The repo is not checked out on devbox, so file-based bind mounts silently turn into empty-directory mounts on the container side (Docker auto-creates a directory at the destination when the source is missing). Do not rely on bind mounts for config files -- bake config into the image with a service-local `Dockerfile` instead. Directory bind mounts used as scratch space (e.g. `db-backup`'s `/backups`) are fine because an empty directory is the intended state.
 - **Postgres is on pgvector image** (`pgvector/pgvector:pg16`). The pgvector extension must exist in the `news` database. The baseline Alembic migration (`0001_baseline`) runs `CREATE EXTENSION IF NOT EXISTS vector` before creating tables.
 - **App container runs `alembic upgrade head` on startup** (see the compose `command:` for the `app` service). On a fresh DB this applies `0001_baseline` in one pass. On an existing DB at baseline, it is a no-op. Any future schema changes ship as new revision files on top of the baseline.
 
@@ -296,13 +315,7 @@ docker --context devbox exec news-monorepo-postgres-1 \
 #### Troubleshooting
 
 - **`external volume ... not found`**: run the `volume create` command above.
-- **Searxng restarting with `"/etc/searxng/settings.yml" is not a valid file`**: means a stale version of `docker-compose.yml` is bind-mounting the config instead of using `build: ./searxng`. Pull latest and redeploy.
-- **Searxng still broken after a fresh image build**: the upstream `searxng/searxng` image declares `VOLUME /etc/searxng`, so Docker attaches an anonymous volume there. Anonymous volumes persist across container recreates and silently *shadow* any files COPY'd into that path during build. Remove the container *with* its volumes and prune anonymous volumes before recreating:
-  ```bash
-  docker --context devbox compose rm -fsv searxng
-  docker --context devbox volume prune -f
-  docker --context devbox compose up -d searxng
-  ```
+- **Yandex Search API returning `UNAUTHENTICATED`**: the API key is missing the `search-api.executor` role on the folder it is bound to, or the key has been revoked. Mint a new key in the Yandex Cloud console and update `YANDEX_SEARCH_API_KEY` in `backend/.env`.
 - **SSH connection reset mid-build**: retry. The `docker --context devbox compose up --build` command is idempotent; partial image layers are cached.
 - **Containers from an unrelated project on devbox**: devbox is a shared host running several projects (`bjj_bot`, `link-to-audio-bot`, `news-monorepo`). Always scope commands with `--filter name=news-monorepo` or `docker compose -p news-monorepo`.
 
@@ -338,7 +351,7 @@ Key backend dependencies:
 - Run as a non-root user in the final image.
 - All services defined in the root `docker-compose.yml`. `docker compose up` must bring up the full stack.
 - Use `pgvector/pgvector:pg16` for Postgres (supports ARM64 + AMD64).
-- Use `searxng/searxng:latest` for web search (self-hosted, no API keys).
+- Web search is a cloud dependency (Yandex Cloud Search API); no local search container is part of the stack.
 - No secrets in the image. All config via environment variables read from service-local `.env` files.
 
 ---
@@ -354,7 +367,8 @@ Key backend settings:
 - `LITELLM_MODEL` — LLM model string in LiteLLM format (e.g. `openai/gpt-5.4-nano`)
 - `LITELLM_EMBEDDING_MODEL` — embedding model (e.g. `openai/text-embedding-3-small`)
 - `LITELLM_JUDGE_MODEL` — separate model for quality judge
-- `SEARXNG_URL` — SearXNG instance URL
+- `YANDEX_SEARCH_API_KEY` — Yandex Cloud Search API key (service account with `search-api.executor`)
+- `YANDEX_SEARCH_TYPE` — Yandex search index suffix: `COM` (default), `RU`, `KK`, `TR`, `BY`, `UZ`
 - `OPENAI_API_KEY` — read by LiteLLM from environment (not in Settings class)
 
 ---
@@ -364,7 +378,7 @@ Key backend settings:
 - Async SQLAlchemy with `asyncpg`. No synchronous DB calls in async context.
 - All schema changes via Alembic migrations. Never modify the DB schema manually.
 - `pgvector` for embeddings (1536 dimensions by default, configurable).
-- The `sources` table (model: `Source`) stores all source types (RSS, Telegram, Reddit, Twitter). The `subscription_sources` join table links subscriptions to their fixed sources; digest/event retrieval must use only those sources.
+- The `sources` table (model: `Source`) stores all source types (RSS, Telegram, Reddit). The `subscription_sources` join table links subscriptions to their fixed sources; digest/event retrieval must use only those sources.
 
 ---
 

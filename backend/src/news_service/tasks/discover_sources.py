@@ -207,6 +207,4 @@ def _kind_from_url(url: str) -> str:
         return "telegram_channel"
     if "reddit.com/r/" in lowered:
         return "reddit_subreddit"
-    if "twitter.com/" in lowered or "x.com/" in lowered:
-        return "twitter_account"
     return "rss"

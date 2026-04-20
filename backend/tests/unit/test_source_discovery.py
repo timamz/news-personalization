@@ -70,18 +70,48 @@ async def test_pipeline_threads_spec_attached_and_reason_into_input(mocker) -> N
 
 
 @pytest.mark.asyncio
-async def test_pipeline_returns_only_urls_the_orchestrator_selected(mocker) -> None:
+async def test_pipeline_backfills_by_score_when_orchestrator_underselects(mocker) -> None:
     a = f"https://{uuid.uuid4().hex[:8]}.test/a"
     b = f"https://{uuid.uuid4().hex[:8]}.test/b"
     c = f"https://{uuid.uuid4().hex[:8]}.test/c"
     mocker.patch(
         "news_service.agents.source_discovery.pipeline.run_finder",
-        new=AsyncMock(return_value=[_scored(a, 0.9), _scored(b, 0.6), _scored(c, 0.3)]),
+        new=AsyncMock(return_value=[_scored(a, 0.9), _scored(b, 0.6), _scored(c, 0.45)]),
     )
 
     async def _calls(tools, _message):
         await tools["spawn_finder"]("one strategy")
-        await tools["submit_selection"](f"{a}, {c}")
+        await tools["submit_selection"](a)
+
+    runner, _ = _runner_that(_calls)
+    mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
+
+    from news_service.agents.source_discovery.pipeline import run_source_discovery
+
+    result = await run_source_discovery(
+        session=AsyncMock(),
+        topic_text=f"Topic {uuid.uuid4().hex[:4]}",
+        prompt_embedding=[0.1] * 10,
+    )
+    urls = [s.url for s in result.sources]
+    assert urls[0] == a and set(urls) == {a, b, c}, (
+        "pipeline should preserve the orchestrator's explicit pick first, "
+        "then backfill remaining candidates by descending score up to the pool size"
+    )
+
+
+@pytest.mark.asyncio
+async def test_pipeline_skips_backfill_candidates_below_min_score(mocker) -> None:
+    a = f"https://{uuid.uuid4().hex[:8]}.test/a"
+    b_low = f"https://{uuid.uuid4().hex[:8]}.test/b"
+    mocker.patch(
+        "news_service.agents.source_discovery.pipeline.run_finder",
+        new=AsyncMock(return_value=[_scored(a, 0.8), _scored(b_low, 0.1)]),
+    )
+
+    async def _calls(tools, _message):
+        await tools["spawn_finder"]("one strategy")
+        await tools["submit_selection"](a)
 
     runner, _ = _runner_that(_calls)
     mocker.patch("news_service.agents.source_discovery.pipeline.run_agent_text", new=runner)
@@ -94,7 +124,9 @@ async def test_pipeline_returns_only_urls_the_orchestrator_selected(mocker) -> N
         prompt_embedding=[0.1] * 10,
     )
     urls = {s.url for s in result.sources}
-    assert urls == {a, c}, "result should contain exactly the URLs the orchestrator submitted"
+    assert urls == {a}, (
+        "pipeline should not backfill candidates scoring below discovery_backfill_min_score"
+    )
 
 
 @pytest.mark.asyncio

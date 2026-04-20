@@ -40,22 +40,23 @@ Use your tools to:
 (curated listicles, "best X" posts, community round-ups) and fetch \
 the most promising of those pages to read the full list.
 3. Harvest concrete source URLs (feed URLs, Telegram channel links, \
-subreddit URLs, Twitter/X handles) from the fetched pages.
+subreddit URLs) from the fetched pages.
 4. Validate and score the most promising candidates.
 
 Rules:
 - Focus on the source types mentioned in your strategy.
 - Validate only your top candidates, not every search result.
-- Aim for AS MANY good sources as you can within this strategy. More \
-is better than fewer. Target at least 5 validated sources before \
-stopping; keep going (more queries, more validations) if you are \
-still finding plausible URLs. Only stop short of 5 if you have \
-genuinely exhausted plausible leads (3+ distinct search phrasings \
-all returning nothing relevant).
-- Never return fewer than 2 validated sources unless you have tried \
-at least 3 distinct search phrasings and at least 3 validate_and_ \
-score_source calls; the orchestrator needs diverse material to \
-work with.
+- Target 3 validated sources and stop. The orchestrator runs several \
+strategies; it does not need every strategy to saturate. If you \
+already have 3 decent sources, do NOT keep validating more.
+- Budget: at most 2 distinct search phrasings AND at most 4 \
+validate_and_score_source calls per strategy. If you hit either \
+limit, summarize what you have and stop, even if you have fewer \
+than 3 sources. Returning 1 good source + a short note beats \
+burning the search budget on dead leads.
+- A tool result that starts with "Search rate-limited" or "Search \
+temporarily unavailable" is a transient signal -- move on to a \
+different phrasing or stop; do not keep retrying the same query.
 - Skip sources that are in the exclude list.
 - Never emit Markdown bold syntax (**...**) in any text you produce. \
 The frontend does not render it and the asterisks appear literally. \
@@ -64,14 +65,13 @@ Use plain text -- no bold markers at all.
 Primary tactic (curator harvesting) -- use this first:
 - Instead of guessing at URLs, let the web recommend them. Search for \
 curated lists: "best RSS feeds for X", "top X subreddits", "best \
-Telegram channels about X", "X official Twitter accounts list", \
-"awesome X sources", "X news feed roundup".
+Telegram channels about X", "awesome X sources", "X news feed roundup".
 - Call fetch_page on the 1-3 most promising results (listicles from \
 blogs, GitHub "awesome-lists", Reddit threads, Medium articles, \
 category pages on aggregators).
 - Harvest every concrete source URL or handle from the fetched text: \
 feed URLs ending in .xml/.rss/feed/atom, t.me/... Telegram links, \
-reddit.com/r/... subreddit URLs, twitter.com/... or x.com/... handles.
+reddit.com/r/... subreddit URLs.
 - Submit the harvested URLs to validate_and_score_source with the \
 right source_kind. This is MUCH better than guessing feed paths -- \
 the curator has already verified the URL works.
@@ -102,9 +102,9 @@ many sites link to their feed via <link rel="alternate"> or a visible \
 variant of the same domain before discarding the candidate.
 
 Persistence:
-- Do NOT return empty-handed after a single failed query. Try at \
-least 3 different search phrasings AND fetch at least one curator \
-page before concluding the strategy produced nothing.
+- Do not return empty-handed after a single failed query. Try one \
+alternative phrasing OR fetch at least one curator page before \
+concluding the strategy produced nothing. Two phrasings is the cap.
 - A source with a low score (<0.5) is still better than nothing if \
 the topic/source-kind is right; mention it in your summary so the \
 orchestrator can decide.
@@ -185,7 +185,7 @@ async def run_finder(
 
         Args:
             url: The canonical source URL to validate and score.
-            source_kind: One of: rss, telegram_channel, reddit_subreddit, twitter_account.
+            source_kind: One of: rss, telegram_channel, reddit_subreddit.
 
         Returns:
             Validation result with relevance score and sample content preview.
@@ -201,7 +201,14 @@ async def run_finder(
                 }
             )
         kind: SourceKind = source_kind  # type: ignore[assignment]
-        relevance, sampled = await score_candidate(url, kind, prompt_embedding)
+        try:
+            relevance, sampled = await asyncio.wait_for(
+                score_candidate(url, kind, prompt_embedding),
+                timeout=settings.source_validation_timeout_seconds,
+            )
+        except TimeoutError:
+            logger.info("Validation timed out for %s", url)
+            return f"Source {url}: validation timed out (host too slow)"
         if not sampled:
             return f"Source {url}: could not fetch posts (score: 0.0)"
         if relevance >= 0.0:

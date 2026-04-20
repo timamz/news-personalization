@@ -11,7 +11,11 @@ import uuid
 
 from sqlalchemy import select
 
-from news_service.agents.event.batch_assessor import assess_batch_events
+from news_service.agents.event.batch_assessor import (
+    BatchAssessmentResult,
+    assess_batch_events,
+)
+from news_service.agents.event.judge import judge_batch_events
 from news_service.core.config import get_settings
 from news_service.core.guardrails import validate_notification_body
 from news_service.db.session import get_task_session
@@ -172,12 +176,28 @@ async def _assess_and_deliver_for_subscription(
         )
         return 0, 1
 
+    batch_result, dropped_item_ids = await _judge_and_revise(
+        assessment=batch_result,
+        items_for_llm=items_for_llm,
+        user_spec=user_spec,
+        target_language=subscription.digest_language,
+        history_strings=history_strings,
+        subscription_id=subscription.id,
+    )
+
     items_by_id = {str(item.id): item for item in pending_items}
     delivered = 0
     failed = 0
 
     for assessment in batch_result.assessments:
         if not assessment.is_relevant:
+            continue
+        if assessment.item_id in dropped_item_ids:
+            logger.info(
+                "Dropping item %s from delivery after %d failed revisions",
+                assessment.item_id,
+                settings.event_judge_max_revisions,
+            )
             continue
 
         item = items_by_id.get(assessment.item_id)
@@ -210,3 +230,85 @@ async def _assess_and_deliver_for_subscription(
             failed += 1
 
     return delivered, failed
+
+
+async def _judge_and_revise(
+    *,
+    assessment: BatchAssessmentResult,
+    items_for_llm: list[dict],
+    user_spec: str,
+    target_language: str,
+    history_strings: list[str],
+    subscription_id: uuid.UUID,
+) -> tuple[BatchAssessmentResult, set[str]]:
+    """Run the judge critic loop over the assessor's output.
+
+    Skips the judge entirely when no items are relevant (common case for
+    event subs). Runs up to ``event_judge_max_revisions`` revision turns;
+    on each turn, re-invokes the assessor only for items the judge flagged
+    REVISE and merges the refined assessments back.
+
+    Returns the final assessment and the set of item_ids that remain REVISE
+    after the loop and must be dropped from delivery. Judge exceptions are
+    swallowed (tier-2 fail-open per CLAUDE.md) and the unreviewed assessment
+    is returned with no dropped items.
+    """
+    if not any(a.is_relevant for a in assessment.assessments):
+        return assessment, set()
+
+    items_by_id = {item["item_id"]: item for item in items_for_llm}
+    current = assessment
+
+    for revision in range(settings.event_judge_max_revisions + 1):
+        try:
+            verdict = await judge_batch_events(
+                assessment=current,
+                user_spec=user_spec,
+                recent_notification_history=history_strings,
+                max_history_chars=settings.llm_max_context_chars,
+            )
+        except Exception:
+            logger.exception(
+                "Batch judge failed for subscription %s revision=%d; "
+                "falling through with unreviewed assessor output",
+                subscription_id,
+                revision,
+                extra={"subscription_id": str(subscription_id)},
+            )
+            return current, set()
+
+        if verdict.overall == "PASS":
+            return current, set()
+
+        revise_ids = {v.item_id for v in verdict.per_item if v.verdict == "REVISE"}
+        if revision == settings.event_judge_max_revisions:
+            return current, revise_ids
+
+        feedback = {v.item_id: v.feedback for v in verdict.per_item if v.verdict == "REVISE"}
+        revise_items = [items_by_id[iid] for iid in revise_ids if iid in items_by_id]
+        if not revise_items:
+            return current, revise_ids
+
+        try:
+            revised = await assess_batch_events(
+                items=revise_items,
+                user_spec=user_spec,
+                target_language=target_language,
+                recent_notification_history=history_strings,
+                max_history_chars=settings.llm_max_context_chars,
+                critic_feedback_per_item=feedback,
+            )
+        except Exception:
+            logger.exception(
+                "Revision assessor call failed for subscription %s revision=%d",
+                subscription_id,
+                revision,
+                extra={"subscription_id": str(subscription_id)},
+            )
+            return current, revise_ids
+
+        revised_by_id = {a.item_id: a for a in revised.assessments}
+        merged = [revised_by_id.get(a.item_id, a) for a in current.assessments]
+        current = BatchAssessmentResult(assessments=merged)
+
+    return current, set()

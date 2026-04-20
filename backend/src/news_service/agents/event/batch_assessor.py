@@ -37,6 +37,11 @@ a concise title, timing if known, 1-2 sentence summary, and the source URL.
 - Never emit Markdown bold syntax (**...**) anywhere in notification_body. \
 The frontend does not render it and the asterisks appear literally. \
 Use plain text -- no bold markers at all.
+
+Revision mode: if the user message includes a "Critic feedback" section, this \
+is a revision turn. The assessor output you produced earlier failed a quality \
+review for the listed items. Address the feedback per item in this turn and \
+return refined assessments only for the items listed there.
 """
 
 
@@ -59,6 +64,7 @@ async def assess_batch_events(
     target_language: str,
     recent_notification_history: list[str],
     max_history_chars: int,
+    critic_feedback_per_item: dict[str, str] | None = None,
 ) -> BatchAssessmentResult:
     """Assess multiple news items for one subscription in a single LLM call.
 
@@ -68,6 +74,9 @@ async def assess_batch_events(
         target_language: Language for notification text
         recent_notification_history: Formatted history entries
         max_history_chars: Max chars for history block
+        critic_feedback_per_item: Optional {item_id -> feedback} from the judge.
+            When set, this is a revision turn: the prompt includes the feedback
+            and asks the assessor to refine only the listed items.
     """
     items_block = "\n\n".join(
         f"Item {i + 1} [ID: {item['item_id']}]:\n"
@@ -85,6 +94,17 @@ async def assess_batch_events(
         history_text = history_text[:max_history_chars] + "\n... (truncated)"
     history_block = history_text if history_text else "No recent notification history."
 
+    feedback_block = ""
+    if critic_feedback_per_item:
+        entries = "\n".join(
+            f"- Item [ID: {item_id}]: {sanitize_for_llm_prompt('critic-feedback', feedback)}"
+            for item_id, feedback in critic_feedback_per_item.items()
+        )
+        feedback_block = (
+            "\n\nCritic feedback (revision turn -- address these specific issues "
+            "and return refined assessments for exactly these items):\n" + entries
+        )
+
     completion = await chat_completion(
         messages=[
             {"role": "system", "content": BATCH_ASSESS_PROMPT},
@@ -96,6 +116,7 @@ async def assess_batch_events(
                     f"{sanitize_for_llm_prompt('user-preferences', user_spec)}\n\n"
                     f"Posts to evaluate ({len(items)} items):\n\n{items_block}\n\n"
                     f"Notification history:\n{history_block}"
+                    f"{feedback_block}"
                 ),
             },
         ],
@@ -108,8 +129,9 @@ async def assess_batch_events(
 
     relevant_count = sum(1 for a in result.assessments if a.is_relevant)
     logger.info(
-        "Batch assessment: %d/%d items relevant",
+        "Batch assessment: %d/%d items relevant%s",
         relevant_count,
         len(items),
+        " (revision turn)" if critic_feedback_per_item else "",
     )
     return result

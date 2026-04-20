@@ -39,6 +39,10 @@ celery_app.conf.update(
             ),
             "schedule": 24 * 60 * 60,
         },
+        "reflect-event-subscriptions": {
+            "task": "news_service.tasks.reflect_events.reflect_event_subscriptions",
+            "schedule": 24 * 60 * 60,
+        },
     },
 )
 
@@ -109,6 +113,7 @@ import news_service.tasks.deliver_digest  # noqa: E402, F401
 import news_service.tasks.deliver_events  # noqa: E402, F401
 import news_service.tasks.discover_sources  # noqa: E402, F401
 import news_service.tasks.poll_feeds  # noqa: E402, F401
+import news_service.tasks.reflect_events  # noqa: E402, F401
 import news_service.tasks.schedule_digests  # noqa: E402, F401
 import news_service.tasks.update_source_embeddings  # noqa: E402, F401
 import news_service.tasks.update_subscription_source_stats  # noqa: E402, F401

@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
+type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit"]
 
 
 class ScoredSource(BaseModel):

@@ -1,7 +1,7 @@
 """Source polling task — fetches new items from all active sources.
 
 Uses the adapter pattern to handle different source types (RSS, Telegram,
-Reddit, Twitter) through a single generic polling loop.
+Reddit) through a single generic polling loop.
 """
 
 import asyncio
@@ -21,14 +21,12 @@ from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.reddit import extract_reddit_subreddit_from_url
 from news_service.services.telegram import extract_telegram_channel_from_url
-from news_service.services.twitter import extract_twitter_account_from_url
 from news_service.tasks.celery_app import celery_app
 from news_service.tasks.poll_adapters import (
     RedditAdapter,
     RssAdapter,
     SourceAdapter,
     TelegramAdapter,
-    TwitterAdapter,
 )
 
 logger = logging.getLogger(__name__)
@@ -96,10 +94,6 @@ async def _poll_single_source(session: AsyncSession, src: Source) -> int:
     subreddit = extract_reddit_subreddit_from_url(src.url)
     if subreddit is not None:
         return await _poll_typed_source(session, src, RedditAdapter(src, subreddit))
-
-    twitter_account = extract_twitter_account_from_url(src.url)
-    if twitter_account is not None:
-        return await _poll_typed_source(session, src, TwitterAdapter(src, twitter_account))
 
     return await _poll_typed_source(session, src, RssAdapter(src))
 

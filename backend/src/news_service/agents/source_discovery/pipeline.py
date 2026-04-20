@@ -11,7 +11,11 @@ The discovery agent is a pure ReAct loop with four tools:
   any candidate it is considering, so the acceptance decision can be made
   on real material instead of just the cosine score.
 - ``submit_selection(urls)`` -- the orchestrator explicitly names the URLs
-  it wants to accept. No automated top-N by score: the agent picks.
+  it wants to accept. If the agent under-picks, the pipeline backfills the
+  result up to ``source_target_count`` by taking the remaining pool entries
+  in descending order of relevance score (gated by
+  ``discovery_backfill_min_score``). This protects against the LLM being
+  overly conservative and dropping good candidates.
 - ``abort(reason)`` -- used when discovery cannot sensibly proceed.
 
 Inputs supplied in the user message:
@@ -79,44 +83,39 @@ returned is useful). Pass a short explanation.
 Orchestration guidance:
 - Target roughly {target_count} final sources, but use judgment. Fewer \
 great sources beats many mediocre ones.
-- Start by planning 4-6 diverse strategies. Emit them as parallel \
-spawn_finder calls in the SAME turn whenever possible.
-- REQUIRED coverage of source kinds: unless the user's spec \
-explicitly excludes a kind (e.g. "no Twitter"), your FIRST round \
-MUST spawn at least one finder for EACH of the four kinds -- RSS, \
-Telegram, Reddit, Twitter/X. Do not skip Reddit or Telegram just \
-because the topic sounds "mainstream"; good sources live on every \
-kind. If one kind comes back empty, that is information for round \
-two, not a reason to have skipped it.
+- Start by planning 3 diverse strategies, not more. Emit them as \
+parallel spawn_finder calls in the SAME turn. Each strategy should \
+cover a different source kind or angle.
+- Source-kind coverage is a PREFERENCE, not a requirement. Pick the \
+kinds the user's spec actually implies. If the topic is visual/ \
+international (anime, sports, games) include Telegram + Reddit + RSS. \
+Do not burn a strategy on a kind that obviously will not fit.
+- Prefer finishing after ONE round. Only spawn a second round if the \
+first round's pool is clearly insufficient (fewer than \
+target_count / 2 candidates, or missing a kind the spec explicitly \
+needs). Do not re-run rounds to pad the count.
+- If you do run a second round, cap it at 3 strategies and make them \
+MATERIALLY different from round one (different phrasings, different \
+kinds you have not tried, or broader queries).
 - When you pick the final set, avoid stacking many finds from a single \
-strategy -- if one strategy over-contributed because it found more, \
-prefer cross-strategy diversity unless one strategy's results are \
-genuinely much stronger.
-- Cover the source kinds the user cares about (RSS, Telegram, Reddit, \
-Twitter/X) in proportion to what the spec implies. Do not over-index on \
-one kind unless the spec asks for it.
+strategy -- prefer cross-strategy diversity unless one strategy's \
+results are genuinely much stronger.
 - Honour exclusions and language constraints stated in the user's spec.
 - Do not select sources that are already attached; those are listed for \
 your awareness so you can diversify around them.
 - Let the reason guide strategy: a "user pivoted from biotech to AI" \
 reason means the old sources are stale and the new focus matters more \
 than raw diversity.
-- There is no hard cap on rounds -- keep searching or inspecting until \
-you are satisfied, but be efficient. Do not re-run strategies that \
-already returned good results.
-- Persistence rule: if your FIRST round of finders returns zero \
-candidates (e.g. "0 found" across every strategy), DO NOT abort. \
-Spawn a second round with MATERIALLY DIFFERENT strategies: drop any \
-angle that returned nothing, broaden the queries (fewer qualifiers, \
-plainer phrasing), and try source kinds you did not try yet. Only \
-abort after you have spawned at least two distinct rounds of finders \
-AND still have an empty pool. "Nothing on round one" is a signal to \
-adjust strategy, not to give up.
+- Finder return values may include soft errors like "Search \
+rate-limited" or "validation timed out"; treat those as transient \
+and move on rather than retrying endlessly.
+- Persistence rule: if round one returns zero candidates across every \
+strategy, spawn ONE more round (max 3 strategies) with broader \
+queries. Abort only if both rounds come back empty.
 - Prefer submit_selection with at least one source over abort. If the \
 pool has even a couple of moderately-scoring candidates that match \
 the spec's language and topic, select them and finish -- the user \
-can refine later. Abort is only for the case where the pool is \
-genuinely empty after retries.
+can refine later.
 - Never emit Markdown bold syntax (**...**) in any text you produce. \
 The frontend does not render it and the asterisks appear literally. \
 Use plain text -- no bold markers at all.
@@ -214,8 +213,8 @@ def _build_discovery_input(
     if reason.strip():
         parts.append(f"Reason discovery was triggered:\n{reason.strip()}")
     parts.append(
-        "Spawn finders in parallel, inspect candidates if needed, then submit "
-        "your chosen selection."
+        "Spawn 3 finders in parallel, inspect candidates if needed, then submit "
+        "your chosen selection. Prefer one round unless the pool is clearly thin."
     )
     return "\n\n".join(parts)
 
@@ -323,8 +322,14 @@ async def run_source_discovery(
         if candidate is None:
             return f"{url}: not in candidate pool. Spawn a finder that discovers it first."
 
+        logger.info("Discovery inspecting %s", candidate.url)
         try:
-            posts = await fetch_source_posts(candidate.url, candidate.source_kind)
+            posts = await asyncio.wait_for(
+                fetch_source_posts(candidate.url, candidate.source_kind),
+                timeout=settings.source_validation_timeout_seconds,
+            )
+        except TimeoutError:
+            return f"{url}: inspection timed out (host too slow)."
         except Exception as exc:
             return f"{url}: fetch failed ({exc})."
         if not posts:
@@ -440,6 +445,29 @@ async def run_source_discovery(
         for u in selected_urls
         if _normalize_url(u) in candidate_pool
     ]
+
+    target = settings.source_target_count
+    floor = min(target, len(candidate_pool))
+    if len(selected) < floor:
+        already = {_normalize_url(s.url) for s in selected}
+        backfill_pool = [
+            c
+            for c in candidate_pool.values()
+            if _normalize_url(c.url) not in already
+            and c.relevance_score >= settings.discovery_backfill_min_score
+        ]
+        backfill_pool.sort(key=lambda s: s.relevance_score, reverse=True)
+        needed = floor - len(selected)
+        backfilled = backfill_pool[:needed]
+        if backfilled:
+            logger.info(
+                "Discovery backfilled %d source(s) by score; agent picked %d, target floor was %d",
+                len(backfilled),
+                len(selected),
+                floor,
+            )
+            selected = selected + backfilled
+
     logger.info(
         "Discovery orchestrator finished for '%s': pool=%d, selected=%d",
         topic_text[:60],

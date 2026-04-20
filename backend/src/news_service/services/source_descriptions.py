@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
 
-type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
+type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit"]
 
 logger = logging.getLogger(__name__)
 

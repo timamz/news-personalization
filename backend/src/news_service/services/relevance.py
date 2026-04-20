@@ -15,9 +15,8 @@ from news_service.db.vector_store import embed_texts
 from news_service.services.article_fetch import fetch_article_text
 from news_service.services.reddit import extract_reddit_subreddit_from_url, fetch_reddit_posts
 from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
-from news_service.services.twitter import extract_twitter_account_from_url, fetch_twitter_posts
 
-type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit", "twitter_account"]
+type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit"]
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -56,20 +55,6 @@ async def fetch_source_posts(url: str, source_kind: SourceKind) -> list[DatedPos
             )
             for post in posts
             if post.title.strip()
-        ]
-
-    if source_kind == "twitter_account":
-        account = extract_twitter_account_from_url(url)
-        if account is None:
-            return []
-        posts = await fetch_twitter_posts(account)
-        return [
-            DatedPost(
-                text=f"{post.title} {post.body}".strip(),
-                published_at=post.published_at,
-            )
-            for post in posts
-            if post.body.strip()
         ]
 
     return await _fetch_rss_posts(url)

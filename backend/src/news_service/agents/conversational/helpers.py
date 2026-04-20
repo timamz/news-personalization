@@ -50,9 +50,6 @@ def _source_display_name(url: str, source_kind: str) -> str:
             if p == "r" and i + 1 < len(parts):
                 return f"r/{parts[i + 1]}"
         return url
-    if source_kind == "twitter_account":
-        name = url.rstrip("/").split("/")[-1]
-        return f"x.com/{name}"
     return url
 
 
