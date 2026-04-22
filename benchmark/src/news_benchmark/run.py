@@ -34,8 +34,31 @@ def _load_env() -> None:
             load_dotenv(candidate, override=False)
 
 
+def _configure_logging() -> None:
+    """Route backend INFO+ logs to stdout so digest / poll / delivery paths are visible.
+
+    The production backend calls ``setup_logging()`` at FastAPI startup;
+    the benchmark never boots FastAPI, so the root logger has no handler
+    and ``logger.info(...)`` calls silently vanish. That hides critical
+    signal like ``"No candidates"`` / ``"No fixed sources"`` during
+    digest delivery. Install a plain StreamHandler at INFO level.
+    """
+    import logging
+    import sys
+
+    root = logging.getLogger()
+    if any(isinstance(h, logging.StreamHandler) for h in root.handlers):
+        return
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
+
 def main(argv: list[str] | None = None) -> int:
     _load_env()
+    _configure_logging()
     parser = argparse.ArgumentParser(description="Run the LLM-as-judge benchmark.")
     parser.add_argument("--scenarios", default="s01", help="Comma-separated scenario ids.")
     parser.add_argument("--models", default="default", help="'default' or comma-separated labels.")
@@ -43,7 +66,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--out-dir", default="results")
     parser.add_argument("--keep-db-on-failure", action="store_true")
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Log every LLM request/response (trimmed) via news_benchmark.llm_trace.",
+    )
     args = parser.parse_args(argv)
+    if args.verbose:
+        import os
+
+        os.environ["BENCH_VERBOSE_LLM"] = "1"
 
     from news_benchmark.clock import install_clock_patch
 

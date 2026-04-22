@@ -15,6 +15,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from google.adk.agents import Agent
+from google.adk.agents.run_config import RunConfig
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
@@ -25,6 +26,7 @@ async def run_agent(
     agent: Agent,
     message: str,
     user_id: str = "system",
+    max_llm_calls: int | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Run an ADK agent and yield events as they happen.
 
@@ -32,6 +34,11 @@ async def run_agent(
     persisted between calls — conversation history lives in Redis or the caller's
     context, not in ADK sessions. We use ADK purely for its ReAct tool-calling
     loop, not for session persistence.
+
+    ``max_llm_calls`` caps the number of LLM turns inside the ADK loop.
+    Defaults to ADK's own default (500) when left None. Agents that can
+    safely be forced to finish early (e.g. the digest writer) should pass
+    an explicit smaller cap to stop runaway tool-calling loops.
 
     Yields dicts with:
       {"type": "tool_call", "name": str, "args": dict}
@@ -54,11 +61,15 @@ async def run_agent(
 
     content = types.Content(role="user", parts=[types.Part(text=message)])
 
-    async for event in runner.run_async(
-        user_id=user_id,
-        session_id=run_id,
-        new_message=content,
-    ):
+    run_kwargs: dict[str, Any] = {
+        "user_id": user_id,
+        "session_id": run_id,
+        "new_message": content,
+    }
+    if max_llm_calls is not None:
+        run_kwargs["run_config"] = RunConfig(max_llm_calls=max_llm_calls)
+
+    async for event in runner.run_async(**run_kwargs):
         if event.is_final_response():
             text = ""
             if event.content and event.content.parts:
@@ -87,9 +98,15 @@ async def run_agent_text(
     agent: Agent,
     message: str,
     user_id: str = "system",
+    max_llm_calls: int | None = None,
 ) -> str:
     """Convenience wrapper: run an agent and return the final text response."""
-    async for event in run_agent(agent=agent, message=message, user_id=user_id):
+    async for event in run_agent(
+        agent=agent,
+        message=message,
+        user_id=user_id,
+        max_llm_calls=max_llm_calls,
+    ):
         if event["type"] == "final_response":
             return event["text"]
     return ""

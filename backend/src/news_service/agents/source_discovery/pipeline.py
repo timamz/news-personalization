@@ -73,6 +73,18 @@ posts against the retrieval embedding, and returns scored candidates.
 URL so you can judge whether it actually matches the user's intent. Use \
 this when the score alone is not enough to decide (borderline scores, \
 suspicious titles, possible off-topic feeds).
+
+Score calibration (each candidate carries a score=X.XX value -- cosine \
+similarity on the user's topic embedding, range 0.0-1.0):
+- 0.00-0.15: noise / unrelated -- reject unless you have a strong \
+non-score reason and have inspected the content.
+- 0.15-0.30: marginal -- accept only if the source-kind/language fit \
+clearly compensates; prefer inspect_source before accepting.
+- 0.30-0.55: on-topic -- prefer these.
+- 0.55+: strong -- always prefer when available.
+Higher is better. The score is informational, not enforced at selection -- \
+anything you submit is accepted. Do not burn slots on noise-range \
+candidates.
 3. **submit_selection(urls)** -- Finalize discovery with the comma-separated \
 list of URLs you accept. Only URLs that finders returned are eligible; \
 submit_selection validates this. This ends discovery.
@@ -438,7 +450,12 @@ async def run_source_discovery(
             "aborted",
             reason=aborted["reason"],
         )
-        return SourceDiscoveryResult(sources=[])
+        # Fall through to the score-based backfill below instead of
+        # returning empty. If the Finders validated sources above
+        # ``discovery_backfill_min_score``, attach them anyway -- abort
+        # reflects the orchestrator's judgment that none are a perfect
+        # fit, not that the pool is worthless. The min-score gate still
+        # prevents low-quality sources from slipping through.
 
     selected = [
         candidate_pool[_normalize_url(u)]

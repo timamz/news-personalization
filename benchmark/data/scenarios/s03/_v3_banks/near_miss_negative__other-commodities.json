@@ -1,0 +1,1761 @@
+{
+  "scenario": "s03",
+  "tier": "near_miss_negative",
+  "theme": "other-commodities",
+  "style_cycle": [
+    "newsroom",
+    "wire"
+  ],
+  "rows": [
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Chile declares force majeure at Escondida copper mine amid severe water disruption",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Indonesia halts nickel ore exports for 30 days after port congestion and inspection failures",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Democratic Republic of Congo suspends cobalt shipments from two provinces over security breaches",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Zambia issues emergency rules on copper concentrate loading after trucking strike blocks ports",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Brazil closes tin smelter for 10 days under environmental order after tailings incident",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Russia imposes temporary export ban on graphite concentrate following new rail capacity limits",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "South Africa declares force majeure at platinum operations after power utility outage and safety review",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Norilsk operator pauses palladium deliveries after Siberian rail line damage from flooding",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rwanda issues import freeze for tungsten products pending customs audit after alleged mislabeling",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China extends lockdown at a vanadium processing park after chemical spill and cleanup delays",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Kazakhstan halts gallium shipments for a week after regulator finds licensing noncompliance",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "South Korea reports indium supply tightness after refinery fire forces unscheduled maintenance",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Peru declares force majeure on molybdenum shipments as coastal weather disrupts loading schedule",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Canada suspends uranium transport permits to one operator after audit flags chain-of-custody gaps",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Belgium refinery enters force majeure after selenium feedstock shortfall from overseas supplier",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Mexico arrests cadmium smuggling ring; court delays shipments at major industrial warehouse",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Australia imposes new controls on bismuth exports amid buyer claims of late delivery",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China restricts antimony oxide exports for 45 days after safety inspections at smelters",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Germany introduces temporary tariffs on germanium products as new safeguard review begins",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Japan suspends zirconium sponge shipments to a customer after quality dispute and retesting",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Turkey declares force majeure at iron ore loading terminal after dredging delays and flooding",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Ukraine halts steel scrap imports for two weeks after contamination claims at receiving ports",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Philippines suspends nickel sales after strike at battery materials logistics hub delays exports",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Botswana pauses platinum concentrate shipments after rail derailment blocks outbound movement",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Portugal restricts tin exports amid continued drought impacts on power for processing plants",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China flags molybdenum availability tightness after key kiln shutdown extends beyond schedule",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "United States imposes temporary licensing pause on tungsten sales following compliance review",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "India halts vanadium imports from one supplier after inspection finds record-keeping irregularities",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "France declares force majeure at a copper cathode contract after supplier bankrupted",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Poland delays graphite deliveries after inspection order stops shipments from a graphite mine",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Morocco suspends cobalt refinery intake after workers strike impacts transport to site",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Tanzania declares state of emergency at a copper rail corridor after sabotage cuts flows",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Chile limits uranium shipments under emergency controls after transport authority revokes permits",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Kazakhstan issues detention notices for beryllium deliveries after assay mismatch dispute",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Romania suspends zirconium exports for 20 days amid furnace breakdown and inventory review",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Sweden reports palladium price volatility after flooding forces refinery to cut throughput",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China halts indium processing line after equipment failure triggers safety shutdown",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Brazil declares force majeure at iron ore port after cyclone damage closes berth access",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "South Korea halts steelmaking feedstock deliveries after strike at coke and coal suppliers",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "India restricts gallium oxide exports for compliance review after alleged transshipment",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Nigeria suspends shipment approvals for antimony as customs backlog grows at Lagos port",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Chile declares force majeure at Escondida copper mine after storm damage",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Indonesia halts nickel ore exports for 30 days as permits get reviewed",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Democratic Republic of Congo suspends cobalt haulage contracts after road attacks",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Russia imposes temporary export ban on refined nickel products starting Apr 15",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Zambia audits copper concentrate shipments as smelters face power curtailments",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Peru announces strike affecting copper cathode loading at Callao port",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "South Africa\u2019s major platinum refinery declares force majeure after transformer failure",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Canada pauses palladium shipments amid rail derailment and safety investigations",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rwanda cancels graphite supply contracts after kiln compliance issues",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Mozambique imposes licensing delays for tin exports following customs overhaul",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Vietnam triggers emergency import inspections for tungsten concentrate shipments",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China restricts vanadium oxide quotas for 60 days under new allocation rules",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Kazakhstan halts gallium sales to noncompliant buyers after audit findings",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "South Korea tightens indium import permits amid warehouse fire and stock risk",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Chile and Peru dispute molybdenum concentrate grades under new sampling protocol",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Niger announces temporary export suspension of uranium concentrates for compliance checks",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Namibia declares state of emergency for cadmium recovery plants after flood damage",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Japan orders selenium supplier to cut output after EPA nonconformance notices",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Bolivia suspends bismuth exports pending refinery maintenance and quality testing",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China bans antimony shipments to three regions after labeling violations",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Germany freezes germanium deliveries from a key supplier after sanctions screening",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "India halts beryllium exports after furnace outage and worker-safety violations",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "France reports supply risk as zirconium shipments delayed by customs congestion",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Ukraine declares force majeure at iron ore concentrate terminals after infrastructure hits",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Brazil suspends steel scrap auctions after transport strike disrupts deliveries",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Australia expands offtake terms for lithium miners as spodumene shipments face weather delays",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Canada issues force majeure on nickel hydroxide exports after refinery fire",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "DRC suspends cobalt shipments as artisanal mining crackdown tightens access",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China bans copper warehousing inflows for a week following audit inconsistencies",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "United States imposes temporary suspension on tin importers after assay discrepancies",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Belgium halts palladium deliveries from a distributor after regulatory review",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Chile introduces export licensing for molybdenum concentrates amid global tightening",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Russia accelerates uranium production but delays exports due to shipping insurance",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Peru declares force majeure at zinc-adjacent smelter affecting selenium byproduct",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Portugal suspends graphite anode supply to new customers after quality noncompliance",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "South Korea imposes emergency port closure affecting tungsten shipments on Jul 3",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China restricts vanadium exports following demand surge and warehouse inspections",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Kazakhstan delays gallium production run after critical equipment procurement issues",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "India orders investigation into indium pricing after sudden supply halt at refinery",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Brazil declares state of emergency at iron ore logistics hub after dam breach alert",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Chile court suspends permits for Antofagasta copper projects after protests",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Indonesia imposes export ban on nickel pig iron amid supply dispute",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "DR Congo cobalt buyers face payment delays after audit triggers operational pause",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Zambia copperbelt union strike halts smelter runs for second week",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Canada lithium miner reports force majeure after wildfire closes haul roads",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Peru announces temporary suspension of rail shipments to copper concentrate port",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Finland graphite producer halts anode materials loading after inspection failure",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China ramps customs checks on vanadium imports after documentation crackdown",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Africa platinum group shutdown ordered after power outage triggers kiln failure",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Russia palladium shipments delayed by port closure due to ice storm",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Portugal tungsten supplier faces license suspension pending environmental review",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Vietnam tightens trade licensing for tungsten exports, widening spot supply gap",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Kazakhstan introduces export quota for molybdenum concentrates starting July",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "US imposes customs action on gallium shipments over valuation and routing issues",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Japan refinery limits indium processing after upstream supply disruption",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China graphite anode producer declares force majeure after transformer breakdown",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Namibia uranium operator pauses deliveries following regulator safety findings",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Australia cadmium smelter production slows after effluent permit renewal delays",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "South Korea selenium processors cut runs after feedstock deliveries miss schedule",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China bismuth processing halted by local safety inspection after blast scare",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Bolivia antimony output reduced after transport blockades disrupt ore flow",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Norway germanium producer suspends shipments after counterparty breach investigation",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Turkey beryllium producer delays deliveries following licensing review extension",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "France zirconium producer halts kiln operation after refractory supply shortfall",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Brazil raises royalties for iron ore amid contract renegotiations with miners",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Ukraine steelmaker declares force majeure on iron ore intake amid rail disruptions",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Iron ore prices jump as China ports restrict loading after safety inspections",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "India begins probe into steel scrap imports as supply tightens for iron producers",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Africa nickel producer curtails output after strike hits refinery maintenance",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Ghana cobalt recycler halts production after expired permits delay hazardous handling",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Philippines copper smelter forced to cut rates due to water shortage",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China palladium refiner halts processing during labor dispute with contractors",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Kazakhstan tungsten mine suspends operations after equipment failure and repair delay",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Mexico sets temporary cap on molybdenum exports to secure domestic supply",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China imposes export controls on graphite to address strategic stockpile needs",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Portugal antimony producer pauses shipments after customs hold over documentation",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Chile declares force majeure at Escondida copper mine after flooding",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Indonesia halts nickel ore exports for 30 days amid port congestion",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Congo sends cobalt shipments to customs after a suspension of barge permits",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Zambia declares state of emergency at copper processing hub after power cuts",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Tungsten prices jump on Vietnam licensing row for key concentrates",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "South Africa shuts platinum line briefly after safety regulator stop-work order",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Russia delays palladium exports as rail strikes disrupt deliveries to ports",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Peru suspends tin loading at Callao following customs document backlog",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China imposes temporary anti-dumping probe on graphite anode imports",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Norway halts zirconium deliveries after quality recall at refining plant",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Kazakhstan issues export quota for vanadium ferroalloy citing tight supply",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Canada declares force majeure at molybdenum mine after tailings incident",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "DRC mining union calls strike affecting cobalt and nickel concentrate trucking",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Argentina restricts lithium brine procurement permits, tightening feed for processing",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Japan puts uranium fuel shipments on hold pending regulator review",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Namibia stops selenium shipments after mislabeled batches trigger inspection",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Bolivia cancels antimony export licenses for failing compliance checks",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Germany requires additional permits for germanium shipments after new controls",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China halts gallium exports for 2 weeks due to customs system outage",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Kazakhstan issues temporary ban on beryllium scrap exports amid audits",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "India suspends indium recovery at zinc smelter after furnace failure",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "United States imposes tariffs review affecting cadmium imports from South Korea",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Turkey blocks bismuth exports temporarily as traders face licensing suspension",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Iranware sanctions disrupt molybdenum sales; buyers seek alternative supply",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China declares force majeure at a major graphite mine after landslide",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Brazil lifts steel export restrictions after port labor dispute resolved",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Ukraine force majeure shields iron ore deliveries after rail infrastructure strike",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Australia delays tungsten concentrate shipments as insurers tighten coverage",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Botswana suspends zirconium shipments after audit flags traceability lapses",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Philippines halts copper cathode deliveries after typhoon damages handling",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China cancels vanadium tender due to delivery delays from transport curbs",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "South Africa halts platinum group metal production after power-supply outage",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Sweden orders temporary suspension of copper smelter operations for emissions",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "DRC cooperates on cobalt mine safety probe; output temporarily constrained",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "United Kingdom tightens review of palladium imports amid documentation delays",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "India declares force majeure at molybdenum processing plant after power instability",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China restricts tin concentrate exports after smelting capacity checks expand",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China pauses graphite anode shipments after environmental regulator inspection",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Chile extends force majeure at Escondida copper mine after storm damage (Apr 18)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Indonesia halts nickel ore exports for 30 days citing processing capacity (Apr 12)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "DRC cobalt smelter strike disrupts deliveries to global buyers (May 3)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Zambia declares state of emergency at copper processing hub over power outages (Mar 27)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Tungsten rises after Vietnam delays import licenses for new shipments (Feb 9)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China tightens graphite export quotas ahead of EV battery demand ramp (Jan 24)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Peru suspends tin mine operations after landslide forces evacuation (Mar 2)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Russia applies temporary curbs on palladium supplies amid logistics constraints (Apr 7)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Canadian plant outage hits primary nickel output after acid plant failure (Feb 15)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "South Africa halts platinum conveyor line due to safety incident at Rustenburg (Jan 30)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Morocco issues export ban on some phosphoric-grade uranium intermediates (Apr 21)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China imposes quality checks on molybdenum concentrate from overseas suppliers (May 6)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Kazakhstan declares force majeure at beryllium producer following rail derailment (Feb 20)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Angola restricts manganese-byproduct shipments affecting copper blister contracts (Mar 11)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Zimbabwe introduces licensing for graphite exports amid traceability checks (Jan 16)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Japan refinery says copper cathode shipments delayed by typhoon-related port closures (Mar 19)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Brazil authorizes emergency power procurement for iron ore pellet plant (Feb 28)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Australia halts zirconium supply after unexpected permitting delay with regulator (Apr 4)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Namibia suspends selenium production at coastal facility for maintenance (Jan 9)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Bolivia orders temporary shutdown of tin smelter after emissions permit breach (Feb 12)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Belgium strike disrupts copper wire production impacting copper rod deliveries (Mar 30)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China caps germanium exports to priority semiconductor buyers from May 1 (Apr 25)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "India extends antimony import safeguard measures after stockpiling surge (Jan 8)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "DRC signaled cobalt shipment audit plan after customs documentation changes (May 1)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Russia begins force majeure at palladium refinery due to flooding (Mar 5)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Portugal delays tungsten shipment clearances after documentation mismatch (Apr 14)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Poland halts iron ore loading at Baltic terminal after inspection findings (Feb 23)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Turkey bans certain cadmium export lots pending environmental review (Mar 21)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Spain restricts bismuth sales quotas for domestic refining runs (Jan 27)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China holds gallium production at two plants after equipment failures and review (Feb 6)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Norway stops molybdenum shipments under contract pending new shipping rules (Apr 10)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Canada pauses vanadium processing feed due to outage at crushing circuit (Mar 8)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Kazakhstan issues temporary export limit on refined tungsten products (Feb 16)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "South Korea refinery reports copper anode delays after refinery fire (Apr 2)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Chile announces force majeure at Collahuasi copper operations amid water shortage (May 8)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Zimbabwe declares ban on unprocessed graphite exports to boost domestic refining (Mar 14)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "U.S. tariffs slow imports of tin and antimony; supply tightens (Feb 1)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "South Africa unions extend nickel strike affecting Nkomati and related logistics (Jan 11)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Peru cancels zirconium shipment permits after failing assay compliance (Apr 18)",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Indonesia extends nickel export suspension for second month (Apr 29)",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Ecuador reports selenium output curbs after corrective maintenance at refinery (Mar 7)",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China restricts uranium exports for enrichment-related compliance checks (May 12)",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Indonesia imposes export ban on nickel ore after government review April 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "DRC regulators suspend cobalt shipments amid mine safety probe and port congestion",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Chile declares temporary force majeure at Escondida copper operations due to water shortage",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Peru copper union strike halts shipments at major coastal terminal on May 14",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Zambia orders emergency inspections at copper smelters after power instability April 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Vietnam tightens tungsten import licensing as customs backlog delays consignments May 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China auctions additional graphite export quotas after refinery maintenance reduces output",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "South Africa power outage cuts platinum concentrate deliveries for 10 days in March 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Russia raises fees for palladium product deliveries, citing logistics disruptions Feb 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Oman\u2019s force majeure delays uranium concentrate loading at Sohar port in January 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Namibia halts beryllium ore processing lines after reagent supply disruption May 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Kazakhstan declares state of emergency at zinc-adjacent refinery handling germanium sludges",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China imposes temporary anti-dumping duties on indium intermediates following import surge",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Japan signs long-term molybdenum offtake as supplier delays due to strike in April",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Canada\u2019s nickel producer issues force majeure on concentrate sales after wildfire damages roads",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Mongolia suspends tungsten mine operations following regulator revocation of environmental permits",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Morocco halts vanadium pentoxide exports for repairs to rail link starting June 1",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "India restricts gallium shipments temporarily as domestic semiconductor buyers negotiate quotas",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Belgium lifts palladium stockpiling rules after warehouse strike resolution July 2025",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Australia cobalt smelter shut after regulator finds violations in effluent discharge August 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Brazil declares force majeure at copper mine after tailings seepage incident May 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Ghana orders temporary suspension of zirconium concentrate exports pending assay audit",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Finland union action delays nickel cathode shipments to EU customers in February 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Portugal copper trader granted emergency license after port authorities halt loading May 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Korea cancels tin import tenders citing contamination concerns at origin March 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China increases graphite production tax credits after kiln outages reduce output in April 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "United States imposes sanctions-linked compliance checks on molybdenum imports Feb 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "United Arab Emirates declares force majeure for steelmaking iron ore deliveries in May 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Ukraine missile damage disrupts iron ore rail flows, prompting rerouting and higher premiums",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Brazil halts bauxite-related shipments; downstream iron ore buyers brace for delays March 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China pauses indium oxide exports amid compliance investigation of smelter records April 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Peru copper mine dewatering failure triggers output cut and shipment suspension April 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Portugal suspends tungsten sales after customs seizes consignments for documentation gaps",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Russia sets new palladium supply schedule after plant outage and planned maintenance in June",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China cobalt refining slowdown hits cathode material availability following regulator review May",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Morocco cadmium supplier declares force majeure after chemical shipment blockage at border",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Japan secures selenium supply as upstream producer halts operations for maintenance in March",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Canada bismuth producer cut output after labor strike closes processing facility February 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "South Africa vanadium producer faces transport halt after rail strike disrupts concentrate flows",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Brazil iron ore company declares force majeure on exports following flooding at port access",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Chile issues force majeure at Escondida copper mine after water restrictions",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Indonesia suspends nickel ore export permits for 30 days following factory protests",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "DRC mining regulator orders cobalt production caps at two sites after safety violations",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Peru introduces rail curbs affecting copper concentrate shipments for 10 weeks",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Zambia announces emergency inspection regime at copper smelters amid power shortages",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Philippines suspends graphite mining permits after tailings breach investigation",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China announces temporary controls on gallium scrap exports to stabilize domestic supply",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Norway force majeure disrupts platinum shipments after port closure from storms",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Africa stops palladium deliveries for 72 hours due to rail strike escalation",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Vietnam halts tungsten mine loading after licensing dispute with local authorities",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Mongolia declares state emergency at vanadium projects after winter infrastructure failures",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Brazil delays uranium fuel shipments after insurer withdraws coverage citing compliance risk",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Russia restricts molybdenum concentrate exports ahead of seasonal maintenance shutdowns",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Kazakhstan orders cadmium output reductions at a refinery after odor complaint crackdown",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Japan tightens selenium import documentation requirements amid customs backlog",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Mexico probes bismuth smuggling ring leading to temporary seizure of refined product",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Korea imposes antimony trading limit after market manipulation probe begins",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Germany announces force majeure at a germanium wafer supplier during supplier insolvency",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "France imposes temporary bans on zirconium shipments pending batch traceability checks",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Australia strikes nickel supply contract as port authority suspends heavy-haul operations",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China pledges steel output curbs that alter iron ore demand expectations in Q3",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Iron ore falls after Brazil dam incident triggers logistics force majeure for miners",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "India extends coal-linked power curbs affecting steel mills using imported iron ore",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China delays copper cathode customs clearance after new anti-smuggling rules",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Canada pauses tin concentrate exports due to grading audit and documentation disputes",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Bolivia declares force majeure on lithium-linked supply chains; copper shipments also affected",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "DRC cobalt prices jump as workers strike at cobalt refining zone in Lualaba",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Morocco suspends phosphate processing that co-produces vanadium, tightening regional supply",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Africa halts platinum-group catalyst shipments after refinery fire forces maintenance",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "U.S. sanctions review triggers palladium shipment delays from a European refiner",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China issues export licensing row for tungsten as government revises quota policy",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Kazakhstan declares emergency at molybdenum plant after cyclone damages storage tanks",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China\u2019s graphite anode buyers face spot shortages after kiln shut down for inspections",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Singapore introduces temporary cadmium handling ban on obsolete batteries after compliance audit",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "India restricts beryllium exports for safety compliance after audit findings at a supplier",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Oman suspends zirconium sponge shipments after customs audit flags misdeclared lots",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Russia halts bismuth deliveries under force majeure after subcontractor power outages",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Peru restricts molybdenum road haulage as protests block mine access routes",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "EU issues import suspension for antimony from a processor under quality-control investigation",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Indonesia halts nickel ore exports for 30 days starting Aug 14",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Zambia suspends copper loading at two ports amid rail labor strike",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "DRC approves cobalt force majeure claims at two processing plants",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China issues provisional ban on graphite export quotas for July 2026",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Peru grants new tungsten export licenses after permit review delays",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Africa halts platinum shipments as rail operator work stoppage spreads",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Russia temporarily suspends palladium processing after power grid fault",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "China introduces emergency tariffs affecting vanadium ferroalloy imports",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Kazakhstan declares supply disruption for molybdenum concentrates after mine fire",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Canada pauses graphite offtake deliveries due to trucking force majeure",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rwanda starts arbitration over cobalt supply shortfalls from halted shafts",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Norway suspends bismuth refining permits following environmental inspection findings",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "India restricts cadmium imports under revised safety rule effective May 1",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Germany seizes germanium lots at port over missing export documentation",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Japan tightens gallium shipments after customs backlog triggers delays",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Australia bans temporary nickel concentrate stockpile transfers after audit",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Tanzania halts iron ore rail shipments as union strike begins Nov 9",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Brazil declares emergency at steelworks after power rationing cuts output",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Namibia suspends uranium concentrate exports pending regulatory review",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Uzbekistan imposes shipment curbs on selenium due to quality compliance issues",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "China issues seizure notices for zirconium shipments after traceability audit",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Finland halts indium supply under customer dispute amid rising demand",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Portugal restricts antimony exports citing stockpile management measures",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Poland flags cadmium supply risk after refinery maintenance extends to June",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "US sanctions delay tungsten shipments from a key supplier, traders report",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Korea halts molybdenum production line after maintenance outage expanded",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Turkey suspends beryllium export licenses amid export-control review",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Vietnam halts graphite sales from a mine after licensing review gridlock",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Oman declares force majeure for copper cathode exports after port damage",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Qatar imposes 60-day restriction on vanadium deliveries after inspection dispute",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China requires new paperwork for tungsten shipments, raising logistics delays",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Ghana suspends cobalt exports after cyclone damages access roads",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Botswana declares state of emergency for copper tailings dam repairs",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "China closes major rare-earth-like \u201cmagnet\u201d route to graphite suppliers",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Chile sets new nickel concentrate quotas after review of export data",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Indonesia extends nickel export ban beyond 30 days due to policy review",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "South Africa arrests illegal platinum ore shipments, disrupting spot flows",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Russia suspends nickel deliveries under contract after sanctions compliance delay",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China declares force majeure for copper wire rod shipments during smelter outage",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Mexico announces steel-buying limits as iron ore supply tightens",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "India delays gallium deliveries after furnace breakdown at primary producer",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Kazakhstan halts molybdenum shipping after rail derailment near Aktobe",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Chile imposes force majeure at Escondida copper mine after flooding",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Indonesia halts nickel ore exports for 30 days amid new shipping rules",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Canada miner cuts cobalt production guidance after processing plant outage",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "DR Congo suspends cobalt shipments as security forces close two loading sites",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Zambia declares emergency at copper smelter after power supply disruptions",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Philippines lifts suspension on nickel shipments after port strike ends",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Australia graphite producer pauses expansion as permitting delayed by regulators",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Africa platinum output hits schedule after rail logistics strike escalates",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Russia refinery outage triggers palladium supply squeeze, spreads to dealers",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Peru announces customs ban on tin concentrates following document discrepancies",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Bolivia declares temporary export quota for antimony as stocks tighten",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Vietnam blocks new tungsten licenses pending environmental review, traders react",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China raises scrutiny of vanadium imports after filings mismatch at ports",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Kazakhstan limits uranium deliveries to one buyer after regulator audit",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Namibia signs emergency procurement to secure zirconium feedstock for refiners",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Poland forces restart at molybdenum unit after safety shutdown last week",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China orders bismuth inventory checks after suspected smuggling scheme uncovered",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Japan halts germanium shipments for two weeks due to transport certification issues",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Germany extends force majeure for cadmium refinery after wastewater permit delay",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Kazakhstan restricts gallium exports to maintain domestic supply for semiconductors",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "India imposes anti-dumping probe on indium imports amid price volatility",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Turkey declares state of emergency at iron ore port after flooding disrupts haulage",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Brazil suspends steel scrap deliveries after labor walkout at processing yards",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "South Africa opens negotiations after platinum union strike idles key shafts",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "China declares temporary suspension of graphite processing lines after inspections",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "DR Congo cobalt output threatened by cyclone that damages access roads",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Indonesia extends nickel export ban for additional 15 days after refinery fire",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Chile copper mine declares force majeure as tailings pond breach risks increase",
+      "other-commodities"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Peru tin producer halts operations after smelter fuel supply contract is revoked",
+      "other-commodities"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Spain restricts gallium contracts under government-backed allocation program",
+      "other-commodities"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "United States expands sanctions compliance on zirconium shipments from flagged operators",
+      "other-commodities"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Australia graphite offtake re-priced as China imposes new warehouse accreditation rules",
+      "other-commodities"
+    ]
+  ]
+}

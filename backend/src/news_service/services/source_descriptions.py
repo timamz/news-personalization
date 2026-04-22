@@ -54,9 +54,20 @@ async def describe_source(
         response_format=SourceDescription,
         temperature=0.1,
     )
-    result = completion.choices[0].message.parsed
-    if result is None:
-        raise ValueError(f"LLM returned empty source description for {url}")
-    description = " ".join(result.description.split())
+    message = completion.choices[0].message
+    result = getattr(message, "parsed", None)
+    if result is not None:
+        description = " ".join(result.description.split())
+    else:
+        # Small models occasionally return plain prose instead of JSON for this
+        # schema. Source descriptions are cosmetic/embedding inputs, not a
+        # critical path, so fall back to the raw content (or a synthesized
+        # summary) rather than aborting discovery for the whole subscription.
+        raw = (getattr(message, "content", None) or "").strip()
+        if len(raw) >= 10:
+            description = " ".join(raw.split())[:500]
+        else:
+            description = f"{source_kind.replace('_', ' ').title()} source: {title or url}"
+        logger.warning("describe_source fallback (non-JSON) for %s", url)
     logger.info("Generated source description for %s", url)
     return description

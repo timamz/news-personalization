@@ -30,10 +30,10 @@ DIFFICULTY_TIERS = (
 MIN_COUNTS_PER_SCENARIO: dict[str, int] = {
     "easy_positive": 6,
     "hard_positive": 10,
-    "easy_negative": 80,
-    "near_miss_negative": 100,
+    "easy_negative": 300,
+    "near_miss_negative": 400,
     "adversarial": 4,
     "duplicate": 3,
 }
 
-TARGET_POSITIVE_RATE = (0.04, 0.15)
+TARGET_POSITIVE_RATE = (0.005, 0.08)

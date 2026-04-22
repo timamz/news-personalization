@@ -1,0 +1,1513 @@
+{
+  "scenario": "s03",
+  "tier": "easy_negative",
+  "theme": "off-topic-noise",
+  "style_cycle": [
+    "newsroom",
+    "techcrunch",
+    "reddit",
+    "telegram"
+  ],
+  "rows": [
+    [
+      "https://techcrunch.com/feed/",
+      "Startup launches AI tutor for piano lessons in beta for iOS and Android, May 3",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "UN Security Council debates ceasefire proposal as member states trade positions on mediation",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Fed governor says credit conditions are improving, pointing to slower inflation pressures on June 12",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Markets see fresh chatter on mortgage rates after weekly survey shows modest payment drops",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "New esports season begins with updated matchmaking rules for top regional leagues on Aug 19",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "NBA team issues statement after officials review end-of-game officiating report, Sept 7",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity lawyer announces settlement in long-running copyright dispute, March 28",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Bank alerts customers to verify transfers after a wave of phishing emails targets payroll accounts",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech consortium unveils open standard for home energy dashboards, citing privacy and interoperability",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Parliament committee holds hearing on border controls amid testimony from public health officials",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Consumer agency warns about misleading 'instant approval' credit offers ahead of tax season",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Online forum thread tracks PS5 game patch notes and players report stability fixes, Jan 16",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "FIFA sanctions club after breach of financial reporting rules; appeal window opens this week",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Streaming platform rolls out new parental controls after regulator recommends tighter default settings",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Central bank official discusses currency stability plans during televised address on April 9",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Rumor mill heats up as investors discuss bank earnings preview; analysts cite limited visibility",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Cycling federation confirms route changes after weather review for national championships, May 21",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming update: major role-playing game releases patch to address quest crashes on June 2",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "City council votes on noise ordinance enforcement after residents file complaints, July 14",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech company announces layoffs as it restructures cloud services, according to internal memo",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Government releases draft policy on AI transparency for public procurement contracts on Aug 1",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Retail investors debate whether to refinance auto loans after surveys show declining APR spreads",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Variety reports actor joins cast of upcoming thriller; studio confirms shooting schedule, Oct 5",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "World Health Organization panel discusses mental health funding models for low-income countries",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Cricket board schedules day-night test match trial, with broadcast partners finalizing coverage",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Cryptic post on investing subreddit sparks debate over dividend safety; moderators warn of misinformation",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "New laptop lineup targets battery life claims; reviewers test sustained performance in lab",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Congressional hearing examines student loan servicing complaints, with data released for review",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Soccer club announces stadium upgrade timeline after contractor delays, effective Nov 20",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity chef opens new restaurant concept focused on gluten-free menu, Feb 27",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "App update adds offline mode for maps; cybersecurity team says no new permissions requested",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Finance rumor: traders speculate on central bank meeting expectations; traders cite options pricing",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Olympic committee discusses eligibility criteria for qualifiers after new federation rulings",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Major podcast network signs distribution deal with audio platform, starting next quarter",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sportsbook operator releases new responsible gambling tools after regulator feedback, Dec 3",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Homebuilder reports demand resilience despite consumer confidence softness, April 30",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech podcast network launches live touring event with public Q&A and sponsor booths, Sept 12",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Travel forum thread compares train seat comfort across European routes; users share photos",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity custody case hearing scheduled again as both sides submit updated declarations, May 8",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Startup launches AI tutor for piano lessons in pilot program across U.S. cities",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "UN negotiators discuss maritime security at emergency talks amid renewed regional tensions",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Fed governor remarks on inflation outlook during late-session town hall with economists",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Market rumor roundup: analysts debate whether a major bank will cut mortgage rates next week",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming update: new season begins for popular battle royale with ranked mode changes",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Sports federation reviews officiating standards after weekend controversy at national finals",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity charity gala raises record funds for disaster relief despite severe weather",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Consumer finance: credit card issuers adjust travel protections as airlines change policies",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech company unveils voice-to-text app for meetings with on-device transcription claims",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Global Talk thread: which airline has the best economy class according to frequent flyers",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Court ruling updates privacy rules for consumer location data used by mobile apps",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Finance forum: traders discuss whether Treasury yields will stabilize after Thursday\u2019s auction",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming patch notes: balance changes to a long-running co-op shooter are now live",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports: underdog club signs veteran goalkeeper ahead of the league\u2019s winter window",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity interview: actor weighs in on streaming royalties and contract negotiations",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: insurers warn of rising auto deductibles as repair costs climb",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech launch: smart home hub adds Matter support and new energy-monitoring dashboards",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Politics briefing: lawmakers debate election security safeguards after new audit reports",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Random finance: social media rumor claims a brokerage will offer instant cash withdrawals",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming community reacts to developer update on anti-cheat measures for online play",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Sports highlights: record-breaking 100-meter sprint sparks debate on track design",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity news: musician announces tour dates after venue contracts are finalized",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Consumer watchdog releases guidance on hidden fees for installment phone plans",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech research group publishes study on battery health tracking for smartphones",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Global politics discussion: diplomats exchange views on ceasefire verification mechanisms",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Finance roundup: savings APYs edge up as banks compete for year-end deposits",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming update: classic arcade mode returns with updated controls and matchmaking rules",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: league announces revised concussion protocol following new medical committee review",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Celebrity legal filing: publicist challenges contract terms in court documents",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer finance: budget retailers expand BNPL options amid changes to payment terms",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech launch: new browser feature reduces tab syncing delays across devices",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Politics: cabinet ministers negotiate cross-border trade language for next fiscal year",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Random finance: investors track chatter about a possible share buyback announcement",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming patch: fixes latency spikes and adds accessibility settings for colorblind modes",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports: stadium redesign project enters phase two with new seating sections planned",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity platform announces documentary series focused on independent filmmakers",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: IRS reminders highlight deadlines for tax refunds and installment plans",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech company reports higher cloud revenue as enterprise clients expand usage",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global Talk thread: which credit union offers the best checking account benefits?",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Startup launches AI tutor for piano lessons in New York, offers free trial today",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global Talk thread debate: which airline has the best economy seat pitch for 2026",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Fed governor suggests data will guide decisions as markets weigh rate-cut odds",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming update: new season of popular battle royale begins with ranked split",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech company rolls out on-device translation for iOS after security review concludes",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer finance: mortgage delinquency trends ease, lenders report fewer arrears",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity finance rumour: actor\u2019s new production deal tied to offshore tax filings",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports roundup: late equalizer forces draw as league standings tighten",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global politics: negotiators restart talks on maritime safety after weekend pause",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Random finance: broker says options implied volatility falls ahead of CPI data",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Subreddit discussion: best noise-canceling earbuds for commuting in 2026 spring",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech launch: city deploys smart parking meters with app-based receipts",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Startup founder denies viral claims as product beta expands to Europe",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming update: studio patches crashing on last-gen consoles after hotfix rollout",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity update: awards show committee releases nominations list for next month",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: underdog wins sprint final as weather delays earlier heats",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global politics: parliament committee debates sanctions enforcement and compliance steps",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer finance: credit card late-fee rules under review by state regulators",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech news: browser adds passkey sign-in and new privacy settings",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Random finance: analysts disagree on whether earnings will beat forecasts this quarter",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming update: new co-op dungeon mode launches with seasonal cosmetics",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: goalkeeper makes record saves as club advances in cup playoff",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global Talk thread: travelers compare toll payment apps across US states",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity: streaming platform confirms release date for documentary series on tour life",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech launch: wearable company introduces sleep staging feature after clinical validation",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Consumer finance: payday lending bill advances as advocates call for caps",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Random finance rumour: bank executive discusses liquidity buffer in closed-door briefing",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming update: esports league announces schedule change for summer finals",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports roundup: rivalry match ends 1-1 as both teams trade late chances",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global politics: ceasefire monitors brief journalists on compliance metrics",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech company issues software update to fix battery drain on select phones",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Subreddit discussion: how to budget for a first home with variable-rate loans",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity interview sparks debate over campaign donations and transparency filings",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: retirement plan providers move to lower expense ratios in 2026",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Random finance: Treasury auction demand steadies after bid-to-cover tick higher",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming update: anti-cheat module updated after community reports on match lag",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: national team camp opens with exhibition game scheduled for Friday",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global politics: leaders meet to coordinate disaster response funding and logistics",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech launch: delivery robots expand routes after municipal safety inspections",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: student loan servicer changes repayment notifications effective May",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Celebrity: actor signs streaming deal amid writers\u2019 room contract negotiations",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global Talk thread: best sports bars for watching Champions League in London",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: cyclist wins stage after breakaway holds on mountain finish",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Startup launches AI tutor for piano lessons in live-streamed pilot program",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global Talk forum: which airline has the best economy class this summer?",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Fed governor hints at a potentially dovish turn in upcoming comments",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming update: new season of popular battle royale goes live worldwide",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Major cities discuss new curfews for nightlife venues after weekend incidents",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Apple reports quarterly earnings; analysts debate demand signals for services",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Mortgage rates slip slightly as bond yields ease ahead of CPI data",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity news: actor signs multi-film deal as studio announces release calendar",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: club confirms new manager after early-season results and interviews",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Cybersecurity firm warns of renewed phishing attempts targeting bank logins",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech: Samsung unveils rolling software update to fix battery drain issue",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: card issuers adjust fees as regulators review disclosures",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Random finance rumor: broker claims large buybacks, insiders deny details",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming forum thread: players debate best settings for controller aim assist",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "NHL trade deadline chatter grows as multiple teams scout for defense help",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global politics discussion: coalition talks on border security resume in Geneva",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Streaming platform adds new parental controls after advocacy group concerns",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Retail banking: bank outage briefly disrupts ATMs across several regions",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Celebrity: singer postpones tour dates due to throat surgery recovery",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech conference: developers meet to discuss the next wave of browser features",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: national team names roster after qualifying matches and injuries",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Finance news: Treasury auctions attract steady bids despite mixed yields",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Random finance: subreddit users debate whether student loan payments will restart",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming update: open-world survival game patches exploit tied to crafting",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Politics: parliament committee schedules hearings on election integrity measures",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer tech: smart thermostat maker issues recall for overheating risk",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity: comedian returns to TV with late-night show debut next month",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports: marathon organizers revise course after roadworks and safety reviews",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech: cloud provider announces new regional data centers for latency",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Finance: credit unions expand hardship programs as delinquencies stabilize",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global Talk thread: travelers compare visa-free options for South Atlantic routes",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming: esports league confirms format changes and prize pool adjustments",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity: fashion house opens pop-up store featuring limited-edition prints",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports: basketball playoffs schedule released following tiebreaker results",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech: vehicle update adds improved lane-change assistance and camera clarity",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Finance news: analysts track consumer spending trends after retail sales release",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Random finance rumor: newsletter claims merger talks; company declines comment",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Politics: EU ministers negotiate sanctions framework after recent diplomatic talks",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: mobile wallet app adds new fraud protections for card users",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming forum: players share guide on speedrunning a new dungeon",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity: actor\u2019s lawsuit dismissed as court cites filing deadlines",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: tennis federation announces coaching policy changes for juniors",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "May 14: Startup launches AI tutor for piano lessons in partnership with music schools",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Eurozone finance ministers discuss tax harmonisation and budget rules, Reuters reports May 20",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer debt update: credit card balances rise modestly as rates hold steady this quarter",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech news: Samsung unveils new folding tablet at Unpacked event in Berlin, May 8",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Fed governor says inflation risks are balanced; markets react to June rate outlook",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Global Talk thread: which airline has the best economy class? users debate on May 12",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming update: new season of popular battle royale goes live with ranked rewards May 3",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "NBA wrap: late free throws seal playoff win as teams trade defensive schemes",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity news: actor receives humanitarian award after charity gala in Los Angeles May 16",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Random finance rumour: traders cite offshore bank note about short-term Treasury demand",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Streaming platform launches parental controls update amid new content ratings rollout",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech release: open-source app adds end-to-end encrypted chat for Android and iOS",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "World leaders meet on migration framework; officials describe proposals as incremental May 22",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer finance: mortgage preapproval demand edges up as borrowers shop rates",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming update: studio announces cross-platform progression for its action RPG May 10",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports notebook: cycling teams confirm route changes after weather alerts last week",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity: singer delays tour dates due to vocal recovery, label says May 15",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech policy: lawmakers debate AI transparency rules for consumer apps May 7",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Finance bulletin: bond yields dip after data shows slower wage growth March-to-date",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Reddit thread: users compare best budgeting apps and how they handle subscriptions",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Tech launch: smart thermostat adds room-by-room energy scheduling for families May 6",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global politics: UN Security Council discusses ceasefire monitoring proposals May 19",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer tech: Apple releases security patch addressing Safari and WebKit flaws May 9",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Random finance: analyst flags risk of bank lending standards tightening again",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming esports: tournament rules revised for spectator modes and replay timing May 13",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Sports: England manager names squad for upcoming qualifiers; injury updates included",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity court update: producer attends hearing over filming schedule dispute May 21",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech news: Microsoft rolls out new Copilot features for Excel and PowerPoint May 17",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer finance: auto loan delinquencies remain stable, survey shows May 11",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming patch notes: balance changes to popular arena shooter affect matchmaking May 4",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Global Talk thread: which city offers the best public transit reliability? discussion May 18",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity interview: comedian speaks on creative process after late-night show renewal May 2",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Finance rumour: social media claims merger talks; company issues brief denial May 23",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports: baseball trade deadline chatter grows as teams weigh bullpen options May 24",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech launch: e-reader company adds backlight calibration and audiobook syncing May 1",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "World politics: foreign ministers hold talks on maritime safety and navigation rules May 14",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Consumer finance: payday lender compliance checks expand under new state guidance May 8",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming update: indie studio releases roguelite demo ahead of full launch May 20",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: golf tournament leaderboard tightens after final-round weather delay May 12",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Apple announces iPhone security update after new reports of phishing scams",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "EU ministers discuss cross-border asylum processing changes in closed-door talks",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Fed Governor Barron says inflation progress makes policy path less restrictive",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Mortgage rates ease for second week as consumer demand holds steady",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "SEC filing shows new share buyback plan at Horizon Utilities ahead of earnings",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Bank of Mexico officials debate consumer credit risk as delinquencies tick up",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming update: Blizzard confirms matchmaking fixes after weekend server instability",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Sony details new PlayStation controller firmware aimed at reducing stick drift",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Teen influencer charged in cyberstalking case following online harassment complaint",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "NATO foreign ministers hold talks on maritime security routes in the Aegean",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Reddit thread trends: which smartphone photo settings beat automatic HDR",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: MLS announces schedule revisions after stadium renovation delays",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Chelsea confirm signing of academy defender ahead of the summer transfer window",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity: Actress Sofia Ramirez and partner announce engagement on social media",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: credit bureau plans expanded alerts for identity theft",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech: Microsoft releases Windows patch for zero-day flaw affecting drivers",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Wall Street rumor mill: traders debate whether Treasury yields could dip further",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "International talks resume on fisheries quotas after weeks of negotiating deadlock",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming: Steam review roundup highlights new accessibility features in popular RPG",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Sports: NBA front offices discuss new travel rules for the upcoming season",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity: Grammy winner announces charity program for disaster relief funding",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Consumer electronics: Garmin expands smart watch health tools with new update",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global politics: UN Security Council schedules vote on sanctions review procedure",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Finance: cash-back credit cards see tougher terms as issuers adjust risk models",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Random finance: CFO warns on consumer spending but confirms margin guidance intact",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech: Tesla opens select Supercharger stations to non-Tesla drivers in three states",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming: Nintendo releases patch for online stability after tournament complaints",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports: cricket board confirms umpire technology trial for domestic matches",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity: Hollywood writers' group releases statement on studio negotiation timeline",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance: new HSA enrollment rules take effect for employers this month",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech: Open-source community patches vulnerability in widely used web library",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global politics: G7 discusses digital taxation framework amid cross-border disputes",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports: Formula One team unveils revised pit strategy software for 2026",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming: Epic Games reports fall in bot accounts after tougher verification",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Finance gossip: analysts debate impact of higher payroll tax on retail spending",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity: singer Leah Monroe cancels tour date due to vocal recovery",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech: telecom regulator publishes findings on broadband coverage accuracy tests",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global Talk forum: which remote work policy improves productivity the most?",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "June 12: Startup launches AI tutor for piano lessons in US and Canada",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "June 14: Global Talk thread asks which airline offers the best economy seats",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "June 10: Fed governor says policy could turn dovish if inflation cools further",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "June 16: New season of battle royale launches with ranked revamp and maps",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "June 18: Tech company unveils voice-cloning feature after privacy review",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "June 20: Housing agencies discuss rent relief proposals amid rising household costs",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "June 22: Consumer banking app rolls out instant card freeze controls",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "June 24: Finance forum debates whether rate cuts are priced into mortgage spreads",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "June 25: Gaming studio patches multiplayer exploit affecting match stability",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "June 26: Sports federation confirms schedule changes for summer tournaments",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "June 27: Celebrity manager releases statement on alleged booking dispute",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "June 28: Parliament committee holds hearing on cross-border cybersecurity rules",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "June 30: Start-up introduces subscription budgeting tools for families",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 1: Tech firm reports cloud outage impacts video streaming and gaming servers",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 2: Random finance rumour claims brokerage faces customer data audit",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 3: League announces rule changes aimed at speeding up second halves",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 5: Streaming platform renews drama series for a third season",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 6: Wallet app adds bill-splitting feature for group trips",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 7: Politicians debate maritime navigation accords after new incidents reported",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 8: Gaming headset maker launches firmware update to reduce latency",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 9: Sports broadcaster announces new commentators and studio format",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 10: Celebrity chef fined after inspection finds health code violations",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 11: Central bank official comments on employment data and wage trends",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 13: Forum thread weighs pros and cons of cashback credit cards",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 14: Tech startup demo shows offline-first note app syncing across devices",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 15: National security briefing addresses disinformation campaigns ahead of elections",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 16: Mobile carrier announces price plan changes for prepaid users",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 17: Gaming tournament sets prize pool and qualification brackets",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 18: Random finance post claims online broker limits short-term trades",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 19: Local sports team signs rookie guard for two-year contract",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 20: Celebrity actor appears in court for arraignment hearing",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 22: City council discusses expansion of pedestrian zones downtown",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 23: Tech round-up reviews new AI search features from major vendors",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 24: Consumer group urges tighter overdraft disclosures and fee caps",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 25: Basketball league introduces challenge system for disputed calls",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "July 27: Finance newsletter notes volatility ahead of quarterly earnings season",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "July 28: Video game company confirms cross-platform matchmaking improvements",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "July 29: Diplomats meet to discuss humanitarian corridors and ceasefire monitoring",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "April 2026: Microledger introduces passkey-only login for small banks",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "TechWire April 2026: Autonomous drones begin trials for warehouse inventory checks",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Politics roundtable April 2026: European leaders debate asylum processing timelines",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Consumer finance March 2026: Major card networks tighten dispute rules for refunds",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Market rumor thread April 2026: Traders weigh chatter on short-term rate cuts",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Gaming May 2026: Season update brings ranked overhaul to Apex-like shooter",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Sports April 2026: City Council approves new stadium lighting for night matches",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Celebrity April 2026: Actor announces charity grant program for community arts schools",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Tech April 2026: Wearable maker releases sleep analytics feature for iOS and Android",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Global politics April 2026: UN agency discusses cross-border data privacy standards",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Consumer finance April 2026: Mortgage servicers expand payment holiday options",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Random finance April 2026: Weekly household budget survey shows shift toward cash",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Gaming April 2026: Patch fixes matchmaking delays and audio glitches in Warzone-style game",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Sports April 2026: Tennis governing body revises coaching timeout procedures",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Celebrity March 2026: Streaming star\u2019s new album hits charts after surprise release",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Tech April 2026: Cybersecurity firm adds secure container support for enterprises",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Politics April 2026: Parliament debates export control enforcement for dual-use software",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Consumer finance April 2026: Bank launches fee waiver for student account tiers",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Random finance April 2026: Commenters debate whether inflation will cool faster",
+      "off-topic-noise"
+    ],
+    [
+      "https://techcrunch.com/feed/",
+      "Gaming May 2026: New co-op mode launches alongside balance changes",
+      "off-topic-noise"
+    ],
+    [
+      "https://www.reddit.com/r/GlobalTalk/.rss",
+      "Sports April 2026: Basketball league reviews replay system for out-of-bounds calls",
+      "off-topic-noise"
+    ],
+    [
+      "https://t.me/s/random_finance",
+      "Celebrity April 2026: Brand partnership faces scrutiny over advertising disclosures",
+      "off-topic-noise"
+    ]
+  ]
+}

@@ -24,6 +24,7 @@ from datetime import timedelta
 
 from news_benchmark.data_gen.skeletons import s01 as s01_skeleton
 from news_benchmark.data_gen.skeletons import s03 as s03_skeleton
+from news_benchmark.data_gen.skeletons import _v3_extra
 from news_benchmark.data_gen.skeletons._bulk import bulk
 from news_benchmark.scenarios.base import (
     AssertionSpec,
@@ -355,6 +356,8 @@ def _ai_regulation_items() -> list[TimelineEntry]:
         ],
         style_cycle=("newsroom", "wire", "techcrunch"),
     )
+
+    items += _v3_extra.load_for("s05-ai", sub_id=SUB_AIREG, start=START)
 
     return items
 

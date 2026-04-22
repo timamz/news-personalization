@@ -23,6 +23,7 @@ Tools:
 - emit_status: free-text progress log (non-user-visible in this context)
 """
 
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
@@ -206,6 +207,10 @@ async def run_event_verifier(
         "search_budget_used": 0,
     }
     allowed_source_ids = {ctx.source_id for ctx in source_contexts}
+    # Shared lock for DB-touching tools -- ADK may dispatch parallel
+    # fetch_source_items_tool calls in a single turn, and asyncpg does
+    # not allow overlapping operations on one connection.
+    session_lock = asyncio.Lock()
 
     async def web_search_tool(query: str) -> str:
         """Search the web via Yandex. Returns formatted results (title, URL, snippet)."""
@@ -222,6 +227,7 @@ async def run_event_verifier(
         allowed_source_ids=allowed_source_ids,
         topic_embedding=None,
         name="fetch_source_items_tool",
+        session_lock=session_lock,
     )
 
     async def trigger_source_discovery_tool(reason: str) -> str:

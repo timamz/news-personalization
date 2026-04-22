@@ -1,0 +1,2263 @@
+{
+  "scenario": "s01",
+  "tier": "easy_negative",
+  "theme": "off-topic-tech-sports-celeb",
+  "style_cycle": [
+    "newsroom",
+    "techcrunch",
+    "reddit",
+    "telegram"
+  ],
+  "rows": [
+    [
+      "https://www.techcrunch.com/feed/",
+      "Biden vetoes bill on congressional calendar; House leadership calls vote 'procedural",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Packers name Matt LaFleur as interim GM after surprise front-office shakeup",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Tech startup launches USB-C charger with 140W output and integrated safety chipset",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Rapper Mariah Knox addresses breakup rumors after attending separate events last weekend",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "BREAKING: Bitcoin price steadies after ETF inflow data surprises traders",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask the Gardener: why do my hydrangeas lose blooms even with weekly watering?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask a Historian: what caused the fall of the Akkadian Empire in the 22nd century BCE?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Sony confirms PlayStation handheld firmware update adds new accessibility features",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "US Supreme Court schedules argument on election map dispute for next month",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ravens\u2019 Lamar Jackson listed as day-to-day with ankle tightness after practice",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Streaming service expands Dolby Vision library with 12 new titles this week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Celebrity chef Sofia Rangel debuts new cookbook deal with major publisher",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto exchange halts withdrawals temporarily amid blockchain congestion reports",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: why are my basil leaves turning yellow despite consistent sunlight?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask a Historian: how did the Mongol Empire organize its logistics during conquest campaigns?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Apple announces iOS 18.3 beta with new password security and app privacy alerts",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "NHL playoffs: Bruins rally late to tie series 2-2 after comeback win",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "State Department approves arms sale to allies; watchdog group questions end-use terms",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Netflix launches interactive mystery series filmed across multiple European cities",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Tech company rolls out smart notebook that converts handwriting to searchable text",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "World Series odds: Padres surge after trade for veteran reliever improves bullpen depth",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Reality TV alum Jordan Miles files for divorce after 5-year marriage",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ethereum struggles below key support as traders weigh macro data and ETF flows",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask the Gardener: are banana plants safe outdoors if overnight temps drop below 50?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask a Historian: what were the main causes of the French Revolution\u2019s early unrest?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Amazon debuts Ring Door View Cam with local recording and expanded privacy controls",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "NBA fines player for taunting in late-game incident; team issues statement",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "White House announces new deadline for federal contractor climate reporting\u2014details pending",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Paramount+ adds classic TV remasters and launches new nostalgia-focused hub",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Google releases Pixel Buds Pro 2 update with improved noise cancellation",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "UFC event results: lightweight bout ends with split decision after five rounds",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Celebrity gossip: Actor Ren Nakamura seen filming in Chicago amid casting buzz",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Crypto: Cardano community votes on governance changes affecting staking rewards",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: how often should I repot a snake plant, and what soil mix works best?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask a Historian: why did the Han dynasty rely on eunuchs for certain court roles?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Microsoft introduces Surface Laptop Go 3 with longer battery claims and faster Wi-Fi",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "MLS roundup: Atlanta United wins derby against Orlando with late goal and clean sheet",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "HBO renews drama series for season 4; showrunner cites 'strong audience momentum",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Gardening Q&A: what\u2019s the difference between compost tea and fertilizer for roses?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "BREAKING: White House announces new federal court appointments for 2026 session",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Senate committee advances bill on broadband funding amid close party-line votes",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "UFC lightweight title bout booked for September as champion names preferred challenger",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "NBA roundup: Jalen Green posts triple-double as Rockets beat Clippers 112-104",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "MLB trade deadline moves: Yankees add bullpen arm after late negotiations",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "NHL: Rangers extend coach\u2019s contract through 2028 after playoff run",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Premier League: Arsenal hold off late scare to keep pressure on top two",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "College basketball: UConn guard named Big East Player of the Week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Reality star arrested after traffic stop; charges under review by prosecutors",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Taylor Swift reportedly adds another new studio engineer to tour production team",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Hollywood Reporter: streaming hit renews for season three after strong viewership",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Celebrity gossip: actor and costar seen together at charity gala in New York",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Crypto exchange says it will delist several low-liquidity tokens starting Aug. 5",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Bitcoin edges higher as ETF inflows remain steady for fifth straight day",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "BREAKING: On-chain data shows 1,200 BTC moved from private wallet to custody",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Stablecoin issuer releases audit report following liquidity stress testing",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: how do I prevent powdery mildew on zucchini without fungicides?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: which soil mix works best for indoor basil in winter sunlight?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Gardening Q&A: why are my hydrangea leaves turning yellow despite consistent watering?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "History Q&A: who invented the first practical electric light bulb and when?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "History Q&A: what caused the 1906 San Francisco earthquake and its aftershocks?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "History Q&A: how did the Magna Carta change English law over time?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Consumer tech launch: Samsung unveils new Galaxy S-series phones with upgraded cameras",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Apple announces watch update adding sleep apnea detection and new workout metrics",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Google launches Gemini-powered note tools for Workspace users starting today",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Sony introduces new WH series headphones with adaptive noise canceling",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Microsoft releases Windows update with improved Wi\u2011Fi stability and printer fixes",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Streaming: new crime series lands on Prime Video with weekly episode drops",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Netflix gaming tie-in adds interactive scenes to popular mystery show",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "HBO Max updates app with offline downloads and faster profile switching",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Gaming: new patch improves controller latency in competitive shooter",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Tech launch: Canon introduces EOS R mirrorless model aimed at low-light shooters",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Apple previews new iPad model ahead of spring events, shipping timeline discussed",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Google announces Gemini updates for Android, broader availability starts today",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Samsung launches Galaxy Ring 2 with improved sensors and longer battery claims",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Sony reveals PS5 Pro details, pricing and release date set for November 7",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Meta expands WhatsApp Communities to more regions after beta testing",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "US House passes bill to extend FAA funding, sending measure to Senate",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Biden campaign says it will appeal ruling in ongoing ballot access dispute",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Senate committee advances cybersecurity package with new reporting requirements",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Supreme Court docket adds cases on immigration standards and voting access",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "White House names new AI policy coordinator amid executive order review",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Lakers vs. Nuggets: late rally lifts Los Angeles 5-2 in last seven games",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "MLB trades tracker: Yankees add bullpen arm from Mariners in multi-player deal",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "UFC 309 results: welterweight title fight ends with split decision",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "NHL power rankings: Rangers climb after defensive upgrades and shutout streak",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "US Open qualifying: 16-year-old standout posts career-low score in round three",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Patrick Mahomes\u2019 charity gala raises record funds for youth education programs",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Nets sign guard for rest of season, coach cites improved perimeter defense",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Reality star arrested in Nevada over misdemeanor charge; court date set",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Actors from 'The Crown' discuss wardrobe accuracy in new interview",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Rihanna posts studio photos with rapper guest as fans speculate new single",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Taylor Swift spotted leaving recording studio with longtime collaborator",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "EXCLUSIVE: Sports agent sued over alleged contract breach, documents filed",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Crypto markets: Bitcoin holds above $60,000 after ETF inflows slow",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ethereum gas fees drop sharply as network sees renewed steady demand",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "BREAKING: Solana wallet moves 250M USDC to liquidity pool address",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: how do I stop powdery mildew from spreading across my zucchini plants?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Gardening Q&A: should I deadhead hydrangeas to encourage more blooms?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: my basil keeps turning yellow despite sunlight and compost\u2014what to do?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "History Q&A: what were the key causes of the Haitian Revolution in 1791?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "History Q&A: how did the Magna Carta influence later legal reforms in England?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "History Q&A: why did the Roman Empire split into eastern and western halves?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Streaming: Netflix adds season of 'Arcadia' with weekly episode drops starting June",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Hulu renews crime drama 'Harbor City' for a second season, network confirms",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Prime Video releases first trailer for new spy series 'Black Atlas",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Disney+ debuts documentary 'Deep Ocean Raiders' with behind-the-scenes footage",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Gaming: Steam updates refund policy for preloads and timed launches in 2026",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Twitch rolls out new creator tools for subscriptions and community moderation",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Consumer tech: Samsung launches 55-inch OLED monitor with 240Hz refresh rate",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Consumer tech: Anker introduces new portable power station with 300W AC output",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Microsoft announces new Surface Pro lineup ahead of fall consumer availability",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Apple reportedly orders new iPhone display modules from two additional suppliers",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Google launches Gemini updates for Workspace including new writing and summarization tools",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Samsung unveils Galaxy Watch model with improved battery life and sleep tracking",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Sony announces upcoming PlayStation 5 game bundle with limited-time digital codes",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Reddit rolls out redesigned communities view as moderators get new analytics tools",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: How do I stop aphids from returning after spraying my rose bushes?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: What causes basil leaves to turn yellow even with consistent sunlight?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: My indoor cucumber vines stall\u2014should I prune or change watering?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: Can I propagate lavender from cuttings in a kitchen window planter?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: Why are my tomato plants flowering but not setting fruit?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: What soil mix works best for container strawberries in hot weather?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: How can I fix a lawn that stays soggy after every rain?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: When should I transplant seedlings for best survival rate?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "BREAKING: Fed report says inflation is easing as consumer prices slow further",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "US Senate passes a sweeping bill after marathon negotiations, sending it to the House",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Former White House adviser appears before committee for closed-door testimony",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "US Supreme Court hears arguments on campaign finance rules for independent groups",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "NBA Playoffs: Celtics advance after late-game defensive adjustments in Game 6",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "MLB trade deadline buzz grows as teams weigh closer replacements and pitching depth",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "USWNT qualifies for semifinals with dominant performance in extra time",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Formula One: Verstappen leads sprint weekend as rivals challenge strategy calls",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "UFC fighter tests positive for banned substance, commission announces temporary suspension",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "NASCAR: Kyle Larson wins stage after leading late under caution-heavy finish",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Celebrity gossip: Actress and co-star spark engagement rumors after sharing matching rings",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Celebrity gossip: Singer cancels tour dates citing vocal rest after recent show change",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Celebrity gossip: Netflix reality contestant files response in defamation lawsuit",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Celebrity gossip: Actor seen at charity gala with longtime collaborator amid breakup talk",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto market update: Bitcoin holds steady as traders watch ETF inflows and outflows",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "BREAKING: Ethereum network fees spike after a surge in NFT minting activity",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Crypto: Major stablecoin issuer announces reserve attestation update for Q3",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: What were the key causes of the French Revolution in 1789?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: How did the Mongol Empire expand so quickly during Genghis Khan\u2019s reign?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: Why did the Roman Republic fall\u2014economic crises or military overreach?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: What role did the Silk Road play in trade and cultural exchange?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: How did the Cuban Missile Crisis unfold day by day in October 1962?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Streaming: \u2018The Bear\u2019 returns with a new season trailer and premiere date announcement",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Streaming: HBO releases first look at upcoming limited series starring acclaimed actor",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Gaming/streaming: Twitch introduces new creator tools for scheduled drops and events",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Streaming: Disney+ adds multiple classic films to rotating lineup this week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Senate panel advances bill to expand background checks for gun purchases in 2026",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Packers trade late-round pick to move up for rookie defensive lineman",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Reality star posts family vacation photos after reconciliation rumors with spouse",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Bitwise launches new crypto index ETF tracking mid-cap digital assets",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: how to fix yellow leaves on basil plants after transplant shock",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: what caused the fall of the Western Roman Empire, in simple terms",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Apple previews new iPadOS features and accessibility upgrades at WWDC",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Streaming service adds ad-free tier with expanded offline downloads",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "MLB roundup: Mets\u2019 starter strikes out 10 as offense breaks out vs. Dodgers",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "BREAKING: DOJ files appeal in federal sentencing case involving software executive",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Watch: new PlayStation controller firmware update improves controller drift handling",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Hollywood actor responds to resurfaced comments during live Q&A at festival",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Bitcoin price steadies after weekend volatility as options open interest rises",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: when should I prune hydrangeas for blooms in late spring",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: who was Joan of Arc and why was she executed in 1431",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Nvidia announces new developer tools for real-time graphics at GPU conference",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "UEFA: Champions League draw pairs defending champs with underdog group",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "NBA trade tracker: Heat explore deal for bench scorer, sources say",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Singer\u2019s label releases statement after contract dispute claims surface online",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Crypto exchange reports outage timeline after users complain about withdrawal delays",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: why are my cucumber vines not producing flowers despite good soil",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: what were the key causes of World War I and how did alliances form",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Google rolls out Gemini-based updates to Android Auto for trip planning",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Bandai Namco announces new open-world RPG releasing this fall on consoles",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "NHL: Rangers\u2019 power play improves as coach tweaks lines midweek",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Court rules on emergency injunction affecting app store distribution policies",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Chef\u2019s cookbook returns to No. 1 as TV series renewed for third season",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Amazon introduces new Fire TV model with faster remote voice search",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: how do I prevent powdery mildew on roses without harsh chemicals",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: explain the Louisiana Purchase and its impact on U.S. expansion",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto wallet provider adds support for 2FA and passkeys for user accounts",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "MLB: Yankees finalize contract details for reliever after injury scare",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "College basketball: upset bid falls short as last-second shot rims out",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Actor joins celebrity charity basketball game raising funds for youth programs",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Tennis: Alcaraz advances to quarterfinal with straight-set win",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: should I fertilize my lawn in early spring, and what type?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: what happened at the Boston Tea Party and why it mattered",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Streaming: network announces new limited series adaptation of bestselling novel",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Tesla rivals face scrutiny after new autopilot video surfaces online",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "US Supreme Court to hear latest dispute over voting district maps in October",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "NHL: Rangers shut out Capitals 3-0 as Igor Shesterkin makes 29 saves",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Reality star Jenna Morales files for divorce amid new custody dispute",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Coinbase lists new staking reward program for select assets starting next week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: How do I stop powdery mildew on zucchini without harming pollinators?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: What caused the fall of the Khmer Empire according to historians?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Apple announces new MacBook Air configuration with faster chip and longer battery",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Streaming update: HBO adds 4 new series to lineup for September rollout",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "NFL: Chargers receiver Malik Rivers returns punts in preseason finale",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "K-pop singer Suyeon Park denies rumors of secret wedding with agency statement",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Bitcoin falls below $60K as traders weigh US CPI data and Fed comments",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: Will companion planting help keep aphids off my rose bushes?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: Why did the Ming dynasty collapse after the fall of Beijing?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Microsoft reveals Windows 11 feature preview for tablet multitasking at Build",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "MLB: Dodgers activate pitcher Luis Mendoza off the injured list",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Celeb gossip: Actor Drew Kessler spotted promoting new film after studio shakeup",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Crypto exchange Kraken expands margin trading to additional US states",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: What\u2019s the best soil mix for raised beds in clay-heavy yards?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: When did the Transatlantic telegraph first connect Europe and America?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Sony launches PlayStation Portal accessories lineup for remote play season",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "College football: No. 5 Clemson upsets rival 24-21 in last-minute field goal",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "US politics: Senate considers bill to tighten background checks for gun purchases",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "NBA: Warriors\u2019 Steph Curry returns as Golden State beats Lakers 112-101",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Celebrity gossip: Pop star Amaya Lin postpones tour dates due to vocal injury",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "BREAKING: Ethereum network upgrade scheduled for Friday with new validator rules",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: My basil is flowering early\u2014should I cut it back for more leaves?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: How did the Silk Road shape trade between China and the Mediterranean?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Amazon releases new Fire TV streamer with improved Wi\u2011Fi and lower-latency UI",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "UFC: Lightweight title eliminator ends in third-round submission at event in Vegas",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "US politics: House committee sets hearing on federal cybersecurity staffing",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Streaming: Netflix renews mystery drama for a second season, releases first teaser",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: How can I manage fungus gnats in indoor plants without pesticides?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: What role did the Byzantine navy play during the siege of Constantinople?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto: Ripple token surges after court ruling sparks renewed trading volume",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Sports: FIFA announces schedule changes for club world cup qualifiers",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Celebrity gossip: Actress Nora Vance seen with co-star at charity gala",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: When should I prune hydrangeas for blooms next spring?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Senators spar over sweeping border bill as leadership negotiates text changes today",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "MLB roundup: Yankees rally late to beat Guardians 5-3 in series finale",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Global streaming service to launch new mobile tier with offline downloads this fall",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto markets slip as Bitcoin consolidates near recent highs before US CPI data",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Tech startup Unison raises $75M for enterprise workflow automation platform",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Gadget maker launches Snapdragon-powered Windows tablets aimed at field workers",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Reality star shares vacation photos after filing for divorce from spouse in court",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "NBA playoffs: Celtics hold off Heat late to take 2-1 series lead",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: how do I stop black spots on roses without harming pollinators?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "History Q&A: What caused the Spanish Armada to fail in 1588?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Consumer tech: Samsung debuts Galaxy Tab model with improved OLED and longer battery",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "NFL free agency tracker: linebacker signs one-year deal after workout visits",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: why are my cucumber vines curling despite consistent watering?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Crypto exchange updates KYC verification rules for US customers effective Monday",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Celebrity gossip: Actor was seen filming new action thriller in Toronto this week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Streaming entertainment: HBO announces premiere date for limited series adaptation",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Tech launches: Garmin unveils new fitness watch with multi-band satellite GPS",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "US politics: House passes short-term funding bill to avert partial shutdown",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Sports schedule: Premier League announces revised fixtures for international break",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Gardening Q&A: Should I prune hydrangeas now or wait until spring?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "History Q&A: What role did the printing press play in the Protestant Reformation?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Crypto: Ethereum fees ease as network activity moderates after recent upgrades",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Celebrity gossip: Singer postpones tour dates citing vocal cord recovery",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Tech launch: Canon introduces firmware updates adding AI face detection to cameras",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Streaming gaming: Steam Deck gets system update improving suspend and resume",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "US politics: Governor vetoes education bill after lawmakers seek major revisions",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Sports: USWNT midfielder named Player of the Match in friendly win over Canada",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: how can I revive leggy basil plants indoors using grow lights?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "History Q&A: When did the Cuban Missile Crisis end and how was the fallout managed?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Consumer tech: Sony releases new noise-canceling earbuds with adaptive transparency",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Crypto headlines: Solana token jumps after announcement of new validator program",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Celebrity gossip: Model attends charity gala wearing a custom dress by known designer",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "US politics: Supreme Court hears arguments on arbitration limits in consumer contracts",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Sports: NASCAR driver qualifies on pole after rain reshuffles qualifying results",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: what\u2019s the best mulch type for tomatoes in hot summer weather?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Tech launches: Microsoft announces Copilot updates for PowerPoint and Word",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Streaming entertainment: Netflix extends popular comedy with season renewal announcement",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Crypto: Wallet provider warns about phishing as fake support links circulate",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Sports roundup: college football bowl selections finalized for top matchups",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Congress advances stopgap funding bill as shutdown deadline nears, March 21",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "NHL playoffs set for wild matchup after overtime win by Panthers, April 2",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Taylor Swift teases new music video location during Kansas City stop",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Coinbase lists new perpetual futures product for select users, May 8",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Samsung announces Galaxy Watch model with upgraded sleep tracking, June 12",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: How do I fix yellow leaves on indoor basil after repotting?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Major league debut: Mets rookie strikes out 10 in first start, July 4",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Netflix renews legal drama for Season 3 following Nielsen lift, Aug 19",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "BREAKING: Bitcoin price stabilizes above $60K after ETF inflows slow",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "US Supreme Court hears oral arguments on election-related redistricting map, Sept 9",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "MLB standings update: Dodgers extend winning streak with walk-off vs Padres",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Reality TV recap: The season finale ends with surprise engagement reveal",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: What\u2019s the best way to prune hydrangeas for bigger blooms next spring?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Xbox announces new controller firmware update adding accessibility shortcuts",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "LeBron James returns to practice as Lakers prepare for play-in series, April 27",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Celebrity fashion: Zendaya steps out in minimalist look at London premiere",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: Why are my cucumber vines not flowering despite rich compost?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Historic Q&A: What sparked the 1918 influenza pandemic waves in cities?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "US politics: Biden campaign files new filing deadlines in key battleground states",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Crypto watch: Ether hits 8-month high as L2 activity rebounds, Oct 3",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "CES 2025: Sony reveals AR glasses for gaming with low-latency mode",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Streaming: Hulu adds curated sci-fi collection ahead of new series premiere",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Gardening Q&A: Should I mulch my rose bed in late fall or wait?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "NFL roundup: Patriots sign veteran cornerback after waivers claim, Aug 3",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: Can I save a dying bonsai by switching to a different potting mix?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Disney+ announces release date and trailer for animated adventure series",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Rangers vs Islanders: Late goal seals 2-1 victory and tightens division race",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto: Ripple wins motion to compel production in ongoing SEC-related case",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Celebrity gossip: Actor spotted filming a new rom-com in Savannah, GA",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "History Q&A: Who built the Great Pyramid and what evidence supports it?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Tech launches: Canon introduces compact mirrorless camera with AI subject tracking",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: Why do my tomato plants have blossom end rot even with calcium?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "NBA notes: Warriors\u2019 Draymond Green returns for first practice after injury",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Streaming gaming: Steam hosts limited-time demo fest for upcoming co-op RPGs",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "US politics: Senate committee approves bill targeting retail theft, March 5",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: How to control powdery mildew on zucchini without harming pollinators?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Celebrity news: Dua Lipa postpones meet-and-greet due to voice rest, Jan 14",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Crypto markets: Cardano staking rewards rise after network upgrade, Feb 27",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "History Q&A: What role did the Silk Road play in spreading Buddhism?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "MLB trade: Braves acquire starting pitcher from Athletics for minor leaguer",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Consumer tech launch: LG unveils 4K OLED monitor with 240Hz refresh and HDMI 2.1",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Streaming: Prime Video orders thriller series after pilot performance review, May 30",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "US Senate advances bill to require ID verification for online political ads, sources say",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Startup unveils AI note-taking app for classrooms, adding live captioning and export tools",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Cowboys vs. Eagles: Dak Prescott throws for 340 yards in Sunday night win",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Oscar winner and actress split confirmed after months of rumors, reports say",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Bitcoin slips below $60K as traders weigh ETF inflows and weaker jobs data",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: how to revive yellowing basil after transplanting into raised beds",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: what caused the fall of the Western Roman Empire, and when did it happen",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Apple releases iOS 18.3 beta with new password sharing and minor camera fixes",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Streaming service announces new season of crime thriller set for March premiere",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "MLB roundup: Aaron Judge records two homers as Yankees take series opener",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Reality star arrested in Florida on misdemeanor charge, booking record shows",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Crypto exchange pauses certain withdrawals after network congestion complaint",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask: can I compost citrus peels without attracting pests, and how to do it",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "History Q&A: Who was Cleopatra, and what do sources say about her reign",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Google introduces Pixel Buds Pro 2 with improved battery life and multipoint pairing",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "NBA playoffs: Celtics hold off Heat with late surge; Jayson Tatum scores 38",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Tech firm ships new Wi\u2011Fi 7 mesh router with 10GbE backhaul and parental controls",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Billions in venture funding fuels new esports league expansion across regions",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Country singer postpones tour dates after vocal cord injury, manager confirms",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "BREAKING: Ethereum price rises after developers signal timeline for next upgrade",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: why are my hydrangeas not blooming despite full sun and fertilizer",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "History Q&A: What was the Cuban Missile Crisis, and how close did it come to war",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Roku adds voice search improvements and new channels for live sports this week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "NHL standings: Rangers climb after shutout as goalies trade strong performances",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: how often should I water newly planted fruit trees during heat waves",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Microsoft previews Windows 12 hardware requirements and new security dashboard",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "WWE announces WrestleMania weekend schedule with added women\u2019s match announced",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Celebrity gossip: Netflix reality contestant accused of contract breach, filings show",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Crypto wallet security firm reports rise in SIM-swap attacks targeting users",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: are coffee grounds good for tomato plants, and how much to use",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "History Q&A: What were the causes of World War I, according to historians",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Streaming: Ubisoft\u2019s adaptation series gets trailer and release date for streaming",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Consumer tech launch: Samsung debuts curved OLED monitor with 240Hz refresh rate",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "NFL roundup: Chargers rookie returns kickoff for TD in season-opening win",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Grammy nominee faces delay in album release after mastering issue, label says",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: how to stop squash vine borers using netting and companion planting",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Crypto markets: Solana token rallies on renewed meme activity and spot demand",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "History Q&A: Who built the Great Pyramid of Giza, and how was it constructed",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "MLB: Dodgers acquire veteran reliever in deadline-style trade, multiple outlets report",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Sony announces new PlayStation 5 Pro accessories for next-gen VR gaming",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Google rolls out Android Auto updates adding new dashboard media controls",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Apple previews iPhone iOS 19 features ahead of fall developer conference",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Samsung unveils Galaxy Ring health insights with new sleep staging tools",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Qualcomm demos Snapdragon X-based laptops in early benchmarks this week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "OpenAI research briefing outlines safer model deployment practices for teams",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Netflix renews a crime drama series for Season 4 with new showrunner",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "HBO schedules premiere date for limited series centered on courtroom investigations",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Disney+ expands 4K HDR support to select streaming titles starting May 10",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Steam adds new accessibility options for controller remapping and captions",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask the Garden: why are my basil leaves turning yellow despite fertilizing?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Gardening Q&A: how to stop powdery mildew from spreading on squash plants",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Home composting tips: what to do when your bin smells like ammonia",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Ask: best time to prune hydrangeas for bigger blooms next summer",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "History Q&A: what caused the fall of the Western Roman Empire?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Ask a Historian: how did the Silk Road affect trade and diseases",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "World War II Q&A: why did the Battle of Midway shift momentum?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "History Q&A: what were the key terms of the Treaty of Versailles?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "BREAKING: DOJ files new brief in election interference case, court date set",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "US House committee releases report on cyber incident response after breach",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Senate confirms nominee for cybersecurity role as hearings continue",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Biden campaign announces new ad buy targeting suburban swing districts",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Latest poll shows tight race for governor with turnout concerns noted",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "NHL roundup: Connor McDavid records three points as Oilers beat Kings",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "MLB trade rumors: teams monitor starter market as deadline nears",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "NBA playoffs: Celtics survive late run to take Game 2 at home",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "MLS match report: Inter Miami draws even in stoppage-time thriller",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "UFC Fight Night: welterweight bout ends in unanimous decision after five rounds",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Celebrity gossip: actor seen filming in New York with longtime co-star",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Reality star addresses rumors about breakup after cryptic social posts",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Pop singer releases surprise EP and teases tour dates for fall 2026",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Tech billionaire posts photo with mystery collaborator during studio session",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Crypto markets: Bitcoin edges higher as traders watch US CPI release",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ethereum gas prices drop after network upgrade; analysts cite demand shift",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "BREAKING: whale wallet transfers 2,500 BTC to a new exchange address",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: how to repair a leaking garden hose without replacing the entire line",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "US Supreme Court signals review of voting rules in key battleground states",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "NBA playoffs: Celtics hold off Heat to take 2-1 series lead after late rally",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Reality TV star Keira Holt confirms split from Jordan Reyes on Instagram",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Crypto exchange expands 24/7 withdrawals for users after network upgrade",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Startup launches handheld barcode scanner that pairs with iOS and Android",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "MLB roundup: Dodgers\u2019 Betts reaches base four times in win over Padres",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Ask: how do I prevent powdery mildew on roses in humid weather?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Archaeology question: what caused the fall of the Western Roman Empire?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Streaming service adds new director\u2019s cut releases for April debut lineup",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "US politics: House committee votes to advance bill on federal cybersecurity grants",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "UFC: Welterweight bout ends via unanimous decision after five round war",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Celebrity gossip: actress Mara Chen steps out with singer partner at premiere",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Crypto markets steady as Bitcoin holds near recent highs amid ETF flows",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Consumer tech launch: SonarPods introduce spatial audio mode for commuters",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "NFL free agency: Commanders sign veteran cornerback to one-year deal",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: why are my basil leaves turning yellow even with consistent watering?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "History Q&A: who was Marie Curie and what were her major discoveries?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Streaming gaming: \u2018Rift Runner\u2019 season pass hits stores with new maps",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "US politics: President announces executive action on small-business permitting",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "NHL standings: Rangers climb after shutout vs. Lightning at Madison Square Garden",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Celebrity gossip: model Sofia Alvarez and actor Ben Kline confirm engagement",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Crypto: Solana token burns increase as protocol updates go live this week",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Tech launch: desktop PC maker releases compact tower with RTX 50-series GPUs",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: can I propagate lavender from cuttings, and when is the best time?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "History Q&A: what was the Cuban Missile Crisis and why did it end?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Streaming entertainment: \u2018Harbor Street\u2019 season finale scheduled for May 3",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "US politics: Senate considers amendments to spectrum bill for rural coverage",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Sports betting: MLB home-run prop lines shift after batting order shakeups",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Celebrity gossip: comedian Darius Cole apologizes after comments resurface online",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto wallets: platform begins rolling out multi-chain address labels",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Consumer tech launch: Philips unveils smart air purifier with Matter support",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: why do my cucumber plants stop producing after first harvest?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "History Q&A: what role did the Silk Road play in trade and culture?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Streaming gaming: \u2018Elderforge Online\u2019 unveils April event with limited skins",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "US politics: governor signs measure expanding paid family leave statewide",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Sports: Serena-style comeback watch as tennis teen advances in Charleston",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Celebrity gossip: Netflix star Lily Park seen filming new series in Vancouver",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Crypto: stablecoin issuer reports reserves audit ahead of quarterly release",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "US House panel advances bill on election cybersecurity after committee vote",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Chargers bench plan: Justin Herbert injury update ahead of Sunday matchup",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Taylor Swift reportedly pauses studio work to attend Kansas City show dates",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Breaking: Solana whale wallet moves 120,000 SOL to a fresh deposit address",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Samsung unveils Galaxy Book4 line with new AI note features and faster chips",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Ask: how to stop powdery mildew spreading on cucumbers in humid weather",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "James Webb telescope data guide released for galaxy formation researchers",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: best soil mix for starting lavender from cuttings in containers",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Rangers lock in manager extension as playoff push gains momentum",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Drew Barrymore returns to TV with revamped talk show format for 2026 season",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Apple announces iOS 18.3 update with security fixes and improved battery health",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "MLB trade deadline rumors swirl around Mets closer and bullpen needs",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "NBA fined player for altercation during playoff game, league statement says",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: why are my basil leaves yellow despite consistent watering and sun",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Netflix rolls out new adaptive bitrate mode for mobile streaming in select regions",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Steam Deck update adds new performance settings and gyro calibration tools",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Google introduces Pixel Watch 3 with sleep apnea risk scoring and new bands",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Super Bowl champion signs endorsement deal with sports nutrition brand",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Celebrity chef opens pop-up restaurant in New York featuring seasonal tasting menu",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Crypto markets: Bitcoin holds above key level as traders watch CPI data",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "Ask: how often should I repot orchids to avoid root rot and stalled growth",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "History question: what caused the fall of the Western Roman Empire?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "Ask: how to prune knockout roses for nonstop blooms and stronger stems",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.tmz.com/rss.xml",
+      "Bears sign wide receiver to practice squad after roster moves",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/gardening/.rss",
+      "Kardashian family member spotted filming in Los Angeles for new streaming project",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://t.me/s/crypto_whispers",
+      "Square launches new POS hardware for small retailers with contactless upgrades",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.espn.com/espn/rss/news",
+      "Streaming: HBO Max expands library with 4K remasters and new originals",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.reddit.com/r/AskHistorians/.rss",
+      "SEC filing: fintech startup raises $35M to expand fraud detection services",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.techcrunch.com/feed/",
+      "Ask: what\u2019s the best way to compost autumn leaves without pests?",
+      "off-topic-tech-sports-celeb"
+    ],
+    [
+      "https://www.politico.com/rss/politics.xml",
+      "MLS club announces new stadium naming rights deal for next season",
+      "off-topic-tech-sports-celeb"
+    ]
+  ]
+}

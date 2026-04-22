@@ -2,7 +2,7 @@
   "scenario_id": "s02",
   "datagen_model": "openai/gpt-5.4-nano",
   "judge_model": null,
-  "num_items": 248,
+  "num_items": 2348,
   "num_sources": 15,
   "num_search_anchors": 5,
   "accepted": true

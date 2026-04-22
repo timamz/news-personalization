@@ -2,23 +2,25 @@
   "tier_counts": {
     "easy_positive": 7,
     "hard_positive": 12,
-    "easy_negative": 86,
-    "near_miss_negative": 136,
+    "easy_negative": 536,
+    "near_miss_negative": 1786,
     "adversarial": 4,
     "duplicate": 3
   },
   "tier_shortfalls": {},
   "positive_rate_per_sub": {
-    "eu_energy_digest": 0.08870967741935484
+    "eu_energy_digest": 0.009369676320272573
   },
   "stupid_baseline_f1_per_sub": {
-    "eu_energy_digest": 0.6124242424242424
+    "eu_energy_digest": 0.3822222222222222
   },
   "lexical_overlap_per_sub": {
-    "eu_energy_digest": 0.16279069767441862
+    "eu_energy_digest": 0.3333333333333333
   },
   "label_consistency_per_sub": {},
-  "temporal_max_week_share": 0.2661290322580645,
-  "warnings": [],
+  "temporal_max_week_share": 0.24403747870528109,
+  "warnings": [
+    "subscription 'eu_energy_digest': stupid baseline F1 0.38 very low — labels may be inconsistent or noisy"
+  ],
   "hard_failures": []
 }

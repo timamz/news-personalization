@@ -1,0 +1,1761 @@
+{
+  "scenario": "s03",
+  "tier": "near_miss_negative",
+  "theme": "rare-earth-routine",
+  "style_cycle": [
+    "newsroom",
+    "wire"
+  ],
+  "rows": [
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: praseodymium edges up as terbium holds steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth price wrap: dysprosium and yttrium slip slightly in thin trading",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Cerium prices steady week-over-week; lanthanum remains rangebound amid demand",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Neodymium weekly wrap: buyers hold offers; praseodymium firm on spot inquiries",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Terbium price wrap: metal quotes steady while powder premiums narrow",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth supply chain update: inventory improves at select Hunan processing sites",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth warehouse notes: NdPr stocks steady; Dy and Tb lots remain limited",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth inventory watch: magnet producer builds safety cover for Q3",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly inventory updates: cerium stocks rise, lanthanum stays tight",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst note: MP Materials sees stable neodymium demand into next quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst preview: Lynas earnings to focus on cerium mix and recovery rates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth note: stable terbium premiums support longer-term contract pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Investor call recap: Arafura updates rare-earth inventory positioning for Q3",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth company guidance: MP Materials maintains output plan despite weather headwinds",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Lynas guides rare-earth separation volumes; cerium production expected to trend higher",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Processing update: Solvay-linked rare-earth recovery program schedules commissioning timing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings recap: rare-earth segment margins held as dysprosium pricing moderates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "MP Materials Q1 earnings preview: focus on neodymium-praseodymium and byproduct yields",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Earnings review: magnet materials firm cites steady terbium usage and disciplined procurement",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Guidance update: Brazilian rare-earth supplier targets higher cerium recovery next quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Company capex call: Australian processor budgets for rare-earth solvent extraction upgrades",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Capex update: facility expansion in Malaysia supports expanded lanthanum separation capacity",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: Perth rare-earth forum tracks ongoing rare-earth processing timelines",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth conference in Chengdu ends with panel on lanthanum demand signals",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Industry symposium recap: recycling of cerium and lanthanum discussed for 2026",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Podcast episode recap: analysts discuss routine rare-earth price behavior and inventories",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "ETF flows update: rare-earth-linked basket sees modest inflows for second straight week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "ETF flows: global rare-earth ETC adds exposure to dysprosium-heavy themes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "CEO profile: MP Materials\u2019 CEO outlines steady ramp plans and near-term pricing view",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "CEO interview: Lynas CEO on operational cadence for praseodymium and terbium",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Weekly market call recap: dealers discuss neodymium pricing and customer stocking",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst call transcript: rare-earth buyers expect stable yttrium and cerium spreads",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth quarterly guidance: processing margin outlook unchanged amid steady volumes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Quarterly earnings roundup: company reports stable rare-earth output across Ce, La, and Y",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Capex call highlights: new filtration lines to improve rare-earth rare-metal recovery",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth podcast: ETF investors weigh liquidity and routine inventory trends",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Weekly wrap: praseodymium and neodymium prices track broader industrial demand",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth backgrounder: inventory cycles for dysprosium and terbium explained",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: Frankfurt rare-earth session reviews routine supply/demand balance",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Market wrap: lanthanum remains steady as yttrium demand firmed modestly",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Weekly rare-earth price wrap: neodymium edges higher as praseodymium steadies",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Dysprosium weekly wrap shows flat pricing; terbium rangebound ahead of demand season",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Cerium and lanthanum price update tracks stable baselines amid routine market flows",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Weekly rare-earth inventory update: magnet producers report tighter NdPr lead times",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth inventories: rare-earth oxides stockpiles unchanged at end-March check",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Inventory notes: yttrium supply measured as buyers roll forward contracts",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst note: steady dysprosium outlook supports cautious bullish stance on Tb",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst call recap: neutral view on cerium as downstream orders remain gradual",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Company guidance: Lynas updates Q2 throughput targets for cerium and NdPr streams",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "MP Materials issues quarterly production and rare-earth shipment update; pricing remains steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Quarterly earnings recap: REE basket earnings hold flat; management cites stable demand",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth earnings call: MP Materials discusses capex timing and inventory build for NdPr",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Company guidance: Arafura outlines routine progress at Nolans with mixed product pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst model update: Praseodymium margins steady as buyers take smaller spot lots",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Terbium weekly wrap: prices unchanged while magnet makers schedule replenishment",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Neodymium inventory update: buyers report normal receiving patterns in latest week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth price wrap: rare-earth carbonates firm modestly as cerium demand holds",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "ETF flows weekly check: rare-earth-linked ETPs see inflows tied to stable oxide prices",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "ETF flows: demand for rare-earth exposure rises modestly following weekly price stability",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Podcast recap: investors discuss routine rare-earth supply/demand with data from analysts",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Conference recap: battery and magnets panel reviews NdPr consumption trends",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Perth conference weekly wrap: attendees revisit terbium and dysprosium market fundamentals",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "SMM-style conference notes: rare-earth refiners report steady offtake terms for Q2",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Company update: Shenghe logistics guidance includes routine shipment cadence for oxides",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings preview: what to watch in rare-earth guidance on capex and output",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Earnings recap: rare-earth producer margins track stable pricing; inventory notifies no stress",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst notes: lanthanum demand balanced; price trajectory remains rangebound",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Yttrium weekly wrap: pricing steady as lab and coatings buyers maintain schedules",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth supply chain update: warehouse receipts normal for NdPr and Tb oxides",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Capex call summary: rare-earth miner outlines routine spend plan for 2026 ramp",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Q1 earnings call transcript: company reiterates steady rare-earth output and customer coverage",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Monthly inventory dashboard: NdPr separation stocks unchanged; expected turns remain typical",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst call recap: traders expect gradual praseodymium improvements, not a breakout",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Conference backgrounder: how rare-earth inventories affect NdPr magnet pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Weekly rare-earth price wrap: dysprosium and terbium mixed; lanthanum unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "CEO profile: industry leader on maintaining production discipline during steady pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth earnings: company guidance maintained for cerium volumes; margins steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Quarterly capex update: refiners flag routine upgrades for separation efficiency",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Investor podcast: ETF flows and rare-earth oxide pricing discussed with weekly wrap data",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly wrap: praseodymium steady, dysprosium edges higher",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: terbium firming while cerium holds near flat levels",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth weekly wrap: neodymium stable; yttrium prices unchanged week over week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth weekly wrap: lanthanum modestly higher as supplier offers firm",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly wrap: rare-earth oxides mixed; praseodymium flat into month-end",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth inventory update: NdPr supply tightens at select processors, routine quotes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth inventory update: terbium stocks steady as buyers rotate spot lots",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth inventory update: dysprosium availability improves at a regional distributor",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth inventory update: cerium demand steady; warehouse lead times unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth inventory update: yttrium pricing range narrows with fewer spot inquiries",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst note: Lynas margins supported by stable neodymium pricing trajectory",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst note: Benchmark expects terbium demand to track renewable buildout, no shocks",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst call recap: investors weigh rare-earth working capital trends, quarterly cadence",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst note: MP Materials sees inventory normalization, guidance unchanged for Q2",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst note: trading desks cite steadier praseodymium after prior-quarter digestion",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Company guidance update: Rare-earth output plan reiterates routine ramp for next quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "MP Materials issues capex call update; no changes to scheduled rare-earth infrastructure",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Lynas quarterly earnings: margins mixed; rare-earth pricing remained orderly",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth quarterly earnings: company reports stable lanthanum volumes and flat spreads",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth earnings recap: dysprosium premiums modest as order flow stays consistent",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth earnings call transcript: CEO highlights routine cost controls and shipping pace",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth guidance: cerium and yttrium shipments expected to track prior-quarter cadence",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Earnings preview: investors watch neodymium margins and inventory turns for next print",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: suppliers in Singapore discuss praseodymium demand, routine outlook",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Conference recap: Perth rare-earth panels review recycling and downstream adoption",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Conference recap: industry forum tracks terbium supply chain timelines, no disruptions",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Podcast: market analyst explains weekly rare-earth price mechanics and inventory signals",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Podcast roundup: CEO guests discuss capex pacing for rare-earth processing assets",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "ETF flows update: rare-earth-linked fund sees steady inflows on neutral price tape",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "ETF flows update: rare-earth basket ETF mixed as investors rebalance positions",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "CEO profile: founder-run producer on maintaining rare-earth inventory discipline",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "CEO profile: downstream buyer talks routine offtake contracts for dysprosium",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Quarterly earnings: rare-earth recycler reports stable feedstock sourcing, margin range",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings: terbium-focused segment posts gradual volume improvement, guidance reiterated",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Capex call recap: company outlines routine commissioning schedule for separation lines",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Weekly wrap and positions: traders cite stable neodymium and steady terbium bids",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth monthly backgrounder: why cerium and lanthanum pricing can diverge",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Policy desk note: industry monitors export rules, routine compliance checks continue",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth weekly wrap: neodymium firm while dysprosium edges lower",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth weekly wrap: praseodymium steady; terbium holds around prior week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly wrap: cerium flat as yttrium demand indicators remain steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: lanthanum rangebound ahead of next shipment windows",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "MP Materials inventory update: NdPr stocks unchanged in weekly warehouse survey",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth inventory update: dysprosium holdings slip slightly, supply remains available",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth inventory update: terbium inventories stable as spot bids stay selective",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Lynas monthly rare-earth inventory report shows cerium and lanthanum balanced",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth inventory update: praseodymium supply tracks orders, no backlog signals",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst notes: stable terbium pricing supports rangebound growth view for producers",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst call recap: RBC reiterates price assumptions for NdPr and Dy",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Jefferies analyst note: yttrium demand outlook unchanged amid steady offtake discussions",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst notes: cerium market remains liquid; guidance risk flagged as low",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Goldman rare-earth note: praseodymium spread stable, monitor customer restocking",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "MP Materials earnings recap: quarterly EPS in line; rare-earth pricing mostly steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings: Lynas reports mixed rare-earth volumes, reiterates FY guidance",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Earnings preview: MP Materials to update NdPr output and capex schedule this quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Company guidance update: Lynas maintains production plan for NdPr and separated products",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Company guidance: MP Materials narrows rare-earth output range for next quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings: Elemental impact seen in product mix; cerium recovery reported",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Earnings conference call recap: supply outlook for Dy and Tb remains steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst notes after earnings: terbium and dysprosium affordability supports demand view",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Conference recap: Rare Earths conference in Singapore reviews ETF demand trends",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Conference recap: Perth panel discusses routine inventory flows and warehouse restocking",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Conference recap: Brussels briefing covers rare-earth processing capacity updates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Webinar recap: investors review lanthanum and yttrium pricing drivers for Q3",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "CEO profile: MP Materials CFO highlights steady capex cadence and inventory targets",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "CEO interview: Lynas CEO discusses routine commissioning progress and guidance discipline",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Podcast episode: Rare-earth price wrap and inventory checklist for investors",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Podcast: weekly rare-earth market diary\u2014NdPr, Dy, and Tb pricing signals",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "ETF flows: rare-earth-linked funds add modest exposure in latest weekly data",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "ETF flows: materials basket shows mixed demand for NdPr and dysprosium exposures",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "ETF flows recap: Yttrium-focused themes see small inflows amid stable spot quotes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Capex call: Lynas management outlines routine spending for separation and purification",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Capex call recap: MP Materials details procurement timing for rare-earth production lines",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings: Arafura updates capex timeline; rare-earth price assumptions unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Guidance note: company reaffirmed cerium and lanthanum volumes amid stable offtake",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Weekly wrap: rare-earth prices hold steady with no supply shocks reported",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Inventory and pricing wrap: rare-earth stocks steady as NdPr and Dy settle",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst update: market expects stable terbium liquidity; valuation multiples reviewed",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Conference Q&A recap: industry group discusses routine logistics for separated oxides",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Quarterly earnings: yttrium and lanthanum segments show steady shipment rhythm",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly wrap: neodymium slips, praseodymium steady as bids firm",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: terbium flat, dysprosium unchanged amid orderly trading",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth weekly wrap: cerium rangebound, yttrium steady on continued offtake",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth weekly wrap: lanthanum modestly higher as domestic offers firm up",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Inventory update: mixed rare-earth stocks edge up at magnet supply chain nodes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Inventory update: dysprosium look-through supply improves; lead times stable",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Inventory update: rare-earth separation inventories steady as buyers rotate grades",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Inventory update: rare-earth traders report normal warehouse turns after seasonal lull",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst note: Benchmark sees stable demand outlook supporting terbium pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst note: Jefferies flags balanced neodymium fundamentals in weekly checks",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst note: RBC reiterates constructive view on praseodymium amid firm orders",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst note: Citi expects cerium supply to remain routine with steady conversion rates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Company guidance: Lynas targets Q3 rare-earth volumes consistent with prior guidance",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Company guidance: MP Materials updates March-quarter output outlook for neodymium",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Company guidance: Shenghe guidance on separated rare earths points to steady ramp",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Company guidance: Arafura outlines capex timeline tied to continued rare-earth throughput",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Conference recap: rare-earth sourcing sessions in Tokyo close with policy Q&A",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Conference recap: Perth forum panel reviews 2026 demand for NdPr and TbDy",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Conference recap: Frankfurt materials conference highlights rare-earth recycling progress",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Podcast: Rare-earth market pulse reviews weekly price drivers and inventory trends",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Podcast: Supply-demand chronicle covers ETF flows and separation capacity updates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst call recap: rare-earth buyers discuss magnet demand; management cites stable levers",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst call recap: separated rare-earth producer reiterates guidance; Q&A on grade mix",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "ETF flows: Rare-earth-linked product sees modest inflow after weekly price stability",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "ETF flows: Commodity basket inflow steadies as neodymium and dysprosium hold ranges",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "CEO profile: MP Materials CEO discusses routine ramp plans and customer contracting",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "CEO profile: Lynas CEO on balancing rare-earth volumes with measured capex",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Quarterly earnings: Lynas reports steady rare-earth segment revenue, reiterates outlook",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Quarterly earnings: MP Materials posts quarterly figures; guidance held for near-term output",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings: Northern Minerals earnings call focuses on separation milestones and supply",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Quarterly earnings: rare-earth recycler reports improved utilization and continued routine demand",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Capex call: Rare-earth miner expands project budget, citing normal permitting progress",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Capex call: separation operator allocates funds for debottlenecking amid stable orders",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Backgrounder: What drives weekly NdPr price wraps and inventory readings",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Backgrounder: How terbium and dysprosium price indexes track spot offers",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Weekly wrap: rare-earth prices steady across NdPr, TbDy as liquidity remains routine",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Weekly wrap: lanthanum and cerium prices rangebound; buyers monitor conversion rates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: praseodymium steady, terbium modestly higher",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth weekly wrap: neodymium range-bound as traders rebalance bids",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Dysprosium weekly pricing holds firm, with late-week volumes slightly up",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Cerium weekly price wrap: steady assessments after limited spot activity",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Lanthanum prices slip marginally as buyers seek lower contract terms",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Yttrium weekly wrap: flat to slightly firmer amid steady offtake talks",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth inventory update: NdPr stocks firm at select distributors",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Terbium inventory update: tighter lots noted in weekly dealer surveys",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Dysprosium inventory update: warehouse counts steady, lead times unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth distributor inventory rises for cerium oxides this week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth weekly wrap: supply in China stable, prices hold near prior levels",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst note: stable terbium demand supports range-bound valuations",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst note: dysprosium outlook unchanged as long-term contracts roll",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst call recap: magnet producers discuss steady offtake for NdPr",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst note: neodymium price stability seen as supported by managed inventories",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Company guidance: Lynas targets steady quarterly rare-earth output cadence",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "MP Materials guidance update: NdPr output guidance maintained for the quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "PerkinElmer? No; quarterly earnings: MP Materials reports steady segment trends",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Quarterly earnings recap: Vital rare-earth segment sees routine margin normalization",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Earnings call transcript: Solvay? No; rare-earth business review remains in line",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings: Rare Earths Ltd flags stable demand for lanthanum compounds",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Capex call recap: process line upgrades scheduled without timing changes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "CEO profile: MP Materials leader on disciplined capex and steady output ramps",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "CEO profile: Lynas CEO highlights routine commissioning progress in operations",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "ETF flows weekly: Rare-earth-linked funds see modest inflows after stable prices",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "ETF flows: NdPr-focused fund adds shares as weekly wraps show steadier pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Podcast: The Rare-Earth Report discusses weekly price action and inventory trends",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Podcast recap: analysts break down praseodymium, terbium spreads and liquidity",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Conference recap: Perth session highlights routine demand outlook; no guidance changes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Conference recap: Tokyo rare-earth roundtable ends with steady supply commentary",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: US metals summit panel reviews routine recycling adoption metrics",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Company presentation recap: magnet supply chain meeting notes steady turnarounds",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst notes roundup: yttrium and cerium seen supported by unchanged buyer appetite",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Weekly market wrap: rare-earth prices steady; traders monitor inventory aging",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Supply update: contractor lead times for dysprosium remain unchanged this week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Earnings preview: rare-earth firms set to report on inventories and capex discipline",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings: Molycorp? No; sector peers report routine cost normalization",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Capex and guidance call: rare-earth producer reiterates spend plan for next quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth backgrounder: how inventory reporting affects weekly price wraps",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly wrap: neodymium steady, dysprosium edges up modestly",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: praseodymium flat as terbium holds near prior week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Cerium price wrap: steady tone persists amid routine demand checks",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Yttrium weekly update: prices unchanged, market liquidity normal for week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth inventory update: NdPr stocks inch higher at select processors",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth inventory update: dysprosium lot sizes tighten, lead times steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Lynas site inventory report: rare-earth intermediate tonnages remain stable",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "MP Materials inventory commentary: NdPr concentrate levels track prior-quarter pace",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Weekly price wrap: lanthanum stable while cerium stays range-bound",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Terbium weekly wrap: market bids hold steady; no major order churn",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Praseodymium weekly wrap: offers soften slightly; trades remain orderly",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Neodymium weekly price wrap: steady gains fade as buyers stay selective",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst note: UBS flags stable demand outlook for rare-earths through Q3",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst note: RBC reiterates neutral view on terbium as spreads normalize",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Goldman calls rare-earth basket balanced after mixed praseodymium prints",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Citi model update: inventory overhang risk for dysprosium seen as limited",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Deutsche Bank preview: cerium outlook unchanged ahead of next earnings",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "MP Materials earnings recap: rare-earth output met guidance with routine cost control",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Lynas quarterly earnings recap: cash flow steady; guidance maintained for rare-earths",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Axens rare-earth customers report: cerium sales stable in latest quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth guidance call: MP Materials expects NdPr volumes consistent with plan",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Lynas guidance update: rare-earth separation rates on track for the next quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth analyst call transcript: investors ask about inventory turns and pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth ETF flows: MTRX sees inflows as investors rotate to stable exposures",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth ETF flows: rare-earth basket fund sees weekly outflows on valuation caution",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Podcast: \u201cSupply Chain Signals\u201d reviews praseodymium and terbium price drivers",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Podcast recap: investors discuss lanthanum demand normalization with analysts",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: rare-earth session in Qingdao covers inventory and shipment timing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Conference recap: Perth panel reviews routine rare-earth end-market updates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Conference recap: industry forum tracks ce/La demand and export schedules",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Upcoming event preview: London rare-earth roundtable set for weekly market check",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "CEO profile: MP Materials chief highlights disciplined capex and steady volumes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "CEO profile: Lynas CEO on improving recovery rates and routine market conditions",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Quarterly earnings preview: rare-earth producers seen watching inventory and pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Capex call recap: separation projects remain on schedule for rare-earth intermediates",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Supply-chain backgrounder: how dysprosium inventory moves through buyers\u2019 ledgers",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly wrap: yttrium steady; rare-earth basket pricing remains orderly",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: praseodymium steady as terbium edges higher",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth weekly wrap: cerium and lanthanum flat; yttrium little changed",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Weekly rare-earth prices: neodymium firm, dysprosium steady into month-end",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth price wrap ends week: praseodymium, terbium hold near prior levels",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth market weekly: cerium up marginally; lanthanum unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth weekly price update: neodymium stable; praseodymium range-bound",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Inventory update: NdPr stocks rise at Chinese processors, dysprosium steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Inventory update: terbium inventories tighten at separation hubs, cerium stable",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth inventory weekly: yttrium supply improves; dysprosium flat",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "MP Materials inventory check: rare-earth concentrate drawdown slows in late April",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth inventory report: stock coverage increases for cerium, lanthanum steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst note: stable dysprosium demand supports steady pricing for Q3",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst call notes: Lynas margins resilient as rare-earth prices remain steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst note: rare-earth buyers maintain cover plans amid stable NdPr spreads",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst update: NdPr prices steady; focus shifts to inventory normalization",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst note: terbium premiums fade slightly as spot availability improves",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Company guidance: MP Materials reiterates rare-earth output cadence for Q3",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Guidance update: Lynas flags higher utilization at Kalgoorlie ahead of Q3",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Company guidance: Arafura updates rare-earth separation schedule for 2H",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth producer guidance: MP Materials holds capex outlook for the year",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Guidance note: Iluka discusses rare-earth beta in quarterly outlook",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Conference recap: rare-earth panel in Tokyo reviews separation capacity additions",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: Perth forum highlights routine rare-earth demand for motors",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Earnings call recap: MP Materials discusses pricing, inventory and customer contract terms",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Earnings recap: Lynas quarterly update points to steady rare-earth pricing environment",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Quarterly results roundup: Arafura earnings show routine progress on rare-earth volumes",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Capex call: rare-earth separation company outlines planned upgrades for 2026",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Company podcast: CFO interview covers inventory flow and near-term rare-earth pricing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth podcast episode: analysts discuss ETF flows and NdPr price stability",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "ETF flows weekly: rare-earth-linked funds see modest inflows after steady data",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "ETF flows: rare-earth basket records outflows as investors rotate within metals",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "ETF tracker: neodymium-praseodymium exposure stable; AUM slips modestly",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "CEO profile: CEO of a rare-earth refiner on customer contracting and throughput",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "CEO profile: Lynas CEO previews operational cadence as rare-earth prices hold steady",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Earnings snapshot: quarterly rare-earth output meets guidance; margins unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Quarterly earnings preview: what to watch in rare-earth separation and inventory",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Backgrounder: how rare-earth weekly price wraps are calculated by analysts",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Supply-chain note: routine logistics updates for rare-earth shipments in June",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: European rare-earth day closes with updated inventory and pricing outlook",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly wrap: praseodymium flat, terbium steady as trades normalize",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth weekly wrap: neodymium prices edge lower; dysprosium holds near range",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Lanthanum weekly pricing wrap shows cerium steady amid routine market liquidity",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Yttrium weekly wrap: demand tone unchanged; praseodymium follows steady cash premiums",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth weekly prices: terbium steady, dysprosium range-bound in weekly settlement",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth prices mixed week: neodymium firm, cerium steady; market watchers cite quiet bids",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Weekly rare-earth inventory update: MP Materials stocks steady; separation units run to plan",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Rare-earth inventory update from China traders: rare-earth metals lots unchanged week-over-week",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Inventory watch: NdPr inventories show moderate draw as NdPr buyers keep schedules",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth inventory update: dysprosium-linked feedstocks remain in normal lead-time profile",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Analyst note: Stable terbium tone keeps focus on conversion costs; outlook unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Analyst note: Lynas model updates assume steady cerium demand; target unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Analyst call recap: Bank of America says rare-earth pricing looks orderly this quarter",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst note: Yttrium premiums steady; risks seen as balanced for the next two quarters",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Company guidance update: Axion Materials reaffirming capex phasing for rare-earth separation",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "MP Materials guidance update: Q3 output target maintained; inventory build within plan",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth miner updates: MP Materials comments on operating rhythm and routine cost controls",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth earnings preview: Focus on conversion margins for neodymium and praseodymium",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Quarterly earnings roundup: Rare-earth segment revenue tracks prior guidance; notes on inventories",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "MP Materials quarterly earnings: management cites steady pricing and scheduled production ramp",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Rare-earth earnings recap: Cerium and lanthanum volumes met expectations; margin guidance reiterated",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Analyst call highlights: rare-earth customers keep buying plans; no abrupt destocking noted",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Conference recap: Perth rare-earth event ends with routine outlook session on demand",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Conference recap: Guangzhou industry forum reviews weekly pricing mechanics and inventory flows",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Webcast recap: Rare-earth supply chain panel discusses normal lead times for NdPr",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Podcast episode: ETF and rare-earth basics for investors\u2014weekly price wraps and liquidity",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Podcast recap: rare-earth demand drivers discussed alongside terbium and dysprosium price trends",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "ETF flows weekly wrap: rare-earth-linked products see modest inflows; baskets rebalance",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "ETF flows update: rare-earth miners ETF adds shares as pricing stays range-bound",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "CEO profile: MP Materials\u2019 president on operating cadence and ongoing rare-earth demand discipline",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "CEO profile: Lynas leadership discusses rare-earth inventory strategy and capex pacing",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Capex call notes: separation expansion schedule held; commissioning milestones unchanged",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Company update: rare-earth recycling operations announce routine volume increases for cerium",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Weekly supply chain check: lanthanum shipments steady; trucking availability normal",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Rare-earth backgrounder: how NdPr price indices update weekly and what 'stable' means",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.argusmedia.com/rss/rare-earths",
+      "Market wrap: rare-earth prices steady in early week; inventory offers remain orderly",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.fastmarkets.com/rss/rare-earths",
+      "Quarterly results: rare-earth producer reports cash flow in line; guidance maintained",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.reuters.com/pf/api/v3/feed/metals",
+      "Rare-earth stock watch: investors digest earnings, focus shifts to next quarterly rare-earth output",
+      "rare-earth-routine"
+    ],
+    [
+      "https://www.bloomberg.com/feeds/metals.xml",
+      "Earnings call transcript highlights: dysprosium buyers maintain allocations; no supply shock signals",
+      "rare-earth-routine"
+    ]
+  ]
+}

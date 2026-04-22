@@ -72,16 +72,42 @@ class BodyGenerator:
             self._cache = json.loads(self.cache_file.read_text())
 
     async def generate_for_scenario(self, scenario: Scenario) -> dict[str, str]:
-        """Fill bodies for every TimelineEntry; return the updated hash map."""
+        """Fill bodies for every TimelineEntry; return the updated hash map.
+
+        At v3 scale (thousands of new bodies per scenario) an unbounded
+        asyncio.gather would open thousands of concurrent HTTP calls to
+        the proxy and trigger rate-limit cliffs. A modest semaphore (25)
+        keeps throughput high without exhausting the proxy's per-second
+        quota or the HTTP client's connection pool.
+        """
+        sem = asyncio.Semaphore(25)
+
+        async def _one_gated(entry: TimelineEntry) -> str:
+            async with sem:
+                return await self._one(entry)
+
         tasks: list[tuple[str, asyncio.Task[str]]] = []
         for entry in scenario.timeline:
             h = headline_hash(entry)
             if h in self._cache and self._cache[h]:
                 continue
-            tasks.append((h, asyncio.create_task(self._one(entry))))
+            tasks.append((h, asyncio.create_task(_one_gated(entry))))
 
+        total_new = len(tasks)
+        done = 0
         for h, t in tasks:
-            self._cache[h] = await t
+            try:
+                self._cache[h] = await t
+            except Exception as exc:
+                self._cache[h] = ""
+                print(f"[body_gen] failed hash={h[:8]}: {exc}", flush=True)
+            done += 1
+            if total_new >= 50 and done % 100 == 0:
+                print(f"[body_gen] {done}/{total_new} bodies", flush=True)
+                self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+                self.cache_file.write_text(
+                    json.dumps(self._cache, indent=2, ensure_ascii=False)
+                )
 
         self.cache_file.parent.mkdir(parents=True, exist_ok=True)
         self.cache_file.write_text(json.dumps(self._cache, indent=2, ensure_ascii=False))

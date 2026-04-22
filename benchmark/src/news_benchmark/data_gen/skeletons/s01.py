@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from news_benchmark.data_gen.skeletons import _v3_extra
 from news_benchmark.data_gen.skeletons._bulk import bulk
 from news_benchmark.scenarios.base import (
     AssertionSpec,
@@ -924,6 +925,8 @@ def _timeline() -> list[TimelineEntry]:
         rows=bulk_near_miss,
         style_cycle=("newsroom", "wire", "techcrunch"),
     )
+
+    items += _v3_extra.load_for("s01", sub_id=SUB, start=START)
 
     return items
 

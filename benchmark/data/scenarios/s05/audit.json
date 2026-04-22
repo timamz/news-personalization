@@ -2,32 +2,33 @@
   "tier_counts": {
     "easy_positive": 20,
     "hard_positive": 32,
-    "easy_negative": 219,
-    "near_miss_negative": 256,
+    "easy_negative": 1219,
+    "near_miss_negative": 3206,
     "adversarial": 8,
     "duplicate": 6
   },
   "tier_shortfalls": {},
   "positive_rate_per_sub": {
-    "eu_ai_regulation_digest": 0.14953271028037382,
-    "eu_energy_digest": 0.10185185185185185,
-    "rare_earth_events": 0.09174311926605505
+    "eu_energy_digest": 0.009499136442141624,
+    "eu_ai_regulation_digest": 0.01671891327063741,
+    "rare_earth_events": 0.016420361247947456
   },
   "stupid_baseline_f1_per_sub": {
-    "eu_ai_regulation_digest": 0.7542857142857142,
-    "eu_energy_digest": 0.6342857142857143,
-    "rare_earth_events": 0.7174603174603175
+    "eu_energy_digest": 0.37777777777777777,
+    "eu_ai_regulation_digest": 0.7428571428571429,
+    "rare_earth_events": 0.23809523809523808
   },
   "lexical_overlap_per_sub": {
-    "eu_ai_regulation_digest": 0.17647058823529413,
-    "eu_energy_digest": 0.19047619047619047,
-    "rare_earth_events": 0.0989010989010989
+    "eu_energy_digest": 0.3333333333333333,
+    "eu_ai_regulation_digest": 0.2345679012345679,
+    "rare_earth_events": 0.19047619047619047
   },
   "label_consistency_per_sub": {},
-  "temporal_max_week_share": 0.25693160813308685,
+  "temporal_max_week_share": 0.24315297261189045,
   "warnings": [
-    "subscription 'eu_ai_regulation_digest': stupid baseline F1 0.75 too high — scenario is lexically separable; add more near_miss_negatives",
-    "subscription 'rare_earth_events': lexical overlap 0.10 too low — positive/negative pools use disjoint vocabularies"
+    "subscription 'eu_energy_digest': stupid baseline F1 0.38 very low — labels may be inconsistent or noisy",
+    "subscription 'eu_ai_regulation_digest': stupid baseline F1 0.74 too high — scenario is lexically separable; add more near_miss_negatives",
+    "subscription 'rare_earth_events': stupid baseline F1 0.24 very low — labels may be inconsistent or noisy"
   ],
   "hard_failures": []
 }

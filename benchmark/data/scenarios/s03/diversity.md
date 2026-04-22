@@ -1,8 +1,8 @@
 # Scenario `s03` diversity report
 
-- Total timeline items: 218
+- Total timeline items: 1218
 - Simulated days: 30
-- Temporal top-week share: 26%
+- Temporal top-week share: 24%
 
 ## Tier counts
 
@@ -10,8 +10,8 @@
 |---|---:|---:|
 | easy_positive | 7 | 6 ✓ |
 | hard_positive | 10 | 10 ✓ |
-| easy_negative | 89 | 80 ✓ |
-| near_miss_negative | 105 | 100 ✓ |
+| easy_negative | 389 | 300 ✓ |
+| near_miss_negative | 805 | 400 ✓ |
 | adversarial | 4 | 4 ✓ |
 | duplicate | 3 | 3 ✓ |
 
@@ -19,11 +19,11 @@
 
 ### `rare_earth_events`
 
-- Positive rate: **9.2%** (target 4%–15%)
-- Stupid-baseline (TF-IDF + LR, 5-fold CV) F1: **0.58**
+- Positive rate: **1.6%** (target 0%–8%)
+- Stupid-baseline (TF-IDF + LR, 5-fold CV) F1: **0.24**
   (target band 0.50–0.70)
-- Positive/negative lexical overlap (Jaccard top-50): **0.12**
+- Positive/negative lexical overlap (Jaccard top-50): **0.19**
 
 ## Warnings
 
-- subscription 'rare_earth_events': lexical overlap 0.12 too low — positive/negative pools use disjoint vocabularies
+- subscription 'rare_earth_events': stupid baseline F1 0.24 very low — labels may be inconsistent or noisy

@@ -73,3 +73,80 @@ class FakeAdapter:
 
     def log_label(self) -> str:
         return f"fake({self.source_url})"
+
+
+def make_scenario_poll_adapter(adapters_by_url: dict[str, FakeAdapter]):
+    """Return a class that impersonates ``news_service.tasks.poll_adapters``
+    RSS / Telegram / Reddit adapters but draws items from the scenario
+    timeline instead of hitting the real internet.
+
+    We need a class rather than an instance because ``_poll_single_source``
+    constructs the adapter itself via ``RssAdapter(src)`` etc. Closing
+    over the ``adapters_by_url`` map lets the returned class look up the
+    scenario items for a given ``Source.url`` at call time. Falls back to
+    hostname matching so a source whose URL drifted (e.g. canonical path
+    differs but hostname is the same) still resolves to a scenario
+    adapter.
+    """
+    from datetime import UTC
+    from urllib.parse import urlparse
+
+    from news_service.tasks.poll_adapters import NormalizedPost
+
+    from news_benchmark.clock import CLOCK
+
+    def _aware(ts: datetime) -> datetime:
+        """Force ts-naive scenario fake_ts to UTC-aware for comparisons with CLOCK.now()."""
+        return ts if ts.tzinfo is not None else ts.replace(tzinfo=UTC)
+
+    class ScenarioPollAdapter:
+        """Adapter used in the benchmark in place of RssAdapter/TelegramAdapter/RedditAdapter."""
+
+        def __init__(self, src, *_ignored_args, **_ignored_kwargs) -> None:  # type: ignore[no-untyped-def]
+            self._src = src
+            self._url = src.url
+
+        def source_name(self) -> str:
+            return getattr(self._src, "title", None) or self._url
+
+        def log_label(self) -> str:
+            return f"scenario({self._url})"
+
+        async def fetch_posts(self) -> list[NormalizedPost]:
+            adapter = adapters_by_url.get(self._url)
+            if adapter is None:
+                host = (urlparse(self._url).hostname or "").lower()
+                if host:
+                    for key, candidate in adapters_by_url.items():
+                        if (urlparse(key).hostname or "").lower() == host:
+                            adapter = candidate
+                            break
+            if adapter is None:
+                return []
+            now = CLOCK.now()
+            last_served = _aware(adapter.last_served) if adapter.last_served is not None else None
+            out: list[NormalizedPost] = []
+            freshest: datetime | None = last_served
+            for item in adapter.items:
+                published = _aware(item.fake_ts)
+                if last_served is not None and published <= last_served:
+                    continue
+                if published > now:
+                    continue
+                norm = item.to_normalized()
+                out.append(
+                    NormalizedPost(
+                        url=str(norm["url"]),
+                        headline=str(norm["headline"]),
+                        body=str(norm["body"]),
+                        text_to_embed=str(norm["text_to_embed"]),
+                        published_at=published,
+                    )
+                )
+                if freshest is None or published > freshest:
+                    freshest = published
+            if out:
+                adapter.last_served = freshest
+            return out
+
+    return ScenarioPollAdapter

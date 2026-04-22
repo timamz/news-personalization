@@ -42,6 +42,14 @@ class FakeClock:
         """Move the clock forward by `delta`."""
         self.advance_to(self._now + delta)
 
+    def reset_to(self, target: datetime) -> None:
+        """Unconditional clock set. Used between scenarios so the matrix
+        runner can rewind to the next scenario's start date without
+        tripping ``advance_to``'s forward-only invariant."""
+        if target.tzinfo is None:
+            raise ValueError("FakeClock reset_to target must be timezone-aware")
+        self._now = target
+
 
 CLOCK = FakeClock(datetime(2026, 1, 1, tzinfo=UTC))
 

@@ -167,6 +167,16 @@ async def run_reflector(
         "discovery_reason": "",
     }
 
+    # ADK dispatches tool calls in parallel when the LLM returns multiple
+    # function_call parts in a single turn. Every reflector tool touches
+    # the same AsyncSession, and asyncpg does not support overlapping
+    # operations on one connection. Without this lock the session hits
+    # "Session is already flushing" / "another operation is in progress"
+    # and the session's connection ends up in a bad state that then
+    # poisons the next task sharing the pool. Serializing every
+    # DB-touching tool keeps the connection usage single-threaded.
+    session_lock = asyncio.Lock()
+
     async def remove_source(url: str, reason: str) -> str:
         """Remove a dead or useless source from this subscription.
 
@@ -180,46 +190,49 @@ async def run_reflector(
         Returns:
             Confirmation or rejection message.
         """
-        link_result = await db_session.execute(
-            select(SubscriptionSource)
-            .join(Source, Source.id == SubscriptionSource.source_id)
-            .where(
-                SubscriptionSource.subscription_id == subscription.id,
-                Source.url == url,
+        async with session_lock:
+            link_result = await db_session.execute(
+                select(SubscriptionSource)
+                .join(Source, Source.id == SubscriptionSource.source_id)
+                .where(
+                    SubscriptionSource.subscription_id == subscription.id,
+                    Source.url == url,
+                )
             )
-        )
-        link = link_result.scalar_one_or_none()
-        if link is None:
-            return f"Source {url} is not linked to this subscription."
+            link = link_result.scalar_one_or_none()
+            if link is None:
+                return f"Source {url} is not linked to this subscription."
 
-        if link.is_user_specified:
-            return f"Cannot remove {url}: this is a user-specified source."
+            if link.is_user_specified:
+                return f"Cannot remove {url}: this is a user-specified source."
 
-        source_result = await db_session.execute(select(Source).where(Source.id == link.source_id))
-        source = source_result.scalar_one()
-
-        await db_session.delete(link)
-        source.subscriber_count = max(source.subscriber_count - 1, 0)
-        if source.subscriber_count == 0:
-            source.is_active = False
-
-        db_session.add(
-            SourceRemovalLog(
-                subscription_id=subscription.id,
-                source_url=url,
-                removed_at=datetime.now(UTC),
-                removal_reason=reason,
+            source_result = await db_session.execute(
+                select(Source).where(Source.id == link.source_id)
             )
-        )
-        await db_session.flush()
+            source = source_result.scalar_one()
 
-        logger.info(
-            "Reflector removed source %s from subscription %s: %s",
-            url,
-            subscription.id,
-            reason,
-        )
-        return f"Removed source {url} (reason: {reason})."
+            await db_session.delete(link)
+            source.subscriber_count = max(source.subscriber_count - 1, 0)
+            if source.subscriber_count == 0:
+                source.is_active = False
+
+            db_session.add(
+                SourceRemovalLog(
+                    subscription_id=subscription.id,
+                    source_url=url,
+                    removed_at=datetime.now(UTC),
+                    removal_reason=reason,
+                )
+            )
+            await db_session.flush()
+
+            logger.info(
+                "Reflector removed source %s from subscription %s: %s",
+                url,
+                subscription.id,
+                reason,
+            )
+            return f"Removed source {url} (reason: {reason})."
 
     async def trigger_source_discovery(reason: str) -> str:
         """Request that the discovery pipeline find new sources.
@@ -242,6 +255,7 @@ async def run_reflector(
         allowed_source_ids=allowed_source_ids,
         topic_embedding=topic_embedding,
         name="fetch_source_items",
+        session_lock=session_lock,
     )
 
     async def emit_status(message: str) -> str:

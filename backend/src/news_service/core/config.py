@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     event_reflector_interval_days: int = 7
     event_verifier_lookback_days: int = 7
     event_verifier_max_searches: int = 5
+    digest_writer_max_search_calls: int = 6
+    digest_writer_max_fetch_calls: int = 3
+    digest_writer_max_llm_calls: int = 25
 
     llm_retry_max_attempts: int = 3
     llm_retry_base_delay_seconds: float = 1.0

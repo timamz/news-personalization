@@ -1,0 +1,1511 @@
+{
+  "scenario": "s05-ai",
+  "tier": "near_miss_negative",
+  "theme": "non-ai-eu-regulation",
+  "style_cycle": [
+    "newsroom",
+    "wire"
+  ],
+  "rows": [
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission launches DSA probe into alleged illegal content distribution by marketplace",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU Parliament agrees new DMA compliance timeline for gatekeeper core platform rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "European Data Protection Board issues draft guidance on lawful data sharing under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "GDPR enforcement action targets employer for excessive monitoring of employee communications",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission fines major platform for noncompliant ad transparency reporting under DSA",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DMA gatekeeper designation challenged as stakeholders submit further market data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EDPS orders corrective measures after public body mishandles citizens\u2019 consent records",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU Court ruling strengthens right to erasure when data is processed for analytics",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission opens infringement case on telecom roaming disclosures under EU rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "National regulator requires 5G rollout milestones to include consumer quality safeguards",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "BEREC publishes findings on transparency of 5G coverage claims in operator marketing",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission adopts delegated act updating technical requirements for telecom security baselines",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "ENISA updates incident notification timelines for operators under cybersecurity directive",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Member states review NIS2 readiness after cyber exercise exposes vendor supply gaps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission requests telecom data retention clarifications in new coordination meeting",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB mediates cross-border dispute on platform access to user data by third parties",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "GDPR enforcement lands on health-tech firm for unlawful sharing of sensitive data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DSA scrutiny expands to recommender transparency after complaints filed with authorities",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission demands platform comply with notice-and-action standards for trusted flaggers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU regulators require clearer appeals processes for content removal decisions",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DMA gatekeeper must offer choice in default settings after regulator review",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission investigates alleged DMA breach over bundling practices tied to app stores",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "National authority orders user portability improvements for cloud service interoperability",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB issues urgent binding decision on controller-processor roles in shared processing",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission publishes compliance assessment on DSA risk mitigation for systemic platforms",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "BEREC sets new benchmarks for wholesale access negotiations across 5G networks",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Telecom regulator requires audit of network slicing security controls by operators",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "ENISA issues guidance on DNS and routing protections to limit cyber hijacking",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission adopts implementation plan for NIS2 governance and supervisory cooperation",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "GDPR watchdog fines e-commerce firm for lacking valid legal basis for marketing",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Platform liability case prompts EU member states to standardize evidence requests",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission coordinates DSA enforcement with new case-management protocol among authorities",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Data governance body issues standard contract clauses for cross-border data spaces",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Directive on network resilience updated after operators fail recent cyber tabletop tests",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR enforcement extends to ad-tech vendors after consent logs show systematic gaps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA remedies accepted after gatekeeper commits to interoperability for messaging services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "European Court of Justice rules on lawful basis for public-sector publication of data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU telecom ministers agree minimum cybersecurity requirements for 5G core components",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission opens DSA investigation into non-transparent ranking in affiliate ecosystems",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission opens new DSA probe into VLOP access to ad data logs",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EU Parliament backs DMA compliance deadlines amid gatekeeper reporting updates",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "CNIL launches GDPR enforcement action against health app for profiling consent",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Irish DPC orders remedies after cloud provider breaches GDPR transfer safeguards",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "European Commission refers telecom operator to court over 5G coverage obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EDPB issues binding guidance on data governance for public-sector data spaces",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "BEREC publishes draft guidance on remedies for repeat telecom consumer complaints",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission fines app platform for misleading 'dark patterns' under DSA rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA scrutiny widens as new gatekeeper obligations apply to messaging services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EU court ruling limits lawful basis for behavioral tracking under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission orders corrective measures after platform fails to remove illegal content",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "ENISA updates cybersecurity directive deadlines for essential entities and providers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "BEREC investigates 5G network neutrality compliance under telecom framework",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "GDPR regulators coordinate cross-border action against loyalty program data breach",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "European Commission assesses compliance of data centers with sustainability reporting",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EDPB adopts urgent measures to pause international transfers pending safeguards review",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission launches enforcement sweep on DSA notice-and-action transparency reporting",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "French watchdog CNIL sanctions insurer platform for inadequate data minimisation",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "German regulator seeks GDPR fines for online advertising exchange consent records",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "European Commission issues DMA enforcement priorities for self-preferencing practices",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "BEREC sets out spectrum monitoring requirements for new 5G rollout obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EU Council agrees common position on implementation of NIS2 for telecom operators",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "ENISA releases incident taxonomy for cybersecurity reporting under new directive",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission opens formal proceedings over platform liability after repeated illegal listings",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB chair calls for consistent enforcement of data subject access across member states",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "GDPR enforcement action targets employer analytics tool for excessive retention",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission requires VLOP risk assessments for systemic misuse and election integrity",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "DMA gatekeeper designations expand following market investigation by Commission",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Irish regulator imposes interim measures on cloud service after unlawful processing",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "European Data Protection Board rules on joint-controller roles for ad tech networks",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "BEREC publishes benchmarks for lawful interception readiness in 5G networks",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission escalates DSA compliance against major social network over recommender controls",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU court upholds GDPR fine over failure to document consent withdrawal",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "ENISA audits cybersecurity plans for managed service providers under NIS2",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Data governance act implementation committee starts onboarding projects for data spaces",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission orders telecom operator to strengthen emergency-call localisation for VoLTE",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB issues meta-guidance on cookies consent audits and GDPR enforcement follow-up",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "European Parliament debates platform transparency after new DSA audit findings",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission investigates data-center service contracts for GDPR security obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission launches DSA compliance probe into VLOP dark-pattern risk",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA enforcement: Commission opens investigation into self-preferencing complaints",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EDPB urges consistent GDPR consent tests after national regulator divergence",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "GDPR enforcement action targets ad-tech data-sharing practices across borders",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU Court ruling refines lawful-basis assessment for public-sector data processing",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission fines cloud provider for unlawful retention under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DSA appeals court clarifies notice-and-action duties for online marketplaces",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DMA: Commission orders gatekeeper to overhaul access terms for third-party apps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EDPB chair calls for harmonized breach-notification timelines under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission investigates platform liability after repeat removals of lawful content",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DSA compliance: risk assessments reviewed for systemic moderation failures",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU regulator issues GDPR guidelines on profiling for credit and insurance decisions",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission sends formal notice over failure to publish ad-library transparency data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA gatekeeper compliance report rejected for non-matching interoperability timelines",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Telecom regulator mandates clearer 5G coverage reporting for operators",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "BEREC issues guidance on fair access obligations in wholesale 5G arrangements",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU Parliament debates directive update on net neutrality enforcement powers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission adopts delegated act on cybersecurity directive incident severity thresholds",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "ENISA publishes checklist for zero-trust adoption in critical digital services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "GDPR enforcement: supervisory authority orders deletion of improperly processed health data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "DSA: investigators examine whether recommender outputs breach transparency duties",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission fines messaging platform for inadequate cooperation with law-enforcement requests",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DMA investigation expands after complaints about bundling of services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EDPB issues urgent opinion on cross-border transfers using new safeguards",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Telecom directive: regulators agree on 5G security testing and reporting framework",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission proposes stricter rules on data governance intermediaries",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "European Court rules on access rights when data is held by processors abroad",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DSA: Commission updates enforcement priorities for election-integrity disclosures",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR enforcement: regulator challenges controller-processor contract wording on scope",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Cybersecurity directive: Commission issues infringement decision on incident reporting delays",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Data center permitting directive draft sparks debate on energy use and grid impact",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "BEREC sets minimum security requirements for telecoms managed services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission orders transparency upgrade for behavioral ads under DSA ad rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA: Commission approves remedies for app-store interoperability but sets milestones",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EDPB task force audits enforcement cooperation on children\u2019s data under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DSA appeals ruling limits platform liability when user content is re-shared",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission sanctions VLOP for missing risk-mitigation measures after systemic breaches",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU cybersecurity agency issues sector-specific guidance for 5G service continuity",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission launches DSA compliance probe into ranking transparency reports",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission fines mid-size platform under DSA for incomplete ad-disclosure audits",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU Court ruling narrows scope of DSA notice-and-action obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA enforcement: Commission issues statement of objections to major gatekeeper",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DMA metrics update triggers vendor access talks across multiple EU markets",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "National regulators coordinate DMA compliance checks for default app store settings",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR enforcement action targets unlawful behavioural tracking by online retailer",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Irish DPC orders\u6574\u6539 plan after GDPR breach tied to marketing consent failures",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "European Data Protection Board issues guidance on cross-border data transfers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "GDPR fines rise as regulators scrutinise data retention periods in fintech apps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission uses GDPR steering committee to coordinate sanctions across Member States",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Telecom regulator sets new consumer protections for 5G contract pricing transparency",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "BEREC releases revised benchmarks for 5G quality of service reporting",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission reviews 5G security requirements following audit findings at operator",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Directive implementation: EU states align telecom incident reporting timelines",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Cybersecurity agency publishes updated requirements for managed DNS services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission calls for faster rollout of incident reporting under NIS2 for digital firms",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "ENISA report highlights gaps in cloud supply-chain security obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "NIS2 draft guidance clarifies roles for operators of essential services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DSA scrutiny expands after fact-checking tools fail to limit systemic abuse",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Platform liability ruling shapes standards for third-party content moderation",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission orders interim measures after DSA suspected failure to tackle illegal content",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR regulator investigates child data practices in social media advertising",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB issues binding decision on processor-controller obligations for ad tech",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Data-governance: Commission consults on interoperability rules for sectoral data spaces",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Data Act follow-through: regulators examine access requests processing timelines",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "DSA systemic risk audit requirement met with compliance deadline extension",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Gatekeeper under DMA faces scrutiny over self-preferencing in platform search results",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission probes platform to verify GDPR privacy-by-design commitments",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU Parliament committee debates telecom numbering portability enforcement for 5G services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Telecom enforcement: regulator targets anti-competitive SIM swapping verification failures",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU cybersecurity exercise tests cross-border incident response for data centers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "ENISA publishes baseline security controls for colocation and hosting providers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Data-center infrastructure: Commission discusses energy-efficiency reporting standards",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission outlines enforcement timetable for DSA content moderation obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "GDPR action: regulator sanctions cloud storage provider for breach notification delays",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission launches DSA probe into \u201cdark patterns\u201d on major app store",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU Parliament moves forward with DMA compliance deadlines for gatekeepers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Irish DPA fines retailer under GDPR for unlawful marketing data transfers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission requests remedies after DSA ad-transparency records mismatch",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Belgian regulator opens GDPR investigation into biometric consent practices",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU watchdog requires clearer DMA interoperability terms for messaging platforms",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "European Data Protection Board issues binding decision on joint controller roles",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission publishes sector report on DSA risk assessments and mitigation",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Germany\u2019s BNetzA orders telecom audit after 5G coverage dispute",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "France regulator fines platform over GDPR retention limits for user data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU cybersecurity agency updates directive-aligned incident reporting playbook",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission refers platform for DSA non-compliance on notice-and-action workflow",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DMA investigations target bundling practices across multiple gatekeeper services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Dutch court ruling expands GDPR portability scope for health-related data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission probes data-sharing terms under Data Governance Act for market bias",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Spain DPA penalizes online travel agent for processor contract gaps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EU telecom regulators coordinate after roaming charges breach consumer rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission mandates platform improvements to content moderation transparency reports",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Italy DPA orders temporary processing ban in GDPR cross-border case",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "European Commission updates DSA enforcement guidance on systemic risk audits",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "BNetzA imposes remedies on carrier after 5G security control weaknesses",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU Parliament questions telecom watchdogs over network resilience requirements",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission and BEREC assess compliance with roaming regulation and wholesale terms",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DPA rules require granular consent logs for behavioral advertising under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission scrutinizes cloud provider data processing clauses for governance",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU cybersecurity agency issues updated vulnerability-handling recommendations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission fines marketplace for DSA failure to label sponsored content accurately",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA gatekeeper adds new opt-out flow following regulator review",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "GDPR enforcement action hits social network for inadequate lawful-basis checks",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU court confirms DSA domain access safeguards for trusted flaggers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission seeks corrective plan from VLOP after systemic fraud transfer risk",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Bulgaria telecom regulator audits interconnection arrangements for 5G backhaul",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "European Commission consults stakeholders on data-center energy disclosure rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DPA orders corrective measures after breach notification delay under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU platform liability case prompts Commission to review notice deadlines",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "BEREC issues guidance on 5G security monitoring and incident escalation",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission launches coordinated sweeps for DSA trader verification systems",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "GDPR regulator publishes follow-up decision on profiling restrictions compliance",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU Parliament adopts directive amendments for cybersecurity across telecom operators",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission launches DSA probe into illegal listings on major marketplace",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission fines social network over DSA transparency reporting gaps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DMA enforcement: Commission opens formal investigation into bundling practices",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "DMA gatekeeper update includes additional platforms from new sector review",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "European Parliament votes on tougher platform liability rules under DSA review",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EU data governance authority backs cross-sector data-access standards",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EDPB issues binding decision on controller roles in joint-data processing",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR enforcement action targets unlawful tracking in mobile app advertising",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Supervisory authorities coordinate GDPR action against cloud data transfer breach",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "French regulator orders remedies after GDPR consent failures in retail apps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Ireland\u2019s DPC imposes corrective measures after profiling compliance audit",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "German authority launches GDPR probe into employee monitoring tools",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission adopts updated guidelines on DSA statement-of-reasons for orders",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DSA settlement talks conclude as Commission accepts compliance commitments",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "BEREC updates guidance on 5G quality-of-service obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU telecom regulator imposes remedies over wholesale access discrimination",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission calls for faster 5G rollout as spectrum re-farming plans advance",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Council negotiators reach text on telecom cyber resilience requirements",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "ENISA updates incident-reporting templates for regulated digital services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Cybersecurity directive: Member States agree on deadlines for national plans",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission starts infringement process over NIS2 transposition delays",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EDPB warns processors against international transfers using inadequately scoped SCCs",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "GDPR enforcement: authority orders deletion after unlawful data retention",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission requires platform to improve notice-and-action under DSA rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Court ruling shapes DSA removal timelines for contested content",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DSA compliance check finds shortcomings in recommender transparency disclosures",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DMA opens mediation between gatekeeper and business users over interoperability",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Data spaces initiative: Commission announces certification scheme for trusted exchange",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU data-governance act: regulators set new timetable for data-altruism registries",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Data center code of conduct: Commission consults on energy-use benchmarks",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "NIS2: telecom operators face new security controls for cross-border service",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "ENISA publishes threat landscape for telecom networks and connected systems",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission investigates compliance with 5G network security assurance duties",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Platform liability: Commission requests information on ad-targeting moderation systems",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "GDPR enforcement escalates after breach exposes sensitive health data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EDPB adopts guidelines on safeguarding rights of minors in digital services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU cybersecurity agency audits coordinated vulnerability disclosure readiness",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission amends reporting rules for large online platforms under DSA",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DMA gatekeeper obligations expand as Commission designates new core platform services",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission launches DSA probes into recommender practices at major marketplaces",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU regulators fine social media firm for missing transparency reports under DSA",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "DMA enforcement starts review of gatekeeper compliance metrics for app stores",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "European Parliament debates platform liability rules after court ruling on notice-and-action",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR regulator issues enforcement action over unlawful tracking in advertising tech",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB urges national authorities to align enforcement of consent rules across borders",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission opens infringement case over telecom numbering portability implementation gaps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "NRAs announce 5G rollout monitoring under EU telecom code compliance requirements",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "ENISA issues updated guidance on incident reporting timelines for digital service providers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Commission adopts implementing act on data governance standards for data-sharing spaces",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EDPB sanctions controller for failure to conduct impact assessments under GDPR",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DSA compliance checks expand to video-sharing platforms\u2019 transparency and moderation tools",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "DMA gatekeeper inquiry targets default settings restrictions in messaging ecosystems",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU authorities investigate dark patterns affecting platform users\u2019 choice and consent",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission fines cloud hosting provider for inadequate security measures affecting availability",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Digital Services Coordinator calls for stronger risk assessments for large online platforms",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR supervisory authority orders temporary suspension of data transfers to third countries",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EU telecom regulators coordinate to address roaming surcharges under unified rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission issues directive guidance on cybersecurity for essential digital infrastructure operators",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EDPB publishes final decision on cross-border access requests for service providers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Platform appeals court ruling narrows liability scope for user-generated content under DSA",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "NRAs set conditions for 5G neutral-host access to promote wholesale competition",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission requests additional information on DMA compliance by search engines",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU Parliament committee votes on amendments to strengthen platform transparency obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR enforcement action targets a retailer for violating purpose limitation for loyalty data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "ENISA releases sector-specific threat landscape bulletin for telecom network operators",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission opens case over failure to publish KPI reports required by DMA obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DSA regulator orders structural compliance plan for online platform content moderation systems",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Telecom regulator imposes remedy for anticompetitive bundling in 5G service offers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB condemns controller\u2019s retention practices as excessive under GDPR storage limits",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Cybersecurity directive compliance audit finds gaps in incident response drills",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission adopts framework to certify secure data spaces and interoperability for researchers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "DSA coordinator issues binding decision requiring notice mechanisms for illegal content",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "DMA gatekeeper list update reflects acquisition of small platform by major group",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "GDPR supervisory authority fines employer for unlawful monitoring of staff device data",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EU telecom council agrees common approach to spectrum sharing for 5G corridors",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission targets data-center operators after audit finds noncompliant energy reporting",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "ENISA publishes updated baseline for vulnerability disclosures and coordinated handling",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "GDPR cross-border dispute resolved as regulator clarifies lawful basis for profiling",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Commission launches DSA compliance checks after VLOP audits show ad-by-ad gaps",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "DMA enforcement committee reviews gatekeeper obligations on interoperability tools",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "EDPB issues updated guidance as national GDPR regulators coordinate a major probe",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "French regulator fines social platform for insufficient GDPR consent records",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "German authority orders content-moderation changes under the DSA notice-and-action rules",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU Commission opens infringement case over data access delays in cross-border transfers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Parliament committee debates DSA transparency requirements for recommender-ad settings",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Irish DPC issues GDPR decision on lawful basis after online tracking complaints",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "ENISA updates security directive implementation timetable for managed service providers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU regulators require clearer platform liability notices in consumer dispute listings",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Dutch authority investigates telecom 5G rollout permits amid safety and coverage concerns",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission reviews DMA compliance reports from gatekeepers on data sharing terms",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EDPB rules on controller obligations in joint processing after cross-border audit",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Spanish regulator fines cloud vendor for breach of personal data security duties",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "BEREC publishes guidance on telecoms numbering protections for emerging 5G use cases",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EU Commission demands data-governance compliance plan from public sector data holders",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "European Court case scheduled on GDPR retention limits for behavioral analytics",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "Commission fines marketplace under DSA for inadequate risk assessment documentation",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "ENISA issues recommendations for incident reporting under NIS2 for critical suppliers",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "EU telecom regulators set timeline for 5G coverage targets in rural deployment plans",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "DMA gatekeeper settlement talks advance as platforms adjust profiling and opt-outs",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "GDPR enforcement panel orders mitigation measures after unlawful location-data transfer",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "Parliament negotiators agree draft rules on platform transparency for targeted ads",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission publishes benchmark on platform appeals processes under DSA obligations",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "EDPB working group addresses standard contractual clauses amid new supervisory findings",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "EU cybersecurity agency releases checklist for patch management in telecom networks",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "BEREC consults on dispute resolution standards for wholesale roaming 5G backhaul",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.euractiv.com/section/digital/feed/",
+      "Commission opens probe into data-center energy disclosures linked to EU digital policy",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.politico.eu/section/technology/feed/",
+      "Italian authority rules on platform duty to act against repeated notice abuse",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://www.reuters.com/technology/rss",
+      "German court references GDPR principles as regulators pursue unlawful email marketing",
+      "non-ai-eu-regulation"
+    ],
+    [
+      "https://digital-strategy.ec.europa.eu/feed",
+      "ENISA issues threat landscape bulletin for distributed denial-of-service on platforms",
+      "non-ai-eu-regulation"
+    ]
+  ]
+}

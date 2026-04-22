@@ -101,13 +101,23 @@ many sites link to their feed via <link rel="alternate"> or a visible \
 - If the validator reports "could not fetch posts", try one feed-URL \
 variant of the same domain before discarding the candidate.
 
+Score calibration (relevance_score is cosine similarity on the topic \
+embedding, range 0.0-1.0):
+- 0.00-0.15: noise / unrelated -- do not submit.
+- 0.15-0.30: marginal -- submit only if the source-kind/language fit \
+clearly compensates, and flag it as marginal in your summary.
+- 0.30-0.55: on-topic -- prefer these.
+- 0.55+: strong -- always prefer.
+Higher is better. Do NOT submit noise-range sources hoping the \
+orchestrator will sort it out; it relies on your filtering.
+
 Persistence:
 - Do not return empty-handed after a single failed query. Try one \
 alternative phrasing OR fetch at least one curator page before \
 concluding the strategy produced nothing. Two phrasings is the cap.
-- A source with a low score (<0.5) is still better than nothing if \
-the topic/source-kind is right; mention it in your summary so the \
-orchestrator can decide.
+- A marginal source (0.15-0.30) is still better than nothing if the \
+topic/kind fit clearly compensates; mention it as marginal in your \
+summary so the orchestrator can decide.
 
 When done, summarize what you found -- or, if you found nothing, \
 briefly say which queries you tried and what kinds of URL you saw \

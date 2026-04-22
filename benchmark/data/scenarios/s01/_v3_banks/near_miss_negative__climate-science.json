@@ -1,0 +1,1511 @@
+{
+  "scenario": "s01",
+  "tier": "near_miss_negative",
+  "theme": "climate-science",
+  "style_cycle": [
+    "newsroom",
+    "wire"
+  ],
+  "rows": [
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC working group updates attribution methods for extreme rainfall in 2026 report",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper links wildfire aerosols to slower Atlantic hurricane intensification",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases revised Arctic sea-ice thickness estimates from 2025 radar surveys",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA data show record coastal sea-level rise in the North Atlantic since 1993",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus satellite product expands global snow-cover maps for 1980-2025",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF model intercomparison finds improved skill in blocking patterns over mid-latitudes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study quantifies ocean heat uptake slowdown in the subtropical Pacific",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC analyses reveal faster thinning of Greenland outlet glaciers during melt anomalies",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA ATDD publishes homogenized long-term temperature series for U.S. stations",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus reports new reprocessed land-surface temperature dataset for 1950-2025",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper attributes marine heatwaves to changes in ocean circulation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Satellite observations show earlier monsoon onset with stronger interannual variability",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC releases annex summarizing evidence on climate tipping elements in ocean systems",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate study finds permafrost methane emissions peaked after 2023 heatwaves",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases updated Arctic Ocean salinity climatology from in-situ and satellite fusion",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA and partners publish tropical cyclone genesis dataset using consistent best-track",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF ensemble study estimates reduced predictability windows for winter rainfall extremes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper maps regional drought persistence to soil moisture recharge changes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus unveils higher-resolution sea surface height dataset from Sentinel altimetry",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC sea-ice drift product updated with new processing to correct sensor biases",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA publishes NOAA-19 related calibration update improving satellite precipitation records",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate study assesses aerosol indirect effects on cloud liquid water over oceans",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC chapter review compiles evidence for climate influence on compound extremes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF C3S releases new seasonal forecast verification for 1991-2025 reanalysis",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Satellite retrievals reveal shifting dust transport pathways into the eastern Mediterranean",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper links Antarctic meltwater plumes to changes in shelf circulation",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases time series of Arctic lake-ice phenology from optical satellite indices",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA study attributes coral bleaching severity to combined heat and ocean chemistry stress",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus climate bulletin adds updated glacier mass-balance estimates by region",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper uses model ensembles to evaluate future heatwave clustering",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC updates Greenland snowfall reconstruction using new snow-stake and radar datasets",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA publishes long-term streamflow reconstruction for major basins using multiple reanalyses",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF study finds improved representation of atmospheric rivers in ensemble precipitation forecasts",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper quantifies uncertainty in sea-ice albedo feedback from observations",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus releases new biomass-burning smoke plume dataset for data assimilation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC supporting materials update includes new confidence assessments for ice-sheet projections",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study attributes Sahel rainfall decline to ocean-forced circulation changes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC analysis shows record-low September sea-ice extent with verified retrieval corrections",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA scientists publish revised Atlantic meridional overturning circulation observational index",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF intercomparison paper evaluates regional climate model bias in wind extremes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper links marine stratification changes to oxygen loss in subtropical waters",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus satellite data release improves monitoring of land carbon flux proxies",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases sea-ice lead fraction product for estimating habitat and albedo impacts",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA publishes new sea-surface temperature uncertainty estimates for coastal regions",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study compares observed and simulated cloud feedbacks using satellite kernels",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC authors update chapter on wildfire climate drivers using new field campaign data",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF reanalysis update refines atmospheric moisture budgets for 1979-2025",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper finds regional groundwater depletion intensifies heat-related stress",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Satellite product reveals widening areas of declining soil moisture across South Asia",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC releases new Arctic river discharge dataset combining gauge and remote sensing",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA analysis attributes record Arctic warming to stratosphere-troposphere coupling changes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC releases updated attribution annex on regional heat extremes, based on new datasets",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study quantifies aerosol forcing effects on Atlantic circulation variability",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus satellite maps show revised Arctic snow-cover decline trend over 20 years",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC reports September Arctic sea-ice extent near record low after multi-year recovery",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA analysis links coastal marine heatwaves to ocean heat content changes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF seasonal forecasts show improved skill for North Atlantic blocking patterns",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper finds glacier mass-balance data align with high-resolution model runs",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA releases new gridded sea-level budget dataset integrating tide gauges and altimetry",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus climate bulletins update wildfire smoke impacts on regional radiation balance",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC interim product reveals thicker Antarctic bottom-ice conditions than earlier estimates",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper attributes heatwave persistence to land-atmosphere feedbacks",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC updates chapter on cryosphere tipping-point evidence from ensemble studies",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA satellite intercomparison reduces bias in stratospheric temperature trends",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF reanalysis update refines monsoon onset timing over South Asia",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate study shows coral calcification decline tracks local ocean acidification rates",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus data release improves tracking of volcanic aerosols and cooling fingerprints",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC dataset expands lake-ice thickness observations using new remote-sensing methods",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA paper compares models to observed Arctic wind-shear profiles during storms",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper links atmospheric rivers to extreme precipitation in winter months",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus monitoring reveals slower-than-expected melt in parts of Greenland Ice Sheet",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF model intercomparison identifies common biases in cloud regimes over subtropical oceans",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA releases updated carbon-cycle inversion product for tropical land sinks",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate study attributes Northern Hemisphere summer rainfall shifts to circulation changes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC analysis maps permafrost thaw progression and impacts on soil moisture",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus satellite product refines coastal sea surface salinity estimates globally",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper estimates ocean heat uptake efficiency under recent emissions scenarios",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA observational study finds methane growth rates vary by latitude and season",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC technical note synthesizes satellite and in-situ evidence for aerosol indirect effects",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF ensemble study shows improved precipitation extremes representation after bias correction",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper finds wildfire aerosol emissions alter regional monsoon rainfall",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus data release extends sea-ice drift trajectories for the Central Arctic",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC report shows Antarctic sea-ice concentration patterns diverge by sector and season",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA study uses isotopic signatures to separate ocean and land CO2 fluxes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper links compound flooding risk to rising sea level and heavy rain",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF reanalysis update improves wind speed characterization over the North Pacific",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus satellite analysis tracks lake thermal stratification changes in warming regions",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA dataset update refines global snow depth climatology from multiple sensors",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper documents marine heatwave onset timing using standardized metrics",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC expert meeting report summarizes latest evidence for ice-sheet instability",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases new algorithm for sea-ice concentration using machine learning validation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus regional assessment highlights reduced uncertainty in Mediterranean rainfall trends",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA attribution study identifies ocean temperatures as key driver of recent hurricanes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper shows heat stress thresholds exceeded earlier than historical estimates",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF model runs reproduce observed ENSO teleconnections to regional temperatures",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus air-quality and climate synergy paper evaluates aerosol-climate feedbacks",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC analysis finds sea-ice thickness trends differ from extent-only records",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA releases improved gridded precipitation dataset for model evaluation",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper quantifies tipping-point risk from compound warming and drought",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF intercomparison ranks probabilistic forecasts for Arctic temperature anomalies",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC synthesis updates confidence levels for ocean heat uptake and sea-level rise",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate publishes new attribution study linking extreme rainfall to warming",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus releases updated ERA5-Land climate reanalysis for drought monitoring",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC reports April decline in Arctic sea-ice extent in latest satellite summary",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA releases revised coral bleaching climatology with improved heat-stress metrics",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF publishes analysis showing shifts in jet-stream blocking frequency over decades",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper finds marine heatwaves more persistent after accounting for ENSO",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC data release extends long-term Arctic sea-ice thickness estimates through 2023",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA study quantifies greenhouse-gas contribution to record Atlantic hurricane rainfall",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus satellite product updates snow-cover maps using harmonized glacier masks",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate publishes model-intercomparison results on future sub-seasonal temperature predictability",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF ensemble study assesses skill improvements from higher-resolution ocean coupling",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Peer-reviewed research links permafrost thermokarst to enhanced coastal methane emissions",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC working-group report summarizes evidence for glacier mass loss in mountain regions",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases new dataset of Arctic sea-ice age derived from passive microwave records",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA observational study tracks declining snowpack in western watersheds using radar altimetry",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper attributes compound heat and wildfire risk to human-driven warming",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus climate bulletin highlights rising sea-surface temperatures in the Atlantic sector",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF releases new seasonal hindcasts to evaluate extremes in monsoon regions",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Peer-reviewed analysis finds ocean circulation changes steering more heat toward mid-latitudes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study estimates carbon sink weakening during recent El Ni\u00f1o transitions",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC review compiles best estimates of Antarctic sea-ice trends by satellite era",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA dataset release expands thermosteric sea-level calculations for coastal stations",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus publishes improved land-surface temperature retrievals for high-latitude regions",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper links observed glacier thinning to intensified atmospheric moisture transport",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF paper compares turbulence parameterizations affecting boundary-layer heat extremes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases Arctic snow-depth product integrating multiple sensor retrievals",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA research attributes recent marine heatwave onset to anthropogenic forcing and winds",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Peer-reviewed study documents satellite-era greening with regionally uneven carbon uptake",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate publishes early evidence for tipping dynamics in boreal peatland moisture",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC report outlines updated confidence in ice-sheet stability and grounding-line processes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus data release refines aerosol optical depth fields used in radiation studies",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF intercomparison highlights biases in extreme precipitation under climate scenarios",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA study links observed streamflow changes to warming-driven snow-to-rain transitions",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper quantifies methane growth sensitivity to thawed permafrost area",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC dataset update improves sea-ice concentration retrievals during spring melt transitions",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Peer-reviewed work finds heatwaves over land expanding faster than model-derived averages",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF releases coupled data assimilation updates for sea-ice and ocean-atmosphere forecasts",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate attribution study isolates human influence on severe drought in the Sahel",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus publishes validated reanalysis of atmospheric rivers affecting North American coasts",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases ice-sheet surface melt observations for Greenland using satellite altimetry",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA paper revises historical hurricane intensity distributions with new best-track methods",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Peer-reviewed tipping-point research links Amazon dieback risk to soil moisture thresholds",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate publishes detection-and-attribution results for record-breaking Antarctic warming",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus releases updated wildfire smoke optical thickness maps for climate model evaluation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF study evaluates model skill for cold extremes after bias-correction and reanalysis updates",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC companion paper summarizes evidence for ocean carbon uptake changes since the 1990s",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA dataset release expands global surface temperature observations with homogenized station records",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC releases revised attribution synthesis for extreme rainfall events in 2023",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper finds marine heatwaves linked to ocean circulation shifts",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus dataset shows global snow cover decline correlating with spring warming trends",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC reports updated Greenland melt-season extent using revised satellite retrievals",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA release expands ocean heat content archive with reprocessed altimetry",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF model intercomparison study reduces spread in monsoon precipitation projections",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate regional assessment updates drought-risk hotspots across the Mediterranean",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus satellite products refine cloud fraction estimates over the North Atlantic",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC time series extends Arctic sea-ice thickness records with new radar calibration",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA publishes winter storm attribution analysis using novel detection-and-attribution tests",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study quantifies carbon uptake decline in Amazon forests under heat stress",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC working group paper updates evidence on ice-sheet instability mechanisms",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus reanalysis indicates persistent soil moisture deficits across parts of southern Africa",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC reports Antarctic sea-ice growth slowed by wind-driven changes in 2023",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA climate data release updates tropical cyclone intensity statistics through best-track reanalysis",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF seasonal forecast verification shows improved skill for ENSO-related rainfall",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper links permafrost thermokarst to localized methane emissions pulses",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC analysis finds Arctic sea-ice drift accelerates during late-summer melt transitions",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA study attributes compound flooding to warming-amplified precipitation extremes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus releases high-resolution aerosol optical depth maps for polar spring periods",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF model study narrows uncertainty in Arctic temperature amplification factors",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate research identifies wildfire smoke feedback effects on regional radiation",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC publishes chapter update on satellite-based constraints for climate sensitivity",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA ocean biogeochemistry data release includes updated oxygen minimum zone maps",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper shows meltwater from Greenland alters downstream salinity patterns",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus climate indicators track glacier mass balance with improved error estimates",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC dataset release updates snow water equivalent for North America from new algorithms",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF ensemble experiments test tipping-point thresholds in coupled ice-ocean runs",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate attribution study estimates human influence on record-breaking heat in 2023",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA analyses reveal stratospheric circulation changes affect surface temperature trends",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus reprocessed satellite records extend land surface temperature continuity back to 1982",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper demonstrates aerosol-cloud interactions modulate monsoon onset timing",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC finds sea-ice lead networks expand, increasing summer ocean-atmosphere heat flux",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF study uses perturbed-physics ensembles to assess cloud forcing uncertainty",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC releases updated evidence summary on permafrost carbon feedbacks and timescales",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper links coral bleaching frequency to cumulative heat stress thresholds",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA climate product update improves detection of extreme precipitation intensity over coasts",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus dataset quantifies coastal sea-level rise using tide-gauge and altimetry fusion",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC paper refines estimates of Arctic snow depth trends using multi-sensor fusion",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA release extends atmospheric methane monitoring with improved inversion constraints",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate intercomparison paper benchmarks temperature trends across satellite datasets",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF model comparison reduces bias in mid-latitude storm tracks over historical runs",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus provides new urban heat island retrievals to study heatwave impacts",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC reports new boreal permafrost surface temperature estimates from calibrated sensors",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA attribution study finds greenhouse forcing increases odds of multi-day heatwaves",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate tipping-point research highlights vegetation dieback risk under sustained heat",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC publishes updated guidance on combining observations with model ensembles for attribution",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus releases revised ocean color datasets to track phytoplankton change",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF ensemble evaluation shows improved representation of atmospheric blocking events",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA study measures shrinking Antarctic ice shelves with satellite-derived thickness trends",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper links ice-sheet basal melt to ocean heat transport variations",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC observational synthesis reports accelerated Arctic lake expansion with warming trends",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus climate bulletin releases updated glacier mass balance for the Hindu Kush Himalaya",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC authors release updated assessment chapter on ocean heat uptake",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study quantifies methane release from thawing Arctic soils",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC reports September snow extent above prior decade average, satellite confirms",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA dataset update refines global mean sea-surface temperatures through 2025",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus Sentinel-6 analysis improves altimetry bias corrections over open ocean",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF paper evaluates ensemble skill for North Atlantic extreme rainfall outlooks",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate finds tropical Atlantic winds shift after volcanic forcing",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC reprocesses historical sea-ice thickness estimates using new algorithms",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA carbon-cycle study links ocean uptake slowdown to upwelling changes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus releases glacier mass-balance product for High Mountain Asia",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate model intercomparison shows cloud feedbacks driving spread in warming",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF report details improved stratospheric circulation forecasts for winter 2026",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate attribution study ties recent heatwave to greenhouse-gas forcing",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC satellite updates expand Greenland melt extent maps for 2010\u20132024",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA ocean dataset release revises heat-content estimates after sensor calibration",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper tracks coastal erosion accelerating with sea-level rise projections",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus study validates land-surface moisture retrievals against field campaigns",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF research shows Atlantic Meridional Overturning variability modulates regional rain",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate tipping-point paper finds vegetation dieback risk sensitive to warming rate",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC working group cites new evidence on ice-sheet instabilities and timescales",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC analysis links late-summer Arctic sea-ice loss to altered storm tracks",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA investigation estimates increased rainfall extremes from observed circulation shifts",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate observational synthesis updates aerosol forcing constraints over 1980\u20132018",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus Sentinel-3 release improves wildfire smoke plume retrieval accuracy",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF paper assesses predictability limits for multi-season drought forecasts",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA reanalysis update improves wind-speed trends over global tropical oceans",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate study attributes compound flooding to combined sea level and rainfall extremes",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC dataset expands melt-pond observations to improve sea-ice model initialization",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus releases updated snow cover climatology using cross-sensor fusion",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF intercomparison quantifies model spread in heat extremes under shared scenarios",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate finds permafrost carbon feedback strengthens under higher warming thresholds",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC publishes supplementary material on regional sea-level rise uncertainty ranges",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA satellite analysis reports improved monitoring of atmospheric CO2 gradients",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper reconciles ocean oxygen decline signals across independent datasets",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus study maps marine heatwaves using new thermal anomaly thresholds",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF forecast verification shows improved skill for monsoon onset timing",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate attribution research estimates likelihood changes for recent drought events",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC releases updated Arctic surface temperature product from multi-sensor blending",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA data release extends hurricane intensity estimates using revised calibration",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate model experiment examines how aerosols affect tropical cyclone formation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus releases ecosystem-focused land-surface temperature dataset for biomass regions",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF paper evaluates precipitation extremes in high-resolution downscaling experiments",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate satellite study links cloud radiative effects to sea-ice loss feedback",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC publishes updated Antarctic surface mass-balance estimates from gravimetry",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA ocean-current study quantifies changes in boundary currents affecting heat transport",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate tipping-point research simulates abrupt ice-sheet melt under warming ramps",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC regional assessment authors compile new evidence for Central Asia hydroclimate",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus product release improves estimates of groundwater storage anomalies",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF ensemble study shows wind-driven upwelling influences marine heatwave persistence",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate attribution paper connects recent wildfire emissions to climate drivers",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC analysis finds earlier spring melt increases meltwater runoff to coastal shelves",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA climate science paper updates observational constraints on aerosol direct effects",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC Working Group I updates methane lifetime estimates with new synthesis",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study finds faster Arctic snowpack loss linked to heatwave patterns",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus releases updated ERA5-Land drought indicators for multi-year comparisons",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC analysis shows Greenland melt onset dates shift earlier in recent decades",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA coastal dataset expands tide-gauge archives for sea-level attribution studies",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF publishes ensemble forecast verification on extreme precipitation skill gains",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper quantifies ocean heat content down to 2000 m using new Argo paths",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus satellite products refine cloud radiative effect constraints in climate models",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC satellite retrievals reduce uncertainty in Arctic sea-ice thickness trends",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA land carbon fluxes indicate regional divergence from global carbon sink estimates",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate study links wildfire smoke to regional aerosol forcing using aircraft data",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF and partners release improved sub-seasonal temperature benchmarks for midlatitudes",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "IPCC author team compiles new evidence on glacier mass balance from ground surveys",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper attributes Antarctic surface melt spikes to changing circulation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus posts Copernicus Climate Data Store update with bias-corrected SST fields",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC reports rapid thinning in Pacific Arctic sea ice, based on ICESat-2",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA study reconciles sea-level budget components using tide gauges and altimetry",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate research tracks permafrost thermokarst ponds as methane emission hotspots",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF model intercomparison shows improved representation of blocking events",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC special chapter cites updated attribution for extreme rainfall across regions",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus analysis uses new Sentinel-3 altimetry to refine coastal sea-level trends",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC dataset release extends Arctic sea-ice concentration records back to 1978",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA top-down atmospheric CO2 analysis supports higher regional emissions than inventories",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper tests model sensitivity to cloud feedback using high-resolution runs",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF ensemble study quantifies forecast uncertainty for tropical cyclone intensification",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus posts new snow cover product validating near-real-time land surface models",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC publishes ice-sheet velocity updates from radar interferometry and field campaigns",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate study finds ocean stratification changes weaken the tropical carbon pump",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA scientist team releases updated hurricane rapid intensification statistics",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC synthesis highlights converging evidence for warming-driven glacier retreat",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper connects heatwave persistence to soil-moisture feedback mechanisms",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus produces new reanalysis of upper-ocean currents for attribution of marine heatwaves",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC analysis estimates sea-ice export changes controlling winter ice area variability",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA dataset release improves methane observations from tall towers for model evaluation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate study uses satellite CO2 to detect crop-season flux anomalies",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "ECMWF intercomparison workshop reports reduced biases in simulated radiation fields",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus Copernicus Atmosphere Monitoring service updates aerosol optical depth uncertainty",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NSIDC provides revised Antarctic sea-ice extent time series after algorithm refinement",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NOAA study attributes observed temperature extremes to anthropogenic forcing with updated models",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Nature Climate paper links Greenland firn air changes to accelerated meltwater pathways",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "ECMWF releases new model diagnostics for cloud phase and mixed-phase microphysics",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "Copernicus satellite release improves estimates of groundwater storage anomalies",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "NSIDC publishes regional climate data for lake-ice phenology change studies",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "NOAA ocean carbon dataset update tightens estimates of uptake variability",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Nature Climate paper assesses tipping-point risk using ensemble indicators for forest dieback",
+      "climate-science"
+    ],
+    [
+      "https://www.euronews.com/rss?level=vertical&name=climate",
+      "IPCC co-authors compile evidence on aerosol impacts on regional monsoon precipitation",
+      "climate-science"
+    ],
+    [
+      "https://reneweconomy.com.au/feed/",
+      "Copernicus adds new coastal temperature and salinity layers for ecosystem studies",
+      "climate-science"
+    ]
+  ]
+}

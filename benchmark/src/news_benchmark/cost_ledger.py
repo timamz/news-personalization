@@ -26,6 +26,9 @@ Usage:
 
 from __future__ import annotations
 
+import json
+import logging
+import os
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -34,6 +37,74 @@ import litellm
 
 from news_benchmark.clock import CLOCK
 from news_benchmark.tagging import current_tag
+
+_trace_logger = logging.getLogger("news_benchmark.llm_trace")
+
+
+def _verbose_enabled() -> bool:
+    return os.environ.get("BENCH_VERBOSE_LLM", "").strip() not in ("", "0", "false", "False")
+
+
+def _trim(text: str, limit: int = 400) -> str:
+    text = text or ""
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[:limit] + f"…(+{len(text) - limit} chars)"
+
+
+def _summarize_messages(messages: Any) -> str:
+    """Return a one-line summary of the last user-ish message in the request."""
+    if not isinstance(messages, list) or not messages:
+        return "<no-messages>"
+    last = messages[-1]
+    role = last.get("role", "?") if isinstance(last, dict) else "?"
+    content = last.get("content", "") if isinstance(last, dict) else ""
+    if isinstance(content, list):
+        parts = []
+        for p in content:
+            if isinstance(p, dict):
+                parts.append(str(p.get("text", p)))
+            else:
+                parts.append(str(p))
+        content = " ".join(parts)
+    return f"[{role}] {_trim(str(content))}"
+
+
+def _summarize_response(response: Any) -> str:
+    """Return a short description of the completion: text + any tool calls."""
+    try:
+        choices = getattr(response, "choices", None) or response.get("choices")
+        if not choices:
+            return "<no-choices>"
+        msg = getattr(choices[0], "message", None)
+        if msg is None and isinstance(choices[0], dict):
+            msg = choices[0].get("message")
+        text = getattr(msg, "content", "") or ""
+        if isinstance(msg, dict):
+            text = msg.get("content") or ""
+        tool_calls = getattr(msg, "tool_calls", None)
+        if tool_calls is None and isinstance(msg, dict):
+            tool_calls = msg.get("tool_calls")
+        tc_summary = ""
+        if tool_calls:
+            names = []
+            for tc in tool_calls:
+                fn = getattr(tc, "function", None) or (tc.get("function") if isinstance(tc, dict) else None)
+                name = getattr(fn, "name", None) if fn is not None else None
+                if name is None and isinstance(fn, dict):
+                    name = fn.get("name")
+                args = getattr(fn, "arguments", None) if fn is not None else None
+                if args is None and isinstance(fn, dict):
+                    args = fn.get("arguments")
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except Exception:
+                        pass
+                names.append(f"{name}({_trim(json.dumps(args) if args else '', 150)})")
+            tc_summary = " tools=[" + ", ".join(names) + "]"
+        return f"{_trim(text or '')}{tc_summary}"
+    except Exception as exc:
+        return f"<unparseable: {exc}>"
 
 
 @dataclass
@@ -103,12 +174,30 @@ async def _wrapped_acompletion(*args: Any, **kwargs: Any) -> Any:
     assert _original_acompletion is not None
     tag = current_tag()
     model = kwargs.get("model", "unknown")
+    verbose = _verbose_enabled()
+    if verbose:
+        _trace_logger.info(
+            "LLM-IN  tag=%s model=%s msg=%s",
+            tag,
+            model,
+            _summarize_messages(kwargs.get("messages")),
+        )
     t0 = time.monotonic()
     response = await _original_acompletion(*args, **kwargs)
     wall_ms = (time.monotonic() - t0) * 1000.0
 
     usage = _extract_usage(response)
     usd = _safe_completion_cost(response)
+    if verbose:
+        _trace_logger.info(
+            "LLM-OUT tag=%s model=%s ms=%.0f tokens=%d/%d out=%s",
+            tag,
+            model,
+            wall_ms,
+            usage["prompt_tokens"],
+            usage["completion_tokens"],
+            _summarize_response(response),
+        )
     LEDGER.append(
         LedgerRow(
             run_id=LEDGER.run_id,

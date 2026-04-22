@@ -23,6 +23,7 @@ Usage::
     agent = Agent(..., tools=[tool, ...])
 """
 
+import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -43,6 +44,7 @@ def build_fetch_source_items_tool(
     allowed_source_ids: set[uuid.UUID],
     topic_embedding: list[float] | None = None,
     name: str = "fetch_source_items",
+    session_lock: asyncio.Lock | None = None,
 ) -> Callable[..., Awaitable[str]]:
     """Build an ADK tool closure that reads recent items from an allowed source.
 
@@ -55,7 +57,15 @@ def build_fetch_source_items_tool(
             ``cos=0.42``). When ``None``, the annotation is omitted.
         name: Value assigned to the returned closure's ``__name__``; ADK
             exposes this as the tool name to the LLM.
+        session_lock: Optional shared asyncio.Lock. When ADK dispatches
+            several tool calls from one LLM turn concurrently, every
+            DB-touching tool must serialize against the same lock -- the
+            underlying AsyncSession wraps a single asyncpg connection
+            and asyncpg rejects overlapping operations. Callers that
+            expose other DB tools alongside this one (e.g. the
+            Reflector's remove_source) should pass a shared lock.
     """
+    effective_lock = session_lock if session_lock is not None else asyncio.Lock()
 
     async def _tool(
         source_id: str,
@@ -84,8 +94,9 @@ def build_fetch_source_items_tool(
             .order_by(NewsItem.published_at.desc())
             .limit(effective_limit)
         )
-        result = await db_session.execute(stmt)
-        items = list(result.scalars().all())
+        async with effective_lock:
+            result = await db_session.execute(stmt)
+            items = list(result.scalars().all())
         if not items:
             return f"No items from source {sid} in the last {effective_days} days."
 
