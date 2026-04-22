@@ -27,7 +27,7 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from google.adk.agents import Agent
@@ -266,10 +266,14 @@ async def run_event_verifier(
             shared_state["status_messages"].append(message)
         return "Status recorded."
 
+    now_iso = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     input_message = (
+        f"Current date/time: {now_iso}\n"
         f"Subscription id: {subscription.id}\n"
         f"Target language: {subscription.digest_language}\n"
-        f"Lookback window: {lookback_days} days\n\n"
+        f"Lookback window: {lookback_days} days (events older than "
+        f"{lookback_days} days before the current date above are "
+        f"out of scope; anything on or after that cutoff is in scope).\n\n"
         f"User spec:\n{user_spec}\n\n"
         f"Linked sources:\n{_format_source_contexts(source_contexts)}\n\n"
         f"Recent notification history:\n{_format_history(history_strings)}\n\n"

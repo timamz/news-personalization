@@ -237,18 +237,16 @@ async def test_s_verifier_catches_cbam_miss_and_delivers_catchup(world):
             )
         )
 
-        # Seed notified items straddling the miss date (miss is 2 days old;
-        # one history item is 1 day old, the other 3 days old). This gives
-        # the agent enough temporal context that it cannot infer "today" is
-        # the most recent notification and reject the miss as "future
-        # relative to history".
-        history_ages_days = [1, 3]
-        for idx, (item, age_days) in enumerate(
-            zip(SEEDED_NOTIFIED_ITEMS, history_ages_days, strict=True)
-        ):
+        # Seed notified items a few days before the miss. Pre-backend-fix,
+        # the agent inferred "today" from the latest notification and
+        # rejected the 2-day-old miss as "future relative to history".
+        # Now that the backend prompt includes "Current date/time", the
+        # agent has explicit anchoring and these dates no longer need
+        # to straddle the miss.
+        for idx, item in enumerate(SEEDED_NOTIFIED_ITEMS):
             item_id = uuid.uuid4()
             item_embedding = await embed_text(item["headline"] + "\n" + item["body"][:400])
-            item_ts = now - timedelta(days=age_days)
+            item_ts = now - timedelta(days=4 + idx)
             s.add(
                 NewsItem(
                     id=item_id,
