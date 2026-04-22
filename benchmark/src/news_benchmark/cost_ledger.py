@@ -26,6 +26,7 @@ Usage:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -88,7 +89,9 @@ def _summarize_response(response: Any) -> str:
         if tool_calls:
             names = []
             for tc in tool_calls:
-                fn = getattr(tc, "function", None) or (tc.get("function") if isinstance(tc, dict) else None)
+                fn = getattr(tc, "function", None)
+                if fn is None and isinstance(tc, dict):
+                    fn = tc.get("function")
                 name = getattr(fn, "name", None) if fn is not None else None
                 if name is None and isinstance(fn, dict):
                     name = fn.get("name")
@@ -96,10 +99,8 @@ def _summarize_response(response: Any) -> str:
                 if args is None and isinstance(fn, dict):
                     args = fn.get("arguments")
                 if isinstance(args, str):
-                    try:
+                    with contextlib.suppress(Exception):
                         args = json.loads(args)
-                    except Exception:
-                        pass
                 names.append(f"{name}({_trim(json.dumps(args) if args else '', 150)})")
             tc_summary = " tools=[" + ", ".join(names) + "]"
         return f"{_trim(text or '')}{tc_summary}"
