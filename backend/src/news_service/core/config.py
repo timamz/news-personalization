@@ -50,7 +50,6 @@ class Settings(BaseSettings):
     max_concurrent_discoveries: int = 3
     max_concurrent_web_searches: int = 2
     source_validation_timeout_seconds: float = 30.0
-    discovery_backfill_min_score: float = 0.4
 
     llm_max_context_chars: int = 1_200_000
 

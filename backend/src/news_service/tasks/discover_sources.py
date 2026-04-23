@@ -64,8 +64,10 @@ async def run_and_persist_discovery(
     Returns a dict the caller can log or feed back to an LLM::
 
         {
-            "status": "ok" | "skipped",
-            "reason": str,                       # present when skipped
+            "status": "ok" | "skipped" | "no_sources_found",
+            "reason": str,                       # present when skipped/no_sources_found
+            "abort_reason": str,                 # present on no_sources_found if the
+                                                 # orchestrator called abort()
             "discovered": int,                   # sources the agent selected
             "persisted": int,                    # new SubscriptionSource rows
             "selected_sources": [                # present on ok
@@ -73,6 +75,12 @@ async def run_and_persist_discovery(
                 ...
             ],
         }
+
+    The ``no_sources_found`` status is returned when the discovery pipeline
+    terminates with zero selected sources. Callers (conversational agent,
+    reflector) are expected to surface this to the user so they can refine
+    the subscription topic -- a subscription with no attached sources is
+    dead on arrival.
 
     When ``status_queue`` is provided, the underlying ``run_source_discovery``
     emits progress frames (``event: "discovery_progress"``) that the caller
@@ -125,6 +133,25 @@ async def run_and_persist_discovery(
             "discovered": len(result.sources),
             "persisted": 0,
         }
+
+    if not result.sources:
+        logger.warning(
+            "Discovery returned zero sources for subscription %s (reason=%r, abort=%r)",
+            subscription_id,
+            reason[:100],
+            result.abort_reason[:200] if result.abort_reason else "",
+        )
+        payload: dict[str, Any] = {
+            "status": "no_sources_found",
+            "subscription_id": str(subscription_id),
+            "reason": "no candidates found for this topic",
+            "discovered": 0,
+            "persisted": 0,
+            "selected_sources": [],
+        }
+        if result.abort_reason:
+            payload["abort_reason"] = result.abort_reason
+        return payload
 
     persisted = 0
     selected_sources: list[dict[str, str]] = []

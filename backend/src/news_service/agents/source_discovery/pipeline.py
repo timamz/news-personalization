@@ -11,12 +11,13 @@ The discovery agent is a pure ReAct loop with four tools:
   any candidate it is considering, so the acceptance decision can be made
   on real material instead of just the cosine score.
 - ``submit_selection(urls)`` -- the orchestrator explicitly names the URLs
-  it wants to accept. If the agent under-picks, the pipeline backfills the
-  result up to ``source_target_count`` by taking the remaining pool entries
-  in descending order of relevance score (gated by
-  ``discovery_backfill_min_score``). This protects against the LLM being
-  overly conservative and dropping good candidates.
-- ``abort(reason)`` -- used when discovery cannot sensibly proceed.
+  it wants to accept. Whatever the agent submits is accepted verbatim; the
+  pipeline does not second-guess the selection. The prompt instructs the
+  agent to always submit at least one candidate when the pool is non-empty
+  and to prefer submitting something over aborting.
+- ``abort(reason)`` -- used only when the pool is genuinely empty after
+  every strategy has run (no web results, no existing sources). An abort
+  when the pool is non-empty is a prompt bug.
 
 Inputs supplied in the user message:
 
@@ -87,10 +88,12 @@ anything you submit is accepted. Do not burn slots on noise-range \
 candidates.
 3. **submit_selection(urls)** -- Finalize discovery with the comma-separated \
 list of URLs you accept. Only URLs that finders returned are eligible; \
-submit_selection validates this. This ends discovery.
-4. **abort(reason)** -- Use only when you cannot reasonably proceed \
-(everything failed, user spec self-contradicts, nothing the finders \
-returned is useful). Pass a short explanation.
+submit_selection validates this. Whatever you submit is accepted verbatim \
+-- there is no post-hoc backfill or rescoring. This ends discovery.
+4. **abort(reason)** -- Use ONLY when the pool is genuinely empty after \
+every strategy has run (zero candidates across all rounds). If the pool \
+has ANY candidates at all, submit the best ones instead of aborting -- \
+even one mediocre source is better than zero.
 
 Orchestration guidance:
 - Target roughly {target_count} final sources, but use judgment. Fewer \
@@ -124,10 +127,14 @@ and move on rather than retrying endlessly.
 - Persistence rule: if round one returns zero candidates across every \
 strategy, spawn ONE more round (max 3 strategies) with broader \
 queries. Abort only if both rounds come back empty.
-- Prefer submit_selection with at least one source over abort. If the \
-pool has even a couple of moderately-scoring candidates that match \
-the spec's language and topic, select them and finish -- the user \
-can refine later.
+- The pipeline accepts whatever you submit -- there is no backfill or \
+score gate that will rescue dropped candidates. If the pool has ANY \
+entries at all, submit them (ordered best-first) instead of aborting. \
+A sparse subscription is recoverable; an empty selection with a \
+non-empty pool is a prompt failure.
+- Low scores alone are NOT a reason to drop a candidate. If the best \
+thing the finders found scores 0.15, and nothing better exists, \
+submit it anyway and let the user refine later.
 - Never emit Markdown bold syntax (**...**) in any text you produce. \
 The frontend does not render it and the asterisks appear literally. \
 Use plain text -- no bold markers at all.
@@ -450,40 +457,19 @@ async def run_source_discovery(
             "aborted",
             reason=aborted["reason"],
         )
-        # Fall through to the score-based backfill below instead of
-        # returning empty. If the Finders validated sources above
-        # ``discovery_backfill_min_score``, attach them anyway -- abort
-        # reflects the orchestrator's judgment that none are a perfect
-        # fit, not that the pool is worthless. The min-score gate still
-        # prevents low-quality sources from slipping through.
+        if candidate_pool:
+            logger.warning(
+                "Discovery aborted with a non-empty pool (%d candidates). "
+                "The prompt forbids this; treat as zero sources and surface "
+                "the abort reason to the caller.",
+                len(candidate_pool),
+            )
 
     selected = [
         candidate_pool[_normalize_url(u)]
         for u in selected_urls
         if _normalize_url(u) in candidate_pool
     ]
-
-    target = settings.source_target_count
-    floor = min(target, len(candidate_pool))
-    if len(selected) < floor:
-        already = {_normalize_url(s.url) for s in selected}
-        backfill_pool = [
-            c
-            for c in candidate_pool.values()
-            if _normalize_url(c.url) not in already
-            and c.relevance_score >= settings.discovery_backfill_min_score
-        ]
-        backfill_pool.sort(key=lambda s: s.relevance_score, reverse=True)
-        needed = floor - len(selected)
-        backfilled = backfill_pool[:needed]
-        if backfilled:
-            logger.info(
-                "Discovery backfilled %d source(s) by score; agent picked %d, target floor was %d",
-                len(backfilled),
-                len(selected),
-                floor,
-            )
-            selected = selected + backfilled
 
     logger.info(
         "Discovery orchestrator finished for '%s': pool=%d, selected=%d",
@@ -498,7 +484,7 @@ async def run_source_discovery(
         _text_key="finished" if selected else "finished_empty",
         count=len(selected),
     )
-    return SourceDiscoveryResult(sources=selected)
+    return SourceDiscoveryResult(sources=selected, abort_reason=aborted["reason"])
 
 
 __all__ = [

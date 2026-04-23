@@ -138,6 +138,51 @@ async def test_discover_skips_when_subscription_has_no_embedding(mocker) -> None
 
 
 @pytest.mark.asyncio
+async def test_discover_returns_no_sources_found_when_pipeline_yields_empty(mocker) -> None:
+    sub = _fake_subscription()
+    session = MagicMock()
+    session.commit = AsyncMock()
+    session.add = MagicMock()
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+
+    attached_rows = MagicMock()
+    attached_rows.all.return_value = []
+
+    removal_rows = MagicMock()
+    removal_rows.all.return_value = []
+
+    sub_recheck = MagicMock()
+    sub_recheck.scalar_one_or_none.return_value = True
+
+    session.execute = AsyncMock(side_effect=[sub_lookup, attached_rows, removal_rows, sub_recheck])
+
+    _patch_session_factory(mocker, session)
+    empty_result = SourceDiscoveryResult(sources=[], abort_reason="all strategies empty")
+    mocker.patch(
+        "news_service.tasks.discover_sources.run_source_discovery",
+        new=AsyncMock(return_value=empty_result),
+    )
+    ensure_mock = mocker.patch(
+        "news_service.tasks.discover_sources.ensure_source_by_url",
+        new=AsyncMock(),
+    )
+
+    from news_service.tasks.discover_sources import run_and_persist_discovery
+
+    result = await run_and_persist_discovery(session, sub.id, "reason")
+    assert (
+        result["status"] == "no_sources_found"
+        and result["persisted"] == 0
+        and result["discovered"] == 0
+        and result.get("abort_reason") == "all strategies empty"
+        and ensure_mock.await_count == 0
+        and session.commit.await_count == 0
+    ), "zero-source outcome must surface as no_sources_found with the abort reason attached"
+
+
+@pytest.mark.asyncio
 async def test_discover_drops_results_when_subscription_deactivated_mid_run(mocker) -> None:
     sub = _fake_subscription()
     session = MagicMock()
