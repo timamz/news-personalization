@@ -247,6 +247,7 @@ async def run_source_discovery(
     attached_sources: list[AttachedSource] | None = None,
     reason: str = "",
     removal_history: str = "",
+    locked_out_urls: list[str] | None = None,
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
     display_language: str = "en",
 ) -> SourceDiscoveryResult:
@@ -256,9 +257,20 @@ async def run_source_discovery(
     inspects candidates, and submits the final URL list via submit_selection.
     Returns whatever the orchestrator picked -- there is no post-hoc cosine
     top-N cut.
+
+    ``locked_out_urls`` are URLs the caller wants mechanically excluded
+    from the pool regardless of LLM judgment -- typically URLs recently
+    removed by the Reflector that are still within their cooldown window.
+    They are merged into ``exclude_urls`` alongside attached-source URLs
+    so the Finder and the orchestrator both drop them before they ever
+    enter the candidate pool. The textual removal_history is still
+    surfaced in the prompt so the LLM understands *why* those URLs are
+    absent, but the LLM has no ability to re-add them.
     """
     attached = attached_sources or []
     exclude_urls = {_normalize_url(url) for url, _, _ in attached}
+    for locked in locked_out_urls or []:
+        exclude_urls.add(_normalize_url(locked))
 
     candidate_pool: dict[str, ScoredSource] = {}
     selected_urls: list[str] = []
