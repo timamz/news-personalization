@@ -316,6 +316,7 @@ async def _judge_and_revise(
             )
             return current, revise_ids
 
-        current = revised
+        kept = [a for a in current.assessments if a.item_id not in revise_ids]
+        current = BatchAssessmentResult(assessments=kept + revised.assessments)
 
     return current, set()
