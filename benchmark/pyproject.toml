@@ -1,0 +1,47 @@
+[project]
+name = "news-benchmark"
+version = "0.1.0"
+description = "Integration-test harness for the news-service backend"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "news-service",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.7.0",
+    "litellm>=1.40.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "redis>=5.2.0",
+    "alembic>=1.14.0",
+    "httpx>=0.28.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+    "ruff>=0.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/news_benchmark"]
+
+[tool.uv.sources]
+news-service = { path = "../backend", editable = true }
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

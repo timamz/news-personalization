@@ -43,6 +43,14 @@ logger = logging.getLogger(__name__)
 def _format_discovery_result(result: dict[str, Any]) -> str:
     """Render the run_and_persist_discovery dict into a string for the LLM."""
     status = result.get("status")
+    if status == "no_sources_found":
+        return (
+            "ERROR: discovery could not find any sources for this topic. The "
+            "subscription has no sources attached and will not produce a digest. "
+            "Apologize to the user, explain the topic was too narrow or too "
+            "obscure to match any real feeds, and ask them to broaden or rephrase "
+            "it (or add sources manually). Do not claim the subscription is ready."
+        )
     if status != "ok":
         reason = result.get("reason") or "unknown"
         return f"discovery did not complete ({reason})."

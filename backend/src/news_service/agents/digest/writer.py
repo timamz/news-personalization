@@ -111,6 +111,9 @@ async def write_digest(
     Raises RuntimeError if the agent finishes without calling submit_digest.
     """
     search_counter = 0
+    fetch_counter = 0
+    max_searches = settings.digest_writer_max_search_calls
+    max_fetches = settings.digest_writer_max_fetch_calls
 
     shared_state: dict[str, Any] = {
         "completed": False,
@@ -131,11 +134,33 @@ async def write_digest(
             Formatted search results, or an error message.
         """
         nonlocal search_counter
+        if search_counter >= max_searches:
+            return (
+                f"Web search budget exhausted ({max_searches} calls used). "
+                "Do not call search_web or fetch_page again. "
+                "Call submit_digest now with the items you already have."
+            )
         search_counter += 1
         try:
             return await _search_web(query)
         except Exception as exc:
             return f"Web search failed: {exc}"
+
+    async def fetch_page_bounded(url: str) -> str:
+        """Fetch a page, bounded by the writer's tool-call budget.
+
+        Uses the same global ceiling as search_web so an agent cannot
+        evade the limit by alternating between tools.
+        """
+        nonlocal fetch_counter
+        if fetch_counter >= max_fetches:
+            return (
+                f"Fetch budget exhausted ({max_fetches} calls used). "
+                "Do not call fetch_page or search_web again. "
+                "Call submit_digest now with the items you already have."
+            )
+        fetch_counter += 1
+        return await _fetch_page(url)
 
     async def submit_digest(digest_text: str, used_item_ids: str) -> str:
         """Submit the final digest text and the IDs of items included.
@@ -180,15 +205,31 @@ async def write_digest(
         name=f"digest_writer_{uuid.uuid4().hex[:6]}",
         model=LiteLlm(model=settings.litellm_model),
         instruction=system_prompt,
-        tools=[search_web, _fetch_page, submit_digest],
+        tools=[search_web, fetch_page_bounded, submit_digest],
         generate_content_config=types.GenerateContentConfig(temperature=0.3),
     )
 
-    await run_agent_text(
-        agent=agent,
-        message=input_message,
-        user_id="digest-pipeline",
-    )
+    try:
+        await run_agent_text(
+            agent=agent,
+            message=input_message,
+            user_id="digest-pipeline",
+            max_llm_calls=settings.digest_writer_max_llm_calls,
+        )
+    except Exception as exc:
+        # ADK raises LlmCallsLimitExceededError when max_llm_calls is
+        # hit. If the writer already submitted during a prior turn,
+        # we honour that submission; otherwise propagate so the
+        # pipeline can fall back.
+        if not shared_state["completed"]:
+            raise RuntimeError(
+                f"Digest Writer hit LLM-call budget "
+                f"({settings.digest_writer_max_llm_calls}) without submitting: {exc}"
+            ) from exc
+        logger.warning(
+            "Digest Writer hit LLM-call budget after submit; honouring existing draft: %s",
+            exc,
+        )
 
     if not shared_state["completed"]:
         raise RuntimeError("Digest Writer agent finished without calling submit_digest")

@@ -23,10 +23,11 @@ Tools:
 - emit_status: free-text progress log (non-user-visible in this context)
 """
 
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from google.adk.agents import Agent
@@ -69,19 +70,41 @@ whether the user was notified. If something slipped through, you act.
 You are the Event Verifier. You do not rewrite the assessor and you do \
 not touch the user_spec. You investigate the outside world via targeted \
 web searches, compare against the recent notification history, and \
-decide per finding:
+decide per finding.
 
-1. Event happened AND is in notification history -> healthy, move on.
-2. Event happened AND is NOT in history -> this is a miss. Before \
-declaring it, call fetch_source_items on each linked source to check \
-whether that source actually covered the event (and the assessor missed \
-it) or whether no source covered it (and you need better sources). Then:
-   - Call emit_missed_event so the task can deliver a catch-up \
-notification to the user.
-   - If the miss was caused by source coverage gap (no linked source \
-covered this), call trigger_source_discovery with a reason that includes \
-WHAT was missed and WHICH source should have covered it -- be specific, \
-the discovery agent reads this verbatim.
+CRITICAL -- ingestion is not notification. The backend pipeline has \
+two separate stages: poll -> ingest (a linked source's DB gets the \
+item) and then Batch Event Assessor -> SentItem -> webhook (the user \
+actually gets notified). The assessor can fail to flag a relevant item; \
+in that case the source has the item in its DB but the user was never \
+notified. Therefore:
+
+- notification_history (in the input) is the ONLY source of truth for \
+what the user actually received. If a candidate event is NOT in \
+notification_history, it is a miss -- regardless of whether any linked \
+source's DB has the item.
+- fetch_source_items results are ONLY for deciding whether to call \
+trigger_source_discovery (no source covered it -> yes; some source \
+covered it -> no). NEVER treat "the source has it in fetch_source_items" \
+as a substitute for checking notification_history. They are different \
+things.
+
+Per-finding decision:
+
+1. Event happened AND is in notification_history -> healthy, move on.
+2. Event happened AND is NOT in notification_history -> this is a miss. \
+Call emit_missed_event REGARDLESS of source coverage, so the task can \
+deliver a catch-up notification to the user. Then call \
+fetch_source_items on each linked source whose scope could plausibly \
+cover the event, and use source coverage ONLY for the discovery \
+decision:
+   - If no linked source covered the event (coverage gap), call \
+trigger_source_discovery with a reason that includes WHAT was missed \
+and WHICH source should have covered it -- be specific, the discovery \
+agent reads this verbatim.
+   - If some linked source already covered the event (assessor miss), \
+do NOT call trigger_source_discovery -- coverage is fine, only the \
+assessor failed. emit_missed_event was still called above.
    - A single confirmed miss caused by coverage gap is enough to trigger \
 discovery. Do not wait for a quota.
 3. Event did not happen (or no evidence) -> do nothing.
@@ -106,18 +129,23 @@ specific (include entity names, "official announcement", date ranges). \
 You have a soft budget of a few searches -- do not burn them on \
 duplicates or vague wording.
 2. fetch_source_items(source_id, since_days_ago, limit) -- Read recent \
-items from a specific linked source. Call this after finding a \
-candidate miss to determine whether the source covered the event or \
-not. Do not skip this step -- it is how you distinguish an assessor \
-failure from a coverage gap.
+items from a specific linked source. Use this ONLY to decide whether to \
+call trigger_source_discovery (assessor miss vs. coverage gap). Do NOT \
+use it to decide whether to call emit_missed_event -- that decision \
+comes from notification_history alone. Fetch EVERY linked source whose \
+scope could plausibly cover the event; ONE source covering it is enough \
+to route to "assessor miss" rather than "coverage gap". Skip fetching \
+only when web_search returned no credible candidate (nothing to verify) \
+or the candidate event is clearly outside any linked source's scope.
 3. trigger_source_discovery(reason) -- Queue a discovery run. Use only \
 when the miss was caused by coverage gap. Reason string must include: \
 the user_spec (brief), what was missed (title + source URL), and which \
 linked source should have covered it.
 4. emit_missed_event(title, summary, source_url, happened_at) -- \
-Record a confirmed miss for catch-up delivery. Only call this for \
-misses you have verified via fetch_source_items AND for events that \
-have clear authoritative source URLs.
+Record a confirmed miss for catch-up delivery. Call this whenever the \
+candidate event is absent from notification_history and you have a \
+clear authoritative source URL, regardless of whether any linked \
+source's DB has the item.
 5. emit_status(message) -- Short progress note for logs.
 
 # Guardrails
@@ -125,8 +153,11 @@ have clear authoritative source URLs.
 - Only count OFFICIAL announcements. Rumors, leaks, fan speculation, \
 clickbait aggregators -> ignore.
 - Only count events within the lookback window.
-- If history already contains anything that plausibly matches a search \
-hit (same entity, same event type, close timestamp), it is NOT a miss.
+- If notification_history already contains anything that plausibly \
+matches a search hit (same entity, same event type, close timestamp), \
+it is NOT a miss. Conversely, a linked source having the item in its \
+DB (via fetch_source_items) does NOT mean the user was notified -- \
+only notification_history proves that.
 - Never emit markdown bold (**...**) in any text you produce. Plain \
 text only. The frontend renders it verbatim.
 - If you find no misses, just return a short final text summarizing \
@@ -206,6 +237,10 @@ async def run_event_verifier(
         "search_budget_used": 0,
     }
     allowed_source_ids = {ctx.source_id for ctx in source_contexts}
+    # Shared lock for DB-touching tools -- ADK may dispatch parallel
+    # fetch_source_items_tool calls in a single turn, and asyncpg does
+    # not allow overlapping operations on one connection.
+    session_lock = asyncio.Lock()
 
     async def web_search_tool(query: str) -> str:
         """Search the web via Yandex. Returns formatted results (title, URL, snippet)."""
@@ -222,6 +257,7 @@ async def run_event_verifier(
         allowed_source_ids=allowed_source_ids,
         topic_embedding=None,
         name="fetch_source_items_tool",
+        session_lock=session_lock,
     )
 
     async def trigger_source_discovery_tool(reason: str) -> str:
@@ -260,10 +296,14 @@ async def run_event_verifier(
             shared_state["status_messages"].append(message)
         return "Status recorded."
 
+    now_iso = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     input_message = (
+        f"Current date/time: {now_iso}\n"
         f"Subscription id: {subscription.id}\n"
         f"Target language: {subscription.digest_language}\n"
-        f"Lookback window: {lookback_days} days\n\n"
+        f"Lookback window: {lookback_days} days (events older than "
+        f"{lookback_days} days before the current date above are "
+        f"out of scope; anything on or after that cutoff is in scope).\n\n"
         f"User spec:\n{user_spec}\n\n"
         f"Linked sources:\n{_format_source_contexts(source_contexts)}\n\n"
         f"Recent notification history:\n{_format_history(history_strings)}\n\n"

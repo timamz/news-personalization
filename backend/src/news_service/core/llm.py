@@ -14,7 +14,15 @@ import litellm
 from openai import AsyncOpenAI
 
 from news_service.core.config import get_settings
+from news_service.core.llm_errors import StructuredOutputParseError
 from news_service.core.llm_retry import with_llm_retry
+
+__all__ = [
+    "StructuredOutputParseError",
+    "chat_completion",
+    "embed_text",
+    "embed_texts",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +30,8 @@ settings = get_settings()
 
 EMBEDDING_MAX_CHARS = 4000
 EMBEDDING_BATCH_SIZE = 6
+
+_PARSE_ERROR_CONTENT_SNIPPET_MAX = 500
 
 _http_client = httpx.AsyncClient(proxy=settings.proxy_url) if settings.proxy_url else None
 _openai_client: AsyncOpenAI | None = None
@@ -67,6 +77,8 @@ async def chat_completion(
     response = await litellm.acompletion(**kwargs)
 
     if response_format is not None and _is_pydantic_model(response_format):
+        any_parsed = False
+        last_failed_content: str | None = None
         for choice in response.choices:
             message = choice.message
             content = getattr(message, "content", None)
@@ -75,12 +87,26 @@ async def chat_completion(
             try:
                 parsed = response_format.model_validate_json(content)
             except Exception:
-                logger.exception("Failed to parse structured LLM output as %s", response_format)
+                logger.warning(
+                    "Failed to parse structured LLM output as %s; content snippet=%r",
+                    response_format,
+                    content[:_PARSE_ERROR_CONTENT_SNIPPET_MAX],
+                )
+                last_failed_content = content
                 continue
+            any_parsed = True
             try:
                 message.parsed = parsed
             except (AttributeError, ValueError):
                 object.__setattr__(message, "parsed", parsed)
+
+        if not any_parsed:
+            snippet = (last_failed_content or "")[:_PARSE_ERROR_CONTENT_SNIPPET_MAX]
+            raise StructuredOutputParseError(
+                f"LLM returned content that failed to parse as "
+                f"{response_format.__name__} for all {len(response.choices)} "
+                f"choice(s); content snippet={snippet!r}"
+            )
 
     return response
 

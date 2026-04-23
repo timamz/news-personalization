@@ -9,6 +9,8 @@ from typing import ParamSpec, TypeVar
 
 import litellm
 
+from news_service.core.llm_errors import StructuredOutputParseError
+
 logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
@@ -20,6 +22,7 @@ _RETRYABLE_ERRORS = (
     litellm.RateLimitError,
     litellm.InternalServerError,
     litellm.ServiceUnavailableError,
+    StructuredOutputParseError,
 )
 
 

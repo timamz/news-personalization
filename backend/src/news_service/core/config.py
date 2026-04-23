@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     event_reflector_interval_days: int = 3
     event_verifier_lookback_days: int = 7
     event_verifier_max_searches: int = 5
+    digest_writer_max_search_calls: int = 6
+    digest_writer_max_fetch_calls: int = 3
+    digest_writer_max_llm_calls: int = 25
 
     llm_retry_max_attempts: int = 3
     llm_retry_base_delay_seconds: float = 1.0
@@ -47,7 +50,7 @@ class Settings(BaseSettings):
     max_concurrent_discoveries: int = 3
     max_concurrent_web_searches: int = 2
     source_validation_timeout_seconds: float = 30.0
-    discovery_backfill_min_score: float = 0.4
+    discovery_removal_lockout_days: int = 30
 
     llm_max_context_chars: int = 1_200_000
 

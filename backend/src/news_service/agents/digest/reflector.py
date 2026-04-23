@@ -10,6 +10,7 @@ Tools:
 - remove_source: delete dead or off-topic auto-discovered sources
 - trigger_source_discovery: queue discovery to find new sources
 - emit_status: emit a progress status to the user
+- update_user_spec: rewrite user_spec for format/presentation only
 """
 
 import asyncio
@@ -58,8 +59,9 @@ source, REVISE verdict after max revisions, or periodic check).
 
 # Your role
 
-You are the Pipeline Reflector. You do not rewrite digests and you do not \
-touch the user_spec. Your job is to keep the subscription's SOURCE POOL \
+You are the Pipeline Reflector. You do not rewrite digests. You may amend \
+user_spec only for format/presentation (not topic scope). Your job is to \
+keep the subscription's SOURCE POOL \
 healthy so tomorrow's digest has better material to pull from. Everything \
 else upstream (Writer, Judge, retrieval) re-runs on the next schedule and \
 gets whatever pool you leave behind.
@@ -85,7 +87,7 @@ removal candidate.
 - Low contribution_rate on a high-volume source signals noise; combined \
 with a high streak, it's a clean remove.
 
-You have four tools:
+You have five tools:
 1. **fetch_source_items(source_id, since_days_ago, limit)** -- Read recent \
 items from a specific linked source to examine its content before deciding. \
 Always call this before removing a source whose content you have not seen.
@@ -97,6 +99,29 @@ prolonged silence, or content inspection via fetch_source_items).
 removing sources, or when the subscription's source pool is clearly thin \
 or off-topic.
 4. **emit_status(message)** -- Emit a short progress status to the user.
+5. **update_user_spec(new_spec, reason)** -- Rewrite the subscription's \
+user_spec. SCOPE: format/presentation instructions ONLY (length, bullets \
+vs. paragraphs, language, tone, item count, citation style). NEVER alter \
+topic scope, entity lists, or exclusions -- those belong to the user. Use \
+when Judge scores show consistent format failure (format_score low, \
+relevance high) across rounds and the cause is clearly writer/spec \
+alignment rather than source content.
+
+When to fetch source items:
+- A content-related trigger (drift / streak / REVISE-after-max) \
+contradicts the per-source metadata -- e.g., streak is high but the \
+source's description looks on-topic, or REVISE-after-max fired on a pool \
+whose metadata all looks healthy. Only reading items resolves the \
+contradiction.
+- You are choosing between two removal candidates -- fetch both and \
+compare content.
+
+When to skip fetching:
+- Staleness is the only trigger and metadata is definitive (the source \
+hasn't published in weeks -- there are no items to fetch anyway).
+- Judge scores clearly finger a non-source cause (relevance high, \
+format_score low -> spec/format path; route to update_user_spec instead \
+of touching the pool).
 
 Guidelines:
 - Start from the invocation reasons. They name the specific sources you \
@@ -109,6 +134,13 @@ lost so the finder knows what to look for.
 - Never emit Markdown bold syntax (**...**) in emit_status messages or any \
 other user-visible text. The frontend does not render it and the asterisks \
 appear literally. Use plain text -- no bold markers at all.
+- Trigger reasons can be misleading. A contribution-streak or \
+REVISE-after-max reason can reflect a writer-selection or spec-format \
+issue rather than a source problem. Read the Judge scores: if \
+format_score is low while relevance is high, the issue is the writer's \
+alignment with the spec's format instructions -- use update_user_spec to \
+tighten them. Do not blame the source pool when the signal points \
+elsewhere.
 """
 
 
@@ -167,6 +199,16 @@ async def run_reflector(
         "discovery_reason": "",
     }
 
+    # ADK dispatches tool calls in parallel when the LLM returns multiple
+    # function_call parts in a single turn. Every reflector tool touches
+    # the same AsyncSession, and asyncpg does not support overlapping
+    # operations on one connection. Without this lock the session hits
+    # "Session is already flushing" / "another operation is in progress"
+    # and the session's connection ends up in a bad state that then
+    # poisons the next task sharing the pool. Serializing every
+    # DB-touching tool keeps the connection usage single-threaded.
+    session_lock = asyncio.Lock()
+
     async def remove_source(url: str, reason: str) -> str:
         """Remove a dead or useless source from this subscription.
 
@@ -180,46 +222,49 @@ async def run_reflector(
         Returns:
             Confirmation or rejection message.
         """
-        link_result = await db_session.execute(
-            select(SubscriptionSource)
-            .join(Source, Source.id == SubscriptionSource.source_id)
-            .where(
-                SubscriptionSource.subscription_id == subscription.id,
-                Source.url == url,
+        async with session_lock:
+            link_result = await db_session.execute(
+                select(SubscriptionSource)
+                .join(Source, Source.id == SubscriptionSource.source_id)
+                .where(
+                    SubscriptionSource.subscription_id == subscription.id,
+                    Source.url == url,
+                )
             )
-        )
-        link = link_result.scalar_one_or_none()
-        if link is None:
-            return f"Source {url} is not linked to this subscription."
+            link = link_result.scalar_one_or_none()
+            if link is None:
+                return f"Source {url} is not linked to this subscription."
 
-        if link.is_user_specified:
-            return f"Cannot remove {url}: this is a user-specified source."
+            if link.is_user_specified:
+                return f"Cannot remove {url}: this is a user-specified source."
 
-        source_result = await db_session.execute(select(Source).where(Source.id == link.source_id))
-        source = source_result.scalar_one()
-
-        await db_session.delete(link)
-        source.subscriber_count = max(source.subscriber_count - 1, 0)
-        if source.subscriber_count == 0:
-            source.is_active = False
-
-        db_session.add(
-            SourceRemovalLog(
-                subscription_id=subscription.id,
-                source_url=url,
-                removed_at=datetime.now(UTC),
-                removal_reason=reason,
+            source_result = await db_session.execute(
+                select(Source).where(Source.id == link.source_id)
             )
-        )
-        await db_session.flush()
+            source = source_result.scalar_one()
 
-        logger.info(
-            "Reflector removed source %s from subscription %s: %s",
-            url,
-            subscription.id,
-            reason,
-        )
-        return f"Removed source {url} (reason: {reason})."
+            await db_session.delete(link)
+            source.subscriber_count = max(source.subscriber_count - 1, 0)
+            if source.subscriber_count == 0:
+                source.is_active = False
+
+            db_session.add(
+                SourceRemovalLog(
+                    subscription_id=subscription.id,
+                    source_url=url,
+                    removed_at=datetime.now(UTC),
+                    removal_reason=reason,
+                )
+            )
+            await db_session.flush()
+
+            logger.info(
+                "Reflector removed source %s from subscription %s: %s",
+                url,
+                subscription.id,
+                reason,
+            )
+            return f"Removed source {url} (reason: {reason})."
 
     async def trigger_source_discovery(reason: str) -> str:
         """Request that the discovery pipeline find new sources.
@@ -242,6 +287,7 @@ async def run_reflector(
         allowed_source_ids=allowed_source_ids,
         topic_embedding=topic_embedding,
         name="fetch_source_items",
+        session_lock=session_lock,
     )
 
     async def emit_status(message: str) -> str:
@@ -263,6 +309,34 @@ async def run_reflector(
             )
         return "Status emitted."
 
+    async def update_user_spec(new_spec: str, reason: str) -> str:
+        """Rewrite this subscription's user_spec. Scope: FORMAT/PRESENTATION instructions only.
+
+        Args:
+            new_spec: Full new user_spec text (replaces the existing value).
+            reason: Why the spec was updated (for logs).
+
+        Returns:
+            Confirmation or rejection message.
+        """
+        clean_spec = (new_spec or "").strip()
+        clean_reason = (reason or "").strip()
+        if not clean_spec:
+            return "Refusing to update user_spec: new spec is empty."
+        if not clean_reason:
+            return "Refusing to update user_spec: reason is required."
+        async with session_lock:
+            stmt = select(Subscription).where(Subscription.id == subscription.id)
+            sub = (await db_session.execute(stmt)).scalar_one()
+            sub.user_spec = clean_spec
+            await db_session.flush()
+        logger.info(
+            "Reflector updated user_spec for subscription %s: %s",
+            subscription.id,
+            clean_reason,
+        )
+        return f"user_spec updated. Reason: {clean_reason}"
+
     reasons_block = (
         "\n".join(f"- {reason}" for reason in trigger_reasons)
         if trigger_reasons
@@ -282,7 +356,13 @@ async def run_reflector(
         name=f"reflector_{uuid.uuid4().hex[:6]}",
         model=LiteLlm(model=settings.litellm_model),
         instruction=REFLECTOR_PROMPT,
-        tools=[fetch_source_items, remove_source, trigger_source_discovery, emit_status],
+        tools=[
+            fetch_source_items,
+            remove_source,
+            trigger_source_discovery,
+            emit_status,
+            update_user_spec,
+        ],
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 

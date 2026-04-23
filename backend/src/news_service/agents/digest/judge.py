@@ -29,6 +29,19 @@ Be strict but fair. A score of 3 means acceptable, 4 means good, 5 means excelle
 Never emit Markdown bold syntax (**...**) in your feedback text. The writer \
 reads it verbatim and would copy the markers into the user-visible digest, \
 where the frontend does not render them.
+
+# Output format
+
+You MUST respond with a JSON object matching this EXACT schema and nothing \
+else -- no prose, no explanations before or after, no markdown code fences:
+
+{
+  "relevance": integer 1-5,
+  "format_score": integer 1-5,
+  "conciseness": integer 1-5,
+  "verdict": "PASS" or "REVISE",
+  "feedback": string (empty when verdict is PASS)
+}
 """
 
 

@@ -18,3 +18,9 @@ class ScoredSource(BaseModel):
 
 class SourceDiscoveryResult(BaseModel):
     sources: list[ScoredSource] = Field(..., description="Selected sources ranked by relevance")
+    abort_reason: str = Field(
+        default="",
+        description="Reason string set by the orchestrator's abort() tool. Empty when "
+        "the run finished via submit_selection. Surfaced to the caller only for "
+        "diagnostic context; the authoritative empty-result signal is sources=[].",
+    )

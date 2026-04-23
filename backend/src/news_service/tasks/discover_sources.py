@@ -18,12 +18,14 @@ call sites:
 import asyncio
 import logging
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.source_discovery import run_source_discovery
+from news_service.core.config import get_settings
 from news_service.db.session import get_task_session
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
@@ -31,6 +33,8 @@ from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.coverage import ensure_source_by_url
 from news_service.tasks.celery_app import celery_app
+
+settings = get_settings()
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +68,10 @@ async def run_and_persist_discovery(
     Returns a dict the caller can log or feed back to an LLM::
 
         {
-            "status": "ok" | "skipped",
-            "reason": str,                       # present when skipped
+            "status": "ok" | "skipped" | "no_sources_found",
+            "reason": str,                       # present when skipped/no_sources_found
+            "abort_reason": str,                 # present on no_sources_found if the
+                                                 # orchestrator called abort()
             "discovered": int,                   # sources the agent selected
             "persisted": int,                    # new SubscriptionSource rows
             "selected_sources": [                # present on ok
@@ -73,6 +79,12 @@ async def run_and_persist_discovery(
                 ...
             ],
         }
+
+    The ``no_sources_found`` status is returned when the discovery pipeline
+    terminates with zero selected sources. Callers (conversational agent,
+    reflector) are expected to surface this to the user so they can refine
+    the subscription topic -- a subscription with no attached sources is
+    dead on arrival.
 
     When ``status_queue`` is provided, the underlying ``run_source_discovery``
     emits progress frames (``event: "discovery_progress"``) that the caller
@@ -95,6 +107,7 @@ async def run_and_persist_discovery(
 
     attached = await _load_attached_sources(session, subscription_id)
     removal_history = await _load_removal_history(session, subscription_id)
+    locked_out_urls = await _load_recently_removed_urls(session, subscription_id)
 
     result = await run_source_discovery(
         session=session,
@@ -104,6 +117,7 @@ async def run_and_persist_discovery(
         attached_sources=attached,
         reason=reason,
         removal_history=removal_history,
+        locked_out_urls=locked_out_urls,
         status_queue=status_queue,
         display_language=display_language,
     )
@@ -125,6 +139,25 @@ async def run_and_persist_discovery(
             "discovered": len(result.sources),
             "persisted": 0,
         }
+
+    if not result.sources:
+        logger.warning(
+            "Discovery returned zero sources for subscription %s (reason=%r, abort=%r)",
+            subscription_id,
+            reason[:100],
+            result.abort_reason[:200] if result.abort_reason else "",
+        )
+        payload: dict[str, Any] = {
+            "status": "no_sources_found",
+            "subscription_id": str(subscription_id),
+            "reason": "no candidates found for this topic",
+            "discovered": 0,
+            "persisted": 0,
+            "selected_sources": [],
+        }
+        if result.abort_reason:
+            payload["abort_reason"] = result.abort_reason
+        return payload
 
     persisted = 0
     selected_sources: list[dict[str, str]] = []
@@ -198,6 +231,26 @@ async def _load_removal_history(session: AsyncSession, subscription_id: uuid.UUI
     )
     lines = [f"- {url}: {reason or '(no reason)'}" for url, reason in rows.all()]
     return "\n".join(lines)
+
+
+async def _load_recently_removed_urls(
+    session: AsyncSession, subscription_id: uuid.UUID
+) -> list[str]:
+    """URLs removed from this subscription within the lockout window.
+
+    The Reflector removes sources it judges dead, off-topic, or unreliable
+    and logs the removal here. Re-discovery must not re-attach those URLs
+    within ``discovery_removal_lockout_days`` regardless of how the LLM
+    scores them -- a soft prompt hint proved insufficient in practice.
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=settings.discovery_removal_lockout_days)
+    rows = await session.execute(
+        select(SourceRemovalLog.source_url).where(
+            SourceRemovalLog.subscription_id == subscription_id,
+            SourceRemovalLog.removed_at >= cutoff,
+        )
+    )
+    return [url for (url,) in rows.all()]
 
 
 def _kind_from_url(url: str) -> str:
