@@ -1,21 +1,34 @@
 """
-S-verifier: Event Verifier catches a missed event and delivers a catch-up.
+S-verifier: coverage-gap path -- verifier catches a missed event the
+linked source NEVER covered and queues source discovery alongside the
+catch-up delivery.
 
 Seeds one event-mode subscription narrowly scoped to EU CBAM (Carbon
 Border Adjustment Mechanism) developments. One auto-discovered source
 is linked; it has been polling and has notified on two recent
 non-CBAM EU energy items (forming a non-empty notification history).
-A separate CBAM Council announcement from three days ago is planted
+A separate CBAM Council announcement from two days ago is planted
 only in the fake web-search corpus -- none of the subscription's
 sources covered it, so the batch assessor had no chance of
 surfacing it.
 
+This is the **coverage-gap** scenario: the correct verifier response
+is BOTH to emit_missed_event (so the task delivers a catch-up) AND to
+trigger_source_discovery (because the user needs a better source for
+this topic going forward). The companion test
+``test_s_verifier_assessor_miss.py`` covers the opposite case, where
+a linked source DID cover the event and the assessor under-flagged
+it -- in that case only catch-up delivery should fire and discovery
+should stay silent.
+
 ``_reflect_event_subscriptions`` is called directly. The real Event
 Verifier ADK agent runs, issues a few web searches (budget 5), finds
-the CBAM miss in the fake corpus, calls ``fetch_source_items`` to
-confirm the source did not cover it, then calls
-``emit_missed_event``. The surrounding task inserts a synthetic
-NewsItem + SentItem and delivers a catch-up webhook.
+the CBAM miss in the fake corpus, calls ``fetch_source_items`` on the
+linked source to confirm the source did not cover it, then calls
+``emit_missed_event`` AND ``trigger_source_discovery``. The
+surrounding task inserts a synthetic NewsItem + SentItem, delivers a
+catch-up webhook, and dispatches the discovery task via
+``celery_app.send_task``.
 
 The fake web-search corpus is shaped to match the query patterns the
 prompt's guidelines ("include entity names, official announcement,
@@ -24,14 +37,15 @@ most reasonable phrasings, so the test does not depend on the
 agent choosing an exact wording.
 
 Exercises: ``_reflect_event_subscriptions``, ``run_event_verifier``
-(the ADK agent loop with all five tools), ``_deliver_and_record_miss``
-(synthetic NewsItem + SentItem + webhook), the verifier sentinel
-source, and ``Subscription.last_reflected_at`` stamping.
+(the ADK agent loop with all five tools, including
+``trigger_source_discovery``), ``_deliver_and_record_miss``
+(synthetic NewsItem + SentItem + webhook), discovery-task dispatch
+via ``celery_app.send_task``, the verifier sentinel source, and
+``Subscription.last_reflected_at`` stamping.
 
-Out of scope: the "no miss found" negative case, self-throttling via
-``last_reflected_at`` (we initialise it to NULL so the sub is due),
-and the discovery cascade (``trigger_source_discovery`` may or may
-not fire; we capture but do not assert).
+Out of scope: the "no miss found" negative case and self-throttling
+via ``last_reflected_at`` (we initialise it to NULL so the sub is
+due).
 """
 
 from __future__ import annotations
@@ -44,6 +58,8 @@ from sqlalchemy import select
 
 from news_benchmark.clock import CLOCK
 from news_benchmark.fakes.search import SearchResult
+
+from tests.integration._reflector_common import install_discovery_stub
 
 WEBHOOK_URL = "https://bench.invalid/webhook/s-verifier"
 SOURCE_URL = "https://brussels-energy-policy.invalid/feed.xml"
@@ -173,8 +189,8 @@ SEEDED_NOTIFIED_ITEMS = [
 
 
 @pytest.mark.asyncio
-async def test_s_verifier_catches_cbam_miss_and_delivers_catchup(world):
-    """Verifier finds the planted CBAM miss in fake web results and catches up."""
+async def test_s_verifier_coverage_gap_delivers_catchup_and_queues_discovery(world):
+    """Verifier finds a CBAM miss with zero source coverage: catch-up + discovery."""
     from news_service.db.session import async_session_factory
     from news_service.db.vector_store import embed_text
     from news_service.models.failed_task import FailedTask
@@ -187,6 +203,8 @@ async def test_s_verifier_catches_cbam_miss_and_delivers_catchup(world):
 
     now = CLOCK.now()
     world.search.corpus.update(_build_search_corpus(now))
+
+    discovery_stub = install_discovery_stub(world)
 
     user_id = uuid.uuid4()
     sub_id = uuid.uuid4()
@@ -300,6 +318,13 @@ async def test_s_verifier_catches_cbam_miss_and_delivers_catchup(world):
     combined = (captured[0].body + " " + (captured[0].subject or "")).lower()
     assert "cbam" in combined or "carbon border" in combined, (
         f"catch-up body should mention CBAM / carbon border. Got: {captured[0].body!r}"
+    )
+
+    assert discovery_stub.call_count() >= 1, (
+        "coverage-gap scenario: the linked source never covered CBAM, so the "
+        "verifier should have queued source discovery alongside the catch-up. "
+        f"discovery_stub.calls={discovery_stub.calls!r}. "
+        f"Verifier searches issued: {world.search.call_log!r}"
     )
 
     async with async_session_factory() as s:
