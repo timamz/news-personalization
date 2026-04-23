@@ -49,7 +49,7 @@ All services run in Docker. `docker compose up --build -d` starts everything. In
 | **Pipeline Reflector** | `agents/digest/reflector.py` | ADK agent | After delivery, only when a health trigger fires | `fetch_source_items(source_id, since_days_ago, limit)`, `remove_source(url, reason)` (auto-discovered only), `trigger_source_discovery(reason)`, `emit_status` |
 | **Batch Event Assessor** | `agents/event/batch_assessor.py` | Single structured-output LLM call | New items from polling cycle | Returns `BatchAssessmentResult` (per-item `is_relevant` + `notification_body`); accepts optional `critic_feedback_per_item` for judge revision turns |
 | **Event Judge** | `agents/event/judge.py` | Single structured-output LLM call | After Batch Assessor when any item is relevant | Returns `BatchJudgeResult` with per-item `PASS`/`REVISE`+feedback; `overall` is REVISE iff any item is |
-| **Event Verifier** | `agents/event/verifier.py` | ADK agent | Weekly per active event sub (beat daily, self-throttled via `last_reflected_at`) | `web_search`, `fetch_source_items(source_id, since_days_ago, limit)`, `trigger_source_discovery(reason)`, `emit_missed_event(title, summary, source_url, happened_at)`, `emit_status` |
+| **Event Verifier** | `agents/event/verifier.py` | ADK agent | Every 3 days per active event sub by default (beat daily, self-throttled via `last_reflected_at`) | `web_search`, `fetch_source_items(source_id, since_days_ago, limit)`, `trigger_source_discovery(reason)`, `emit_missed_event(title, summary, source_url, happened_at)`, `emit_status` |
 | **Source Poller** | `tasks/poll_feeds.py` | Celery Beat task (no LLM) | Every 30 min | Fetches RSS / Telegram / Reddit, enriches each item with the full article body at ingest time, embeds new items |
 
 ### Pipeline Flows
@@ -86,7 +86,7 @@ poll_feeds() -> deliver_event_notifications_batch(item_ids):
 ```
 All new items from a polling cycle are batched. One LLM call per subscription evaluates all items together (enabling cross-item deduplication and notification-history checks), reducing N*M calls to M calls. When at least one item is relevant, an Event Judge (`agents/event/judge.py`) critiques the assessor's output per item. On REVISE, the assessor re-runs for only those items with the critic feedback injected; items still REVISE after the bounded loop are dropped from delivery rather than forced through. The Judge is fail-open (tier 2): on exception the loop falls through with the unreviewed assessor output.
 
-**Event Verification Pipeline** (weekly outcome-check):
+**Event Verification Pipeline** (periodic outcome-check):
 ```
 Celery Beat (daily) -> reflect_event_subscriptions():
   select event subs where last_reflected_at < now - event_reflector_interval_days

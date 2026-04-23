@@ -1,8 +1,8 @@
-"""Tests for the weekly event verifier Celery task."""
+"""Tests for the periodic event verifier Celery task."""
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -52,6 +52,31 @@ async def test_task_skips_when_no_due_subscriptions(mocker) -> None:
 
     assert result == {"status": "skipped", "reason": "no_due_subscriptions"}, (
         "task did not short-circuit when there are no due event subscriptions"
+    )
+
+
+@pytest.mark.asyncio
+async def test_task_uses_the_three_day_verifier_interval_for_due_selection(mocker) -> None:
+    session = MagicMock()
+    captured_query = None
+
+    async def _execute(query):
+        nonlocal captured_query
+        captured_query = query
+        return SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: []))
+
+    session.execute = AsyncMock(side_effect=_execute)
+    _install_session_factory(mocker, session)
+
+    before = datetime.now(UTC)
+    await reflect_events._reflect_event_subscriptions()
+    after = datetime.now(UTC)
+
+    cutoff = captured_query.compile().params["last_reflected_at_1"]
+    lower_bound = before - timedelta(days=3, seconds=2)
+    upper_bound = after - timedelta(days=3) + timedelta(seconds=2)
+    assert lower_bound <= cutoff <= upper_bound, (
+        "task did not build its due-subscription cutoff from the three-day verifier interval"
     )
 
 

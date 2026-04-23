@@ -1,4 +1,4 @@
-"""Event Verifier -- weekly outcome-check reflector for event subscriptions.
+"""Event Verifier -- periodic outcome-check reflector for event subscriptions.
 
 Mirrors the Digest Pipeline Reflector in agency and tool shape. Where the
 digest reflector inspects the subscription's source pool against digest
@@ -60,7 +60,7 @@ to deliver a notification. The assessor can fail silently: it may \
 under-flag a genuine announcement, or the linked sources may not have \
 covered the announcement at all.
 
-You run WEEKLY as a safety net. Your job is to check whether anything \
+You run every few days as a safety net. Your job is to check whether anything \
 matching the spec actually happened in the last few days, and if so, \
 whether the user was notified. If something slipped through, you act.
 

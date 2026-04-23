@@ -1,4 +1,4 @@
-"""Weekly event verifier task -- runs the Event Verifier per active event subscription.
+"""Periodic event verifier task -- runs the Event Verifier per active event subscription.
 
 Schedule:
 - Beat fires daily; the task self-throttles per subscription via
@@ -10,7 +10,7 @@ Per subscription:
 2. Run the Event Verifier agent.
 3. For each missed_event the agent recorded:
    - Insert a synthetic NewsItem (source = the shared "_verifier" sentinel
-     Source row) + a SentItem pointing to it so next week's history
+     Source row) + a SentItem pointing to it so the next verifier window's history
      includes the catch-up.
    - Deliver the catch-up via the sub's webhook.
 4. For each discovery_reason the agent queued, dispatch

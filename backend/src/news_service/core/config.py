@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 1536
     recent_event_match_concurrency: int = 8
     event_judge_max_revisions: int = 2
-    event_reflector_interval_days: int = 7
+    event_reflector_interval_days: int = 3
     event_verifier_lookback_days: int = 7
     event_verifier_max_searches: int = 5
 

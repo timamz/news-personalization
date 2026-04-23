@@ -482,7 +482,16 @@ async def _mark_as_sent(
     subscription_id: uuid.UUID,
     news_item_ids: list[uuid.UUID],
 ) -> None:
+    # De-dupe: Writer.used_item_ids can contain repeats and the benchmark
+    # also sees the same scenario content polled into the DB multiple
+    # times under different institutional-alias source_ids. Without this
+    # the INSERT violates the ``uq_sent_item`` (subscription_id,
+    # news_item_id) unique constraint.
+    seen: set[uuid.UUID] = set()
     for item_id in news_item_ids:
+        if item_id in seen:
+            continue
+        seen.add(item_id)
         session.add(SentItem(subscription_id=subscription_id, news_item_id=item_id))
     await session.flush()
 
