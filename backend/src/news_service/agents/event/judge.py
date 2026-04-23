@@ -65,6 +65,23 @@ Be strict but fair: when in doubt, PASS; only REVISE for concrete \
 issues you can name.
 
 Return verdicts for every item_id the assessor returned.
+
+# Output format
+
+You MUST respond with a JSON object matching this EXACT schema and nothing \
+else -- no prose, no explanations before or after, no markdown code fences, \
+no bare array:
+
+{
+  "per_item": [
+    {"item_id": "<uuid>", "verdict": "PASS" or "REVISE", "feedback": "<short note or empty>"}
+  ],
+  "overall": "PASS" or "REVISE"
+}
+
+The per_item array must contain one entry for every item_id in the input \
+-- never fewer, never more. The overall field must be "REVISE" if any \
+per_item entry has verdict "REVISE", else "PASS".
 """
 
 
