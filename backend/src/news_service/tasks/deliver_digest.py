@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from news_service.agents.digest import generate_digest
 from news_service.core.exceptions import DigestPipelineError
+from news_service.core.llm_usage import subscription_tag
 from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
 from news_service.services.delivery import deliver
@@ -17,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task(name="news_service.tasks.deliver_digest.deliver_digest")
 def deliver_digest(subscription_id: str, notify_if_empty: bool = False) -> dict:
-    return asyncio.run(_deliver_digest(uuid.UUID(subscription_id), notify_if_empty))
+    sub_uuid = uuid.UUID(subscription_id)
+    with subscription_tag(sub_uuid):
+        return asyncio.run(_deliver_digest(sub_uuid, notify_if_empty))
 
 
 async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = False) -> dict:

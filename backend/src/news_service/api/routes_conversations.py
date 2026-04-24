@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.conversational import run_conversation_turn_streaming
 from news_service.api.dependencies import get_current_user
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import user_tag
 from news_service.core.redis import get_redis_client
 from news_service.db.session import get_session
 from news_service.models.user import User
@@ -115,37 +116,38 @@ async def _run_turn_streaming(
 ) -> AsyncGenerator[str, None]:
     conversation_summary = user.conversation_summary or ""
 
-    async for event in run_conversation_turn_streaming(
-        state.messages,
-        db_session=db_session,
-        user=user,
-        conversation_summary=conversation_summary,
-        user_language=state.user_language,
-        compacted_log=list(state.compacted_log),
-    ):
-        if event["event"] == "done":
-            output = AgentTurnOutput.model_validate(event["output"])
-            state.messages.extend(event["new_messages"])
+    with user_tag(user.id):
+        async for event in run_conversation_turn_streaming(
+            state.messages,
+            db_session=db_session,
+            user=user,
+            conversation_summary=conversation_summary,
+            user_language=state.user_language,
+            compacted_log=list(state.compacted_log),
+        ):
+            if event["event"] == "done":
+                output = AgentTurnOutput.model_validate(event["output"])
+                state.messages.extend(event["new_messages"])
 
-            shared = event.get("shared_state") or {}
-            close_summary = shared.get("scenario_close_summary")
-            if close_summary:
-                _apply_scenario_close(state, close_summary)
+                shared = event.get("shared_state") or {}
+                close_summary = shared.get("scenario_close_summary")
+                if close_summary:
+                    _apply_scenario_close(state, close_summary)
 
-            _enforce_size_guardrail(state, settings.conversation_hot_max_bytes)
+                _enforce_size_guardrail(state, settings.conversation_hot_max_bytes)
 
-            await _save_state(state)
-            yield (
-                json.dumps(
-                    {
-                        "event": "done",
-                        "agent_message": output.message,
-                    }
+                await _save_state(state)
+                yield (
+                    json.dumps(
+                        {
+                            "event": "done",
+                            "agent_message": output.message,
+                        }
+                    )
+                    + "\n"
                 )
-                + "\n"
-            )
-        else:
-            yield json.dumps(event) + "\n"
+            else:
+                yield json.dumps(event) + "\n"
 
 
 @router.post("/stream")

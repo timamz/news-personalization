@@ -18,6 +18,7 @@ from news_service.agents.conversational.helpers import (
 from news_service.agents.conversational.prompt import _build_instruction
 from news_service.agents.conversational.tools import build_tools
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import agent_tag
 from news_service.db.session import async_session_factory
 from news_service.models.user import User
 from news_service.schemas.conversation import AgentTurnOutput
@@ -101,11 +102,12 @@ async def run_conversational_turn(
         conversation_summary=conversation_summary,
         user_language=user_language,
     )
-    agent_message = await run_agent_text(
-        agent=agent,
-        message=user_message,
-        user_id=str(user.id),
-    )
+    with agent_tag("conversational"):
+        agent_message = await run_agent_text(
+            agent=agent,
+            message=user_message,
+            user_id=str(user.id),
+        )
     return {
         "agent_message": agent_message,
         "created_subscription_id": shared_state["created_subscription_id"],
@@ -138,79 +140,80 @@ async def run_conversation_turn_streaming(
       {"event": "done", "output": {...}, "new_messages": [...], "shared_state": {...}}
       {"event": "error", "detail": "..."}
     """
-    previous_messages = messages[:-1] if len(messages) > 1 else []
-    current_message = messages[-1]["content"] if messages else ""
+    with agent_tag("conversational"):
+        previous_messages = messages[:-1] if len(messages) > 1 else []
+        current_message = messages[-1]["content"] if messages else ""
 
-    events_queue: asyncio.Queue[Any] = asyncio.Queue()
+        events_queue: asyncio.Queue[Any] = asyncio.Queue()
 
-    try:
-        subscription_summaries = await _load_subscription_summaries(db_session, user.id)
-    except Exception:
-        logger.exception("Failed to load subscription summaries; continuing without context")
-        subscription_summaries = None
-
-    agent, shared_state = create_conversational_agent(
-        db_session=db_session,
-        user=user,
-        conversation_summary=conversation_summary,
-        user_language=user_language,
-        conversation_history=previous_messages,
-        status_queue=events_queue,
-        subscription_summaries=subscription_summaries,
-        compacted_log=compacted_log,
-    )
-
-    agent_text = ""
-    agent_error: BaseException | None = None
-
-    async def pump_adk() -> None:
-        nonlocal agent_text, agent_error
         try:
-            async for event in run_agent(
-                agent=agent,
-                message=current_message,
-                user_id=str(user.id),
-            ):
-                await events_queue.put((_ADK_SENTINEL, event))
-        except BaseException as exc:
-            agent_error = exc
+            subscription_summaries = await _load_subscription_summaries(db_session, user.id)
+        except Exception:
+            logger.exception("Failed to load subscription summaries; continuing without context")
+            subscription_summaries = None
+
+        agent, shared_state = create_conversational_agent(
+            db_session=db_session,
+            user=user,
+            conversation_summary=conversation_summary,
+            user_language=user_language,
+            conversation_history=previous_messages,
+            status_queue=events_queue,
+            subscription_summaries=subscription_summaries,
+            compacted_log=compacted_log,
+        )
+
+        agent_text = ""
+        agent_error: BaseException | None = None
+
+        async def pump_adk() -> None:
+            nonlocal agent_text, agent_error
+            try:
+                async for event in run_agent(
+                    agent=agent,
+                    message=current_message,
+                    user_id=str(user.id),
+                ):
+                    await events_queue.put((_ADK_SENTINEL, event))
+            except BaseException as exc:
+                agent_error = exc
+            finally:
+                await events_queue.put(None)
+
+        task = asyncio.create_task(pump_adk())
+
+        try:
+            while True:
+                item = await events_queue.get()
+                if item is None:
+                    break
+                if isinstance(item, tuple) and len(item) == 2 and item[0] is _ADK_SENTINEL:
+                    event = item[1]
+                    if event["type"] == "tool_call":
+                        emitted = _status_for_tool_call(event)
+                        if emitted is not None:
+                            yield emitted
+                    elif event["type"] == "final_response":
+                        agent_text = event["text"]
+                elif isinstance(item, dict):
+                    yield item
         finally:
-            await events_queue.put(None)
+            await task
 
-    task = asyncio.create_task(pump_adk())
+        if agent_error is not None:
+            logger.exception("Conversational agent streaming failed", exc_info=agent_error)
+            yield {"event": "error", "detail": f"Agent error: {agent_error}"}
+            return
 
-    try:
-        while True:
-            item = await events_queue.get()
-            if item is None:
-                break
-            if isinstance(item, tuple) and len(item) == 2 and item[0] is _ADK_SENTINEL:
-                event = item[1]
-                if event["type"] == "tool_call":
-                    emitted = _status_for_tool_call(event)
-                    if emitted is not None:
-                        yield emitted
-                elif event["type"] == "final_response":
-                    agent_text = event["text"]
-            elif isinstance(item, dict):
-                yield item
-    finally:
-        await task
-
-    if agent_error is not None:
-        logger.exception("Conversational agent streaming failed", exc_info=agent_error)
-        yield {"event": "error", "detail": f"Agent error: {agent_error}"}
-        return
-
-    output = AgentTurnOutput(
-        message=agent_text,
-        status=shared_state["status"],
-    )
-    yield {
-        "event": "done",
-        "output": output.model_dump(),
-        "new_messages": [{"role": "assistant", "content": agent_text}],
-        "shared_state": {
-            "scenario_close_summary": shared_state.get("scenario_close_summary"),
-        },
-    }
+        output = AgentTurnOutput(
+            message=agent_text,
+            status=shared_state["status"],
+        )
+        yield {
+            "event": "done",
+            "output": output.model_dump(),
+            "new_messages": [{"role": "assistant", "content": agent_text}],
+            "shared_state": {
+                "scenario_close_summary": shared_state.get("scenario_close_summary"),
+            },
+        }

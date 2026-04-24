@@ -1,0 +1,92 @@
+{
+  "rare earth supply chain RSS": [
+    {
+      "title": "Reuters \u2014 Metals feed",
+      "url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "snippet": "Metals, mining and rare-earth wire."
+    },
+    {
+      "title": "Argus Media \u2014 Rare earths",
+      "url": "https://www.argusmedia.com/rss/rare-earths",
+      "snippet": "Rare-earth prices, policy and supply chain."
+    },
+    {
+      "title": "Fastmarkets \u2014 Rare earths",
+      "url": "https://www.fastmarkets.com/rss/rare-earths",
+      "snippet": "Price assessments and supply news for rare-earth elements."
+    },
+    {
+      "title": "Mining.com \u2014 Rare earths",
+      "url": "https://www.mining.com/tag/rare-earth/feed/",
+      "snippet": "Daily rare-earth mining coverage."
+    }
+  ],
+  "dysprosium neodymium export": [
+    {
+      "title": "Argus Media rare earths",
+      "url": "https://www.argusmedia.com/rss/rare-earths",
+      "snippet": "Export control coverage for dysprosium and neodymium."
+    },
+    {
+      "title": "Reuters metals",
+      "url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "snippet": "Breaking news on rare-earth export curbs."
+    }
+  ],
+  "China rare earth quota": [
+    {
+      "title": "Reuters metals",
+      "url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "snippet": "China rare-earth quota announcements."
+    }
+  ],
+  "Lynas rare earths processing": [
+    {
+      "title": "Fastmarkets rare earths",
+      "url": "https://www.fastmarkets.com/rss/rare-earths",
+      "snippet": "Lynas processing and production updates."
+    }
+  ],
+  "MP Materials Mountain Pass": [
+    {
+      "title": "Mining.com rare earths",
+      "url": "https://www.mining.com/tag/rare-earth/feed/",
+      "snippet": "US rare-earth mining coverage including Mountain Pass."
+    }
+  ],
+  "rare earth force majeure": [
+    {
+      "title": "Argus Media rare earths",
+      "url": "https://www.argusmedia.com/rss/rare-earths",
+      "snippet": "Force-majeure declarations in rare-earth supply chain."
+    }
+  ],
+  "Myanmar Kachin rare earth mining ban": [
+    {
+      "title": "Reuters metals",
+      "url": "https://www.reuters.com/pf/api/v3/feed/metals",
+      "snippet": "Myanmar rare-earth mining regulations."
+    }
+  ],
+  "neodymium magnet price": [
+    {
+      "title": "Fastmarkets rare earths",
+      "url": "https://www.fastmarkets.com/rss/rare-earths",
+      "snippet": "Neodymium magnet price assessments and supply news."
+    }
+  ],
+  "Greenland rare earth exploration": [
+    {
+      "title": "Mining.com rare earths",
+      "url": "https://www.mining.com/tag/rare-earth/feed/",
+      "snippet": "Greenland rare-earth project coverage."
+    }
+  ],
+  "copper cobalt battery": [
+    {
+      "title": "Generic base-metals wire",
+      "url": "https://www.basemetals-feed.example/rss",
+      "snippet": "Copper, cobalt and nickel market news \u2014 not rare-earth."
+    }
+  ]
+}

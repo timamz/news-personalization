@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from news_service.core.config import get_settings
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
+from news_service.core.llm_usage import agent_tag
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -67,15 +68,16 @@ async def judge_digest(
         f"Digest to evaluate:\n{digest_text}"
     )
 
-    completion = await chat_completion(
-        model=settings.litellm_judge_model,
-        messages=[
-            {"role": "system", "content": JUDGE_PROMPT},
-            {"role": "user", "content": user_message},
-        ],
-        response_format=QualityScores,
-        temperature=0.1,
-    )
+    with agent_tag("digest_judge"):
+        completion = await chat_completion(
+            model=settings.litellm_judge_model,
+            messages=[
+                {"role": "system", "content": JUDGE_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            response_format=QualityScores,
+            temperature=0.1,
+        )
     result = completion.choices[0].message.parsed
     if result is None:
         raise ValueError("LLM returned empty response for digest judging")

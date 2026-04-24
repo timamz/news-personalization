@@ -12,8 +12,8 @@ Create Date: 2026-04-20 12:00:00.000000
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "0003_user_delivery_webhook_url"
 down_revision: str | Sequence[str] | None = "0002_removed_at_timestamptz"

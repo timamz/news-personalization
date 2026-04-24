@@ -3,9 +3,10 @@ import logging
 from datetime import UTC, datetime
 
 from celery import Celery
-from celery.signals import task_failure
+from celery.signals import task_failure, worker_process_init
 
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import install_usage_callback
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,18 @@ celery_app.conf.update(
         },
     },
 )
+
+
+@worker_process_init.connect
+def _install_llm_usage_callback(**_: object) -> None:
+    """Register the per-call LLM usage ledger in each Celery worker process.
+
+    Worker processes are forked off the parent and do not inherit module-level
+    side effects registered only in ``app.py`` (the FastAPI process). We must
+    register the LiteLLM success/failure callback once per worker here so
+    every agent call in a task is accounted for.
+    """
+    install_usage_callback()
 
 
 @task_failure.connect

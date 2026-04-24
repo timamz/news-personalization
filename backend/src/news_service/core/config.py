@@ -1,3 +1,6 @@
+import json
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,6 +68,61 @@ class Settings(BaseSettings):
 
     yandex_search_api_key: str
     yandex_search_type: str = "COM"
+
+    llm_model_pricing_usd_per_1m: dict[str, dict[str, float]] = {}
+    yandex_search_price_usd_per_call: float = 0.005
+    """USD cost attributed to each Yandex Search API dispatch.
+
+    Official rate is 480 RUB per 1000 daytime requests (360 RUB at night).
+    At ~95 RUB/USD that is ~$0.00505 daytime / ~$0.00379 nighttime per call.
+    We stamp the daytime rate for accounting simplicity; override via
+    ``YANDEX_SEARCH_PRICE_USD_PER_CALL`` env when running off-peak.
+    """
+
+    @field_validator("llm_model_pricing_usd_per_1m", mode="before")
+    @classmethod
+    def _parse_json_pricing(cls, value: object) -> object:
+        """Accept the pricing table either as a dict or a JSON string.
+
+        pydantic-settings loads env-var strings verbatim; when the setting
+        is configured via .env as a JSON blob, we parse it here so the
+        downstream validator sees a real dict.
+        """
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return {}
+            return json.loads(stripped)
+        return value
+
+    @model_validator(mode="after")
+    def _require_pricing_for_configured_models(self) -> "Settings":
+        """Fail fast when a configured model has no pricing entry.
+
+        Unit-economics accounting is mandatory: every model this service
+        can dispatch to must have input/output prices declared, otherwise
+        a call would silently contribute $0 to the ledger. Raising at
+        startup surfaces the misconfiguration before the first LLM call.
+        """
+        required = {self.litellm_model, self.litellm_judge_model, self.litellm_embedding_model}
+        missing = sorted(m for m in required if m not in self.llm_model_pricing_usd_per_1m)
+        if missing:
+            raise ValueError(
+                "LLM_MODEL_PRICING_USD_PER_1M is missing entries for configured models: "
+                f"{missing}. Configure every model with its input/output price per 1M tokens."
+            )
+        for name, entry in self.llm_model_pricing_usd_per_1m.items():
+            for key in ("input", "output"):
+                if key not in entry:
+                    raise ValueError(
+                        f"LLM_MODEL_PRICING_USD_PER_1M['{name}'] is missing '{key}' price."
+                    )
+                if not isinstance(entry[key], int | float) or entry[key] < 0:
+                    raise ValueError(
+                        f"LLM_MODEL_PRICING_USD_PER_1M['{name}']['{key}'] must be a "
+                        f"non-negative number, got {entry[key]!r}."
+                    )
+        return self
 
 
 def get_settings() -> Settings:

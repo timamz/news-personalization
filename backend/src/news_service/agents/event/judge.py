@@ -27,6 +27,7 @@ from news_service.core.config import get_settings
 from news_service.core.guardrails import sanitize_for_llm_prompt
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
+from news_service.core.llm_usage import agent_tag
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -129,24 +130,25 @@ async def judge_batch_events(
         history_text = history_text[:max_history_chars] + "\n... (truncated)"
     history_block = history_text if history_text else "No recent notification history."
 
-    completion = await chat_completion(
-        model=settings.litellm_judge_model,
-        messages=[
-            {"role": "system", "content": JUDGE_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Subscription request:\n"
-                    f"{sanitize_for_llm_prompt('user-preferences', user_spec)}\n\n"
-                    f"Assessor output to review "
-                    f"({len(assessment.assessments)} items):\n\n{assessments_block}\n\n"
-                    f"Recent notification history:\n{history_block}"
-                ),
-            },
-        ],
-        response_format=BatchJudgeResult,
-        temperature=0.1,
-    )
+    with agent_tag("event_judge"):
+        completion = await chat_completion(
+            model=settings.litellm_judge_model,
+            messages=[
+                {"role": "system", "content": JUDGE_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Subscription request:\n"
+                        f"{sanitize_for_llm_prompt('user-preferences', user_spec)}\n\n"
+                        f"Assessor output to review "
+                        f"({len(assessment.assessments)} items):\n\n{assessments_block}\n\n"
+                        f"Recent notification history:\n{history_block}"
+                    ),
+                },
+            ],
+            response_format=BatchJudgeResult,
+            temperature=0.1,
+        )
     result = completion.choices[0].message.parsed
     if result is None:
         raise ValueError("LLM returned empty response for batch event judging")

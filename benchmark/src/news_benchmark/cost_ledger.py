@@ -124,6 +124,7 @@ class LedgerRow:
     usd_cost: float
     wall_ms: float
     fake_clock_iso: str
+    subscription_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -173,7 +174,8 @@ _installed = False
 async def _wrapped_acompletion(*args: Any, **kwargs: Any) -> Any:
     """Wraps litellm.acompletion with cost accounting and agent tagging."""
     assert _original_acompletion is not None
-    tag = current_tag()
+    tag = _resolve_agent_tag()
+    sub_id = _current_sub_id()
     model = kwargs.get("model", "unknown")
     verbose = _verbose_enabled()
     if verbose:
@@ -213,6 +215,7 @@ async def _wrapped_acompletion(*args: Any, **kwargs: Any) -> Any:
             usd_cost=usd,
             wall_ms=wall_ms,
             fake_clock_iso=CLOCK.now().isoformat(),
+            subscription_id=sub_id,
         )
     )
     return response
@@ -221,7 +224,8 @@ async def _wrapped_acompletion(*args: Any, **kwargs: Any) -> Any:
 async def _wrapped_aembedding(*args: Any, **kwargs: Any) -> Any:
     """Wraps litellm.aembedding with cost accounting and agent tagging."""
     assert _original_aembedding is not None
-    tag = current_tag()
+    tag = _resolve_agent_tag()
+    sub_id = _current_sub_id()
     model = kwargs.get("model", "unknown")
     t0 = time.monotonic()
     response = await _original_aembedding(*args, **kwargs)
@@ -243,9 +247,41 @@ async def _wrapped_aembedding(*args: Any, **kwargs: Any) -> Any:
             usd_cost=usd,
             wall_ms=wall_ms,
             fake_clock_iso=CLOCK.now().isoformat(),
+            subscription_id=sub_id,
         )
     )
     return response
+
+
+def _current_sub_id() -> str | None:
+    """Read the production ContextVar for current subscription attribution."""
+    try:
+        from news_service.core.llm_usage import current_subscription_id
+
+        sub = current_subscription_id.get()
+        return str(sub) if sub is not None else None
+    except Exception:
+        return None
+
+
+def _resolve_agent_tag() -> str:
+    """Prefer the backend's current_agent; fall back to the benchmark stack.
+
+    news_service has its own ``current_agent`` ContextVar set by every
+    agent via ``agent_tag(name)``. That is the authoritative source of
+    attribution during a live run. The legacy benchmark stack
+    (``news_benchmark.tagging``) remains a fallback for tests that wrap
+    arbitrary code in ``agent_tag(...)`` of their own.
+    """
+    try:
+        from news_service.core.llm_usage import current_agent as backend_agent
+
+        name = backend_agent.get()
+        if name:
+            return str(name)
+    except Exception:
+        pass
+    return current_tag()
 
 
 def _extract_usage(response: Any) -> dict[str, int]:

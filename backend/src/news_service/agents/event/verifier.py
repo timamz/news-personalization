@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.adk_runner import run_agent_text
 from news_service.agents.tools.source_inspection import build_fetch_source_items_tool
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import agent_tag
 from news_service.models.subscription import Subscription
 from news_service.services.search import search_web
 
@@ -324,11 +325,12 @@ async def run_event_verifier(
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 
-    response = await run_agent_text(
-        agent=agent,
-        message=input_message,
-        user_id=str(subscription.user_id),
-    )
+    with agent_tag("event_verifier"):
+        response = await run_agent_text(
+            agent=agent,
+            message=input_message,
+            user_id=str(subscription.user_id),
+        )
     shared_state["observations"] = response
     logger.info(
         "Event verifier completed for subscription %s: misses=%d discovery_queued=%d searches=%d",

@@ -23,15 +23,18 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from news_service.agents.source_discovery import run_source_discovery
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import subscription_tag
 from news_service.db.session import get_task_session
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
 from news_service.models.subscription import Subscription
 from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.coverage import ensure_source_by_url
+from news_service.services.delivery import deliver
 from news_service.tasks.celery_app import celery_app
 
 settings = get_settings()
@@ -43,18 +46,129 @@ DISCOVER_SOURCES_TASK = "news_service.tasks.discover_sources.discover_sources_fo
 _REMOVAL_HISTORY_LIMIT = 50
 
 
-@celery_app.task(name=DISCOVER_SOURCES_TASK)
+@celery_app.task(
+    name=DISCOVER_SOURCES_TASK,
+    soft_time_limit=480,
+    time_limit=540,
+)
 def discover_sources_for_subscription(subscription_id: str, reason: str = "") -> dict:
-    """Celery entry point. Bridges to the async impl."""
+    """Celery entry point. Bridges to the async impl.
+
+    The time limits guard against an ADK finder hanging inside a blocking
+    ``asyncio.to_thread`` call (e.g. Selenium-based article-body fetch
+    during RSS validation) that an inner ``asyncio.wait_for`` cannot
+    cancel. A soft limit raises ``SoftTimeLimitExceeded`` in the Python
+    code so the task can unwind cleanly; the hard limit SIGKILLs the
+    worker process if the soft unwind itself gets stuck.
+    """
     return asyncio.run(_discover_in_task_session(uuid.UUID(subscription_id), reason))
 
 
 async def _discover_in_task_session(subscription_id: uuid.UUID, reason: str) -> dict:
     async with get_task_session() as session:
-        return await run_and_persist_discovery(session, subscription_id, reason)
+        result = await run_and_persist_discovery(session, subscription_id, reason)
+    await _notify_user_of_discovery_outcome(subscription_id, result)
+    return result
+
+
+_DISCOVERY_COMPLETION_SUBJECT = "Source discovery finished"
+
+
+def _format_completion_body(result: dict) -> str | None:
+    """Compose a short user-facing message describing a discovery outcome.
+
+    Returns ``None`` when the outcome should NOT be surfaced to the user --
+    e.g. the subscription was deleted mid-run, or the pipeline was skipped
+    for an internal reason the user would not understand. ``ok`` and
+    ``no_sources_found`` are always surfaced because both are outcomes the
+    user has to act on (start using the subscription or refine it).
+    """
+    status = result.get("status")
+    if status == "ok":
+        selected = result.get("selected_sources") or []
+        persisted = int(result.get("persisted", 0))
+        if persisted == 0 and selected:
+            return (
+                f"Found {len(selected)} source(s) for your subscription; they "
+                "were already attached, so no new sources were added. Your "
+                "subscription is ready."
+            )
+        lines = [
+            f"Attached {persisted} new source(s) to your subscription:",
+        ]
+        for src in selected[:20]:
+            title = (src.get("title") or src.get("url") or "").strip()
+            url = src.get("url") or ""
+            kind = src.get("source_kind") or ""
+            lines.append(f"- {title} ({kind}) {url}")
+        if len(selected) > 20:
+            lines.append(f"... and {len(selected) - 20} more.")
+        return "\n".join(lines)
+    if status == "no_sources_found":
+        reason = result.get("abort_reason") or result.get("reason") or ""
+        hint = (
+            "Try broadening the topic wording, or add specific sources you "
+            "trust (Telegram channels, subreddits, RSS feeds)."
+        )
+        if reason:
+            return f"Source discovery did not find any sources. Reason: {reason}\n\n{hint}"
+        return f"Source discovery did not find any sources.\n\n{hint}"
+    return None
+
+
+async def _notify_user_of_discovery_outcome(subscription_id: uuid.UUID, result: dict) -> None:
+    """Post a follow-up delivery to the user's webhook after discovery ends.
+
+    Moving discovery off the HTTP conversation turn means the user no longer
+    learns the outcome from the streaming reply. This function is the
+    replacement: it looks up the subscription's webhook target and posts a
+    short human-readable summary. Failures here are swallowed -- the
+    delivery pipeline already logs, and a missed follow-up should not crash
+    the Celery task.
+    """
+    body = _format_completion_body(result)
+    if body is None:
+        return
+    try:
+        async with get_task_session() as session:
+            row = await session.execute(
+                select(Subscription)
+                .options(selectinload(Subscription.user))
+                .where(Subscription.id == subscription_id)
+            )
+            subscription = row.scalar_one_or_none()
+            if subscription is None or not subscription.is_active:
+                return
+            webhook_url = subscription.delivery_webhook_url
+            if webhook_url is None and subscription.user is not None:
+                webhook_url = subscription.user.delivery_webhook_url
+        await deliver(webhook_url, _DISCOVERY_COMPLETION_SUBJECT, body)
+    except Exception:
+        logger.exception(
+            "Failed to deliver discovery completion notice for subscription %s",
+            subscription_id,
+        )
 
 
 async def run_and_persist_discovery(
+    session: AsyncSession,
+    subscription_id: uuid.UUID,
+    reason: str,
+    *,
+    status_queue: asyncio.Queue[dict[str, Any]] | None = None,
+    display_language: str = "en",
+) -> dict:
+    with subscription_tag(subscription_id):
+        return await _run_and_persist_discovery_tagged(
+            session,
+            subscription_id,
+            reason,
+            status_queue=status_queue,
+            display_language=display_language,
+        )
+
+
+async def _run_and_persist_discovery_tagged(
     session: AsyncSession,
     subscription_id: uuid.UUID,
     reason: str,

@@ -15,12 +15,14 @@ whole strategy.
 
 import base64
 import logging
+import time
 import xml.etree.ElementTree as ET
 
 import httpx
 
 from news_service.core.concurrency import search_semaphore
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import record_web_search
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -37,7 +39,14 @@ def _element_text(element: ET.Element | None) -> str:
 
 
 async def search_web(query: str) -> str:
-    """Query the Yandex Search API and return results formatted for LLM consumption."""
+    """Query the Yandex Search API and return results formatted for LLM consumption.
+
+    Every dispatch -- successful, rate-limited, or network-failed --
+    writes one ``call_type='web_search'`` row into the llm_usage ledger
+    via ``record_web_search``. Rows carry the ``error`` string for
+    non-200 outcomes so the economics report can separate real searches
+    (which cost money on the Yandex side) from transient failures.
+    """
     payload = {
         "query": {
             "searchType": f"SEARCH_TYPE_{settings.yandex_search_type}",
@@ -53,51 +62,65 @@ async def search_web(query: str) -> str:
     if settings.proxy_url:
         client_kwargs["proxy"] = settings.proxy_url
 
+    started = time.monotonic()
+    error: str | None = None
     try:
-        async with (
-            search_semaphore,
-            httpx.AsyncClient(**client_kwargs) as client,  # type: ignore[arg-type]
-        ):
-            response = await client.post(_YANDEX_SEARCH_ENDPOINT, json=payload, headers=headers)
-    except httpx.HTTPError as exc:
-        logger.warning("Yandex search network error for query %r: %s", query[:60], exc)
-        return f"Search temporarily unavailable (network error) for: {query}"
+        try:
+            async with (
+                search_semaphore,
+                httpx.AsyncClient(**client_kwargs) as client,  # type: ignore[arg-type]
+            ):
+                response = await client.post(_YANDEX_SEARCH_ENDPOINT, json=payload, headers=headers)
+        except httpx.HTTPError as exc:
+            logger.warning("Yandex search network error for query %r: %s", query[:60], exc)
+            error = f"network_error: {exc}"
+            return f"Search temporarily unavailable (network error) for: {query}"
 
-    if response.status_code == 429:
-        logger.warning("Yandex search rate-limited for query %r", query[:60])
-        return f"Search rate-limited; try a different phrasing later. Query was: {query}"
-    if 500 <= response.status_code < 600:
-        logger.warning(
-            "Yandex search upstream error %s for query %r", response.status_code, query[:60]
+        if response.status_code == 429:
+            logger.warning("Yandex search rate-limited for query %r", query[:60])
+            error = "rate_limited"
+            return f"Search rate-limited; try a different phrasing later. Query was: {query}"
+        if 500 <= response.status_code < 600:
+            logger.warning(
+                "Yandex search upstream error %s for query %r", response.status_code, query[:60]
+            )
+            error = f"upstream_{response.status_code}"
+            return f"Search temporarily unavailable (upstream {response.status_code}) for: {query}"
+        if response.status_code != 200:
+            logger.warning(
+                "Yandex search unexpected status %s for query %r",
+                response.status_code,
+                query[:60],
+            )
+            error = f"http_{response.status_code}"
+            return f"Search failed (HTTP {response.status_code}) for: {query}"
+
+        raw_data = response.json().get("rawData")
+        if not raw_data:
+            return f"No search results found for: {query}"
+
+        root = ET.fromstring(base64.b64decode(raw_data))
+
+        lines: list[str] = []
+        for group in root.iter("group"):
+            if len(lines) >= _MAX_RESULTS:
+                break
+            doc = group.find("doc")
+            if doc is None:
+                continue
+            url = _element_text(doc.find("url"))
+            title = _element_text(doc.find("title"))
+            if not url or not title:
+                continue
+            passages = doc.find("passages")
+            snippet = _element_text(passages.find("passage")) if passages is not None else ""
+            lines.append(f"- {title}: {url}\n  {snippet}")
+
+        if not lines:
+            return f"No search results found for: {query}"
+        return "\n".join(lines)
+    finally:
+        await record_web_search(
+            latency_ms=int((time.monotonic() - started) * 1000),
+            error=error,
         )
-        return f"Search temporarily unavailable (upstream {response.status_code}) for: {query}"
-    if response.status_code != 200:
-        logger.warning(
-            "Yandex search unexpected status %s for query %r", response.status_code, query[:60]
-        )
-        return f"Search failed (HTTP {response.status_code}) for: {query}"
-
-    raw_data = response.json().get("rawData")
-    if not raw_data:
-        return f"No search results found for: {query}"
-
-    root = ET.fromstring(base64.b64decode(raw_data))
-
-    lines: list[str] = []
-    for group in root.iter("group"):
-        if len(lines) >= _MAX_RESULTS:
-            break
-        doc = group.find("doc")
-        if doc is None:
-            continue
-        url = _element_text(doc.find("url"))
-        title = _element_text(doc.find("title"))
-        if not url or not title:
-            continue
-        passages = doc.find("passages")
-        snippet = _element_text(passages.find("passage")) if passages is not None else ""
-        lines.append(f"- {title}: {url}\n  {snippet}")
-
-    if not lines:
-        return f"No search results found for: {query}"
-    return "\n".join(lines)

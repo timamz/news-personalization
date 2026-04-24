@@ -35,67 +35,39 @@ from news_service.services.coverage import ensure_source_coverage
 from news_service.services.reddit import build_reddit_subreddit_url
 from news_service.services.telegram import build_telegram_channel_url
 from news_service.services.timezones import resolve_timezone
-from news_service.tasks.discover_sources import run_and_persist_discovery
+from news_service.tasks.celery_app import celery_app
+from news_service.tasks.discover_sources import DISCOVER_SOURCES_TASK
 
 logger = logging.getLogger(__name__)
 
 
-def _format_discovery_result(result: dict[str, Any]) -> str:
-    """Render the run_and_persist_discovery dict into a string for the LLM."""
-    status = result.get("status")
-    if status == "no_sources_found":
-        return (
-            "ERROR: discovery could not find any sources for this topic. The "
-            "subscription has no sources attached and will not produce a digest. "
-            "Apologize to the user, explain the topic was too narrow or too "
-            "obscure to match any real feeds, and ask them to broaden or rephrase "
-            "it (or add sources manually). Do not claim the subscription is ready."
-        )
-    if status != "ok":
-        reason = result.get("reason") or "unknown"
-        return f"discovery did not complete ({reason})."
-    sources = result.get("selected_sources") or []
-    persisted = result.get("persisted", 0)
-    if not sources:
-        return "discovery finished: no sources matched."
-    lines = [f"discovery finished: added {persisted} new source(s). Selected:"]
-    for src in sources[:20]:
-        title = (src.get("title") or src.get("url") or "").strip()
-        url = src.get("url", "")
-        kind = src.get("source_kind", "")
-        lines.append(f"- {title} ({kind}) {url}")
-    if len(sources) > 20:
-        lines.append(f"... and {len(sources) - 20} more.")
-    return "\n".join(lines)
+def _dispatch_discovery(subscription_id: uuid.UUID, reason: str) -> str:
+    """Fire-and-forget enqueue of source discovery on a Celery worker.
 
+    The conversational turn returns immediately after the subscription
+    row is saved; the Celery task picks up the work, runs the full
+    Discovery pipeline in its own process, and posts a follow-up
+    notification to the user's webhook when it finishes. This keeps
+    the HTTP conversation turn short (seconds, not minutes) and keeps
+    the FastAPI DB connection pool free of the discovery run's
+    session, which used to pin a connection for the entire multi-
+    minute Discovery loop.
 
-async def _run_inline_discovery(
-    *,
-    scoped_factory: async_sessionmaker[AsyncSession],
-    subscription_id: uuid.UUID,
-    reason: str,
-    shared_state: dict[str, Any],
-) -> dict[str, Any]:
-    """Run discovery inline inside a tool call and return the raw result dict.
-
-    Exceptions are caught and surfaced as a {"status": "skipped"} payload so
-    the tool can still commit the subscription and tell the LLM what went
-    wrong instead of crashing the whole turn.
+    Returns the short string the tool reports back to the LLM. The
+    LLM surfaces this to the user verbatim inside its reply.
     """
-    status_queue = shared_state.get("status_queue")
-    language = shared_state.get("display_language") or "en"
-    try:
-        async with scoped_factory() as discovery_session:
-            return await run_and_persist_discovery(
-                discovery_session,
-                subscription_id,
-                reason,
-                status_queue=status_queue,
-                display_language=language,
-            )
-    except Exception as exc:
-        logger.exception("Inline discovery crashed for subscription %s", subscription_id)
-        return {"status": "skipped", "reason": f"discovery crashed: {exc}"}
+    celery_app.send_task(
+        DISCOVER_SOURCES_TASK,
+        args=[str(subscription_id), reason],
+    )
+    logger.info("Queued source discovery for subscription %s", subscription_id)
+    return (
+        "discovery queued: source discovery is running in the background. "
+        "Tell the user the subscription is saved and that sources will be "
+        "attached shortly -- they will receive a follow-up message when "
+        "discovery finishes (which may take a few minutes). Do not claim "
+        "sources are already attached."
+    )
 
 
 MAX_USER_SPEC_LENGTH = 10_000
@@ -157,7 +129,17 @@ def build_tools(
             digest_language: ISO code (en, ru, ...). Empty = use the user's language.
             fixed_telegram_channels: Comma-separated handles (no @).
             fixed_reddit_subreddits: Comma-separated sub names (no r/).
-            include_discovered_sources: Run auto-discovery for more sources.
+            include_discovered_sources: Leave True (the default) in almost
+                every case. A subscription with zero attached sources has
+                NO content to read, so auto-discovery is how the
+                subscription gets populated. Set False ONLY when the user
+                has explicitly listed every single source they want and
+                said something like "use only these, nothing else". If
+                the user did not enumerate specific sources, True. If the
+                user said "build it" / "create it" / "set it up" with no
+                source list, True. If the user provided a partial list
+                and hasn't said "only these", True. Default True; flipping
+                to False is a narrow opt-out for power users.
 
         Returns:
             Confirmation with the subscription id, or an error message.
@@ -243,14 +225,9 @@ def build_tools(
         if not include_discovered_sources:
             return f"subscription {subscription_id}: created (auto-discovery skipped)."
 
-        discovery_result = await _run_inline_discovery(
-            scoped_factory=scoped_factory,
-            subscription_id=subscription_id,
-            reason=(f"Initial discovery on subscription creation. Retrieval query: {query}."),
-            shared_state=shared_state,
-        )
-        return f"subscription {subscription_id}: created.\n" + _format_discovery_result(
-            discovery_result
+        return f"subscription {subscription_id}: created.\n" + _dispatch_discovery(
+            subscription_id,
+            f"Initial discovery on subscription creation. Retrieval query: {query}.",
         )
 
     async def update_subscription(
@@ -704,13 +681,7 @@ def build_tools(
             if not sub.is_active:
                 return f"subscription {subscription_id}: inactive."
 
-        discovery_result = await _run_inline_discovery(
-            scoped_factory=scoped_factory,
-            subscription_id=sub_uuid,
-            reason=cleaned_reason,
-            shared_state=shared_state,
-        )
-        return _format_discovery_result(discovery_result)
+        return _dispatch_discovery(sub_uuid, cleaned_reason)
 
     async def delete_subscription(subscription_id: str) -> str:
         """Soft-delete (deactivate) a subscription by id.
