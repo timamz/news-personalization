@@ -12,7 +12,7 @@ _WRITER_MODULE = "news_service.agents.digest.writer"
 
 
 def _runner_that_submits(digest_text: str, used_ids: str):
-    async def _side_effect(*, agent, message, user_id):
+    async def _side_effect(*, agent, message, user_id, **kwargs):
         for tool_fn in agent.tools:
             if getattr(tool_fn, "__name__", "") == "submit_digest":
                 await tool_fn(digest_text, used_ids)
@@ -23,7 +23,7 @@ def _runner_that_submits(digest_text: str, used_ids: str):
 
 
 def _runner_that_forgets_to_submit():
-    async def _side_effect(*, agent, message, user_id):
+    async def _side_effect(*, agent, message, user_id, **kwargs):
         return "I forgot to submit."
 
     return AsyncMock(side_effect=_side_effect)
@@ -72,7 +72,7 @@ async def test_write_digest_exposes_only_search_fetch_and_submit_tools() -> None
     item_id = str(uuid.uuid4())
     captured: dict[str, set[str]] = {}
 
-    async def _capture(*, agent, message, user_id):
+    async def _capture(*, agent, message, user_id, **kwargs):
         captured["tool_names"] = {t.__name__ for t in agent.tools if callable(t)}
         for tool_fn in agent.tools:
             if getattr(tool_fn, "__name__", "") == "submit_digest":
@@ -90,8 +90,8 @@ async def test_write_digest_exposes_only_search_fetch_and_submit_tools() -> None
             recent_digest_summaries="",
         )
 
-    assert captured["tool_names"] == {"search_web", "fetch_page", "submit_digest"}, (
-        "writer must expose search_web, fetch_page (its search-companion), and submit_digest"
+    assert captured["tool_names"] == {"search_web", "fetch_page_bounded", "submit_digest"}, (
+        "writer must expose search_web, fetch_page_bounded (its search-companion), and submit_digest"
     )
 
 
@@ -102,7 +102,7 @@ async def test_write_digest_includes_recent_summaries_and_feedback_in_prompt() -
     feedback = f"Too verbose, shorten {uuid.uuid4().hex[:6]}"
     captured: dict[str, str] = {}
 
-    async def _capture(*, agent, message, user_id):
+    async def _capture(*, agent, message, user_id, **kwargs):
         captured["message"] = message
         for tool_fn in agent.tools:
             if getattr(tool_fn, "__name__", "") == "submit_digest":

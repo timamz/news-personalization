@@ -110,13 +110,15 @@ async def test_judge_loop_reruns_assessor_only_for_revise_items(mocker) -> None:
     )
 
     bad_result = next(a for a in final.assessments if a.item_id == bad)
+    good_result = next(a for a in final.assessments if a.item_id == good)
     revise_call_kwargs = assessor_spy.call_args.kwargs
     assert (
         bad_result.notification_body == revised_body
-        and len(final.assessments) == 1
+        and good_result.notification_body == "Хороший body"
+        and len(final.assessments) == 2
         and dropped == set()
         and [i["item_id"] for i in revise_call_kwargs["items"]] == [bad]
-    ), "judge loop did not keep operating on the relevant REVISE subset only"
+    ), "judge loop did not rerun assessor on REVISE subset only while preserving PASS items"
 
 
 @pytest.mark.asyncio
