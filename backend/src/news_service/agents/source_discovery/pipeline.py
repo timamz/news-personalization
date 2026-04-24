@@ -41,6 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.adk_runner import run_agent_text
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import agent_tag
 from news_service.services.relevance import SourceKind, fetch_source_posts, sample_recent_posts
 
 from .finder import run_finder
@@ -51,6 +52,17 @@ settings = get_settings()
 
 type AttachedSource = tuple[str, str, bool]
 """(url, source_kind, is_user_specified) for each currently-linked source."""
+
+
+_SPAWN_FINDER_CAP = 32
+"""Hard budget on spawn_finder calls per discovery task.
+
+If the orchestrator still cannot find candidates after this many finder
+rounds, additional spawns are refused at the tool layer so the run
+cannot pile up LLM work past the Celery soft-time-limit. The agent is
+expected to fall back to submit_selection with whatever is in the pool
+(or abort if the pool is truly empty) once the cap bites.
+"""
 
 
 DISCOVERY_AGENT_PROMPT = """\
@@ -99,12 +111,21 @@ Orchestration guidance:
 - Target roughly {target_count} final sources, but use judgment. Fewer \
 great sources beats many mediocre ones.
 - Start by planning 3 diverse strategies, not more. Emit them as \
-parallel spawn_finder calls in the SAME turn. Each strategy should \
-cover a different source kind or angle.
-- Source-kind coverage is a PREFERENCE, not a requirement. Pick the \
-kinds the user's spec actually implies. If the topic is visual/ \
-international (anime, sports, games) include Telegram + Reddit + RSS. \
-Do not burn a strategy on a kind that obviously will not fit.
+parallel spawn_finder calls in the SAME turn.
+- Source-kind coverage is MANDATORY by default: the three opening \
+strategies MUST cover RSS/atom feeds, Telegram channels, and Reddit \
+subreddits -- one strategy each, with RSS, Telegram, and Reddit \
+treated as equal-priority candidate pools. Every topic has coverage \
+on all three platforms; do not assume otherwise just because the \
+user's spec did not name a platform. Put the user's topic / entity \
+keywords in each strategy's description and mark the target kind \
+explicitly, e.g. "Telegram channels covering ...", "Subreddits \
+covering ...", "RSS / atom feeds from publishers covering ...". \
+Dropping a kind is only allowed when the user's spec explicitly \
+excludes it (e.g. "no social media", "feeds only") -- in that case \
+replace the dropped kind with a second angle on an allowed kind. \
+Drifting toward RSS-only because the topic "sounds professional" \
+is the exact failure mode this rule exists to prevent.
 - Prefer finishing after ONE round. Only spawn a second round if the \
 first round's pool is clearly insufficient (fewer than \
 target_count / 2 candidates, or missing a kind the spec explicitly \
@@ -127,6 +148,15 @@ and move on rather than retrying endlessly.
 - Persistence rule: if round one returns zero candidates across every \
 strategy, spawn ONE more round (max 3 strategies) with broader \
 queries. Abort only if both rounds come back empty.
+- Hard spawn_finder budget: the pipeline enforces a cap of 32 total \
+spawn_finder calls per discovery run. Past that, the tool refuses \
+further spawns. You should never come close to this cap in normal \
+operation (3 strategies in round one, 3 in an optional round two -- \
+that is 6 total); the cap exists so a stuck orchestrator on an \
+over-specified topic cannot burn the Celery soft-time-limit by \
+re-spawning endlessly. If spawn_finder refuses, stop spawning \
+IMMEDIATELY and call submit_selection with whatever is in the pool \
+(ordered best-first); call abort only if the pool is genuinely empty.
 - The pipeline accepts whatever you submit -- there is no backfill or \
 score gate that will rescue dropped candidates. If the pool has ANY \
 entries at all, submit them (ordered best-first) instead of aborting. \
@@ -275,6 +305,7 @@ async def run_source_discovery(
     candidate_pool: dict[str, ScoredSource] = {}
     selected_urls: list[str] = []
     aborted: dict[str, str] = {"reason": ""}
+    spawn_counter: dict[str, int] = {"calls": 0}
 
     _emit_progress(status_queue, display_language, "starting")
     _emit_progress(status_queue, display_language, "planning")
@@ -300,6 +331,21 @@ async def run_source_discovery(
         trimmed = strategy.strip()
         if not trimmed:
             return "empty strategy; nothing spawned."
+
+        if spawn_counter["calls"] >= _SPAWN_FINDER_CAP:
+            logger.info(
+                "Discovery spawn_finder cap reached (%d); refusing strategy '%s'",
+                _SPAWN_FINDER_CAP,
+                trimmed[:80],
+            )
+            return (
+                f"spawn_finder cap reached: already spawned {_SPAWN_FINDER_CAP} "
+                f"finders on this run; no more will be accepted. "
+                "Call submit_selection with whatever is in the candidate pool "
+                "(ordered best-first), or call abort if the pool is truly empty. "
+                "Do NOT call spawn_finder again; the next call will also be refused."
+            )
+        spawn_counter["calls"] += 1
 
         logger.info("Discovery spawning finder for strategy '%s'", trimmed[:80])
         _emit_progress(
@@ -425,6 +471,14 @@ async def run_source_discovery(
             Confirmation that discovery will end with no selections.
         """
         cleaned = reason.strip() or "unspecified"
+        if candidate_pool:
+            return (
+                f"abort REJECTED: pool has {len(candidate_pool)} candidate(s); "
+                "the pipeline forbids aborting with a non-empty pool. "
+                "Call submit_selection with the best candidate URLs "
+                "(ordered best-first) -- even low-relevance sources beat zero. "
+                "Do NOT call abort again; call submit_selection now."
+            )
         aborted["reason"] = cleaned
         return f"aborted: {cleaned}."
 
@@ -447,15 +501,16 @@ async def run_source_discovery(
         generate_content_config=types.GenerateContentConfig(temperature=0.2),
     )
 
-    await run_agent_text(
-        agent=agent,
-        message=_build_discovery_input(
-            topic_text=topic_text,
-            user_spec=user_spec,
-            attached=attached,
-            reason=reason,
-        ),
-    )
+    with agent_tag("discovery"):
+        await run_agent_text(
+            agent=agent,
+            message=_build_discovery_input(
+                topic_text=topic_text,
+                user_spec=user_spec,
+                attached=attached,
+                reason=reason,
+            ),
+        )
 
     if aborted["reason"]:
         logger.warning(

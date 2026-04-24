@@ -68,7 +68,7 @@ async def test_score_source_relevance_computes_top_k_average(mocker) -> None:
 
 @pytest.mark.asyncio
 async def test_score_candidate_returns_score_and_samples_from_fetched_posts(mocker) -> None:
-    posts = [_dated(f"post {i}", days_ago=i) for i in range(20)]
+    posts = [_dated(f"post {i}", days_ago=i * 0.1) for i in range(20)]
     mocker.patch.object(
         relevance,
         "fetch_source_posts",
@@ -76,10 +76,10 @@ async def test_score_candidate_returns_score_and_samples_from_fetched_posts(mock
     )
     mocker.patch.object(relevance, "embed_texts", new=AsyncMock(return_value=[[0.9, 0.1]] * 10))
 
-    score, samples = await relevance.score_candidate(
+    score, samples, is_dormant = await relevance.score_candidate(
         f"https://example.com/{uuid.uuid4().hex}/feed", "rss", [1.0, 0.0]
     )
-    assert score > 0 and len(samples) == 10, (
+    assert score > 0 and len(samples) == 10 and not is_dormant, (
         "score_candidate did not produce a positive score with the expected sample count"
     )
 
@@ -92,9 +92,45 @@ async def test_score_candidate_returns_zero_on_fetch_failure(mocker) -> None:
         new=AsyncMock(side_effect=RuntimeError("network down")),
     )
 
-    score, samples = await relevance.score_candidate(
+    score, samples, is_dormant = await relevance.score_candidate(
         f"https://example.com/{uuid.uuid4().hex}/feed", "rss", [1.0, 0.0]
     )
-    assert score == 0.0 and samples == [], (
+    assert score == 0.0 and samples == [] and not is_dormant, (
         "score_candidate did not degrade to zero-score with empty samples on fetch failure"
+    )
+
+
+@pytest.mark.asyncio
+async def test_score_candidate_flags_dormant_source_when_no_recent_posts(mocker) -> None:
+    posts = [_dated(f"post {i}", days_ago=365 + i) for i in range(20)]
+    mocker.patch.object(
+        relevance,
+        "fetch_source_posts",
+        new=AsyncMock(return_value=posts),
+    )
+    mocker.patch.object(relevance, "embed_texts", new=AsyncMock(return_value=[[0.9, 0.1]] * 10))
+
+    score, samples, is_dormant = await relevance.score_candidate(
+        f"https://example.com/{uuid.uuid4().hex}/feed", "rss", [1.0, 0.0]
+    )
+    assert is_dormant and score == 0.0 and samples == [], (
+        "source with no posts inside news_item_max_age_days was not flagged dormant"
+    )
+
+
+@pytest.mark.asyncio
+async def test_score_candidate_scores_when_every_post_lacks_a_timestamp(mocker) -> None:
+    posts = [_dated(f"post {i}", days_ago=None) for i in range(20)]
+    mocker.patch.object(
+        relevance,
+        "fetch_source_posts",
+        new=AsyncMock(return_value=posts),
+    )
+    mocker.patch.object(relevance, "embed_texts", new=AsyncMock(return_value=[[0.9, 0.1]] * 10))
+
+    score, samples, is_dormant = await relevance.score_candidate(
+        f"https://example.com/{uuid.uuid4().hex}/feed", "rss", [1.0, 0.0]
+    )
+    assert not is_dormant and score > 0 and len(samples) > 0, (
+        "source whose posts have no published_at should be scored, not flagged dormant"
     )

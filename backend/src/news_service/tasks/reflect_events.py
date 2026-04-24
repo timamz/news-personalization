@@ -36,6 +36,7 @@ from news_service.agents.event.verifier import (
     run_event_verifier,
 )
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import subscription_tag
 from news_service.db.session import get_task_session
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
@@ -110,6 +111,11 @@ async def _reflect_event_subscriptions() -> dict:
 
 async def _verify_one(*, sub_id: uuid.UUID, sem: asyncio.Semaphore) -> dict:
     """Run the verifier for a single subscription in its own DB session."""
+    with subscription_tag(sub_id):
+        return await _verify_one_tagged(sub_id=sub_id, sem=sem)
+
+
+async def _verify_one_tagged(*, sub_id: uuid.UUID, sem: asyncio.Semaphore) -> dict:
     async with sem, get_task_session() as session:
         sub = (
             await session.execute(

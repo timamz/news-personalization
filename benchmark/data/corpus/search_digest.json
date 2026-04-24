@@ -1,0 +1,111 @@
+{
+  "EU energy policy RSS": [
+    {
+      "title": "Euractiv Energy \u2014 EU energy policy wire",
+      "url": "https://www.euractiv.com/section/energy/feed/",
+      "snippet": "Daily wire covering EU energy policy, regulation, and grids."
+    },
+    {
+      "title": "Politico Europe \u2014 Energy",
+      "url": "https://www.politico.eu/section/energy/feed/",
+      "snippet": "Brussels-focused energy and climate reporting."
+    },
+    {
+      "title": "EU Observer \u2014 Energy desk",
+      "url": "https://euobserver.com/feeds/energy.rss",
+      "snippet": "Independent Brussels reporting on EU energy regulation."
+    },
+    {
+      "title": "ENDS Europe \u2014 Energy and climate",
+      "url": "https://www.endseurope.com/rss/energy",
+      "snippet": "Regulatory news covering EU energy and climate directives."
+    }
+  ],
+  "EU climate policy": [
+    {
+      "title": "Euractiv Climate",
+      "url": "https://www.euractiv.com/section/climate/feed/",
+      "snippet": "EU climate regulation and policy coverage."
+    },
+    {
+      "title": "Politico Europe Climate",
+      "url": "https://www.politico.eu/section/climate/feed/",
+      "snippet": "Brussels climate reporting."
+    }
+  ],
+  "European Commission energy": [
+    {
+      "title": "European Commission \u2014 Energy press",
+      "url": "https://ec.europa.eu/commission/presscorner/rss/energy",
+      "snippet": "Official EC press on energy proposals and decisions."
+    },
+    {
+      "title": "Euractiv Energy \u2014 EU energy policy wire",
+      "url": "https://www.euractiv.com/section/energy/feed/",
+      "snippet": "Daily wire covering EU energy policy."
+    }
+  ],
+  "ENTSO-E network code": [
+    {
+      "title": "ENTSO-E \u2014 news and publications",
+      "url": "https://www.entsoe.eu/rss/news/",
+      "snippet": "TSO association releases on network codes and winter outlooks."
+    }
+  ],
+  "ACER market monitoring": [
+    {
+      "title": "ACER \u2014 press and publications",
+      "url": "https://www.acer.europa.eu/feeds/news.rss",
+      "snippet": "EU energy regulator publications and guidance."
+    }
+  ],
+  "EUR-Lex renewable directive": [
+    {
+      "title": "EUR-Lex daily summaries",
+      "url": "https://eur-lex.europa.eu/feeds/daily-summary-energy.rss",
+      "snippet": "Newly published directives and regulations in the energy field."
+    }
+  ],
+  "gas storage directive": [
+    {
+      "title": "Euractiv on gas storage directive",
+      "url": "https://www.euractiv.com/section/energy/feed/",
+      "snippet": "Council and Commission action on underground gas storage."
+    }
+  ],
+  "methane emissions imported LNG": [
+    {
+      "title": "ENDS Europe methane coverage",
+      "url": "https://www.endseurope.com/rss/energy",
+      "snippet": "Regulatory tightening on methane-intensity of imported LNG."
+    }
+  ],
+  "offshore wind permitting EU": [
+    {
+      "title": "Politico Europe offshore wind",
+      "url": "https://www.politico.eu/section/energy/feed/",
+      "snippet": "Permitting timelines and renewable acceleration areas."
+    }
+  ],
+  "ENVI committee Parliament": [
+    {
+      "title": "European Parliament ENVI press",
+      "url": "https://www.europarl.europa.eu/rss/committee/envi/news.rss",
+      "snippet": "ENVI committee votes and opinions on environment and climate."
+    }
+  ],
+  "hydrogen IPCEI state aid": [
+    {
+      "title": "Euractiv hydrogen tracker",
+      "url": "https://www.euractiv.com/section/energy/feed/",
+      "snippet": "Commission state-aid decisions on hydrogen IPCEI."
+    }
+  ],
+  "EU oil price": [
+    {
+      "title": "Generic oil price wire",
+      "url": "https://www.oilprice-feed.example/rss",
+      "snippet": "Commodity market oil prices, not EU policy."
+    }
+  ]
+}

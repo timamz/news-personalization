@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from news_service.core.guardrails import sanitize_for_llm_prompt
 from news_service.core.llm import chat_completion
 from news_service.core.llm_retry import with_llm_retry
+from news_service.core.llm_usage import agent_tag
 
 logger = logging.getLogger(__name__)
 
@@ -105,24 +106,25 @@ async def assess_batch_events(
             "and return refined assessments for exactly these items):\n" + entries
         )
 
-    completion = await chat_completion(
-        messages=[
-            {"role": "system", "content": BATCH_ASSESS_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Target language: {target_language}\n\n"
-                    f"Subscription request:\n"
-                    f"{sanitize_for_llm_prompt('user-preferences', user_spec)}\n\n"
-                    f"Posts to evaluate ({len(items)} items):\n\n{items_block}\n\n"
-                    f"Notification history:\n{history_block}"
-                    f"{feedback_block}"
-                ),
-            },
-        ],
-        response_format=BatchAssessmentResult,
-        temperature=0.1,
-    )
+    with agent_tag("event_assessor"):
+        completion = await chat_completion(
+            messages=[
+                {"role": "system", "content": BATCH_ASSESS_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Target language: {target_language}\n\n"
+                        f"Subscription request:\n"
+                        f"{sanitize_for_llm_prompt('user-preferences', user_spec)}\n\n"
+                        f"Posts to evaluate ({len(items)} items):\n\n{items_block}\n\n"
+                        f"Notification history:\n{history_block}"
+                        f"{feedback_block}"
+                    ),
+                },
+            ],
+            response_format=BatchAssessmentResult,
+            temperature=0.1,
+        )
     result = completion.choices[0].message.parsed
     if result is None:
         raise ValueError("LLM returned empty response for batch event assessment")

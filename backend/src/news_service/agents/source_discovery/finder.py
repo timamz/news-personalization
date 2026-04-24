@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.adk_runner import run_agent_text
 from news_service.agents.web_tools import fetch_page as _fetch_page
 from news_service.core.config import get_settings
+from news_service.core.llm_usage import agent_tag
 from news_service.db.vector_store import embed_text, find_similar_sources
 from news_service.services.relevance import score_candidate
 from news_service.services.search import search_web
@@ -44,7 +45,15 @@ subreddit URLs) from the fetched pages.
 4. Validate and score the most promising candidates.
 
 Rules:
-- Focus on the source types mentioned in your strategy.
+- Obey the source kind your strategy names. If the strategy targets \
+Telegram channels, every web search and every validate_and_score_source \
+call MUST be for t.me/... channel URLs with source_kind="telegram_channel"; \
+do not drift into RSS. Same for Reddit: reddit.com/r/... URLs with \
+source_kind="reddit_subreddit". Same for RSS. A strategy that names a \
+kind is a hard constraint, not a hint. If no candidate of the requested \
+kind exists after two phrasings + one curator page, return empty for \
+THAT kind rather than switching kinds -- the orchestrator combines \
+kinds across finders, you do not.
 - Validate only your top candidates, not every search result.
 - Target 3 validated sources and stop. The orchestrator runs several \
 strategies; it does not need every strategy to saturate. If you \
@@ -212,13 +221,19 @@ async def run_finder(
             )
         kind: SourceKind = source_kind  # type: ignore[assignment]
         try:
-            relevance, sampled = await asyncio.wait_for(
+            relevance, sampled, is_dormant = await asyncio.wait_for(
                 score_candidate(url, kind, prompt_embedding),
                 timeout=settings.source_validation_timeout_seconds,
             )
         except TimeoutError:
             logger.info("Validation timed out for %s", url)
             return f"Source {url}: validation timed out (host too slow)"
+        if is_dormant:
+            return (
+                f"Source {url}: REJECTED as dormant -- no posts newer than "
+                f"{settings.news_item_max_age_days} days. Do not submit this URL; "
+                "find a different source."
+            )
         if not sampled:
             return f"Source {url}: could not fetch posts (score: 0.0)"
         if relevance >= 0.0:
@@ -250,10 +265,11 @@ async def run_finder(
         generate_content_config=types.GenerateContentConfig(temperature=0.1),
     )
 
-    await run_agent_text(
-        agent=agent,
-        message=f"Execute this search strategy:\n{strategy}",
-    )
+    with agent_tag("finder"):
+        await run_agent_text(
+            agent=agent,
+            message=f"Execute this search strategy:\n{strategy}",
+        )
 
     logger.info(
         "Finder completed strategy '%s' — found %d sources",

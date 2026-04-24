@@ -19,6 +19,7 @@ from news_service.agents.event.batch_assessor import (
 from news_service.agents.event.judge import judge_batch_events
 from news_service.core.config import get_settings
 from news_service.core.guardrails import validate_notification_body
+from news_service.core.llm_usage import subscription_tag
 from news_service.db.session import get_task_session
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
@@ -120,6 +121,15 @@ async def _assess_and_deliver_for_subscription(
 
     Returns (delivered_count, failed_count).
     """
+    with subscription_tag(subscription.id):
+        return await _assess_and_deliver_for_subscription_tagged(session, subscription, all_items)
+
+
+async def _assess_and_deliver_for_subscription_tagged(
+    session,
+    subscription: Subscription,
+    all_items: list[NewsItem],
+) -> tuple[int, int]:
     sub_source_result = await session.execute(
         select(SubscriptionSource.source_id).where(
             SubscriptionSource.subscription_id == subscription.id

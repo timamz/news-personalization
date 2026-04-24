@@ -169,23 +169,16 @@ class World:
         deliver_events_mod.deliver = self.delivery.deliver  # type: ignore[assignment]
         reflect_events_mod.deliver = self.delivery.deliver  # type: ignore[assignment]
 
-        self._originals["article_fetch.fetch_article_text"] = article_fetch_mod.fetch_article_text
-        self._originals["relevance.fetch_article_text"] = relevance_mod.fetch_article_text
-        self._originals["poll_adapters.fetch_article_text"] = poll_adapters_mod.fetch_article_text
-        self._originals["web_tools.fetch_article_text"] = web_tools_mod.fetch_article_text
-
-        article_fetch_mod.fetch_article_text = (  # type: ignore[assignment]
-            self.article_fetch.fetch_article_text
-        )
-        relevance_mod.fetch_article_text = (  # type: ignore[assignment]
-            self.article_fetch.fetch_article_text
-        )
-        poll_adapters_mod.fetch_article_text = (  # type: ignore[assignment]
-            self.article_fetch.fetch_article_text
-        )
-        web_tools_mod.fetch_article_text = (  # type: ignore[assignment]
-            self.article_fetch.fetch_article_text
-        )
+        fake_fetch = self.article_fetch.fetch_article_text
+        for label, mod in (
+            ("article_fetch", article_fetch_mod),
+            ("relevance", relevance_mod),
+            ("poll_adapters", poll_adapters_mod),
+            ("web_tools", web_tools_mod),
+        ):
+            if hasattr(mod, "fetch_article_text"):
+                self._originals[f"{label}.fetch_article_text"] = mod.fetch_article_text
+                mod.fetch_article_text = fake_fetch  # type: ignore[assignment]
 
         self._originals["relevance.fetch_source_posts"] = relevance_mod.fetch_source_posts
         self._originals["discovery_pipeline.fetch_source_posts"] = (
@@ -265,18 +258,15 @@ class World:
             "reflect_events.deliver"
         ]
 
-        article_fetch_mod.fetch_article_text = self._originals[  # type: ignore[assignment]
-            "article_fetch.fetch_article_text"
-        ]
-        relevance_mod.fetch_article_text = self._originals[  # type: ignore[assignment]
-            "relevance.fetch_article_text"
-        ]
-        poll_adapters_mod.fetch_article_text = self._originals[  # type: ignore[assignment]
-            "poll_adapters.fetch_article_text"
-        ]
-        web_tools_mod.fetch_article_text = self._originals[  # type: ignore[assignment]
-            "web_tools.fetch_article_text"
-        ]
+        for label, mod in (
+            ("article_fetch", article_fetch_mod),
+            ("relevance", relevance_mod),
+            ("poll_adapters", poll_adapters_mod),
+            ("web_tools", web_tools_mod),
+        ):
+            key = f"{label}.fetch_article_text"
+            if key in self._originals:
+                mod.fetch_article_text = self._originals[key]  # type: ignore[assignment]
 
         relevance_mod.fetch_source_posts = self._originals[  # type: ignore[assignment]
             "relevance.fetch_source_posts"

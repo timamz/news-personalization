@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import re
-import shutil
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+import httpx
 
 from news_service.core.config import get_settings
-from news_service.services.browser import build_firefox_driver, create_socks_proxy_addon
+
+REDDIT_USER_AGENT = "Mozilla/5.0 (compatible; news-digest-bot/1.0; +https://example.com/bot)"
 
 SUBREDDIT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_]{1,20}$")
 SUBREDDIT_MENTION_PATTERN = re.compile(
@@ -105,19 +101,28 @@ async def fetch_reddit_posts(
     normalized_subreddit = normalize_reddit_subreddit(subreddit)
     request_timeout = timeout_seconds or settings.reddit_fetch_timeout_seconds
     listing_limit = limit or settings.reddit_listing_limit
-    last_error: Exception | None = None
+    url = (
+        f"https://www.reddit.com/r/{normalized_subreddit}/new/.json"
+        f"?raw_json=1&limit={listing_limit}"
+    )
+    client_kwargs: dict[str, object] = {
+        "timeout": request_timeout,
+        "headers": {"User-Agent": REDDIT_USER_AGENT},
+        "follow_redirects": True,
+    }
+    if settings.proxy_url:
+        client_kwargs["proxy"] = settings.proxy_url
 
+    last_error: Exception | None = None
     for attempt in range(1, settings.reddit_fetch_attempts + 1):
         try:
-            return await asyncio.wait_for(
-                asyncio.to_thread(
-                    _fetch_reddit_posts_sync,
-                    normalized_subreddit,
-                    request_timeout,
-                    listing_limit,
-                ),
-                timeout=request_timeout + 5.0,
-            )
+            async with httpx.AsyncClient(**client_kwargs) as client:
+                response = await client.get(url)
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"Reddit returned status {response.status_code} for r/{normalized_subreddit}"
+                )
+            return parse_reddit_posts(response.json())
         except Exception as exc:
             last_error = exc
             if attempt == settings.reddit_fetch_attempts:
@@ -183,49 +188,3 @@ def parse_reddit_posts(payload: object) -> list[RedditPost]:
         )
 
     return posts
-
-
-def _fetch_reddit_posts_sync(
-    subreddit: str,
-    timeout_seconds: float,
-    limit: int,
-) -> list[RedditPost]:
-    driver = build_firefox_driver(timeout_seconds)
-    addon_dir: str | None = None
-    endpoint = f"/r/{subreddit}/new/.json?raw_json=1&limit={limit}"
-    try:
-        if settings.proxy_url:
-            addon_dir = create_socks_proxy_addon(settings.proxy_url)
-            driver.install_addon(addon_dir, temporary=True)
-
-        driver.get(build_reddit_subreddit_url(subreddit))
-        WebDriverWait(driver, timeout_seconds).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        response_payload = driver.execute_async_script(
-            f"""
-            const done = arguments[0];
-            fetch({json.dumps(endpoint)})
-              .then(response => response.text().then(text => done({{
-                status: response.status,
-                text,
-              }})))
-              .catch(error => done({{error: String(error)}}));
-            """,
-        )
-    finally:
-        driver.quit()
-        if addon_dir:
-            shutil.rmtree(addon_dir, ignore_errors=True)
-
-    if not isinstance(response_payload, dict):
-        raise RuntimeError(f"Unexpected Reddit response payload for r/{subreddit}")
-    if "error" in response_payload:
-        raise RuntimeError(f"Reddit fetch failed for r/{subreddit}: {response_payload['error']}")
-
-    status = response_payload.get("status")
-    text = response_payload.get("text")
-    if status != 200 or not isinstance(text, str):
-        raise RuntimeError(f"Reddit returned status {status} for r/{subreddit}")
-
-    return parse_reddit_posts(json.loads(text))

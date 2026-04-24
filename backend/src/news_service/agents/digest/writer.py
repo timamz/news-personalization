@@ -34,6 +34,7 @@ from news_service.agents.adk_runner import run_agent_text
 from news_service.agents.web_tools import fetch_page as _fetch_page
 from news_service.core.config import get_settings
 from news_service.core.guardrails import sanitize_for_llm_prompt
+from news_service.core.llm_usage import agent_tag
 from news_service.services.search import search_web as _search_web
 
 logger = logging.getLogger(__name__)
@@ -210,12 +211,13 @@ async def write_digest(
     )
 
     try:
-        await run_agent_text(
-            agent=agent,
-            message=input_message,
-            user_id="digest-pipeline",
-            max_llm_calls=settings.digest_writer_max_llm_calls,
-        )
+        with agent_tag("digest_writer"):
+            await run_agent_text(
+                agent=agent,
+                message=input_message,
+                user_id="digest-pipeline",
+                max_llm_calls=settings.digest_writer_max_llm_calls,
+            )
     except Exception as exc:
         # ADK raises LlmCallsLimitExceededError when max_llm_calls is
         # hit. If the writer already submitted during a prior turn,

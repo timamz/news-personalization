@@ -6,12 +6,9 @@ any other provider supported by LiteLLM.
 """
 
 import logging
-import os
 from typing import Any
 
-import httpx
 import litellm
-from openai import AsyncOpenAI
 
 from news_service.core.config import get_settings
 from news_service.core.llm_errors import StructuredOutputParseError
@@ -32,18 +29,6 @@ EMBEDDING_MAX_CHARS = 4000
 EMBEDDING_BATCH_SIZE = 6
 
 _PARSE_ERROR_CONTENT_SNIPPET_MAX = 500
-
-_http_client = httpx.AsyncClient(proxy=settings.proxy_url) if settings.proxy_url else None
-_openai_client: AsyncOpenAI | None = None
-if settings.proxy_url:
-    # The OpenAI SDK reads OPENAI_BASE_URL but not OPENAI_API_BASE, while
-    # LiteLLM reads the latter. Forward whichever is set so the proxy-aware
-    # client targets the same endpoint LiteLLM does (e.g. NeuroAPI).
-    _base_url = os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_BASE")
-    _openai_kwargs: dict[str, Any] = {"http_client": _http_client}
-    if _base_url:
-        _openai_kwargs["base_url"] = _base_url
-    _openai_client = AsyncOpenAI(**_openai_kwargs)
 
 
 async def chat_completion(
@@ -72,8 +57,6 @@ async def chat_completion(
         kwargs["response_format"] = response_format
     if tools is not None:
         kwargs["tools"] = tools
-    if _openai_client is not None:
-        kwargs["client"] = _openai_client
     response = await litellm.acompletion(**kwargs)
 
     if response_format is not None and _is_pydantic_model(response_format):
@@ -130,8 +113,6 @@ async def embed_text(content: str) -> list[float]:
         "input": [_normalize_embedding_text(content)],
         "dimensions": settings.embedding_dimensions,
     }
-    if _openai_client is not None:
-        kwargs["client"] = _openai_client
     response = await litellm.aembedding(**kwargs)
     return response.data[0]["embedding"]
 
@@ -152,8 +133,6 @@ async def embed_texts(contents: list[str]) -> list[list[float]]:
                 "input": batch,
                 "dimensions": settings.embedding_dimensions,
             }
-            if _openai_client is not None:
-                kwargs["client"] = _openai_client
             response = await litellm.aembedding(**kwargs)
             embeddings.extend(item["embedding"] for item in response.data)
         except Exception:
