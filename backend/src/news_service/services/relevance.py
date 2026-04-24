@@ -1,6 +1,5 @@
 """Score source relevance by sampling real content and comparing to the prompt."""
 
-import asyncio
 import logging
 import random
 from dataclasses import dataclass
@@ -12,7 +11,6 @@ import httpx
 
 from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_texts
-from news_service.services.article_fetch import fetch_article_text
 from news_service.services.reddit import extract_reddit_subreddit_from_url, fetch_reddit_posts
 from news_service.services.telegram import extract_telegram_channel_from_url, fetch_telegram_posts
 
@@ -61,6 +59,14 @@ async def fetch_source_posts(url: str, source_kind: SourceKind) -> list[DatedPos
 
 
 async def _fetch_rss_posts(url: str) -> list[DatedPost]:
+    """Fetch RSS entries for VALIDATION scoring only.
+
+    Uses title + summary straight from the feed. Deliberately skips the
+    Selenium-based ``fetch_article_text`` enrichment that ingest uses,
+    because a single hanging article page can stall the entire finder
+    (the inner ``asyncio.wait_for`` around validation cannot cancel a
+    blocked thread). Title + summary is sufficient to judge relevance.
+    """
     try:
         async with httpx.AsyncClient(
             timeout=settings.http_timeout_seconds,
@@ -74,11 +80,10 @@ async def _fetch_rss_posts(url: str) -> list[DatedPost]:
         logger.debug("Failed to fetch RSS posts from %s", url)
         return []
 
-    entries: list[tuple[str, str, str, datetime | None]] = []
+    dated: list[DatedPost] = []
     for entry in parsed.entries:
         title = getattr(entry, "title", "") or ""
         summary = getattr(entry, "summary", "") or ""
-        link = getattr(entry, "link", "") or ""
         published = None
         raw = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
         if raw is not None:
@@ -86,26 +91,7 @@ async def _fetch_rss_posts(url: str) -> list[DatedPost]:
                 published = datetime(*raw[:6], tzinfo=UTC)
             except (TypeError, ValueError):
                 published = None
-        entries.append((link, title, summary, published))
-
-    sem = asyncio.Semaphore(settings.article_fetch_concurrency)
-
-    async def _enrich(link: str) -> str | None:
-        if not link:
-            return None
-        async with sem:
-            return await fetch_article_text(
-                link,
-                timeout_seconds=settings.article_fetch_timeout_seconds,
-                max_chars=settings.article_body_max_chars,
-            )
-
-    article_bodies = await asyncio.gather(*(_enrich(link) for link, *_ in entries))
-
-    dated: list[DatedPost] = []
-    for (_link, title, summary, published), article in zip(entries, article_bodies, strict=True):
-        body = article if article else summary
-        text = f"{title}\n\n{body}".strip()
+        text = f"{title}\n\n{summary}".strip()
         if not text:
             continue
         dated.append(DatedPost(text=text, published_at=published))
@@ -171,19 +157,38 @@ async def score_candidate(
     url: str,
     source_kind: SourceKind,
     prompt_embedding: list[float],
-) -> tuple[float, list[str]]:
+) -> tuple[float, list[str], bool]:
     """Fetch, sample, and score a candidate source.
 
-    Returns (relevance_score, sampled_texts).
+    Returns ``(relevance_score, sampled_texts, is_dormant)``. ``is_dormant``
+    is True when the source fetched posts but none are newer than
+    ``news_item_max_age_days``; in that case the score is 0.0 and the
+    samples list is empty, and the caller must reject the source
+    regardless of topical match. Dormancy is only *confirmed*, never
+    inferred: if every fetched post lacks ``published_at`` we fall
+    through to scoring (missing timestamps are a feed quirk, not a
+    liveness signal).
     """
     try:
         posts = await fetch_source_posts(url, source_kind)
     except Exception:
         logger.debug("Failed to fetch posts from %s for relevance scoring", url)
-        return 0.0, []
+        return 0.0, [], False
 
     if not posts:
-        return 0.0, []
+        return 0.0, [], False
+
+    timestamped = [p for p in posts if p.published_at is not None]
+    if timestamped:
+        cutoff = datetime.now(UTC) - timedelta(days=settings.news_item_max_age_days)
+        if not any(p.published_at >= cutoff for p in timestamped):  # type: ignore[operator]
+            logger.info(
+                "Rejecting %s as dormant: newest of %d timestamped posts predates cutoff (%d days)",
+                url,
+                len(timestamped),
+                settings.news_item_max_age_days,
+            )
+            return 0.0, [], True
 
     sampled = sample_recent_posts(
         posts,
@@ -191,10 +196,10 @@ async def score_candidate(
         window_days=settings.content_sample_window_days,
     )
     if not sampled:
-        return 0.0, []
+        return 0.0, [], False
 
     score = await score_source_relevance(
         sampled, prompt_embedding, settings.content_relevance_top_k
     )
     logger.info("Relevance score for %s: %.3f (sampled %d posts)", url, score, len(sampled))
-    return score, sampled
+    return score, sampled, False

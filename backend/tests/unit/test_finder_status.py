@@ -68,7 +68,7 @@ async def test_validate_source_tool_emits_status_with_url() -> None:
     with patch(
         "news_service.agents.source_discovery.finder.score_candidate",
         new_callable=AsyncMock,
-        return_value=(0.75, ["Sample text"]),
+        return_value=(0.75, ["Sample text"], False),
     ):
         tools = await _capture_tools_from_run_finder(queue)
         await tools["validate_and_score_source"](source_url, "rss")
