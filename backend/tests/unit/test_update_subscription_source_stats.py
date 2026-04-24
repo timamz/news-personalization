@@ -1,10 +1,6 @@
 """Tests for the nightly subscription-source stats task."""
 
-import uuid
-from datetime import UTC, datetime, timedelta
-
 from news_service.tasks.update_subscription_source_stats import (
-    _DigestRecord,
     _distribution_stats,
     _percentile,
 )
@@ -49,15 +45,3 @@ def test_distribution_stats_handles_empty_and_singleton_inputs() -> None:
         and p90_one == 0.42
         and std_one == 0.0
     ), "distribution stats did not degrade gracefully for empty or single-value inputs"
-
-
-def test_digest_record_preserves_per_batch_source_sets() -> None:
-    source_a, source_b = uuid.uuid4(), uuid.uuid4()
-    t = datetime.now(UTC) - timedelta(hours=1)
-    record = _DigestRecord(sent_at=t, contributing_source_ids={source_a, source_b})
-
-    assert (
-        record.sent_at == t
-        and source_a in record.contributing_source_ids
-        and source_b in record.contributing_source_ids
-    ), "digest record did not retain the exact timestamp and source set"

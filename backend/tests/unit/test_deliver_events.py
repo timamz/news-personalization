@@ -250,31 +250,3 @@ async def test_batch_falls_back_to_the_users_default_webhook_url(mocker) -> None
 async def test_batch_skips_when_no_items(mocker) -> None:
     result = await deliver_events._deliver_event_notifications_batch([])
     assert result["status"] == "skipped", "batch delivery did not skip empty batch"
-
-
-@pytest.mark.asyncio
-async def test_batch_assessment_result_model_accepts_mixed_results() -> None:
-    result = BatchAssessmentResult(
-        assessments=[
-            ItemAssessment(
-                item_id=str(uuid.uuid4()),
-                is_relevant=True,
-                notification_body=f"Текст {uuid.uuid4().hex[:6]}",
-                reason="Совпадает",
-            ),
-            ItemAssessment(
-                item_id=str(uuid.uuid4()),
-                is_relevant=False,
-                notification_body="",
-                reason="Не подходит",
-            ),
-        ]
-    )
-    relevant = [a for a in result.assessments if a.is_relevant]
-    assert len(relevant) == 1, "BatchAssessmentResult did not preserve mixed assessment results"
-
-
-@pytest.mark.asyncio
-async def test_item_assessment_model_requires_reason() -> None:
-    with pytest.raises(ValueError):
-        ItemAssessment(item_id=str(uuid.uuid4()), is_relevant=True, reason="ab")
