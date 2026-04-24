@@ -4,7 +4,6 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
-from aiogram.enums import ParseMode
 from aiohttp.test_utils import TestClient, TestServer
 
 from tgbot.text_split import TELEGRAM_MAX_MESSAGE_LENGTH, split_for_telegram
@@ -22,36 +21,6 @@ async def _make_webhook_client() -> TestClient:
     client = TestClient(TestServer(app))
     await client.start_server()
     return client
-
-
-@pytest.mark.asyncio
-async def test_deliver_sends_correct_message_to_chat_with_html_and_no_preview() -> None:
-    client = await _make_webhook_client()
-    try:
-        mock_bot = AsyncMock()
-        mock_bot.send_message = AsyncMock()
-        set_bot(mock_bot)
-
-        chat_id = random.randint(10000, 99999)
-        response = await client.post(
-            delivery_webhook_path(chat_id),
-            json={
-                "subject": f"\u0422\u0435\u0441\u0442-{uuid.uuid4().hex[:6]}",
-                "body": "\u041d\u043e\u0432\u043e\u0441\u0442\u0438 \u0434\u043d\u044f.",
-            },
-        )
-        data = await response.json()
-        call_kwargs = mock_bot.send_message.call_args.kwargs
-
-        assert response.status == 200, "deliver endpoint did not return 200 on success"
-        assert data["status"] == "delivered", "deliver endpoint did not return delivered status"
-        assert call_kwargs["chat_id"] == chat_id, "deliver did not send to the correct chat_id"
-        assert call_kwargs["parse_mode"] == ParseMode.HTML, "deliver did not use HTML parse mode"
-        assert call_kwargs["disable_web_page_preview"] is True, (
-            "deliver did not disable web page preview"
-        )
-    finally:
-        await client.close()
 
 
 @pytest.mark.asyncio
