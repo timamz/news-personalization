@@ -15,6 +15,20 @@ machine-readable copy so simulation scripts can import it without
 re-parsing the report.
 """
 
+AVG_ITEMS_PER_SOURCE_PER_DAY: int = 3
+"""Population-wide mean daily post volume per source.
+
+Derived from section 8.6 of the unit-economics report: 732 items/day
+across 231 active sources on 2026-04-24. 81% of sources returned
+zero new items so the arithmetic mean is pulled down by the dormant
+tail; this constant captures the *typical* rate a simulation should
+assume when the worst-case upper bound (``MAX_ITEMS_PER_SOURCE_PER_DAY``)
+would overstate the load.
+
+Use this for steady-state cost projection; use the MAX constant for
+capacity-planning worst case.
+"""
+
 MAX_ITEMS_PER_SOURCE_PER_DAY: int = 149
 """Upper bound for daily post volume per source.
 
