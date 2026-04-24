@@ -25,11 +25,18 @@ Development guide for humans and AI agents working on this codebase.
   README.md            — project overview and quick start
   backend/             — FastAPI backend, Celery workers, LLM agents
     .env.example       — backend environment variables template
+    tests/unit/        — unit tests (fast, no external deps)
   tgbot/               — Telegram bot frontend (aiogram)
     .env.example       — Telegram bot environment variables template
+    tests/unit/        — unit tests
+  benchmark/           — end-to-end integration harness for the backend
+    tests/integration/ — scenario tests (S-conv-*, S-digest-*, S-discovery-*, S-event-*, S-reflector-*, S-verifier-*)
+    src/               — primitives: FakeClock, VirtualScheduler, cost ledger, fake adapters/delivery/search
 ```
 
 Each service has its own `Dockerfile`, `pyproject.toml`, `uv.lock`, source code, and tests. New frontends are added as sibling directories (e.g. `webapp/`, `mobile/`).
+
+The `backend/tests/integration/` directory is currently empty (conftest only). All integration coverage lives under `benchmark/tests/integration/`, which exercises the backend agents end-to-end against real Postgres/Redis (devbox) with virtual time, fake webhook delivery, and a deterministic fake web search. Run with `cd benchmark && uv run pytest tests/integration`.
 
 All services run in Docker. `docker compose up --build -d` starts everything. Individual services can be rebuilt independently: `docker compose up --build -d tgbot`.
 
@@ -261,7 +268,7 @@ Every push to any branch runs:
 3. `docker build` smoke test (per service)
 
 Merging to `main` additionally runs:
-4. `pytest tests/integration` (requires Docker services)
+4. `cd benchmark && pytest tests/integration` (end-to-end scenarios against real Postgres/Redis)
 5. Multi-platform image build (`linux/amd64`, `linux/arm64`)
 
 **PRs cannot be merged if CI fails.**
