@@ -3,7 +3,6 @@ from typing import Literal
 
 import feedparser
 import httpx
-from pydantic import BaseModel, Field
 
 from news_service.core.config import get_settings
 from news_service.services.reddit import (
@@ -24,16 +23,6 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 type SourceKind = Literal["rss", "telegram_channel", "reddit_subreddit"]
-
-
-class DiscoveredSourceItem(BaseModel):
-    url: str = Field(..., description="Canonical source URL")
-    title: str = Field(default="", description="Human-readable source title")
-    source_kind: SourceKind = Field(..., description="Source type")
-
-
-class DiscoveredSourceList(BaseModel):
-    sources: list[DiscoveredSourceItem] = Field(..., description="List of discovered sources")
 
 
 def normalize_source_url(url: str, *, source_kind: SourceKind) -> str | None:
@@ -95,7 +84,7 @@ async def validate_feed_url(url: str) -> bool:
 
         parsed = feedparser.parse(response.text)
         return len(parsed.entries) > 0
-    except (httpx.HTTPError, Exception):
+    except Exception:
         logger.exception("Feed validation failed for %s", url)
         return False
 

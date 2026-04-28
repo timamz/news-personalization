@@ -31,7 +31,6 @@ from sqlalchemy import select
 from news_benchmark.clock import CLOCK
 from news_benchmark.fakes.adapters import FakeAdapter, ScenarioItem
 
-
 SOURCE_URL = "https://example-battery-wire.invalid/feed.xml"
 WEBHOOK_URL = "https://bench.invalid/webhook/s-event-judge-revise"
 
@@ -167,9 +166,7 @@ async def test_s_event_judge_revise_loop_rewrites_only_failing_item(world):
     async def _stub_judge(
         *,
         assessment,
-        user_spec,
-        recent_notification_history,
-        max_history_chars,
+        **_kwargs,
     ) -> BatchJudgeResult:
         """Round 1: one REVISE, rest PASS. Round 2: all PASS."""
         nonlocal judge_call_count
@@ -187,9 +184,7 @@ async def test_s_event_judge_revise_loop_rewrites_only_failing_item(world):
                 for iid in ids
             ]
             return BatchJudgeResult(per_item=per_item, overall="REVISE")
-        per_item = [
-            ItemVerdict(item_id=iid, verdict="PASS", feedback="") for iid in ids
-        ]
+        per_item = [ItemVerdict(item_id=iid, verdict="PASS", feedback="") for iid in ids]
         return BatchJudgeResult(per_item=per_item, overall="PASS")
 
     real_assess_batch_events = batch_assessor_mod.assess_batch_events
@@ -230,10 +225,16 @@ async def test_s_event_judge_revise_loop_rewrites_only_failing_item(world):
             f"got {judge_call_count}"
         )
 
+        call_summaries = [
+            {
+                "n_items": len(call["items"]),
+                "has_feedback": call["critic_feedback_per_item"] is not None,
+            }
+            for call in assessor_calls
+        ]
         assert len(assessor_calls) == 2, (
             f"assessor should have been called exactly twice (initial + 1 revision), "
-            f"got {len(assessor_calls)}: "
-            f"{[{'n_items': len(c['items']), 'has_feedback': c['critic_feedback_per_item'] is not None} for c in assessor_calls]}"
+            f"got {len(assessor_calls)}: {call_summaries}"
         )
 
         initial_call = assessor_calls[0]
@@ -242,8 +243,7 @@ async def test_s_event_judge_revise_loop_rewrites_only_failing_item(world):
             f"{initial_call['critic_feedback_per_item']!r}"
         )
         assert len(initial_call["items"]) == 3, (
-            f"initial assessor call must evaluate all 3 items, got "
-            f"{len(initial_call['items'])}"
+            f"initial assessor call must evaluate all 3 items, got {len(initial_call['items'])}"
         )
 
         revise_item_id = revise_item_id_holder["id"]
@@ -279,23 +279,15 @@ async def test_s_event_judge_revise_loop_rewrites_only_failing_item(world):
 
         async with async_session_factory() as s:
             sent_rows = list(
-                (
-                    await s.execute(
-                        select(SentItem).where(SentItem.subscription_id == sub_id)
-                    )
-                )
+                (await s.execute(select(SentItem).where(SentItem.subscription_id == sub_id)))
                 .scalars()
                 .all()
             )
-        assert len(sent_rows) == 3, (
-            f"expected 3 SentItem rows after delivery, got {len(sent_rows)}"
-        )
+        assert len(sent_rows) == 3, f"expected 3 SentItem rows after delivery, got {len(sent_rows)}"
 
         async with async_session_factory() as s:
             failed = list((await s.execute(select(FailedTask))).scalars().all())
-        assert not failed, (
-            f"expected 0 failed_tasks rows, got {len(failed)}: {failed!r}"
-        )
+        assert not failed, f"expected 0 failed_tasks rows, got {len(failed)}: {failed!r}"
     finally:
         judge_mod.judge_batch_events = original_module_judge  # type: ignore[assignment]
         deliver_events_mod.judge_batch_events = original_task_judge  # type: ignore[assignment]

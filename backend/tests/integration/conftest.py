@@ -59,7 +59,7 @@ async def enforce_test_database() -> AsyncGenerator[None]:
 
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="session")
-async def reset_database(enforce_test_database) -> AsyncGenerator[None]:
+async def reset_database() -> AsyncGenerator[None]:
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.drop_all)

@@ -38,7 +38,6 @@ from sqlalchemy import select
 from news_benchmark.clock import CLOCK
 from news_benchmark.fakes.adapters import FakeAdapter, ScenarioItem
 
-
 SOURCE_URL = "https://example-nova-metals.invalid/feed.xml"
 WEBHOOK_URL = "https://bench.invalid/webhook/s-event-judge-drop-after-max"
 
@@ -168,11 +167,8 @@ async def test_s_event_judge_drop_after_max_revisions(world):
     async def _stub_assess_batch_events(
         *,
         items: list[dict],
-        user_spec: str,
-        target_language: str,
-        recent_notification_history: list[str],
-        max_history_chars: int,
         critic_feedback_per_item: dict[str, str] | None = None,
+        **_kwargs: object,
     ) -> BatchAssessmentResult:
         """Return deterministic relevant assessments for whatever items arrive.
 
@@ -191,10 +187,7 @@ async def test_s_event_judge_drop_after_max_revisions(world):
                     notification_body=(
                         defective_body
                         if i == 2
-                        else (
-                            f"Lithium alert #{i + 1}: {it['headline']} -- "
-                            f"{it['url']}"
-                        )
+                        else (f"Lithium alert #{i + 1}: {it['headline']} -- {it['url']}")
                     ),
                     reason=f"Matches subscription spec item {i + 1}.",
                 )
@@ -220,9 +213,7 @@ async def test_s_event_judge_drop_after_max_revisions(world):
     async def _stub_judge_batch_events(
         *,
         assessment: BatchAssessmentResult,
-        user_spec: str,
-        recent_notification_history: list[str],
-        max_history_chars: int,
+        **_kwargs: object,
     ) -> BatchJudgeResult:
         """PASS all items except the defective one; defective stays REVISE forever."""
         nonlocal judge_call_count
@@ -256,8 +247,7 @@ async def test_s_event_judge_drop_after_max_revisions(world):
 
         poll_result = await _poll_all_feeds()
         assert poll_result["new_items"] == 3, (
-            f"expected 3 new items ingested, got {poll_result['new_items']}: "
-            f"{poll_result!r}"
+            f"expected 3 new items ingested, got {poll_result['new_items']}: {poll_result!r}"
         )
 
         await world.celery.drain()
@@ -304,17 +294,12 @@ async def test_s_event_judge_drop_after_max_revisions(world):
 
         async with async_session_factory() as s:
             sent_rows = list(
-                (
-                    await s.execute(
-                        select(SentItem).where(SentItem.subscription_id == sub_id)
-                    )
-                )
+                (await s.execute(select(SentItem).where(SentItem.subscription_id == sub_id)))
                 .scalars()
                 .all()
             )
         assert len(sent_rows) == 2, (
-            f"expected 2 SentItem rows (one per delivered PASS item), got "
-            f"{len(sent_rows)}"
+            f"expected 2 SentItem rows (one per delivered PASS item), got {len(sent_rows)}"
         )
 
         defective_uuid = uuid.UUID(defective_id)

@@ -24,7 +24,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from news_service.core.config import get_settings
 
-
 EXPECTED_TABLES = {
     "users",
     "subscriptions",
@@ -67,9 +66,8 @@ async def empty_database() -> AsyncGenerator[None]:
     strict=True,
 )
 @pytest.mark.asyncio(loop_scope="session")
-async def test_alembic_upgrade_head_creates_the_full_production_schema(
-    empty_database: None,
-) -> None:
+@pytest.mark.usefixtures("empty_database")
+async def test_alembic_upgrade_head_creates_the_full_production_schema() -> None:
     alembic_ini = Path(__file__).resolve().parents[2] / "alembic.ini"
     assert alembic_ini.exists(), f"alembic.ini not found at {alembic_ini}"
 

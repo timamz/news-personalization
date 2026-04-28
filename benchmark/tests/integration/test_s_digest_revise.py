@@ -49,7 +49,7 @@ async def test_s_digest_revise_loop(world):
 
     call_count = 0
 
-    async def _stub_judge(*, digest_text, user_spec, candidates_summary):
+    async def _stub_judge(**_kwargs):
         """Two-call stub: REVISE then PASS."""
         nonlocal call_count
         call_count += 1
@@ -83,15 +83,12 @@ async def test_s_digest_revise_loop(world):
         _user_id, sub_id, _source_id = await seed_digest_world(world, embedding_fn=embed_text)
 
         result = await _deliver_digest(sub_id)
-        assert result.get("status") == "delivered", (
-            f"expected delivered status, got {result!r}"
-        )
+        assert result.get("status") == "delivered", f"expected delivered status, got {result!r}"
 
         await world.celery.drain()
 
         assert call_count >= 2, (
-            f"expected judge_digest invoked at least twice (REVISE then PASS), "
-            f"got {call_count}"
+            f"expected judge_digest invoked at least twice (REVISE then PASS), got {call_count}"
         )
 
         captured = world.delivery.for_url(WEBHOOK_URL)

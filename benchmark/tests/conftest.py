@@ -84,7 +84,7 @@ os.environ.setdefault("LITELLM_EMBEDDING_MODEL", _CFG.litellm_embedding_model)
 os.environ.setdefault("LITELLM_JUDGE_MODEL", _CFG.litellm_judge_model)
 
 
-def pytest_sessionfinish(session, exitstatus):  # type: ignore[no-untyped-def]
+def pytest_sessionfinish(exitstatus):  # type: ignore[no-untyped-def]
     """Drop the throwaway DB unless we want it retained for post-mortem."""
     if _CFG.keep_db_on_failure and exitstatus != 0:
         return

@@ -91,7 +91,7 @@ async def test_write_digest_exposes_only_search_fetch_and_submit_tools() -> None
         )
 
     assert captured["tool_names"] == {"search_web", "fetch_page_bounded", "submit_digest"}, (
-        "writer must expose search_web, fetch_page_bounded (its search-companion), and submit_digest"
+        "writer must expose search_web, fetch_page_bounded, and submit_digest"
     )
 
 

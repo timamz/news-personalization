@@ -21,9 +21,8 @@ class FakeArticleFetch:
         self,
         url: str,
         *,
-        timeout_seconds: float,
         max_chars: int,
-        use_browser_fallback: bool = False,
+        **_kwargs: object,
     ) -> str | None:
         self.call_log.append(url)
         body = self.bodies.get(url)

@@ -192,8 +192,9 @@ async def test_handle_user_message_reports_error_when_stream_raises(mocker) -> N
     mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
 
     async def _raises(*_args, **_kwargs):
+        for _ in ():
+            yield _
         raise RuntimeError("network dead")
-        yield  # pragma: no cover
 
     mocker.patch.object(
         start.backend,

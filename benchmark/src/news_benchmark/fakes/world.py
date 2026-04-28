@@ -67,7 +67,9 @@ class World:
                 source_url=source_url, items=sorted(src_items, key=lambda x: x.fake_ts)
             )
 
-    async def fake_fetch_source_posts(self, url: str, source_kind: str) -> list[object]:
+    async def fake_fetch_source_posts(
+        self, url: str, *_args: object, **_kwargs: object
+    ) -> list[object]:
         """Stand-in for ``news_service.services.relevance.fetch_source_posts``.
 
         The production implementation hits the live internet via httpx.
@@ -105,7 +107,7 @@ class World:
             posts.append(DatedPost(text=text, published_at=published))
         return posts
 
-    async def fake_validate_source_url(self, url: str, *, source_kind: str = "rss") -> bool:
+    async def fake_validate_source_url(self, url: str, **_kwargs: object) -> bool:
         """Stand-in for ``news_service.agents.discovery.validate_source_url``.
 
         The production check hits the live internet (httpx GET for RSS,

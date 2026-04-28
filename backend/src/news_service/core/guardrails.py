@@ -99,7 +99,6 @@ def validate_cron(cron_str: str) -> bool:
 def validate_notification_body(
     body: str,
     is_relevant: bool,
-    original_url: str | None = None,
 ) -> str | None:
     """Validate event notification body.
 

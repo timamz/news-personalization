@@ -89,7 +89,7 @@ async def test_s_conv_trigger_source_discovery_invokes_discovery(world):
 
     discovery_calls: list[dict] = []
 
-    async def _spy_discovery(*, scoped_factory, subscription_id, reason, shared_state):
+    async def _spy_discovery(*, subscription_id, reason, **_kwargs):
         discovery_calls.append(
             {
                 "subscription_id": str(subscription_id),

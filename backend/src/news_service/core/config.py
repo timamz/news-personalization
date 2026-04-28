@@ -80,8 +80,7 @@ class Settings(BaseSettings):
     """
 
     @field_validator("llm_model_pricing_usd_per_1m", mode="before")
-    @classmethod
-    def _parse_json_pricing(cls, value: object) -> object:
+    def _parse_json_pricing(value: object) -> object:
         """Accept the pricing table either as a dict or a JSON string.
 
         pydantic-settings loads env-var strings verbatim; when the setting

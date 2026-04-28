@@ -42,8 +42,9 @@ def _fake_streaming_agent(events_to_yield):
 
 def _fake_streaming_agent_error(error):
     async def fake(*, agent, message, user_id="system"):
+        for _ in ():
+            yield _
         raise error
-        yield  # noqa: UP028
 
     return fake
 

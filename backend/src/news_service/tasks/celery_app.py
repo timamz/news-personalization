@@ -67,9 +67,8 @@ def record_failed_task(
     exception: BaseException | None = None,
     args: tuple | None = None,
     kwargs: dict | None = None,
-    traceback: object = None,  # noqa: F811
     einfo: object = None,
-    **kw: object,
+    **_kw: object,
 ) -> None:
     """Record failed Celery tasks into the failed_tasks table (dead letter queue).
 
