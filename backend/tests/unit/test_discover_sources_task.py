@@ -288,3 +288,113 @@ async def test_discover_drops_results_when_subscription_deactivated_mid_run(mock
         and ensure_mock.await_count == 0
         and session.commit.await_count == 0
     ), "discovery must not persist when the subscription disappears mid-run"
+
+
+class _NotificationFormatTests:
+    """Behavioral tests for the discovery-completion notification body.
+
+    The function under test is ``_format_completion_body``: it must localize
+    based on the user/subscription language and emit one URL per source line
+    so the tgbot HTML renderer produces a single labeled link per bullet
+    instead of the duplicated pair seen in production before this change.
+    """
+
+
+def test_completion_body_in_russian_emits_localized_header_for_attached_sources() -> None:
+    from news_service.tasks.discover_sources import _format_completion_body
+
+    body = _format_completion_body(
+        {
+            "status": "ok",
+            "persisted": 2,
+            "selected_sources": [
+                {"url": "https://t.me/russianmacro", "source_kind": "telegram_channel"},
+                {"url": "https://www.reddit.com/r/economy/", "source_kind": "reddit_subreddit"},
+            ],
+        },
+        language="ru",
+    )
+
+    assert body is not None and body.startswith("Подключил 2"), (
+        "completion body for a Russian-speaking user must use the localized header "
+        "instead of the English default"
+    )
+
+
+def test_completion_body_emits_each_source_url_exactly_once_to_avoid_duplicate_links() -> None:
+    from news_service.tasks.discover_sources import _format_completion_body
+
+    url = "https://t.me/russianmacro"
+    body = _format_completion_body(
+        {
+            "status": "ok",
+            "persisted": 1,
+            "selected_sources": [{"url": url, "source_kind": "telegram_channel"}],
+        },
+        language="en",
+    )
+
+    assert body is not None and body.count(url) == 1, (
+        "each source bullet must contain its URL exactly once; rendering it twice "
+        "produces two duplicate hyperlinks in the Telegram message"
+    )
+
+
+def test_completion_body_prefixes_telegram_bullets_with_at_handle_for_recognizability() -> None:
+    from news_service.tasks.discover_sources import _format_completion_body
+
+    body = _format_completion_body(
+        {
+            "status": "ok",
+            "persisted": 1,
+            "selected_sources": [
+                {"url": "https://t.me/russianmacro", "source_kind": "telegram_channel"}
+            ],
+        },
+        language="en",
+    )
+
+    assert body is not None and "@russianmacro" in body, (
+        "Telegram source bullets must show the @handle so the user can recognize "
+        "the channel without reading the raw URL"
+    )
+
+
+def test_completion_body_prefixes_reddit_bullets_with_subreddit_path() -> None:
+    from news_service.tasks.discover_sources import _format_completion_body
+
+    body = _format_completion_body(
+        {
+            "status": "ok",
+            "persisted": 1,
+            "selected_sources": [
+                {"url": "https://www.reddit.com/r/economy/", "source_kind": "reddit_subreddit"}
+            ],
+        },
+        language="en",
+    )
+
+    assert body is not None and "r/economy" in body, (
+        "reddit source bullets must show the r/sub path; the raw URL alone is not "
+        "as recognizable to a returning subscriber"
+    )
+
+
+def test_completion_body_for_unknown_language_falls_back_to_english_strings() -> None:
+    from news_service.tasks.discover_sources import _format_completion_body
+
+    body = _format_completion_body(
+        {
+            "status": "ok",
+            "persisted": 1,
+            "selected_sources": [
+                {"url": "https://t.me/x", "source_kind": "telegram_channel"}
+            ],
+        },
+        language="ja",
+    )
+
+    assert body is not None and body.startswith("Attached 1"), (
+        "unknown ISO language codes must degrade to the English strings rather "
+        "than crashing or emitting an empty body"
+    )

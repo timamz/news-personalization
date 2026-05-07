@@ -33,7 +33,6 @@ def create_conversational_agent(
     user: User,
     conversation_summary: str,
     user_language: str | None = None,
-    conversation_history: list[dict] | None = None,
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
     session_factory: async_sessionmaker[AsyncSession] | None = None,
     subscription_summaries: list[str] | None = None,
@@ -46,6 +45,12 @@ def create_conversational_agent(
     calls safely. ``shared_state['scenario_close_summary']`` is set when
     the agent calls close_scenario; the caller uses that signal to compact
     the hot transcript after the turn.
+
+    Conversation history is NOT taken here on purpose. Prior turns are
+    delivered to the LLM as a real ``messages[]`` array via the ADK session
+    pre-population in ``adk_runner.run_agent``; this function only builds
+    the stable system instruction (rules, persona, summary cards, closed-
+    scenario log).
     """
     scoped_factory = session_factory or async_session_factory
     effective_language = user_language or user.language or "en"
@@ -68,7 +73,6 @@ def create_conversational_agent(
         conversation_summary=conversation_summary,
         user_language=user_language or user.language,
         user_timezone=user.timezone,
-        conversation_history=conversation_history,
         subscription_summaries=subscription_summaries,
         compacted_log=compacted_log,
         has_onboarded=bool(getattr(user, "has_onboarded", False)),
@@ -157,7 +161,6 @@ async def run_conversation_turn_streaming(
             user=user,
             conversation_summary=conversation_summary,
             user_language=user_language,
-            conversation_history=previous_messages,
             status_queue=events_queue,
             subscription_summaries=subscription_summaries,
             compacted_log=compacted_log,
@@ -173,6 +176,7 @@ async def run_conversation_turn_streaming(
                     agent=agent,
                     message=current_message,
                     user_id=str(user.id),
+                    conversation_history=previous_messages,
                 ):
                     await events_queue.put((_ADK_SENTINEL, event))
             except BaseException as exc:

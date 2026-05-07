@@ -71,10 +71,79 @@ async def _discover_in_task_session(subscription_id: uuid.UUID, reason: str) -> 
     return result
 
 
-_DISCOVERY_COMPLETION_SUBJECT = "Source discovery finished"
+_COMPLETION_TEXT: dict[str, dict[str, str]] = {
+    "en": {
+        "subject": "Source discovery finished",
+        "already_attached": (
+            "Found {n} source(s) for your subscription; they were already attached, "
+            "so no new sources were added. Your subscription is ready."
+        ),
+        "attached_header": "Attached {n} new source(s) to your subscription:",
+        "more_suffix": "... and {n} more.",
+        "none_with_reason": "Source discovery did not find any sources. Reason: {reason}\n\n{hint}",
+        "none_no_reason": "Source discovery did not find any sources.\n\n{hint}",
+        "none_hint": (
+            "Try broadening the topic wording, or add specific sources you trust "
+            "(Telegram channels, subreddits, RSS feeds)."
+        ),
+    },
+    "ru": {
+        "subject": "Подбор источников завершён",
+        "already_attached": (
+            "Нашёл {n} источник(ов) для подписки; они уже были подключены, новых "
+            "не добавилось. Подписка готова."
+        ),
+        "attached_header": "Подключил {n} новый(х) источник(ов) к подписке:",
+        "more_suffix": "... и ещё {n}.",
+        "none_with_reason": "Поиск источников не дал результатов. Причина: {reason}\n\n{hint}",
+        "none_no_reason": "Поиск источников не дал результатов.\n\n{hint}",
+        "none_hint": (
+            "Попробуйте сформулировать тему шире или добавьте конкретные источники, "
+            "которым доверяете (Telegram-каналы, сабреддиты, RSS-ленты)."
+        ),
+    },
+}
 
 
-def _format_completion_body(result: dict) -> str | None:
+def _completion_strings(language: str) -> dict[str, str]:
+    """Pick the localized string bundle, falling back to English for any unknown ISO code."""
+    return _COMPLETION_TEXT.get((language or "").lower(), _COMPLETION_TEXT["en"])
+
+
+def _friendly_handle(url: str, kind: str) -> str:
+    """Derive a recognizable bullet label from a source URL.
+
+    The discovery agent persists ``title`` equal to the raw URL when it has
+    no better name, which used to render two duplicate hyperlinks per
+    bullet in the Telegram message. Showing a short handle (``@varlamov_news``,
+    ``r/economy``) instead of a second URL gives the user a recognizable
+    label and lets the bot collapse the URL into a single italic link.
+    """
+    cleaned = url.strip()
+    if not cleaned:
+        return ""
+    lowered = cleaned.lower()
+    if "t.me/" in lowered:
+        tail = cleaned.split("t.me/", 1)[1].lstrip("/")
+        if tail.startswith("s/"):
+            tail = tail[2:]
+        handle = tail.split("/", 1)[0].strip()
+        if handle:
+            return f"@{handle}"
+    if "reddit.com/r/" in lowered:
+        tail = cleaned.split("reddit.com/r/", 1)[1]
+        sub = tail.split("/", 1)[0].strip()
+        if sub:
+            return f"r/{sub}"
+    if kind == "rss":
+        host = cleaned.split("://", 1)[-1].split("/", 1)[0]
+        if host:
+            return host
+    host = cleaned.split("://", 1)[-1].split("/", 1)[0]
+    return host or cleaned
+
+
+def _format_completion_body(result: dict, language: str) -> str | None:
     """Compose a short user-facing message describing a discovery outcome.
 
     Returns ``None`` when the outcome should NOT be surfaced to the user --
@@ -82,37 +151,33 @@ def _format_completion_body(result: dict) -> str | None:
     for an internal reason the user would not understand. ``ok`` and
     ``no_sources_found`` are always surfaced because both are outcomes the
     user has to act on (start using the subscription or refine it).
+
+    Each bullet emits exactly one URL so the tgbot HTML renderer produces
+    one labeled link per source instead of two duplicated ones.
     """
+    strings = _completion_strings(language)
     status = result.get("status")
     if status == "ok":
         selected = result.get("selected_sources") or []
         persisted = int(result.get("persisted", 0))
         if persisted == 0 and selected:
-            return (
-                f"Found {len(selected)} source(s) for your subscription; they "
-                "were already attached, so no new sources were added. Your "
-                "subscription is ready."
-            )
-        lines = [
-            f"Attached {persisted} new source(s) to your subscription:",
-        ]
+            return strings["already_attached"].format(n=len(selected))
+        lines = [strings["attached_header"].format(n=persisted)]
         for src in selected[:20]:
-            title = (src.get("title") or src.get("url") or "").strip()
-            url = src.get("url") or ""
-            kind = src.get("source_kind") or ""
-            lines.append(f"- {title} ({kind}) {url}")
+            url = (src.get("url") or "").strip()
+            if not url:
+                continue
+            handle = _friendly_handle(url, src.get("source_kind") or "")
+            lines.append(f"- {handle}: {url}" if handle else f"- {url}")
         if len(selected) > 20:
-            lines.append(f"... and {len(selected) - 20} more.")
+            lines.append(strings["more_suffix"].format(n=len(selected) - 20))
         return "\n".join(lines)
     if status == "no_sources_found":
         reason = result.get("abort_reason") or result.get("reason") or ""
-        hint = (
-            "Try broadening the topic wording, or add specific sources you "
-            "trust (Telegram channels, subreddits, RSS feeds)."
-        )
+        hint = strings["none_hint"]
         if reason:
-            return f"Source discovery did not find any sources. Reason: {reason}\n\n{hint}"
-        return f"Source discovery did not find any sources.\n\n{hint}"
+            return strings["none_with_reason"].format(reason=reason, hint=hint)
+        return strings["none_no_reason"].format(hint=hint)
     return None
 
 
@@ -122,13 +187,10 @@ async def _notify_user_of_discovery_outcome(subscription_id: uuid.UUID, result: 
     Moving discovery off the HTTP conversation turn means the user no longer
     learns the outcome from the streaming reply. This function is the
     replacement: it looks up the subscription's webhook target and posts a
-    short human-readable summary. Failures here are swallowed -- the
-    delivery pipeline already logs, and a missed follow-up should not crash
-    the Celery task.
+    short human-readable summary in the user's language. Failures here are
+    swallowed -- the delivery pipeline already logs, and a missed follow-up
+    should not crash the Celery task.
     """
-    body = _format_completion_body(result)
-    if body is None:
-        return
     try:
         async with get_task_session() as session:
             row = await session.execute(
@@ -140,9 +202,17 @@ async def _notify_user_of_discovery_outcome(subscription_id: uuid.UUID, result: 
             if subscription is None or not subscription.is_active:
                 return
             webhook_url = subscription.delivery_webhook_url
-            if webhook_url is None and subscription.user is not None:
-                webhook_url = subscription.user.delivery_webhook_url
-        await deliver(webhook_url, _DISCOVERY_COMPLETION_SUBJECT, body)
+            language = subscription.digest_language or ""
+            if subscription.user is not None:
+                if webhook_url is None:
+                    webhook_url = subscription.user.delivery_webhook_url
+                if not language:
+                    language = subscription.user.language or ""
+        body = _format_completion_body(result, language)
+        if body is None:
+            return
+        subject = _completion_strings(language)["subject"]
+        await deliver(webhook_url, subject, body)
     except Exception:
         logger.exception(
             "Failed to deliver discovery completion notice for subscription %s",

@@ -50,13 +50,31 @@ celery_app.conf.update(
 
 @worker_process_init.connect
 def _install_llm_usage_callback(**_: object) -> None:
-    """Register the per-call LLM usage ledger in each Celery worker process.
+    """Initialize each freshly forked Celery worker process.
 
-    Worker processes are forked off the parent and do not inherit module-level
-    side effects registered only in ``app.py`` (the FastAPI process). We must
-    register the LiteLLM success/failure callback once per worker here so
-    every agent call in a task is accounted for.
+    Two things happen here, both required exactly once per child:
+
+    1. Dispose the SQLAlchemy AsyncEngine inherited from the prefork
+       parent. The module-level ``engine`` in ``news_service.db.session``
+       is constructed at import time, so the parent already holds asyncpg
+       connections whose socket file descriptors get duplicated into every
+       child by ``fork()``. Two processes writing to the same socket
+       triggers ``asyncpg.InterfaceError: cannot perform operation:
+       another operation is in progress`` and eventually deadlocks the
+       worker on a corrupted recv. Disposing the inherited pool drops
+       those FDs in the child; new connections are opened lazily on first
+       use, scoped to this process.
+
+    2. Register the LiteLLM success/failure callback that writes the
+       per-call ``llm_usage`` ledger row. The callback is a side effect
+       on the ``litellm`` module and does not survive ``fork()`` cleanly
+       in every code path, so we re-register here per child.
     """
+    import asyncio
+
+    from news_service.db.session import engine
+
+    asyncio.run(engine.dispose())
     install_usage_callback()
 
 
