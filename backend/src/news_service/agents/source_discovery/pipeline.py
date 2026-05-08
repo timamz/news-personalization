@@ -108,8 +108,15 @@ has ANY candidates at all, submit the best ones instead of aborting -- \
 even one mediocre source is better than zero.
 
 Orchestration guidance:
-- Target roughly {target_count} final sources, but use judgment. Fewer \
-great sources beats many mediocre ones.
+- Capacity guidance: this subscription already has {already_have} \
+attached (listed in the user message, hidden from the candidate \
+pool). The recommended total is {soft_cap} sources, so plan to \
+add at most {soft_max_new} new this run. You MAY exceed that and \
+go up to {hard_max_new} new (total {hard_cap}) if a particular \
+candidate is genuinely strong and the spec really benefits from \
+broader coverage -- but treat the soft target as the default and \
+exceed it only with a specific reason. submit_selection \
+mechanically truncates anything past {hard_max_new}.
 - Start by planning 3 diverse strategies, not more. Emit them as \
 parallel spawn_finder calls in the SAME turn.
 - Source-kind coverage is MANDATORY by default: the three opening \
@@ -127,9 +134,9 @@ replace the dropped kind with a second angle on an allowed kind. \
 Drifting toward RSS-only because the topic "sounds professional" \
 is the exact failure mode this rule exists to prevent.
 - Prefer finishing after ONE round. Only spawn a second round if the \
-first round's pool is clearly insufficient (fewer than \
-target_count / 2 candidates, or missing a kind the spec explicitly \
-needs). Do not re-run rounds to pad the count.
+first round's pool is clearly insufficient (fewer than {soft_max_new} \
+candidates total, or missing a kind the spec explicitly needs). \
+Do not re-run rounds to pad the count.
 - If you do run a second round, cap it at 3 strategies and make them \
 MATERIALLY different from round one (different phrasings, different \
 kinds you have not tried, or broader queries).
@@ -278,6 +285,8 @@ async def run_source_discovery(
     reason: str = "",
     removal_history: str = "",
     locked_out_urls: list[str] | None = None,
+    soft_max_new: int | None = None,
+    hard_max_new: int | None = None,
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
     display_language: str = "en",
 ) -> SourceDiscoveryResult:
@@ -296,11 +305,33 @@ async def run_source_discovery(
     enter the candidate pool. The textual removal_history is still
     surfaced in the prompt so the LLM understands *why* those URLs are
     absent, but the LLM has no ability to re-add them.
+
+    Two caps gate how many new sources can come out of this run:
+
+    - ``soft_max_new`` is the recommended budget. It is the gap between
+      the subscription's attached count and ``settings.source_soft_cap``.
+      The orchestrator is told this is the default to plan for.
+    - ``hard_max_new`` is the absolute ceiling. It is the gap to
+      ``settings.source_hard_cap`` and is enforced in ``submit_selection``
+      by truncating any extras the agent submits past it.
+
+    The agent may exceed the soft target if it has a specific reason; the
+    hard cap is non-negotiable. ``None`` on either argument falls back to
+    the corresponding global cap so legacy callers keep current behavior.
     """
     attached = attached_sources or []
     exclude_urls = {_normalize_url(url) for url, _, _ in attached}
     for locked in locked_out_urls or []:
         exclude_urls.add(_normalize_url(locked))
+
+    effective_soft_max_new = soft_max_new if soft_max_new is not None else settings.source_soft_cap
+    effective_hard_max_new = hard_max_new if hard_max_new is not None else settings.source_hard_cap
+    if effective_soft_max_new < 0:
+        effective_soft_max_new = 0
+    if effective_hard_max_new < 0:
+        effective_hard_max_new = 0
+    if effective_soft_max_new > effective_hard_max_new:
+        effective_soft_max_new = effective_hard_max_new
 
     candidate_pool: dict[str, ScoredSource] = {}
     selected_urls: list[str] = []
@@ -455,7 +486,29 @@ async def run_source_discovery(
                 "Submit again with only URLs returned by the finders."
             )
 
+        truncated = 0
+        if len(valid) > effective_hard_max_new:
+            truncated = len(valid) - effective_hard_max_new
+            valid = valid[:effective_hard_max_new]
+            logger.warning(
+                "Discovery submit_selection truncated %d URL(s) past hard cap=%d",
+                truncated,
+                effective_hard_max_new,
+            )
+        elif len(valid) > effective_soft_max_new:
+            logger.info(
+                "Discovery submission exceeds soft cap (%d > %d) but stays under hard cap %d",
+                len(valid),
+                effective_soft_max_new,
+                effective_hard_max_new,
+            )
+
         selected_urls[:] = valid
+        if truncated:
+            return (
+                f"selection submitted: {len(valid)} source(s); {truncated} extra "
+                f"URL(s) were dropped because the hard cap is {effective_hard_max_new}."
+            )
         return f"selection submitted: {len(valid)} source(s)."
 
     async def abort(reason: str) -> str:
@@ -489,7 +542,11 @@ async def run_source_discovery(
         )
 
     prompt = DISCOVERY_AGENT_PROMPT.format(
-        target_count=settings.source_target_count,
+        soft_cap=settings.source_soft_cap,
+        hard_cap=settings.source_hard_cap,
+        soft_max_new=effective_soft_max_new,
+        hard_max_new=effective_hard_max_new,
+        already_have=len(attached),
         removal_context=removal_context,
     )
 

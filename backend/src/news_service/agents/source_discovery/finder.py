@@ -159,7 +159,7 @@ async def run_finder(
             session,
             query_embedding,
             threshold=settings.content_db_candidate_threshold,
-            limit=settings.source_target_count * 2,
+            limit=settings.source_soft_cap * 2,
         )
         if not sources:
             return "No existing sources found in database."

@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     rss_poll_interval_minutes: int = 30
     topic_similarity_threshold: float = 0.85
 
-    source_target_count: int = 8
+    source_soft_cap: int = 10
+    source_hard_cap: int = 20
     content_sample_size: int = 10
     content_sample_window_days: int = 30
     content_relevance_top_k: int = 3

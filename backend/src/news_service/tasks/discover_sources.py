@@ -86,6 +86,10 @@ _COMPLETION_TEXT: dict[str, dict[str, str]] = {
             "Try broadening the topic wording, or add specific sources you trust "
             "(Telegram channels, subreddits, RSS feeds)."
         ),
+        "at_capacity": (
+            "Subscription is already at capacity ({attached}/{target} sources). "
+            "Remove a source first if you want a different one."
+        ),
     },
     "ru": {
         "subject": "Подбор источников завершён",
@@ -100,6 +104,10 @@ _COMPLETION_TEXT: dict[str, dict[str, str]] = {
         "none_hint": (
             "Попробуйте сформулировать тему шире или добавьте конкретные источники, "
             "которым доверяете (Telegram-каналы, сабреддиты, RSS-ленты)."
+        ),
+        "at_capacity": (
+            "Подписка уже заполнена ({attached}/{target} источников). "
+            "Удалите один из источников, если хотите заменить."
         ),
     },
 }
@@ -178,6 +186,11 @@ def _format_completion_body(result: dict, language: str) -> str | None:
         if reason:
             return strings["none_with_reason"].format(reason=reason, hint=hint)
         return strings["none_no_reason"].format(hint=hint)
+    if status == "skipped" and result.get("reason") == "at_capacity":
+        return strings["at_capacity"].format(
+            attached=int(result.get("attached", 0)),
+            target=int(result.get("target", 0)),
+        )
     return None
 
 
@@ -253,7 +266,13 @@ async def _run_and_persist_discovery_tagged(
 
         {
             "status": "ok" | "skipped" | "no_sources_found",
-            "reason": str,                       # present when skipped/no_sources_found
+            "reason": str,                       # present when skipped/no_sources_found;
+                                                 # "at_capacity" when the subscription
+                                                 # already has source_hard_cap or more
+                                                 # attached sources
+            "attached": int,                     # present when skipped due to at_capacity
+            "target": int,                       # present when skipped due to at_capacity
+                                                 # (the hard cap that triggered the skip)
             "abort_reason": str,                 # present on no_sources_found if the
                                                  # orchestrator called abort()
             "discovered": int,                   # sources the agent selected
@@ -293,6 +312,22 @@ async def _run_and_persist_discovery_tagged(
     removal_history = await _load_removal_history(session, subscription_id)
     locked_out_urls = await _load_recently_removed_urls(session, subscription_id)
 
+    soft_max_new = max(0, settings.source_soft_cap - len(attached))
+    hard_max_new = max(0, settings.source_hard_cap - len(attached))
+    if hard_max_new == 0:
+        logger.info(
+            "Discovery skipped: subscription %s already has %d attached sources (hard cap %d)",
+            subscription_id,
+            len(attached),
+            settings.source_hard_cap,
+        )
+        return {
+            "status": "skipped",
+            "reason": "at_capacity",
+            "attached": len(attached),
+            "target": settings.source_hard_cap,
+        }
+
     result = await run_source_discovery(
         session=session,
         topic_text=subscription.user_spec or "",
@@ -302,6 +337,8 @@ async def _run_and_persist_discovery_tagged(
         reason=reason,
         removal_history=removal_history,
         locked_out_urls=locked_out_urls,
+        soft_max_new=soft_max_new,
+        hard_max_new=hard_max_new,
         status_queue=status_queue,
         display_language=display_language,
     )

@@ -387,9 +387,7 @@ def test_completion_body_for_unknown_language_falls_back_to_english_strings() ->
         {
             "status": "ok",
             "persisted": 1,
-            "selected_sources": [
-                {"url": "https://t.me/x", "source_kind": "telegram_channel"}
-            ],
+            "selected_sources": [{"url": "https://t.me/x", "source_kind": "telegram_channel"}],
         },
         language="ja",
     )
@@ -397,4 +395,164 @@ def test_completion_body_for_unknown_language_falls_back_to_english_strings() ->
     assert body is not None and body.startswith("Attached 1"), (
         "unknown ISO language codes must degrade to the English strings rather "
         "than crashing or emitting an empty body"
+    )
+
+
+@pytest.mark.asyncio
+async def test_discover_skips_at_capacity_when_attached_count_meets_hard_cap(mocker) -> None:
+    from news_service.tasks.discover_sources import run_and_persist_discovery
+
+    sub = _fake_subscription()
+    hard_cap = 7
+    mocker.patch("news_service.tasks.discover_sources.settings.source_soft_cap", 4)
+    mocker.patch("news_service.tasks.discover_sources.settings.source_hard_cap", hard_cap)
+    session = MagicMock()
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+
+    attached_rows = MagicMock()
+    attached_rows.all.return_value = [
+        (f"https://test.example/feed-{i}", "feed", False) for i in range(hard_cap)
+    ]
+
+    removal_rows = MagicMock()
+    removal_rows.all.return_value = []
+
+    recently_removed_rows = MagicMock()
+    recently_removed_rows.all.return_value = []
+
+    session.execute = AsyncMock(
+        side_effect=[sub_lookup, attached_rows, removal_rows, recently_removed_rows]
+    )
+
+    _patch_session_factory(mocker, session)
+    pipeline = mocker.patch(
+        "news_service.tasks.discover_sources.run_source_discovery",
+        new=AsyncMock(),
+    )
+
+    result = await run_and_persist_discovery(session, sub.id, "drift cleanup")
+
+    assert (
+        result["status"] == "skipped"
+        and result["reason"] == "at_capacity"
+        and result["attached"] == hard_cap
+        and result["target"] == hard_cap
+        and pipeline.await_count == 0
+    ), (
+        "subscription already at the source_hard_cap must short-circuit before "
+        "invoking the LLM pipeline so an unbounded auto-discovery loop cannot grow "
+        "the source list past the hard ceiling even when over the soft cap"
+    )
+
+
+@pytest.mark.asyncio
+async def test_discover_does_not_skip_when_above_soft_cap_but_below_hard_cap(mocker) -> None:
+    from news_service.tasks.discover_sources import run_and_persist_discovery
+
+    sub = _fake_subscription()
+    mocker.patch("news_service.tasks.discover_sources.settings.source_soft_cap", 4)
+    mocker.patch("news_service.tasks.discover_sources.settings.source_hard_cap", 8)
+    session = MagicMock()
+    session.commit = AsyncMock()
+    session.add = MagicMock()
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+
+    attached_rows = MagicMock()
+    attached_rows.all.return_value = [
+        (f"https://test.example/feed-{i}", "feed", False) for i in range(6)
+    ]
+
+    removal_rows = MagicMock()
+    removal_rows.all.return_value = []
+
+    recently_removed_rows = MagicMock()
+    recently_removed_rows.all.return_value = []
+
+    sub_recheck = MagicMock()
+    sub_recheck.scalar_one_or_none.return_value = True
+
+    session.execute = AsyncMock(
+        side_effect=[sub_lookup, attached_rows, removal_rows, recently_removed_rows, sub_recheck]
+    )
+
+    _patch_session_factory(mocker, session)
+    pipeline = mocker.patch(
+        "news_service.tasks.discover_sources.run_source_discovery",
+        new=AsyncMock(return_value=SourceDiscoveryResult(sources=[])),
+    )
+
+    await run_and_persist_discovery(session, sub.id, "between caps")
+
+    kwargs = pipeline.await_args.kwargs
+    assert (
+        pipeline.await_count == 1 and kwargs["soft_max_new"] == 0 and kwargs["hard_max_new"] == 2
+    ), (
+        "between soft and hard cap, discovery must still run but with soft_max_new=0 "
+        "so the agent only adds when justified, while hard_max_new still permits up "
+        "to the absolute ceiling"
+    )
+
+
+@pytest.mark.asyncio
+async def test_discover_passes_gap_as_caps_when_attached_below_soft_cap(mocker) -> None:
+    from news_service.tasks.discover_sources import run_and_persist_discovery
+
+    sub = _fake_subscription()
+    mocker.patch("news_service.tasks.discover_sources.settings.source_soft_cap", 10)
+    mocker.patch("news_service.tasks.discover_sources.settings.source_hard_cap", 20)
+    session = MagicMock()
+    session.commit = AsyncMock()
+    session.add = MagicMock()
+
+    sub_lookup = MagicMock()
+    sub_lookup.scalar_one_or_none.return_value = sub
+
+    attached_rows = MagicMock()
+    attached_rows.all.return_value = [
+        (f"https://test.example/feed-{i}", "feed", False) for i in range(6)
+    ]
+
+    removal_rows = MagicMock()
+    removal_rows.all.return_value = []
+
+    recently_removed_rows = MagicMock()
+    recently_removed_rows.all.return_value = []
+
+    sub_recheck = MagicMock()
+    sub_recheck.scalar_one_or_none.return_value = True
+
+    session.execute = AsyncMock(
+        side_effect=[sub_lookup, attached_rows, removal_rows, recently_removed_rows, sub_recheck]
+    )
+
+    _patch_session_factory(mocker, session)
+    pipeline = mocker.patch(
+        "news_service.tasks.discover_sources.run_source_discovery",
+        new=AsyncMock(return_value=SourceDiscoveryResult(sources=[])),
+    )
+
+    await run_and_persist_discovery(session, sub.id, "fill gap")
+
+    kwargs = pipeline.await_args.kwargs
+    assert kwargs["soft_max_new"] == 4 and kwargs["hard_max_new"] == 14, (
+        "discovery must request the soft and hard gaps (cap - attached) so each "
+        "rerun fills toward both targets without re-aiming for a full quota"
+    )
+
+
+def test_completion_body_for_at_capacity_explains_why_no_sources_attached() -> None:
+    from news_service.tasks.discover_sources import _format_completion_body
+
+    body = _format_completion_body(
+        {"status": "skipped", "reason": "at_capacity", "attached": 9, "target": 8},
+        language="en",
+    )
+
+    assert body is not None and "9/8" in body and "at capacity" in body.lower(), (
+        "at-capacity skip must produce a user-facing notice naming the current/target "
+        "counts so the user knows why nothing was added without reading logs"
     )
