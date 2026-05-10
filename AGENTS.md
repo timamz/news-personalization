@@ -277,43 +277,54 @@ Branch strategy: `main` is always deployable. Feature work happens on short-live
 
 ### Deployment
 
-All deployment targets the **`devbox`** Docker context (`ssh://timamz@100.73.138.67`). Never run `docker compose up` locally with production bot tokens -- it will conflict with the remote instance.
+**Source-of-truth lives on devbox at `~/dev/news-monorepo`.** Edits, builds, and runs all happen there. SSH in (`ssh timamz@100.73.138.67`) and work directly. Mac checkouts exist only for IDE/browsing; never run `docker compose up` on a Mac with production tokens or you will conflict with the live bot.
 
-**There is no local stack. Do not start one.** All testing, smoke tests, and manual verification must hit the devbox containers that are already running. The API is reachable at `http://100.73.138.67:8000` (Tailscale). Postgres at `100.73.138.67:5432` (`news`/`news`/`news`). If a code change needs to be exercised, rebuild the affected service on devbox (`docker --context devbox compose up --build -d <service>`) -- never `docker compose up` locally. The token in `tgbot/.env` is the production bot token and will conflict with the devbox bot if run locally.
+**There is no local stack. Do not start one.** All testing, smoke tests, and manual verification hit the devbox containers. The API is reachable at `http://100.73.138.67:8000` (Tailscale). Postgres at `100.73.138.67:5432` (`news`/`news`/`news`). To exercise a code change, push it to GitHub and `git pull` on devbox (or edit directly on devbox), then rebuild.
 
 ```bash
-docker --context devbox compose up --build -d          # deploy full stack
-docker --context devbox compose up --build -d tgbot     # deploy single service
-docker --context devbox logs -f tgbot                   # check logs
+ssh timamz@100.73.138.67
+cd ~/dev/news-monorepo
+git pull                              # get latest of the deployed branch
+docker compose up --build -d          # full stack
+docker compose up --build -d tgbot    # single service
+docker compose logs -f tgbot          # follow logs
 ```
+
+The active deploy branch is **`dev`**, not `main`. Day-to-day work and devbox-deployed code live on `dev`; `main` lags behind.
+
+The legacy `docker --context devbox compose up` workflow (compose CLI on Mac, daemon on devbox) is retired. Do not use it -- bind mounts resolve on the daemon side and would look for paths that no longer exist on the Mac filesystem.
 
 #### Deploy-time facts worth knowing
 
-- **Compose project name is `news-monorepo`** (derived from the directory name of the compose file on the client machine). Containers are named `news-monorepo-<service>-1`.
-- **pgdata volume is external and legacy-named** `news-personalization_pgdata` (pre-dating the rename to `news-monorepo`), declared `external: true` in `docker-compose.yml`. It must be pre-created before `up`:
+- **Compose project name is `news-monorepo`** (derived from the directory basename on devbox). Containers are named `news-monorepo-<service>-1`. Do not rename `~/dev/news-monorepo` or container names will change and the external volumes below will not auto-attach.
+- **External volumes are legacy-named** `news-personalization_pgdata` and `news-personalization_tgbot_home` (predating the `news-monorepo` rename), declared `external: true` in `docker-compose.yml`. They must exist before `up`:
   ```bash
-  docker --context devbox volume create news-personalization_pgdata
+  docker volume create news-personalization_pgdata
+  docker volume create news-personalization_tgbot_home
   ```
-  If it does not exist, the stack fails to start with `external volume "news-personalization_pgdata" not found`. The same applies to `news-personalization_tgbot_home`.
-- **Bind mounts resolve on the daemon host, not the client.** When you deploy via `docker --context devbox compose up`, any `- ./foo:/bar` mount looks for `./foo` on the *devbox* filesystem, not your Mac. The repo is not checked out on devbox, so file-based bind mounts silently turn into empty-directory mounts on the container side (Docker auto-creates a directory at the destination when the source is missing). Do not rely on bind mounts for config files -- bake config into the image with a service-local `Dockerfile` instead. Directory bind mounts used as scratch space (e.g. `db-backup`'s `/backups`) are fine because an empty directory is the intended state.
+  If missing, the stack fails to start with `external volume "news-personalization_pgdata" not found`.
 - **Postgres is on pgvector image** (`pgvector/pgvector:pg16`). The pgvector extension must exist in the `news` database. The baseline Alembic migration (`0001_baseline`) runs `CREATE EXTENSION IF NOT EXISTS vector` before creating tables.
-- **App container runs `alembic upgrade head` on startup** (see the compose `command:` for the `app` service). On a fresh DB this applies `0001_baseline` in one pass. On an existing DB at baseline, it is a no-op. Any future schema changes ship as new revision files on top of the baseline.
+- **App container runs `alembic upgrade head` on startup** (see the compose `command:` for the `app` service). On a fresh DB this applies `0001_baseline` in one pass. On an existing DB at baseline, it is a no-op. Future schema changes ship as new revision files on top.
+- **Disk is tight** (~25G free of 137G as of 2026-05-10). Prune dangling images after rebuilds: `docker image prune -f`.
+- **Egress proxy**: devbox is a Russian-network host. Outbound traffic that needs to bypass restrictions (OpenAI, occasionally Telegram) goes through the SOCKS5 proxy configured per service via `PROXY_URL` in each `.env`. The proxy passes HTTPS but not raw MTProto -- that is why the Telegram bot is on aiogram (HTTPS Bot API), not Telethon.
 
 #### Wiping the DB (zero-state redeploy)
 
 When you want to drop all data and start clean:
 
 ```bash
-docker --context devbox compose down
-docker --context devbox volume rm news-personalization_pgdata
-docker --context devbox volume create news-personalization_pgdata
-docker --context devbox compose up --build -d
+ssh timamz@100.73.138.67
+cd ~/dev/news-monorepo
+docker compose down
+docker volume rm news-personalization_pgdata
+docker volume create news-personalization_pgdata
+docker compose up --build -d
 ```
 
 Verify afterward:
 
 ```bash
-docker --context devbox exec news-monorepo-postgres-1 \
+docker exec news-monorepo-postgres-1 \
   psql -U news -d news -c 'SELECT version_num FROM alembic_version;' -c '\dt'
 ```
 
@@ -321,10 +332,10 @@ docker --context devbox exec news-monorepo-postgres-1 \
 
 #### Troubleshooting
 
-- **`external volume ... not found`**: run the `volume create` command above.
+- **`external volume ... not found`**: run the `volume create` command above on devbox.
 - **Yandex Search API returning `UNAUTHENTICATED`**: the API key is missing the `search-api.executor` role on the folder it is bound to, or the key has been revoked. Mint a new key in the Yandex Cloud console and update `YANDEX_SEARCH_API_KEY` in `backend/.env`.
-- **SSH connection reset mid-build**: retry. The `docker --context devbox compose up --build` command is idempotent; partial image layers are cached.
-- **Containers from an unrelated project on devbox**: devbox is a shared host running several projects (`bjj_bot`, `link-to-audio-bot`, `news-monorepo`). Always scope commands with `--filter name=news-monorepo` or `docker compose -p news-monorepo`.
+- **`docker compose up --build` is idempotent**; if the build fails partway (e.g. SSH session drops mid-rebuild while you were watching), just reconnect and retry. Layer cache is preserved.
+- **Containers from unrelated projects on devbox**: devbox is a shared host running several projects (`bjj-tracker`, `link-to-audio-bot`, `news-monorepo`). Always scope commands with `--filter name=news-monorepo` or `docker compose -p news-monorepo`.
 
 ---
 
