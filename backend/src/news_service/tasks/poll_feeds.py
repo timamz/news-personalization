@@ -42,35 +42,44 @@ def poll_all_feeds() -> dict:
 
 async def _poll_all_feeds() -> dict:
     async with get_task_session() as session:
-        session.info["event_item_ids"] = []
-
         event_source_result = await session.execute(
             select(SubscriptionSource.source_id)
             .join(Subscription, Subscription.id == SubscriptionSource.subscription_id)
             .where(Subscription.is_active.is_(True), Subscription.delivery_mode == "event")
             .distinct()
         )
-        session.info["event_source_ids"] = set(event_source_result.scalars().all())
+        event_source_ids: set = set(event_source_result.scalars().all())
 
         result = await session.execute(select(Source).where(Source.is_active.is_(True)))
         all_sources = list(result.scalars().all())
+        src_ids_and_urls = [(s.id, s.url) for s in all_sources]
 
-        total_new = 0
-        for src in all_sources:
+    async def _poll_one(source_id, source_url) -> tuple[int, list]:
+        async with get_task_session() as sess:
+            sess.info["event_item_ids"] = []
+            sess.info["event_source_ids"] = event_source_ids
+            src = await sess.get(Source, source_id)
+            if src is None:
+                return 0, []
             try:
-                count = await _poll_single_source(session, src)
+                count = await _poll_single_source(sess, src)
+                await sess.commit()
             except Exception:
-                await session.rollback()
+                await sess.rollback()
                 logger.exception(
                     "Unexpected failure while polling source %s",
-                    src.url,
-                    extra={"source_id": str(src.id)},
+                    source_url,
+                    extra={"source_id": str(source_id)},
                 )
-                continue
-            await session.commit()
-            total_new += count
+                return 0, []
+            return count, list(sess.info.get("event_item_ids", []))
 
-        event_item_ids = list(dict.fromkeys(session.info.pop("event_item_ids", [])))
+    results = await asyncio.gather(*(_poll_one(sid, surl) for sid, surl in src_ids_and_urls))
+    total_new = sum(r[0] for r in results)
+    event_item_ids: list = []
+    for _, ids in results:
+        event_item_ids.extend(ids)
+    event_item_ids = list(dict.fromkeys(event_item_ids))
 
     if event_item_ids:
         celery_app.send_task(

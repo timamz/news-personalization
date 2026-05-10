@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 EMBEDDING_MAX_CHARS = 4000
-EMBEDDING_BATCH_SIZE = 6
+EMBEDDING_BATCH_SIZE = 128
 
 _PARSE_ERROR_CONTENT_SNIPPET_MAX = 500
 

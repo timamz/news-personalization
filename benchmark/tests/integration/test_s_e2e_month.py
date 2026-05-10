@@ -128,19 +128,13 @@ _BUDGET_ABORT_USD = 30.0
 _DIGEST_SOURCE_UNIVERSE: list[str] = [
     "https://www.euractiv.com/section/energy/feed/",
     "https://www.politico.eu/section/energy/feed/",
-    "https://euobserver.com/feeds/energy.rss",
-    "https://www.endseurope.com/rss/energy",
     "https://ec.europa.eu/commission/presscorner/rss/energy",
-    "https://www.entsoe.eu/rss/news/",
-    "https://www.acer.europa.eu/feeds/news.rss",
-    "https://eur-lex.europa.eu/feeds/daily-summary-energy.rss",
 ]
 
 _EVENT_SOURCE_UNIVERSE: list[str] = [
     "https://www.reuters.com/pf/api/v3/feed/metals",
     "https://www.argusmedia.com/rss/rare-earths",
     "https://www.fastmarkets.com/rss/rare-earths",
-    "https://www.mining.com/tag/rare-earth/feed/",
 ]
 
 
