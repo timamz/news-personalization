@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
 from news_service.core.guardrails import cap_text_for_embedding, scan_for_injection
+from news_service.core.provider_errors import ProviderLimitError
 from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
 from news_service.models.news_item import NewsItem
@@ -28,6 +29,7 @@ from news_service.tasks.poll_adapters import (
     SourceAdapter,
     TelegramAdapter,
 )
+from news_service.tasks.retry_policy import retry_on_provider_limit
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -35,9 +37,12 @@ settings = get_settings()
 DELIVER_EVENTS_BATCH_TASK = "news_service.tasks.deliver_events.deliver_event_notifications_batch"
 
 
-@celery_app.task(name="news_service.tasks.poll_feeds.poll_all_feeds")
-def poll_all_feeds() -> dict:
-    return asyncio.run(_poll_all_feeds())
+@celery_app.task(bind=True, name="news_service.tasks.poll_feeds.poll_all_feeds")
+def poll_all_feeds(self) -> dict:
+    try:
+        return asyncio.run(_poll_all_feeds())
+    except ProviderLimitError as exc:
+        raise retry_on_provider_limit(self, exc) from exc
 
 
 async def _poll_all_feeds() -> dict:
@@ -59,6 +64,9 @@ async def _poll_all_feeds() -> dict:
         for src in all_sources:
             try:
                 count = await _poll_single_source(session, src)
+            except ProviderLimitError:
+                await session.rollback()
+                raise
             except Exception:
                 await session.rollback()
                 logger.exception(
@@ -138,6 +146,8 @@ async def _poll_typed_source(
     texts_to_embed = [cap_text_for_embedding(p.text_to_embed) for p in fresh_posts]
     try:
         embeddings = await embed_texts(texts_to_embed)
+    except ProviderLimitError:
+        raise
     except Exception:
         logger.exception(
             "Failed to embed posts for %s",

@@ -20,6 +20,7 @@ from news_service.agents.event.judge import judge_batch_events
 from news_service.core.config import get_settings
 from news_service.core.guardrails import validate_notification_body
 from news_service.core.llm_usage import subscription_tag
+from news_service.core.provider_errors import ProviderLimitError
 from news_service.db.session import get_task_session
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
@@ -28,22 +29,32 @@ from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.delivery import deliver
 from news_service.services.event_notifications import load_recent_notification_history
 from news_service.tasks.celery_app import celery_app
+from news_service.tasks.retry_policy import retry_on_provider_limit
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-@celery_app.task(name="news_service.tasks.deliver_events.deliver_event_notifications_batch")
-def deliver_event_notifications_batch(news_item_ids: list[str]) -> dict:
-    return asyncio.run(
-        _deliver_event_notifications_batch([uuid.UUID(nid) for nid in news_item_ids])
-    )
+@celery_app.task(
+    bind=True,
+    name="news_service.tasks.deliver_events.deliver_event_notifications_batch",
+)
+def deliver_event_notifications_batch(self, news_item_ids: list[str]) -> dict:
+    try:
+        return asyncio.run(
+            _deliver_event_notifications_batch([uuid.UUID(nid) for nid in news_item_ids])
+        )
+    except ProviderLimitError as exc:
+        raise retry_on_provider_limit(self, exc) from exc
 
 
-@celery_app.task(name="news_service.tasks.deliver_events.deliver_event_notifications")
-def deliver_event_notifications(news_item_id: str) -> dict:
+@celery_app.task(bind=True, name="news_service.tasks.deliver_events.deliver_event_notifications")
+def deliver_event_notifications(self, news_item_id: str) -> dict:
     """Single-item entry point for backward compatibility."""
-    return asyncio.run(_deliver_event_notifications_batch([uuid.UUID(news_item_id)]))
+    try:
+        return asyncio.run(_deliver_event_notifications_batch([uuid.UUID(news_item_id)]))
+    except ProviderLimitError as exc:
+        raise retry_on_provider_limit(self, exc) from exc
 
 
 async def _deliver_event_notifications_batch(news_item_ids: list[uuid.UUID]) -> dict:
@@ -87,6 +98,8 @@ async def _deliver_event_notifications_batch(news_item_ids: list[uuid.UUID]) -> 
         )
 
         for r in results:
+            if isinstance(r, ProviderLimitError):
+                raise r
             if isinstance(r, BaseException):
                 total_failed += 1
                 logger.exception("Subscription processing failed: %s", r)
@@ -180,6 +193,8 @@ async def _assess_and_deliver_for_subscription_tagged(
             recent_notification_history=history_strings,
             max_history_chars=settings.llm_max_context_chars,
         )
+    except ProviderLimitError:
+        raise
     except Exception:
         logger.exception(
             "Batch assessment failed for subscription %s",

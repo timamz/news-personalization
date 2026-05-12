@@ -28,6 +28,7 @@ from sqlalchemy.orm import selectinload
 from news_service.agents.source_discovery import run_source_discovery
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import subscription_tag
+from news_service.core.provider_errors import ProviderLimitError
 from news_service.db.session import get_task_session
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
@@ -36,6 +37,7 @@ from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.coverage import ensure_source_by_url
 from news_service.services.delivery import deliver
 from news_service.tasks.celery_app import celery_app
+from news_service.tasks.retry_policy import retry_on_provider_limit
 
 settings = get_settings()
 
@@ -47,11 +49,12 @@ _REMOVAL_HISTORY_LIMIT = 50
 
 
 @celery_app.task(
+    bind=True,
     name=DISCOVER_SOURCES_TASK,
     soft_time_limit=480,
     time_limit=540,
 )
-def discover_sources_for_subscription(subscription_id: str, reason: str = "") -> dict:
+def discover_sources_for_subscription(self, subscription_id: str, reason: str = "") -> dict:
     """Celery entry point. Bridges to the async impl.
 
     The time limits guard against an ADK finder hanging inside a blocking
@@ -61,7 +64,10 @@ def discover_sources_for_subscription(subscription_id: str, reason: str = "") ->
     code so the task can unwind cleanly; the hard limit SIGKILLs the
     worker process if the soft unwind itself gets stuck.
     """
-    return asyncio.run(_discover_in_task_session(uuid.UUID(subscription_id), reason))
+    try:
+        return asyncio.run(_discover_in_task_session(uuid.UUID(subscription_id), reason))
+    except ProviderLimitError as exc:
+        raise retry_on_provider_limit(self, exc) from exc
 
 
 async def _discover_in_task_session(subscription_id: uuid.UUID, reason: str) -> dict:

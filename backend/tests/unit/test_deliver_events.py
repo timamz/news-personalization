@@ -187,10 +187,11 @@ async def test_batch_doesnt_send_irrelevant_items_into_the_judge_loop(mocker) ->
     await deliver_events._deliver_event_notifications_batch([relevant_item.id, irrelevant_item.id])
 
     judge_input = judge_spy.await_args.kwargs["assessment"]
-    assert (
-        [a.item_id for a in judge_input.assessments] == [str(relevant_item.id)]
-        and deliver_mock.await_count == 1
-    ), "event delivery did not filter the batch down to relevant items before judging"
+    assert [a.item_id for a in judge_input.assessments] == [
+        str(relevant_item.id)
+    ] and deliver_mock.await_count == 1, (
+        "event delivery did not filter the batch down to relevant items before judging"
+    )
 
 
 @pytest.mark.asyncio

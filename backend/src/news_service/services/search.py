@@ -23,6 +23,8 @@ import httpx
 from news_service.core.concurrency import search_semaphore
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import record_web_search
+from news_service.core.provider_errors import classify_search_status
+from news_service.services.admin_alerts import notify_provider_limit
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -79,7 +81,27 @@ async def search_web(query: str) -> str:
         if response.status_code == 429:
             logger.warning("Yandex search rate-limited for query %r", query[:60])
             error = "rate_limited"
+            body_snippet = _safe_body_snippet(response)
+            limit_err = classify_search_status(status_code=429, body_snippet=body_snippet)
+            if limit_err is not None:
+                await notify_provider_limit(limit_err)
             return f"Search rate-limited; try a different phrasing later. Query was: {query}"
+        if response.status_code in (401, 402, 403):
+            body_snippet = _safe_body_snippet(response)
+            logger.warning(
+                "Yandex search auth/balance error %s for query %r: %s",
+                response.status_code,
+                query[:60],
+                body_snippet[:200],
+            )
+            error = f"http_{response.status_code}"
+            limit_err = classify_search_status(
+                status_code=response.status_code, body_snippet=body_snippet
+            )
+            if limit_err is not None:
+                await notify_provider_limit(limit_err)
+                raise limit_err
+            return f"Search failed (HTTP {response.status_code}) for: {query}"
         if 500 <= response.status_code < 600:
             logger.warning(
                 "Yandex search upstream error %s for query %r", response.status_code, query[:60]
@@ -124,3 +146,18 @@ async def search_web(query: str) -> str:
             latency_ms=int((time.monotonic() - started) * 1000),
             error=error,
         )
+
+
+def _safe_body_snippet(response: httpx.Response, *, max_chars: int = 500) -> str:
+    """Read up to ``max_chars`` of the response body without raising.
+
+    Search errors typically include a short JSON envelope like
+    ``{"code": ..., "message": ...}``; surfacing that to the admin
+    alert gives them the actual reason (revoked key, missing role,
+    insufficient balance) rather than a bare HTTP code.
+    """
+    try:
+        text = response.text
+    except Exception:
+        return ""
+    return text[:max_chars]

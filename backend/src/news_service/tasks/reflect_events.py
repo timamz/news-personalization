@@ -37,6 +37,7 @@ from news_service.agents.event.verifier import (
 )
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import subscription_tag
+from news_service.core.provider_errors import ProviderLimitError
 from news_service.db.session import get_task_session
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
@@ -46,6 +47,7 @@ from news_service.models.subscription_source import SubscriptionSource
 from news_service.services.delivery import deliver
 from news_service.services.event_notifications import load_recent_notification_history
 from news_service.tasks.celery_app import celery_app
+from news_service.tasks.retry_policy import retry_on_provider_limit
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -54,9 +56,12 @@ VERIFIER_SENTINEL_SOURCE_URL = "https://verifier.internal/synthetic"
 VERIFIER_SENTINEL_SOURCE_TITLE = "_verifier"
 
 
-@celery_app.task(name="news_service.tasks.reflect_events.reflect_event_subscriptions")
-def reflect_event_subscriptions() -> dict:
-    return asyncio.run(_reflect_event_subscriptions())
+@celery_app.task(bind=True, name="news_service.tasks.reflect_events.reflect_event_subscriptions")
+def reflect_event_subscriptions(self) -> dict:
+    try:
+        return asyncio.run(_reflect_event_subscriptions())
+    except ProviderLimitError as exc:
+        raise retry_on_provider_limit(self, exc) from exc
 
 
 async def _reflect_event_subscriptions() -> dict:
@@ -87,6 +92,8 @@ async def _reflect_event_subscriptions() -> dict:
     total_misses = 0
     total_discovery_triggers = 0
     for sub, outcome in zip(due_subs, outcomes, strict=True):
+        if isinstance(outcome, ProviderLimitError):
+            raise outcome
         if isinstance(outcome, BaseException):
             failed += 1
             logger.exception(

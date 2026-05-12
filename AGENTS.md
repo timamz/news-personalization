@@ -277,13 +277,13 @@ Branch strategy: `main` is always deployable. Feature work happens on short-live
 
 ### Deployment
 
-**Source-of-truth lives on devbox at `~/dev/news-monorepo`.** Edits, builds, and runs all happen there. SSH in (`ssh timamz@100.73.138.67`) and work directly. Mac checkouts exist only for IDE/browsing; never run `docker compose up` on a Mac with production tokens or you will conflict with the live bot.
+**Source-of-truth lives on devbox at `~/dev/diplom/news-monorepo`.** Edits, builds, and runs all happen there. SSH in (`ssh timamz@100.73.138.67`) and work directly. Mac checkouts exist only for IDE/browsing; never run `docker compose up` on a Mac with production tokens or you will conflict with the live bot.
 
 **There is no local stack. Do not start one.** All testing, smoke tests, and manual verification hit the devbox containers. The API is reachable at `http://100.73.138.67:8000` (Tailscale). Postgres at `100.73.138.67:5432` (`news`/`news`/`news`). To exercise a code change, push it to GitHub and `git pull` on devbox (or edit directly on devbox), then rebuild.
 
 ```bash
 ssh timamz@100.73.138.67
-cd ~/dev/news-monorepo
+cd ~/dev/diplom/news-monorepo
 git pull                              # get latest of the deployed branch
 docker compose up --build -d          # full stack
 docker compose up --build -d tgbot    # single service
@@ -296,7 +296,7 @@ The legacy `docker --context devbox compose up` workflow (compose CLI on Mac, da
 
 #### Deploy-time facts worth knowing
 
-- **Compose project name is `news-monorepo`** (derived from the directory basename on devbox). Containers are named `news-monorepo-<service>-1`. Do not rename `~/dev/news-monorepo` or container names will change and the external volumes below will not auto-attach.
+- **Compose project name is `news-monorepo`** (derived from the directory basename on devbox). Containers are named `news-monorepo-<service>-1`. Do not rename `~/dev/diplom/news-monorepo` or container names will change and the external volumes below will not auto-attach.
 - **External volumes are legacy-named** `news-personalization_pgdata` and `news-personalization_tgbot_home` (predating the `news-monorepo` rename), declared `external: true` in `docker-compose.yml`. They must exist before `up`:
   ```bash
   docker volume create news-personalization_pgdata
@@ -314,7 +314,7 @@ When you want to drop all data and start clean:
 
 ```bash
 ssh timamz@100.73.138.67
-cd ~/dev/news-monorepo
+cd ~/dev/diplom/news-monorepo
 docker compose down
 docker volume rm news-personalization_pgdata
 docker volume create news-personalization_pgdata

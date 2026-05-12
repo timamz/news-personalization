@@ -38,9 +38,9 @@ async def test_fetch_article_text_returns_clean_body_for_a_plain_article() -> No
     )
     page_title = f"Байкальский сигнал {run_id}"
     clean_html = (
-        "<!DOCTYPE html><html lang=\"ru\"><head>"
+        '<!DOCTYPE html><html lang="ru"><head>'
         f"<title>{page_title}</title>"
-        "<meta charset=\"utf-8\">"
+        '<meta charset="utf-8">'
         "</head><body>"
         "<article>"
         f"<h1>{page_title}</h1>"
@@ -106,8 +106,8 @@ async def test_fetch_article_text_strips_navigation_header_and_footer_chrome() -
         f"<style>.hidden {{ color: red; }} /* {style_marker} */</style>"
         f"<script>var tracker = '{script_marker}';</script>"
         "</head><body>"
-        f"<header><div class=\"logo\">{header_marker}</div></header>"
-        f"<nav><ul><li><a href=\"/x\">{nav_marker}</a></li></ul></nav>"
+        f'<header><div class="logo">{header_marker}</div></header>'
+        f'<nav><ul><li><a href="/x">{nav_marker}</a></li></ul></nav>'
         "<article>"
         f"<h1>Заголовок {run_id}</h1>"
         f"<p>{article_body}</p>"

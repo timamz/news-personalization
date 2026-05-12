@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     llm_retry_max_attempts: int = 3
     llm_retry_base_delay_seconds: float = 1.0
 
+    admin_alert_webhook_url: str | None = None
+    admin_alert_throttle_seconds: int = 1800
+
+    provider_failure_retry_countdown_seconds: int = 1800
+    provider_failure_retry_max_attempts: int = 48
+
     rss_poll_interval_minutes: int = 30
     topic_similarity_threshold: float = 0.85
 

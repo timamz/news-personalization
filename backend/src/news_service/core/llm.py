@@ -13,6 +13,7 @@ import litellm
 from news_service.core.config import get_settings
 from news_service.core.llm_errors import StructuredOutputParseError
 from news_service.core.llm_retry import with_llm_retry
+from news_service.core.provider_errors import ProviderLimitError, classify_litellm_error
 
 __all__ = [
     "StructuredOutputParseError",
@@ -57,7 +58,11 @@ async def chat_completion(
         kwargs["response_format"] = response_format
     if tools is not None:
         kwargs["tools"] = tools
-    response = await litellm.acompletion(**kwargs)
+    try:
+        response = await litellm.acompletion(**kwargs)
+    except Exception as exc:
+        await _raise_provider_limit_if_match(exc, provider=kwargs["model"])
+        raise
 
     if response_format is not None and _is_pydantic_model(response_format):
         any_parsed = False
@@ -112,8 +117,13 @@ async def embed_text(content: str) -> list[float]:
         "model": settings.litellm_embedding_model,
         "input": [_normalize_embedding_text(content)],
         "dimensions": settings.embedding_dimensions,
+        "timeout": settings.llm_timeout_seconds,
     }
-    response = await litellm.aembedding(**kwargs)
+    try:
+        response = await litellm.aembedding(**kwargs)
+    except Exception as exc:
+        await _raise_provider_limit_if_match(exc, provider=settings.litellm_embedding_model)
+        raise
     return response.data[0]["embedding"]
 
 
@@ -132,10 +142,14 @@ async def embed_texts(contents: list[str]) -> list[list[float]]:
                 "model": settings.litellm_embedding_model,
                 "input": batch,
                 "dimensions": settings.embedding_dimensions,
+                "timeout": settings.llm_timeout_seconds,
             }
             response = await litellm.aembedding(**kwargs)
             embeddings.extend(item["embedding"] for item in response.data)
-        except Exception:
+        except ProviderLimitError:
+            raise
+        except Exception as exc:
+            await _raise_provider_limit_if_match(exc, provider=settings.litellm_embedding_model)
             logger.exception(
                 "Batch embedding failed; retrying per-item for batch size=%d",
                 len(batch),
@@ -144,3 +158,23 @@ async def embed_texts(contents: list[str]) -> list[list[float]]:
                 embeddings.append(await embed_text(text))
 
     return embeddings
+
+
+async def _raise_provider_limit_if_match(exc: BaseException, *, provider: str) -> None:
+    """Convert a provider usage failure into ProviderLimitError and notify admin.
+
+    Inlined here rather than at the Celery task boundary so every LLM
+    call site (conversational agent, agents, embeddings) participates
+    in admin alerting and produces the same typed exception that the
+    task-level retry handler keys off of.
+    """
+    limit_err = classify_litellm_error(exc, provider=provider)
+    if limit_err is None:
+        return
+    from news_service.services.admin_alerts import notify_provider_limit
+
+    try:
+        await notify_provider_limit(limit_err)
+    except Exception:
+        logger.exception("Admin alert delivery failed (non-fatal)")
+    raise limit_err from exc

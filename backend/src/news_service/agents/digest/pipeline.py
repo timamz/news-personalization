@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.core.config import get_settings
 from news_service.core.exceptions import DigestPipelineError
 from news_service.core.guardrails import validate_digest_text, validate_used_item_ids
+from news_service.core.provider_errors import ProviderLimitError
 from news_service.db.vector_store import embed_text
 from news_service.models.news_item import NewsItem
 from news_service.models.sent_item import SentItem
@@ -117,6 +118,8 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
                 recent_digest_summaries=recent_summaries,
                 feedback=feedback,
             )
+        except ProviderLimitError:
+            raise
         except Exception as exc:
             raise DigestPipelineError(
                 f"Writer failed (revision {revision}) for subscription {subscription.id}: {exc}"

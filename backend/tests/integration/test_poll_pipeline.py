@@ -106,9 +106,7 @@ async def test_poll_all_feeds_persists_real_rss_entries_as_news_items(mocker) ->
         async def _fake_embed_texts(texts: list[str]) -> list[list[float]]:
             return [deterministic_embedding for _ in texts]
 
-        mocker.patch.object(
-            poll_feeds, "embed_texts", new=AsyncMock(side_effect=_fake_embed_texts)
-        )
+        mocker.patch.object(poll_feeds, "embed_texts", new=AsyncMock(side_effect=_fake_embed_texts))
 
         session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
         async with session_factory() as setup_session:

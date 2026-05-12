@@ -29,9 +29,7 @@ async def test_registered_user_can_authenticate_and_update_webhook(
         "new user payload is missing id or api_key fields"
     )
     api_key = created["api_key"]
-    assert isinstance(api_key, str) and api_key, (
-        "returned api_key is not a non-empty string"
-    )
+    assert isinstance(api_key, str) and api_key, "returned api_key is not a non-empty string"
 
     update_response = await api_client.patch(
         "/users/me",
@@ -39,8 +37,7 @@ async def test_registered_user_can_authenticate_and_update_webhook(
         json={"delivery_webhook_url": webhook_url},
     )
     assert update_response.status_code == 200, (
-        "profile update with a valid api_key was rejected, "
-        f"got {update_response.status_code}"
+        f"profile update with a valid api_key was rejected, got {update_response.status_code}"
     )
     updated = update_response.json()
     assert updated["delivery_webhook_url"] == webhook_url, (
