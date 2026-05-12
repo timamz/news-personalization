@@ -12,6 +12,8 @@ venv/
 .env
 backend/.env
 tgbot/.env
+*.env.bak*
+**/.env.bak.*
 .cache
 
 *.db
