@@ -20,12 +20,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from google.adk.agents import Agent
-from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.adk_runner import run_agent_text
+from news_service.agents.adk_runner import make_adk_model, run_agent_text
 from news_service.agents.tools.source_inspection import build_fetch_source_items_tool
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import agent_tag
@@ -355,7 +354,7 @@ async def run_reflector(
 
     agent = Agent(
         name=f"reflector_{uuid.uuid4().hex[:6]}",
-        model=LiteLlm(model=settings.litellm_model),
+        model=make_adk_model(settings.litellm_model, reasoning=True),
         instruction=REFLECTOR_PROMPT,
         tools=[
             fetch_source_items,

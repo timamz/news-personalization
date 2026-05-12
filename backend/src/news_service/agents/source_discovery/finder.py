@@ -15,11 +15,10 @@ import uuid
 from typing import Any
 
 from google.adk.agents import Agent
-from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from news_service.agents.adk_runner import run_agent_text
+from news_service.agents.adk_runner import make_adk_model, run_agent_text
 from news_service.agents.web_tools import fetch_page as _fetch_page
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import agent_tag
@@ -254,7 +253,7 @@ async def run_finder(
 
     agent = Agent(
         name=f"finder_{uuid.uuid4().hex[:6]}",
-        model=LiteLlm(model=settings.litellm_model),
+        model=make_adk_model(settings.litellm_model, reasoning=False),
         instruction=FINDER_PROMPT + exclude_note,
         tools=[
             search_existing_sources,

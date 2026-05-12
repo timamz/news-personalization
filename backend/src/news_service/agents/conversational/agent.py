@@ -6,11 +6,10 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from google.adk.agents import Agent
-from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from news_service.agents.adk_runner import run_agent, run_agent_text
+from news_service.agents.adk_runner import make_adk_model, run_agent, run_agent_text
 from news_service.agents.conversational.helpers import (
     _load_subscription_summaries,
     _status_for_tool_call,
@@ -80,7 +79,7 @@ def create_conversational_agent(
 
     agent = Agent(
         name="conversational_agent",
-        model=LiteLlm(model=settings.litellm_model),
+        model=make_adk_model(settings.litellm_model, reasoning=False),
         instruction=instruction,
         tools=tools,
         generate_content_config=types.GenerateContentConfig(temperature=0.2),

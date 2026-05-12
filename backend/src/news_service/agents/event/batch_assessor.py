@@ -124,6 +124,7 @@ async def assess_batch_events(
             ],
             response_format=BatchAssessmentResult,
             temperature=0.1,
+            reasoning=False,
         )
     result = completion.choices[0].message.parsed
     if result is None:

@@ -26,11 +26,10 @@ import uuid
 from typing import Any
 
 from google.adk.agents import Agent
-from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 from pydantic import BaseModel, Field
 
-from news_service.agents.adk_runner import run_agent_text
+from news_service.agents.adk_runner import make_adk_model, run_agent_text
 from news_service.agents.web_tools import fetch_page as _fetch_page
 from news_service.core.config import get_settings
 from news_service.core.guardrails import sanitize_for_llm_prompt
@@ -204,7 +203,7 @@ async def write_digest(
 
     agent = Agent(
         name=f"digest_writer_{uuid.uuid4().hex[:6]}",
-        model=LiteLlm(model=settings.litellm_model),
+        model=make_adk_model(settings.litellm_model, reasoning=True),
         instruction=system_prompt,
         tools=[search_web, fetch_page_bounded, submit_digest],
         generate_content_config=types.GenerateContentConfig(temperature=0.3),

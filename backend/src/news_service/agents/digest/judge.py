@@ -77,6 +77,7 @@ async def judge_digest(
             ],
             response_format=QualityScores,
             temperature=0.1,
+            reasoning=True,
         )
     result = completion.choices[0].message.parsed
     if result is None:

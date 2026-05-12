@@ -27,9 +27,26 @@ from typing import Any
 from google.adk.agents import Agent
 from google.adk.agents.run_config import RunConfig
 from google.adk.events import Event
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+
+from news_service.core.llm import thinking_kwargs
+
+
+def make_adk_model(model: str, *, reasoning: bool | None = None) -> LiteLlm:
+    """Instantiate the ADK ``LiteLlm`` wrapper with optional reasoning toggle.
+
+    Centralizes the construction so every agent goes through the same
+    ``thinking_kwargs`` translation. Pass ``reasoning=True`` for agents
+    that benefit from chain-of-thought (digest writer, judges, reflector,
+    discovery orchestrator, event verifier) and ``reasoning=False`` for
+    latency-sensitive or high-volume call sites (conversational agent,
+    source finder, batch event assessor).
+    """
+    extra = thinking_kwargs(model, reasoning)
+    return LiteLlm(model=model, **extra)
 
 
 def _make_history_event(turn: dict[str, Any], agent_name: str) -> Event | None:

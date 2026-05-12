@@ -20,6 +20,7 @@ __all__ = [
     "chat_completion",
     "embed_text",
     "embed_texts",
+    "thinking_kwargs",
 ]
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,29 @@ EMBEDDING_BATCH_SIZE = 6
 _PARSE_ERROR_CONTENT_SNIPPET_MAX = 500
 
 
+def thinking_kwargs(model: str, reasoning: bool | None) -> dict[str, Any]:
+    """Return LiteLLM kwargs that toggle provider thinking/reasoning mode.
+
+    DeepSeek v4 exposes a ``thinking.type`` switch (``enabled`` / ``disabled``)
+    via OpenAI SDK ``extra_body``. The default for ``deepseek-v4-flash`` is
+    ``enabled``, which spends extra completion tokens on chain-of-thought
+    before producing the answer. We expose this to call sites as a simple
+    ``reasoning: bool | None`` flag so each agent can pick the mode that
+    matches its volume / quality tradeoff.
+
+    Returns an empty dict for non-DeepSeek models, since sending
+    ``extra_body={"thinking": ...}`` to OpenAI / Anthropic / etc. is either
+    silently ignored or rejected depending on the provider. Passing
+    ``reasoning=None`` likewise returns ``{}`` and leaves the provider's
+    own default in place.
+    """
+    if reasoning is None:
+        return {}
+    if not model.startswith("deepseek/"):
+        return {}
+    return {"extra_body": {"thinking": {"type": "enabled" if reasoning else "disabled"}}}
+
+
 async def chat_completion(
     *,
     messages: list[dict[str, Any]],
@@ -39,6 +63,7 @@ async def chat_completion(
     model: str | None = None,
     temperature: float = 0.1,
     tools: list[dict] | None = None,
+    reasoning: bool | None = None,
 ) -> Any:
     """Run a chat completion via LiteLLM with structured output support.
 
@@ -47,9 +72,14 @@ async def chat_completion(
     is a Pydantic ``BaseModel`` subclass, ``message.parsed`` is populated
     with a validated instance (LiteLLM only returns the JSON string in
     ``content`` and does not set ``parsed`` itself).
+
+    ``reasoning`` toggles DeepSeek thinking mode (see ``thinking_kwargs``).
+    Pass ``True`` to opt into chain-of-thought, ``False`` to force a direct
+    answer, or leave ``None`` to use the provider's default.
     """
+    resolved_model = model or settings.litellm_model
     kwargs: dict[str, Any] = {
-        "model": model or settings.litellm_model,
+        "model": resolved_model,
         "messages": messages,
         "temperature": temperature,
         "timeout": settings.llm_timeout_seconds,
@@ -58,6 +88,7 @@ async def chat_completion(
         kwargs["response_format"] = response_format
     if tools is not None:
         kwargs["tools"] = tools
+    kwargs.update(thinking_kwargs(resolved_model, reasoning))
     try:
         response = await litellm.acompletion(**kwargs)
     except Exception as exc:

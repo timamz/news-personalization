@@ -148,6 +148,7 @@ async def judge_batch_events(
             ],
             response_format=BatchJudgeResult,
             temperature=0.1,
+            reasoning=False,
         )
     result = completion.choices[0].message.parsed
     if result is None:
