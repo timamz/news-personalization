@@ -547,6 +547,51 @@ def print_summary(run_artifact: dict[str, Any]) -> None:
     print("")
 
 
+def _collect_user_ids(results: list[Any]) -> list[str]:
+    """Pull every user_id created during the run, including from errored prompts."""
+    user_ids: list[str] = []
+    for r in results:
+        if isinstance(r, BaseException):
+            continue
+        uid = r.get("user_id") if isinstance(r, dict) else None
+        if uid:
+            user_ids.append(uid)
+    return user_ids
+
+
+async def delete_synthetic_users(pool: asyncpg.Pool, user_ids: list[str]) -> None:
+    """Drop every user the baseline created plus any source it left orphaned.
+
+    The schema cascades from users to subscriptions to subscription_sources,
+    sent_items, and source_removal_log. Sources are not cascaded -- they are
+    shared across users by design -- so we explicitly delete any source that
+    has no surviving subscription_source link after the user delete.
+    """
+    if not user_ids:
+        return
+    uuids = [uuid.UUID(uid) for uid in user_ids]
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            "DELETE FROM llm_usage WHERE user_id = ANY($1::uuid[])",
+            uuids,
+        )
+        await conn.execute(
+            "DELETE FROM users WHERE id = ANY($1::uuid[])",
+            uuids,
+        )
+        await conn.execute(
+            "DELETE FROM sources WHERE id NOT IN "
+            "(SELECT DISTINCT source_id FROM subscription_sources)"
+        )
+        await conn.execute(
+            "UPDATE sources s SET subscriber_count = COALESCE(sub.cnt, 0) "
+            "FROM (SELECT source_id, COUNT(*)::int AS cnt FROM subscription_sources "
+            "      GROUP BY source_id) sub "
+            "WHERE s.id = sub.source_id"
+        )
+    print(f"[economics] cleaned up {len(user_ids)} synthetic users and orphaned sources")
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     parser.add_argument("--api-url", default=DEFAULT_API_URL)
@@ -583,6 +628,11 @@ async def main() -> None:
                 *(run_one_prompt(http, pool, args.api_url, run_id, p) for p in prompts),
                 return_exceptions=True,
             )
+            user_ids = _collect_user_ids(results)
+            try:
+                await delete_synthetic_users(pool, user_ids)
+            except Exception as exc:
+                print(f"[economics] cleanup failed for {len(user_ids)} users: {exc}")
         finally:
             await pool.close()
 

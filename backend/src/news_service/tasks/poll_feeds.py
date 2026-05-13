@@ -46,50 +46,102 @@ def poll_all_feeds(self) -> dict:
 
 
 async def _poll_all_feeds() -> dict:
-    async with get_task_session() as session:
-        session.info["event_item_ids"] = []
+    """Poll every active source under bounded concurrency, fair ordering, per-source timeout.
 
+    Sources are picked in ascending ``last_polled_at`` order with NULLs first
+    so unpolled sources always make progress and a hot subset cannot starve
+    the long tail. Concurrency is capped at ``poll_max_concurrency`` so a
+    burst of 200+ active sources does not saturate the provider, network
+    egress, or the embedder. Each source has its own session and a hard
+    ``poll_per_source_timeout_seconds`` deadline; a single slow adapter
+    cannot eat the entire 30-minute polling cycle.
+    """
+    async with get_task_session() as session:
         event_source_result = await session.execute(
             select(SubscriptionSource.source_id)
             .join(Subscription, Subscription.id == SubscriptionSource.subscription_id)
             .where(Subscription.is_active.is_(True), Subscription.delivery_mode == "event")
             .distinct()
         )
-        session.info["event_source_ids"] = set(event_source_result.scalars().all())
+        event_source_ids = set(event_source_result.scalars().all())
 
-        result = await session.execute(select(Source).where(Source.is_active.is_(True)))
-        all_sources = list(result.scalars().all())
+        result = await session.execute(
+            select(Source.id)
+            .where(Source.is_active.is_(True))
+            .order_by(Source.last_polled_at.asc().nulls_first(), Source.id)
+        )
+        source_ids = list(result.scalars().all())
 
-        total_new = 0
-        for src in all_sources:
+    semaphore = asyncio.Semaphore(settings.poll_max_concurrency)
+
+    async def _run_one(source_id) -> tuple[int, list]:
+        async with semaphore, get_task_session() as task_session:
+            task_session.info["event_source_ids"] = event_source_ids
+            task_session.info["event_item_ids"] = []
+            src = await task_session.get(Source, source_id)
+            if src is None or not src.is_active:
+                return 0, []
             try:
-                count = await _poll_single_source(session, src)
+                count = await asyncio.wait_for(
+                    _poll_single_source(task_session, src),
+                    timeout=settings.poll_per_source_timeout_seconds,
+                )
+            except TimeoutError:
+                await task_session.rollback()
+                logger.warning(
+                    "Polling timed out after %.0fs for %s",
+                    settings.poll_per_source_timeout_seconds,
+                    src.url,
+                    extra={"source_id": str(source_id)},
+                )
+                return 0, []
             except ProviderLimitError:
-                await session.rollback()
+                await task_session.rollback()
                 raise
             except Exception:
-                await session.rollback()
+                await task_session.rollback()
                 logger.exception(
                     "Unexpected failure while polling source %s",
                     src.url,
-                    extra={"source_id": str(src.id)},
+                    extra={"source_id": str(source_id)},
                 )
-                continue
-            await session.commit()
-            total_new += count
+                return 0, []
+            await task_session.commit()
+            return count, list(task_session.info.get("event_item_ids", []))
 
-        event_item_ids = list(dict.fromkeys(session.info.pop("event_item_ids", [])))
+    results = await asyncio.gather(
+        *(_run_one(sid) for sid in source_ids),
+        return_exceptions=True,
+    )
 
-    if event_item_ids:
+    total_new = 0
+    event_item_ids: list = []
+    provider_limit: ProviderLimitError | None = None
+    for r in results:
+        if isinstance(r, ProviderLimitError):
+            provider_limit = provider_limit or r
+            continue
+        if isinstance(r, BaseException):
+            logger.exception("Unexpected polling task error", exc_info=r)
+            continue
+        count, items = r
+        total_new += count
+        event_item_ids.extend(items)
+
+    if provider_limit is not None:
+        raise provider_limit
+
+    deduped_event_ids = list(dict.fromkeys(event_item_ids))
+    if deduped_event_ids:
         celery_app.send_task(
             DELIVER_EVENTS_BATCH_TASK,
-            args=[[str(item_id) for item_id in event_item_ids]],
+            args=[[str(item_id) for item_id in deduped_event_ids]],
         )
 
     return {
-        "feeds_polled": len(all_sources),
+        "feeds_polled": len(source_ids),
         "new_items": total_new,
-        "event_notifications_queued": len(event_item_ids),
+        "event_notifications_queued": len(deduped_event_ids),
     }
 
 

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.guardrails import wrap_untrusted_content
@@ -18,27 +18,41 @@ async def fetch_candidate_items(
     exclude_ids: set[uuid.UUID],
     allowed_source_ids: set[uuid.UUID],
     published_after: datetime,
+    fetched_after: datetime | None = None,
 ) -> list[NewsItem]:
-    """Fetch candidates by relevance and recency, merge, sort by cosine similarity."""
+    """Fetch candidates by relevance and recency, merge, sort by cosine similarity.
+
+    ``fetched_after`` is OR'd with the publish-cutoff filter so items that
+    were ingested after the previous digest still qualify even when their
+    ``published_at`` predates the cutoff -- the typical late-fetch case
+    where an RSS source surfaces an older article only after a delayed poll.
+    """
     relevance_items = await find_similar_news(
         session,
         query_embedding,
         exclude_ids=exclude_ids,
         allowed_source_ids=allowed_source_ids,
         published_after=published_after,
+        fetched_after=fetched_after,
         limit=50,
     )
 
     exclude_list = list(exclude_ids) if exclude_ids else [uuid.uuid4()]
     recent_marker = func.coalesce(NewsItem.published_at, NewsItem.fetched_at)
+    where_clauses = [
+        NewsItem.embedding.isnot(None),
+        NewsItem.id.notin_(exclude_list),
+        NewsItem.source_id.in_(list(allowed_source_ids)),
+    ]
+    if fetched_after is not None:
+        where_clauses.append(
+            or_(recent_marker >= published_after, NewsItem.fetched_at >= fetched_after)
+        )
+    else:
+        where_clauses.append(recent_marker >= published_after)
     stmt = (
         select(NewsItem)
-        .where(
-            NewsItem.embedding.isnot(None),
-            NewsItem.id.notin_(exclude_list),
-            NewsItem.source_id.in_(list(allowed_source_ids)),
-            recent_marker >= published_after,
-        )
+        .where(*where_clauses)
         .order_by(recent_marker.desc(), NewsItem.fetched_at.desc())
         .limit(30)
     )

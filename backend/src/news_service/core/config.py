@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     provider_failure_retry_max_attempts: int = 48
 
     rss_poll_interval_minutes: int = 30
+    poll_max_concurrency: int = 5
+    poll_per_source_timeout_seconds: float = 90.0
     topic_similarity_threshold: float = 0.85
 
     source_soft_cap: int = 10

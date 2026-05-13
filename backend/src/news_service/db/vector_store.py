@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
@@ -58,8 +58,18 @@ async def find_similar_news(
     exclude_ids: set[uuid.UUID],
     allowed_source_ids: set[uuid.UUID] | None = None,
     published_after: datetime | None = None,
+    fetched_after: datetime | None = None,
     limit: int = 20,
 ) -> list[NewsItem]:
+    """Find news items by cosine similarity to ``query_embedding``.
+
+    ``published_after`` filters on ``coalesce(published_at, fetched_at)``.
+    ``fetched_after`` is OR'd with the published filter so that a backfilled
+    item that was discovered after the previous digest -- even if its
+    ``published_at`` predates the publish cutoff -- still surfaces. This is
+    the only reason an unsent item with an old ``published_at`` survives the
+    recency gate after a fresh poll.
+    """
     if allowed_source_ids is not None and not allowed_source_ids:
         return []
 
@@ -71,8 +81,14 @@ async def find_similar_news(
     ]
     if allowed_source_ids is not None:
         where_clauses.append(NewsItem.source_id.in_(list(allowed_source_ids)))
-    if published_after is not None:
+    if published_after is not None and fetched_after is not None:
+        where_clauses.append(
+            or_(recent_marker >= published_after, NewsItem.fetched_at >= fetched_after)
+        )
+    elif published_after is not None:
         where_clauses.append(recent_marker >= published_after)
+    elif fetched_after is not None:
+        where_clauses.append(NewsItem.fetched_at >= fetched_after)
 
     stmt = (
         select(NewsItem)

@@ -90,6 +90,7 @@ async def generate_digest(session: AsyncSession, subscription: Subscription) -> 
         exclude_ids=sent_ids,
         allowed_source_ids=source_ids,
         published_after=published_after,
+        fetched_after=last_sent_at,
     )
     if not candidates:
         logger.info(
