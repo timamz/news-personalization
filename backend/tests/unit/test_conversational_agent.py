@@ -41,13 +41,22 @@ class _FakeSessionFactory:
         return mgr
 
 
+def _db_session_with_active_subscription_count(count: int) -> AsyncMock:
+    session = AsyncMock()
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = count
+    session.execute = AsyncMock(return_value=count_result)
+    return session
+
+
 def _build_agent_with_factory(
     *,
     user: SimpleNamespace,
     factory_session: Any,
+    active_subscription_count: int = 0,
 ) -> tuple[Any, dict[str, Any]]:
     return create_conversational_agent(
-        db_session=AsyncMock(),
+        db_session=_db_session_with_active_subscription_count(active_subscription_count),
         user=user,
         conversation_summary="",
         session_factory=_FakeSessionFactory(factory_session),
@@ -309,6 +318,49 @@ async def test_create_subscription_skips_discovery_when_not_requested(mocker) ->
     )
     assert discovery_mock.await_count == 0, (
         "discovery must not fire when include_discovered_sources is False"
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_subscription_refuses_when_active_limit_is_reached(mocker) -> None:
+    user = _fake_user()
+    scoped = AsyncMock()
+    scoped.add = MagicMock()
+    scoped.flush = AsyncMock()
+    scoped.commit = AsyncMock()
+    embed_mock = mocker.patch(
+        "news_service.agents.conversational.tools.embed_text",
+        new=AsyncMock(return_value=[0.0] * 8),
+    )
+    coverage_mock = mocker.patch(
+        "news_service.agents.conversational.tools.ensure_source_coverage",
+        new=AsyncMock(return_value=[]),
+    )
+
+    agent, shared_state = _build_agent_with_factory(
+        user=user,
+        factory_session=scoped,
+        active_subscription_count=5,
+    )
+    result = await _get_tool(agent, "create_subscription")(
+        user_spec=f"news {uuid.uuid4().hex[:6]}. Brief.",
+        retrieval_query=f"world news {uuid.uuid4().hex[:6]}",
+        delivery_mode="digest",
+        include_discovered_sources=False,
+    )
+    assert (
+        "subscription limit reached" in result
+        and "5" in result
+        and "delete_subscription" in result
+        and embed_mock.await_count == 0
+        and coverage_mock.await_count == 0
+        and scoped.commit.await_count == 0
+        and shared_state["created_subscription_id"] is None
+    ), (
+        "create_subscription must short-circuit when the user is already at the "
+        "active subscription cap: no embedding, no source coverage, no commit, no "
+        "created_subscription_id, and the return string must instruct the agent to "
+        "tell the user about the limit and offer delete_subscription"
     )
 
 

@@ -16,7 +16,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from news_service.agents.conversational.helpers import (
@@ -25,6 +25,7 @@ from news_service.agents.conversational.helpers import (
     _parse_csv_identifiers,
 )
 from news_service.agents.discovery import validate_source_url as _validate_source_url
+from news_service.core.config import get_settings
 from news_service.db.vector_store import embed_text
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
@@ -153,6 +154,28 @@ def build_tools(
         query = retrieval_query.strip()
         if not query:
             return "retrieval_query is required to create a subscription."
+
+        active_limit = get_settings().max_active_subscriptions_per_user
+        active_count_result = await db_session.execute(
+            select(func.count())
+            .select_from(Subscription)
+            .where(
+                Subscription.user_id == user.id,
+                Subscription.is_active.is_(True),
+            )
+        )
+        active_count = int(active_count_result.scalar_one() or 0)
+        if active_count >= active_limit:
+            return (
+                f"subscription limit reached: this user already has {active_count} "
+                f"active subscriptions, and the maximum allowed is {active_limit}. "
+                "Do NOT create another one. Tell the user plainly in their language "
+                "that they have hit the limit of "
+                f"{active_limit} active subscriptions, that they need to delete one "
+                "of the existing ones (via delete_subscription) before a new one can "
+                "be created, and offer to list their current subscriptions so they "
+                "can pick which to remove."
+            )
 
         resolved_language = (digest_language or user.language or "en").strip().lower()
         normalized_cron = schedule_cron.strip() or None

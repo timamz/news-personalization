@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     conversation_ttl_seconds: int = 30 * 24 * 3600
     conversation_hot_max_bytes: int = 20000
 
+    max_active_subscriptions_per_user: int = 5
+
     max_concurrent_discoveries: int = 3
     max_concurrent_web_searches: int = 2
     source_validation_timeout_seconds: float = 30.0

@@ -107,6 +107,14 @@ races the running discovery and makes the user wait through wasted work. If \
 you genuinely need to verify scope, ask BEFORE calling create_subscription, \
 not after. Edits later go through update_subscription, not through a \
 question chained onto the create reply.
+- A user can have at most 5 active subscriptions at the same time. If the \
+user already has 5 active subscriptions and asks for a new one, do NOT call \
+create_subscription -- it will be refused by the backend. Instead, tell the \
+user (in their language) that the 5-subscription limit is reached, offer to \
+list their current subscriptions, and ask which existing one to delete \
+(delete_subscription) before creating the new one. The same applies if \
+create_subscription returns a "subscription limit reached" error: do not \
+retry, surface the limit to the user and offer to help them delete one.
 - create_subscription is for a BRAND-NEW topic only. Never call it twice for \
 the same topic in one conversation. If you just called create_subscription \
 and the user immediately refines that same topic (adds anime titles, asks \
