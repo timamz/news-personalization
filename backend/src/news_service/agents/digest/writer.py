@@ -86,7 +86,12 @@ The frontend does not render it and the asterisks appear literally. \
 Use plain text -- no bold markers at all.
 
 IMPORTANT: In submit_digest, list the UUIDs of every news item you included
-as a comma-separated string in used_item_ids.
+as a comma-separated string in used_item_ids. Copy each UUID verbatim from
+the '[ID: ...]' header of the candidate item -- the full 36-character string
+between '[ID: ' and ']'. Do not shorten, truncate, reformat, lowercase, or
+invent IDs. Every UUID you pass must appear character-for-character in the
+candidate list. Do NOT pass '708538b9'; pass the full
+'708538b9-xxxx-xxxx-xxxx-xxxxxxxxxxxx' shown in the '[ID: ...]' header.
 """
 
 
@@ -166,12 +171,17 @@ async def write_digest(
         """Submit the final digest text and the IDs of items included.
 
         Call this exactly once when the digest is ready. The used_item_ids
-        must be a comma-separated string of UUID strings corresponding to
-        the [ID: ...] markers in the candidate items.
+        must be a comma-separated string of full UUIDs copied verbatim from
+        the '[ID: ...]' header of each candidate item -- the entire
+        36-character string between '[ID: ' and ']'. Do not shorten,
+        truncate, reformat, or invent IDs; every value must appear
+        character-for-character in the candidate list. Do NOT pass
+        '708538b9'; pass the full
+        '708538b9-xxxx-xxxx-xxxx-xxxxxxxxxxxx' shown in the header.
 
         Args:
             digest_text: The complete, formatted digest text.
-            used_item_ids: Comma-separated UUIDs of included news items.
+            used_item_ids: Comma-separated full UUIDs of included items.
 
         Returns:
             Confirmation message.

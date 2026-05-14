@@ -124,3 +124,13 @@ async def test_write_digest_includes_recent_summaries_and_feedback_in_prompt() -
     assert recent_summaries.split("\n")[-1] in captured["message"] and (
         feedback in captured["message"]
     ), "writer prompt did not carry both the recent summaries and the judge feedback"
+
+
+def test_writer_instruction_demands_verbatim_full_uuids() -> None:
+    from news_service.agents.digest.writer import _WRITER_PROMPT
+
+    text = _WRITER_PROMPT.lower()
+    assert "verbatim" in text and "[id:" in text and "do not shorten" in text, (
+        "writer instruction must tell the model to copy full UUIDs verbatim "
+        "from the [ID: ...] header and never shorten them"
+    )
