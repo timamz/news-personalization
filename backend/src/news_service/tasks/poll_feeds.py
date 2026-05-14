@@ -12,7 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.core.config import get_settings
-from news_service.core.guardrails import cap_text_for_embedding, scan_for_injection
+from news_service.core.guardrails import (
+    cap_text_for_embedding,
+    classify_injection,
+    scan_for_injection,
+)
 from news_service.core.provider_errors import ProviderLimitError
 from news_service.db.session import get_task_session
 from news_service.db.vector_store import embed_texts, upsert_news_item
@@ -188,6 +192,9 @@ async def _poll_typed_source(
 
     for post in fresh_posts:
         injection_flags = scan_for_injection(post.body)
+        ml_score = classify_injection(post.body)
+        if ml_score is not None and ml_score >= settings.injection_classifier_threshold:
+            injection_flags.append(f"classifier:{ml_score:.2f}")
         if injection_flags:
             logger.warning(
                 "Injection detected in post %s: %s",

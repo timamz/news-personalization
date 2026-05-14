@@ -268,6 +268,7 @@ async def run_finder(
         await run_agent_text(
             agent=agent,
             message=f"Execute this search strategy:\n{strategy}",
+            max_llm_calls=settings.tool_call_budget_finder,
         )
 
     logger.info(

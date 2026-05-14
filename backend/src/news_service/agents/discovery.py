@@ -2,9 +2,9 @@ import logging
 from typing import Literal
 
 import feedparser
-import httpx
 
 from news_service.core.config import get_settings
+from news_service.core.ssrf import UnsafeUrlError, safe_get
 from news_service.services.reddit import (
     build_reddit_subreddit_url,
     extract_reddit_subreddit_from_url,
@@ -74,16 +74,18 @@ async def validate_source_url(url: str, *, source_kind: SourceKind) -> bool:
 
 async def validate_feed_url(url: str) -> bool:
     try:
-        async with httpx.AsyncClient(
+        response = await safe_get(
+            url,
             timeout=settings.http_timeout_seconds,
             proxy=settings.proxy_url,
-        ) as client:
-            response = await client.get(url, follow_redirects=True)
-            if response.status_code != 200:
-                return False
-
+        )
+        if response.status_code != 200:
+            return False
         parsed = feedparser.parse(response.text)
         return len(parsed.entries) > 0
+    except UnsafeUrlError as exc:
+        logger.warning("Refused unsafe feed URL %s: %s", url, exc)
+        return False
     except Exception:
         logger.exception("Feed validation failed for %s", url)
         return False

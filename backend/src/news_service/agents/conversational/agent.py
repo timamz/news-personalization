@@ -110,6 +110,7 @@ async def run_conversational_turn(
             agent=agent,
             message=user_message,
             user_id=str(user.id),
+            max_llm_calls=settings.tool_call_budget_conversational,
         )
     return {
         "agent_message": agent_message,
@@ -176,6 +177,7 @@ async def run_conversation_turn_streaming(
                     message=current_message,
                     user_id=str(user.id),
                     conversation_history=previous_messages,
+                    max_llm_calls=settings.tool_call_budget_conversational,
                 ):
                     await events_queue.put((_ADK_SENTINEL, event))
             except BaseException as exc:

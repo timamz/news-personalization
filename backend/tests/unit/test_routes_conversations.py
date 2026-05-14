@@ -206,6 +206,10 @@ async def test_size_guardrail_trims_hot_transcript_when_over_cap(mocker) -> None
     redis_fake = _mock_redis({f"conv:user:{user.id}": existing.model_dump_json()})
     mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
 
+    from news_service.api import routes_conversations as routes_mod
+
+    mocker.patch.object(routes_mod.settings, "conversation_hot_max_tokens", 500)
+
     mocker.patch(
         f"{MODULE}.run_conversation_turn_streaming",
         return_value=_mock_streaming_turn(AgentTurnOutput(message="ok")),
@@ -224,3 +228,59 @@ async def test_size_guardrail_trims_hot_transcript_when_over_cap(mocker) -> None
     assert any("auto-trimmed" in line for line in saved.compacted_log), (
         "size guardrail did not record an auto-trim entry in compacted_log"
     )
+
+
+@pytest.mark.asyncio
+async def test_confirm_endpoint_returns_404_when_no_pending_record(mocker) -> None:
+    from fastapi import HTTPException
+
+    from news_service.api.routes_conversations import confirm_action
+    from news_service.schemas.conversation import ConfirmationDecisionRequest
+
+    user = _mock_user()
+    mocker.patch(
+        "news_service.api.routes_conversations.confirmations.peek",
+        new=AsyncMock(return_value=None),
+    )
+
+    request = ConfirmationDecisionRequest(nonce="absent-nonce", decision="confirm")
+    with pytest.raises(HTTPException) as exc_info:
+        await confirm_action(request, user=user, session=AsyncMock())
+    assert exc_info.value.status_code == 404, (
+        "confirm endpoint did not 404 on a nonce with no Redis-backed pending record"
+    )
+
+
+@pytest.mark.asyncio
+async def test_confirm_endpoint_cancel_records_decision_in_transcript(mocker) -> None:
+    from news_service.api.routes_conversations import confirm_action
+    from news_service.core.confirmations import PendingConfirmation
+    from news_service.schemas.conversation import ConfirmationDecisionRequest
+
+    user = _mock_user()
+    pending = PendingConfirmation(
+        nonce="n1",
+        user_id=str(user.id),
+        tool_name="delete_subscription",
+        args={"subscription_id": str(uuid.uuid4())},
+        description="delete X",
+    )
+    mocker.patch(
+        "news_service.api.routes_conversations.confirmations.peek",
+        new=AsyncMock(return_value=pending),
+    )
+    cancel_mock = mocker.patch(
+        "news_service.api.routes_conversations.confirmations.cancel",
+        new=AsyncMock(return_value=True),
+    )
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
+
+    request = ConfirmationDecisionRequest(nonce="n1", decision="cancel")
+    response = await confirm_action(request, user=user, session=AsyncMock())
+
+    assert (
+        response.status == "cancelled"
+        and response.action == "delete_subscription"
+        and cancel_mock.await_count == 1
+    ), "cancel decision did not flow through to confirmations.cancel"

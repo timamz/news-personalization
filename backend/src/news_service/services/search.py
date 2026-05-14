@@ -22,6 +22,7 @@ import httpx
 
 from news_service.core.concurrency import search_semaphore
 from news_service.core.config import get_settings
+from news_service.core.guardrails import classify_injection, scan_for_injection
 from news_service.core.llm_usage import record_web_search
 from news_service.core.provider_errors import classify_search_status
 from news_service.services.admin_alerts import notify_provider_limit
@@ -31,6 +32,13 @@ settings = get_settings()
 
 _YANDEX_SEARCH_ENDPOINT = "https://searchapi.api.cloud.yandex.net/v2/web/search"
 _MAX_RESULTS = 10
+_PER_RESULT_CHAR_CAP = 2000
+"""Hard cap on the title+snippet bytes we return per result.
+
+Search providers occasionally splice user-controlled HTML into snippets;
+truncating each line keeps any single hostile result from monopolising
+the agent's context window or wedging a multi-MB blob into the prompt.
+"""
 
 
 def _element_text(element: ET.Element | None) -> str:
@@ -136,6 +144,22 @@ async def search_web(query: str) -> str:
                 continue
             passages = doc.find("passages")
             snippet = _element_text(passages.find("passage")) if passages is not None else ""
+            combined = f"{title}\n{snippet}"
+            if len(combined) > _PER_RESULT_CHAR_CAP:
+                combined = combined[:_PER_RESULT_CHAR_CAP] + " [truncated]"
+                title, _, snippet = combined.partition("\n")
+            flags = scan_for_injection(combined)
+            ml_score = classify_injection(combined)
+            if ml_score is not None and ml_score >= settings.injection_classifier_threshold:
+                flags.append(f"classifier:{ml_score:.2f}")
+            if flags:
+                logger.warning(
+                    "Injection patterns in Yandex result for query %r at %s: %s",
+                    query[:60],
+                    url,
+                    flags[:3],
+                )
+                snippet = f"[scrubbed: prompt-injection patterns detected] {url}"
             lines.append(f"- {title}: {url}\n  {snippet}")
 
         if not lines:

@@ -490,6 +490,10 @@ async def test_trigger_source_discovery_enqueues_with_reason(mocker) -> None:
         f"User shifted focus from biotech to AI safety {uuid.uuid4().hex[:6]}. "
         "Existing sources stale."
     )
+    mocker.patch(
+        "news_service.agents.conversational.tools._gate_with_confirmation",
+        new=AsyncMock(return_value=(True, "")),
+    )
     result = await _get_tool(agent, "trigger_source_discovery")(
         subscription_id=str(sub.id),
         reason=reason,
@@ -546,7 +550,7 @@ async def test_add_source_reports_unreachable_when_validation_fails(mocker) -> N
 
 
 @pytest.mark.asyncio
-async def test_remove_source_reports_when_link_is_missing() -> None:
+async def test_remove_source_reports_when_link_is_missing(mocker) -> None:
     user = _fake_user()
     sub = MagicMock()
     sub.id = uuid.uuid4()
@@ -560,9 +564,74 @@ async def test_remove_source_reports_when_link_is_missing() -> None:
     scoped = AsyncMock()
     scoped.execute = AsyncMock(side_effect=[sub_lookup, link_lookup])
 
+    mocker.patch(
+        "news_service.agents.conversational.tools._gate_with_confirmation",
+        new=AsyncMock(return_value=(True, "")),
+    )
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
     result = await _get_tool(agent, "remove_source")(str(sub.id), "bbcworld", "telegram_channel")
     assert "not attached" in result
+
+
+@pytest.mark.asyncio
+async def test_destructive_tools_require_explicit_confirmation_before_acting(mocker) -> None:
+    nonce = "test-nonce"
+    mocker.patch(
+        "news_service.agents.conversational.tools.create_pending",
+        new=AsyncMock(return_value=nonce),
+    )
+    user = _fake_user()
+    agent, _ = _build_agent_with_factory(user=user, factory_session=AsyncMock())
+    result = await _get_tool(agent, "delete_subscription")(str(uuid.uuid4()))
+    assert result.startswith("REQUIRES_CONFIRMATION:"), (
+        "delete_subscription must refuse to act without a valid confirmation_token"
+    )
+
+
+@pytest.mark.asyncio
+async def test_trigger_source_discovery_refuses_without_confirmation(mocker) -> None:
+    user = _fake_user()
+    sub = MagicMock()
+    sub.id = uuid.uuid4()
+    sub.user_id = user.id
+    sub.is_active = True
+    lookup = MagicMock()
+    lookup.scalar_one_or_none.return_value = sub
+    scoped = AsyncMock()
+    scoped.execute = AsyncMock(return_value=lookup)
+    discovery_mock = mocker.patch(
+        "news_service.agents.conversational.tools._dispatch_discovery",
+        return_value="should-not-be-called",
+    )
+    mocker.patch(
+        "news_service.agents.conversational.tools.create_pending",
+        new=AsyncMock(return_value="test-nonce"),
+    )
+
+    agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
+    result = await _get_tool(agent, "trigger_source_discovery")(
+        subscription_id=str(sub.id),
+        reason="user changed topic and wants new sources",
+    )
+    assert result.startswith("REQUIRES_CONFIRMATION:") and discovery_mock.call_count == 0, (
+        "trigger_source_discovery must not dispatch without a valid confirmation_token"
+    )
+
+
+@pytest.mark.asyncio
+async def test_destructive_tool_refuses_invalid_confirmation_token(mocker) -> None:
+    mocker.patch(
+        "news_service.agents.conversational.tools.consume_pending",
+        new=AsyncMock(return_value=None),
+    )
+    user = _fake_user()
+    agent, _ = _build_agent_with_factory(user=user, factory_session=AsyncMock())
+    result = await _get_tool(agent, "delete_subscription")(
+        str(uuid.uuid4()), confirmation_token="forged-token"
+    )
+    assert "confirmation_invalid" in result, (
+        "delete_subscription must reject a confirmation_token that has no pending record"
+    )
 
 
 # ---------- user state tools ----------

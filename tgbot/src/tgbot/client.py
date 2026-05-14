@@ -120,3 +120,24 @@ class BackendClient:
                 headers={"X-API-Key": api_key},
             )
             response.raise_for_status()
+
+    async def confirm_pending_action(
+        self,
+        api_key: str,
+        nonce: str,
+        decision: str,
+    ) -> dict:
+        """Redeem (confirm/cancel) a pending tool action by nonce.
+
+        Mirrors the backend's ``POST /subscriptions/conversations/confirm``.
+        ``decision`` must be ``"confirm"`` or ``"cancel"``. Returns the
+        response body so the caller can show the user the result string.
+        """
+        async with httpx.AsyncClient(timeout=self._slow_request_timeout()) as client:
+            response = await client.post(
+                f"{self.base_url}/subscriptions/conversations/confirm",
+                headers={"X-API-Key": api_key},
+                json={"nonce": nonce, "decision": decision},
+            )
+            response.raise_for_status()
+            return response.json()

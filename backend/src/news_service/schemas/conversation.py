@@ -26,9 +26,15 @@ class StreamEvent(BaseModel):
 
 
 class ConversationTurnRequest(BaseModel):
-    """One message from the user against the persistent thread."""
+    """One message from the user against the persistent thread.
 
-    message: str = Field(..., min_length=1, description="User message")
+    ``message`` is bounded to ``settings.max_user_message_chars``: a
+    chat-shaped UI never needs more, and capping at the API boundary
+    prevents a single oversized request from burning the LLM budget
+    or overflowing the model's context window.
+    """
+
+    message: str = Field(..., min_length=1, max_length=10_000, description="User message")
     user_language: str | None = Field(
         default=None, description="Frontend-stored language hint (e.g. 'en', 'ru')"
     )
@@ -39,6 +45,26 @@ class AgentTurnOutput(BaseModel):
 
     message: str = Field(..., description="What to show the user")
     status: Literal["in_progress"] = Field(default="in_progress")
+
+
+class ConfirmationDecisionRequest(BaseModel):
+    """Frontend's response to a ``requires_confirmation`` event.
+
+    ``nonce`` is the server-generated identifier delivered alongside
+    the event. ``decision`` is ``"confirm"`` (run the action) or
+    ``"cancel"`` (drop the pending action).
+    """
+
+    nonce: str = Field(..., min_length=1, max_length=128)
+    decision: Literal["confirm", "cancel"]
+
+
+class ConfirmationDecisionResponse(BaseModel):
+    """Result of a confirmation decision."""
+
+    status: Literal["executed", "cancelled"]
+    action: str
+    result: str | None = None
 
 
 class ConversationState(BaseModel):

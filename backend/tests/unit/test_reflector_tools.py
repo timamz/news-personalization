@@ -118,7 +118,7 @@ async def test_reflector_prompt_carries_trigger_reasons_and_source_contexts() ->
     source_url = f"https://example.com/{uuid.uuid4().hex[:6]}"
     captured: dict[str, str] = {}
 
-    async def _capture(*, agent, message, user_id):
+    async def _capture(*, agent, message, user_id, max_llm_calls=None):
         captured["message"] = message
         return "ok"
 
@@ -155,7 +155,7 @@ async def test_fetch_source_items_refuses_sources_outside_this_subscription() ->
 
     captured_tool: dict[str, str] = {}
 
-    async def _capture(*, agent, message, user_id):
+    async def _capture(*, agent, message, user_id, max_llm_calls=None):
         for tool in agent.tools:
             if getattr(tool, "__name__", "") == "fetch_source_items":
                 captured_tool["result"] = await tool(str(foreign_source_id))
@@ -212,7 +212,7 @@ async def test_fetch_source_items_returns_items_with_cosine_and_snippets() -> No
 
     captured_tool: dict[str, str] = {}
 
-    async def _capture(*, agent, message, user_id):
+    async def _capture(*, agent, message, user_id, max_llm_calls=None):
         for tool in agent.tools:
             if getattr(tool, "__name__", "") == "fetch_source_items":
                 captured_tool["result"] = await tool(str(source_id), 30, 5)

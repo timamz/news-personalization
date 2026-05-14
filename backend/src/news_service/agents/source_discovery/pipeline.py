@@ -566,6 +566,7 @@ async def run_source_discovery(
                 attached=attached,
                 reason=reason,
             ),
+            max_llm_calls=settings.tool_call_budget_discovery_pipeline,
         )
 
     if aborted["reason"]:

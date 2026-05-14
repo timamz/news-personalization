@@ -26,6 +26,9 @@ from news_service.agents.conversational.helpers import (
 )
 from news_service.agents.discovery import validate_source_url as _validate_source_url
 from news_service.core.config import get_settings
+from news_service.core.confirmations import consume as consume_pending
+from news_service.core.confirmations import create as create_pending
+from news_service.core.rate_limit import RateLimitExceeded, check_rate_limit
 from news_service.db.vector_store import embed_text
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
@@ -77,6 +80,77 @@ _URL_BUILDERS: dict[str, Callable[[str], str]] = {
     "telegram_channel": build_telegram_channel_url,
     "reddit_subreddit": build_reddit_subreddit_url,
 }
+
+
+async def _gate_with_confirmation(
+    *,
+    user: User,
+    shared_state: dict[str, Any],
+    confirmation_token: str,
+    tool_name: str,
+    args: dict[str, Any],
+    description: str,
+    yes_label: str,
+    no_label: str,
+) -> tuple[bool, str]:
+    """Server-side confirmation gate for destructive / expensive tools.
+
+    First call (empty ``confirmation_token``): mint a nonce in Redis,
+    push a ``requires_confirmation`` event onto the conversation stream,
+    return the REQUIRES_CONFIRMATION marker string for the LLM. The
+    frontend renders the event as inline yes/no buttons; the user's
+    tap travels back via the ``/conversations/confirm`` endpoint, which
+    re-invokes the same tool with the nonce.
+
+    Second call (token supplied): atomically consume the nonce from
+    Redis. If it is missing, expired, owned by a different user, or
+    points at a different tool/args, refuse. The LLM cannot fabricate
+    a valid nonce because nonces are crypto-random and never enter
+    the LLM context.
+
+    Returns ``(proceed, message_for_caller)``. When ``proceed`` is False
+    the tool must return ``message_for_caller`` verbatim.
+    """
+    if not confirmation_token:
+        nonce = await create_pending(
+            user_id=str(user.id),
+            tool_name=tool_name,
+            args=args,
+            description=description,
+        )
+        queue = shared_state.get("status_queue")
+        if queue is not None:
+            await queue.put(
+                {
+                    "event": "requires_confirmation",
+                    "nonce": nonce,
+                    "action": tool_name,
+                    "description": description,
+                    "yes_label": yes_label,
+                    "no_label": no_label,
+                }
+            )
+        return False, (
+            f"REQUIRES_CONFIRMATION: about to {description}. The system has "
+            "rendered yes/no buttons to the user. In your reply, restate "
+            "what is about to happen in one short sentence in the user's "
+            "language and tell them to use the buttons below. Do NOT call "
+            "this tool again from text input -- the system will invoke it "
+            "via the button callback once the user taps Yes."
+        )
+
+    pending = await consume_pending(confirmation_token, str(user.id))
+    if pending is None:
+        return False, (
+            "confirmation_invalid: the confirmation token is expired, unknown, "
+            "or owned by a different user. Ask the user to retry the action."
+        )
+    if pending.tool_name != tool_name or pending.args != args:
+        return False, (
+            "confirmation_mismatch: the confirmation token does not match "
+            "this action's arguments. Ask the user to retry."
+        )
+    return True, ""
 
 
 def build_tools(
@@ -497,15 +571,21 @@ def build_tools(
         subscription_id: str,
         identifier: str,
         source_kind: str,
+        confirmation_token: str = "",
     ) -> str:
         """Detach a source from a subscription and log the removal.
 
-        Safe to call in parallel.
+        Destructive: gated by server-side confirmation. First call mints
+        a nonce and emits a ``requires_confirmation`` event; the frontend
+        renders inline yes/no buttons; the actual detach fires only when
+        the confirm endpoint re-invokes this tool with the nonce.
 
         Args:
             subscription_id: UUID of the subscription to modify.
             identifier: Handle / name with no prefix.
             source_kind: telegram_channel | reddit_subreddit.
+            confirmation_token: Set by the confirm endpoint; leave empty
+                in normal LLM calls.
 
         Returns:
             Short confirmation or error.
@@ -526,6 +606,25 @@ def build_tools(
             url = _URL_BUILDERS[source_kind](cleaned)
         except ValueError as exc:
             return f"{cleaned}: invalid identifier ({exc})."
+
+        proceed, message = await _gate_with_confirmation(
+            user=user,
+            shared_state=shared_state,
+            confirmation_token=confirmation_token,
+            tool_name="remove_source",
+            args={
+                "subscription_id": subscription_id,
+                "identifier": identifier,
+                "source_kind": source_kind,
+            },
+            description=(
+                f"detach the {source_kind} source '{cleaned}' from subscription {subscription_id}"
+            ),
+            yes_label="Remove",
+            no_label="Keep",
+        )
+        if not proceed:
+            return message
 
         async with scoped_factory() as scoped:
             sub_result = await scoped.execute(
@@ -640,22 +739,66 @@ def build_tools(
 
         return f"not_found: no match for '{cleaned}'. Ask the user for a larger city."
 
-    async def trigger_digest_now(subscription_id: str) -> str:
+    async def trigger_digest_now(subscription_id: str, confirmation_token: str = "") -> str:
         """Queue an immediate digest delivery for one subscription.
+
+        Gated by server-side confirmation. First call mints a nonce
+        and pushes a ``requires_confirmation`` event onto the stream;
+        the frontend renders inline yes/no buttons. The actual send
+        only fires when the confirm endpoint re-invokes this tool
+        with the nonce as ``confirmation_token``.
 
         Args:
             subscription_id: UUID of the subscription to deliver.
+            confirmation_token: Set by the confirm endpoint; leave
+                empty in normal LLM calls. The LLM cannot fabricate a
+                valid value.
 
         Returns:
-            Confirmation that the digest is queued.
+            Confirmation that the digest is queued or an error.
         """
+        proceed, message = await _gate_with_confirmation(
+            user=user,
+            shared_state=shared_state,
+            confirmation_token=confirmation_token,
+            tool_name="trigger_digest_now",
+            args={"subscription_id": subscription_id},
+            description=f"trigger an immediate digest send for subscription {subscription_id}",
+            yes_label="Send digest",
+            no_label="Cancel",
+        )
+        if not proceed:
+            return message
+
+        try:
+            await check_rate_limit(
+                scope="trigger_digest_now",
+                subject_id=str(user.id),
+                limit=get_settings().rate_limit_digest_now_per_day,
+                window_seconds=86400,
+            )
+        except RateLimitExceeded as exc:
+            return (
+                f"rate_limit_exceeded: you've hit the daily cap of "
+                f"{exc.limit} immediate-digest requests. Try again in "
+                f"{exc.retry_after_seconds // 60} minutes."
+            )
+
         from news_service.tasks.deliver_digest import deliver_digest
 
         deliver_digest.delay(subscription_id, notify_if_empty=True)
         return f"Digest queued for delivery (subscription {subscription_id})."
 
-    async def trigger_source_discovery(subscription_id: str, reason: str) -> str:
+    async def trigger_source_discovery(
+        subscription_id: str, reason: str, confirmation_token: str = ""
+    ) -> str:
         """Run source discovery inline for a subscription and return the findings.
+
+        Discovery spends real money (LLM rounds, web searches), so this
+        tool is gated by server-side confirmation. First call mints a
+        nonce and emits a ``requires_confirmation`` event; the frontend
+        renders inline yes/no buttons; the actual discovery runs only
+        when the confirm endpoint re-invokes this tool with the nonce.
 
         Use this when the set of news worth surfacing has meaningfully
         shifted (user just rewrote the spec toward a new topic, existing
@@ -678,6 +821,8 @@ def build_tools(
                 any preferences to honour (language, paywall, academic
                 vs consumer). The discovery agent reads this verbatim to
                 shape its strategies.
+            confirmation_token: Set by the confirm endpoint; leave empty
+                in normal LLM calls.
 
         Returns:
             A summary of what discovery found, or an error message.
@@ -690,6 +835,36 @@ def build_tools(
         cleaned_reason = reason.strip()
         if not cleaned_reason:
             return "reason is required to trigger source discovery."
+
+        proceed, message = await _gate_with_confirmation(
+            user=user,
+            shared_state=shared_state,
+            confirmation_token=confirmation_token,
+            tool_name="trigger_source_discovery",
+            args={"subscription_id": subscription_id, "reason": cleaned_reason},
+            description=(
+                f"run source discovery for subscription {subscription_id} "
+                f"(spends LLM + search credits); reason: {cleaned_reason[:120]}"
+            ),
+            yes_label="Run discovery",
+            no_label="Cancel",
+        )
+        if not proceed:
+            return message
+
+        try:
+            await check_rate_limit(
+                scope="trigger_source_discovery",
+                subject_id=str(user.id),
+                limit=get_settings().rate_limit_discovery_per_day,
+                window_seconds=86400,
+            )
+        except RateLimitExceeded as exc:
+            return (
+                f"rate_limit_exceeded: you've hit the daily cap of "
+                f"{exc.limit} source-discovery runs. Try again in "
+                f"{exc.retry_after_seconds // 60} minutes."
+            )
 
         async with scoped_factory() as scoped:
             result = await scoped.execute(
@@ -706,15 +881,18 @@ def build_tools(
 
         return _dispatch_discovery(sub_uuid, cleaned_reason)
 
-    async def delete_subscription(subscription_id: str) -> str:
+    async def delete_subscription(subscription_id: str, confirmation_token: str = "") -> str:
         """Soft-delete (deactivate) a subscription by id.
 
-        Safe to call concurrently with other mutation tools -- opens
-        its own scoped session like every other mutation tool.
-        Confirm in plain language with the user before calling.
+        Destructive: gated by server-side confirmation. First call mints
+        a nonce and emits a ``requires_confirmation`` event; the frontend
+        renders inline yes/no buttons; the actual delete fires only when
+        the confirm endpoint re-invokes this tool with the nonce.
 
         Args:
             subscription_id: UUID of the subscription to deactivate.
+            confirmation_token: Set by the confirm endpoint; leave empty
+                in normal LLM calls.
 
         Returns:
             Confirmation or not-found message.
@@ -723,6 +901,19 @@ def build_tools(
             sub_uuid = uuid.UUID(subscription_id)
         except ValueError:
             return f"invalid subscription_id '{subscription_id}'."
+
+        proceed, message = await _gate_with_confirmation(
+            user=user,
+            shared_state=shared_state,
+            confirmation_token=confirmation_token,
+            tool_name="delete_subscription",
+            args={"subscription_id": subscription_id},
+            description=f"deactivate (soft-delete) subscription {subscription_id}",
+            yes_label="Delete",
+            no_label="Keep",
+        )
+        if not proceed:
+            return message
 
         async with scoped_factory() as scoped:
             result = await scoped.execute(
@@ -775,3 +966,27 @@ def build_tools(
         delete_subscription,
         close_scenario,
     ]
+
+
+def build_tools_by_name(
+    *,
+    user: User,
+    db_session: AsyncSession,
+    scoped_factory: async_sessionmaker[AsyncSession],
+    shared_state: dict[str, Any],
+) -> dict[str, Callable[..., Any]]:
+    """Same as ``build_tools`` but indexed by function name.
+
+    Used by the ``/conversations/confirm`` endpoint to dispatch a
+    confirmed action straight to the right tool without going through
+    the ADK loop.
+    """
+    return {
+        tool.__name__: tool
+        for tool in build_tools(
+            user=user,
+            db_session=db_session,
+            scoped_factory=scoped_factory,
+            shared_state=shared_state,
+        )
+    }

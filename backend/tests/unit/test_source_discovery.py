@@ -23,7 +23,7 @@ def _runner_that(calls):
 
     captured: dict[str, str] = {}
 
-    async def fake(*, agent, message, user_id="system"):
+    async def fake(*, agent, message, user_id="system", max_llm_calls=None):
         captured["message"] = message
         tools = {t.__name__: t for t in agent.tools}
         await calls(tools, message)
@@ -452,7 +452,7 @@ async def test_hard_max_new_zero_forces_orchestrator_to_select_nothing(mocker) -
 async def test_prompt_surfaces_soft_cap_hard_cap_and_attached_count(mocker) -> None:
     captured_prompt: dict[str, str] = {}
 
-    async def fake(*, agent, message, user_id="system"):
+    async def fake(*, agent, message, user_id="system", max_llm_calls=None):
         captured_prompt["instruction"] = agent.instruction
         for tool in agent.tools:
             if tool.__name__ == "abort":

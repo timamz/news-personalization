@@ -371,6 +371,7 @@ async def run_reflector(
             agent=agent,
             message=input_message,
             user_id=str(subscription.user_id),
+            max_llm_calls=settings.tool_call_budget_reflector,
         )
 
     shared_state["observations"] = response

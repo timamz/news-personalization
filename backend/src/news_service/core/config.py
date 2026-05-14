@@ -58,8 +58,49 @@ class Settings(BaseSettings):
 
     conversation_ttl_seconds: int = 30 * 24 * 3600
     conversation_hot_max_bytes: int = 20000
+    conversation_hot_max_tokens: int = 30_000
 
     max_active_subscriptions_per_user: int = 5
+
+    max_user_message_chars: int = 10_000
+    max_llm_external_text_chars: int = 50_000
+
+    rate_limit_conversation_per_hour: int = 120
+    rate_limit_discovery_per_day: int = 20
+    rate_limit_digest_now_per_day: int = 60
+
+    tool_call_budget_conversational: int = 50
+    tool_call_budget_discovery_pipeline: int = 200
+    tool_call_budget_finder: int = 30
+    tool_call_budget_reflector: int = 30
+    tool_call_budget_verifier: int = 30
+
+    ssrf_block_private_ips: bool = True
+    ssrf_allowed_schemes: tuple[str, ...] = ("http", "https")
+    ssrf_max_redirects: int = 5
+
+    injection_classifier_enabled: bool = False
+    """When True, an extra ML classifier scan runs alongside the regex layer.
+
+    Disabled by default because it requires the model weights to be
+    downloaded once at first call (~300 MB) and an extra ~150 ms per
+    scan. Flip to True after running ``huggingface-cli login`` and
+    accepting Meta's Llama Prompt Guard license once on the host.
+    """
+    injection_classifier_model: str = "meta-llama/Llama-Prompt-Guard-2-86M"
+    injection_classifier_threshold: float = 0.5
+
+    output_safety_classifier_enabled: bool = False
+    """When True, runs a multilingual DistilBERT toxicity classifier.
+
+    Off by default: one-time weight download (~540 MB), extra torch
+    dep, and ~150 ms per call on CPU. Covers Russian, English, and the
+    other 100+ languages DistilBERT-multilingual was pre-trained on
+    via Wikipedia. Flip to True after ``uv sync --extra classifier``
+    and the first warm-up download.
+    """
+    output_safety_classifier_model: str = "citizenlab/distilbert-base-multilingual-cased-toxicity"
+    output_safety_classifier_threshold: float = 0.5
 
     max_concurrent_discoveries: int = 3
     max_concurrent_web_searches: int = 2

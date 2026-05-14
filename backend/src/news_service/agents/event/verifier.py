@@ -329,6 +329,7 @@ async def run_event_verifier(
             agent=agent,
             message=input_message,
             user_id=str(subscription.user_id),
+            max_llm_calls=settings.tool_call_budget_verifier,
         )
     shared_state["observations"] = response
     logger.info(

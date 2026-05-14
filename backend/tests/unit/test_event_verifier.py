@@ -53,7 +53,7 @@ def _scripted_run_agent_text(script):
     ``script`` is a list of ``(tool_name, kwargs)`` pairs to invoke in order.
     """
 
-    async def _stub(*, agent, message, user_id):  # noqa: ARG001
+    async def _stub(*, agent, message, user_id, max_llm_calls=None):  # noqa: ARG001
         tools = _tools_by_name(agent.tools)
         for tool_name, kwargs in script:
             await tools[tool_name](**kwargs)
@@ -197,7 +197,7 @@ async def test_verifier_fetch_source_items_refuses_foreign_source(mocker) -> Non
 
     captured: list[str] = []
 
-    async def _stub(*, agent, message, user_id):  # noqa: ARG001
+    async def _stub(*, agent, message, user_id, max_llm_calls=None):  # noqa: ARG001
         tools = _tools_by_name(agent.tools)
         captured.append(
             await tools["fetch_source_items_tool"](

@@ -12,7 +12,7 @@ import contextlib
 import logging
 import time
 
-from aiogram import Router, types
+from aiogram import F, Router, types
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
@@ -22,6 +22,15 @@ from tgbot.telegram_format import render_html_message
 from tgbot.text_split import split_for_telegram
 from tgbot.user_registry import ensure_api_key
 from tgbot.webhook_server import delivery_webhook_url
+
+_CALLBACK_PREFIX = "conf"
+"""Prefix on callback_data for confirmation buttons.
+
+Telegram limits callback_data to 64 bytes. ``conf:<decision>:<nonce>``
+fits comfortably: 16 random URL-safe bytes plus the short header is
+well under the cap. Anything that grows beyond ~55 bytes here must be
+moved to a side store keyed by a short id.
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -169,11 +178,19 @@ async def _stream_turn(
     progress_msg: types.Message | None = None
     last_edit_text = ""
     last_edit_ts = 0.0
+    pending_confirmation: dict | None = None
 
     async for event in backend.send_conversation_message_stream(api_key, text):
         kind = event.get("event")
         if kind == "status":
             await _safe_typing(message)
+            continue
+        if kind == "requires_confirmation":
+            pending_confirmation = {
+                "nonce": event.get("nonce") or "",
+                "yes_label": event.get("yes_label") or "Confirm",
+                "no_label": event.get("no_label") or "Cancel",
+            }
             continue
         if kind == "discovery_progress":
             display_text = (event.get("display_text") or "").strip()
@@ -212,19 +229,50 @@ async def _stream_turn(
 
     if not agent_message:
         return
-    await _finalize_turn(message, progress_msg, agent_message)
+    await _finalize_turn(message, progress_msg, agent_message, pending_confirmation)
+
+
+def _build_confirmation_keyboard(
+    pending: dict,
+) -> types.InlineKeyboardMarkup:
+    """Render the inline yes/no keyboard for a server-issued confirmation.
+
+    ``callback_data`` is ``conf:<decision>:<nonce>`` so the callback
+    handler can route without consulting any side store. The nonce
+    travels in the button payload; the LLM never sees it, which is
+    the whole point of the server-side gate.
+    """
+    nonce = pending["nonce"]
+    yes = types.InlineKeyboardButton(
+        text=str(pending.get("yes_label") or "Confirm"),
+        callback_data=f"{_CALLBACK_PREFIX}:confirm:{nonce}",
+    )
+    no = types.InlineKeyboardButton(
+        text=str(pending.get("no_label") or "Cancel"),
+        callback_data=f"{_CALLBACK_PREFIX}:cancel:{nonce}",
+    )
+    return types.InlineKeyboardMarkup(inline_keyboard=[[yes, no]])
 
 
 async def _finalize_turn(
     message: types.Message,
     progress_msg: types.Message | None,
     agent_message: str,
+    pending_confirmation: dict | None = None,
 ) -> None:
-    """Render the agent's final message, replacing the progress bubble if any."""
+    """Render the agent's final message, replacing the progress bubble if any.
+
+    When ``pending_confirmation`` is set, attach the inline yes/no
+    keyboard to the LAST chunk of the agent's reply. Buttons on the
+    final chunk keep them visually anchored to the call-to-action
+    text; earlier chunks render plain.
+    """
     rendered = render_html_message(agent_message)
     chunks = list(split_for_telegram(rendered, _TELEGRAM_MESSAGE_LIMIT))
     if not chunks:
         return
+
+    keyboard = _build_confirmation_keyboard(pending_confirmation) if pending_confirmation else None
 
     if progress_msg is not None and len(chunks) == 1:
         try:
@@ -233,6 +281,9 @@ async def _finalize_turn(
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True,
             )
+            if keyboard is not None:
+                with contextlib.suppress(TelegramBadRequest, Exception):
+                    await progress_msg.edit_reply_markup(reply_markup=keyboard)
             return
         except TelegramBadRequest:
             pass
@@ -243,12 +294,78 @@ async def _finalize_turn(
         with contextlib.suppress(Exception):
             await progress_msg.delete()
 
-    for chunk in chunks:
+    last_idx = len(chunks) - 1
+    for idx, chunk in enumerate(chunks):
         await message.answer(
             chunk,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
+            reply_markup=keyboard if idx == last_idx else None,
         )
+
+
+@router.callback_query(F.data.startswith(f"{_CALLBACK_PREFIX}:"))
+async def handle_confirmation_callback(callback: types.CallbackQuery) -> None:
+    """Redeem a pending confirmation when the user taps an inline button.
+
+    Strips the inline keyboard immediately so the user cannot tap twice,
+    then POSTs the decision to the backend. The backend's response is
+    rendered back to the user as a small message; the original agent
+    message stays in the chat for context.
+    """
+    data = callback.data or ""
+    parts = data.split(":", 2)
+    if len(parts) != 3:
+        with contextlib.suppress(Exception):
+            await callback.answer("Invalid button.", show_alert=False)
+        return
+    _, decision, nonce = parts
+    if decision not in ("confirm", "cancel") or not nonce:
+        with contextlib.suppress(Exception):
+            await callback.answer("Invalid button.", show_alert=False)
+        return
+
+    telegram_id = callback.from_user.id
+    try:
+        api_key = await ensure_api_key(telegram_id, backend)
+    except Exception:
+        logger.exception("Failed to ensure API key for telegram_id=%d", telegram_id)
+        with contextlib.suppress(Exception):
+            await callback.answer("Could not verify your account.", show_alert=True)
+        return
+
+    if callback.message is not None:
+        with contextlib.suppress(TelegramBadRequest, Exception):
+            await callback.message.edit_reply_markup(reply_markup=None)
+
+    try:
+        response = await backend.confirm_pending_action(api_key, nonce, decision)
+    except Exception:
+        logger.exception("Confirmation POST failed (nonce=%s decision=%s)", nonce, decision)
+        with contextlib.suppress(Exception):
+            await callback.answer("Confirmation failed; try again.", show_alert=True)
+        if callback.message is not None:
+            with contextlib.suppress(Exception):
+                await callback.message.answer(
+                    "Could not confirm — the action may have expired. Try again."
+                )
+        return
+
+    status_value = response.get("status")
+    result_text = response.get("result") or ""
+    if status_value == "cancelled":
+        body = "Cancelled."
+    elif status_value == "executed":
+        body = result_text.strip() or "Done."
+    else:
+        body = "Unknown response from server."
+
+    if callback.message is not None:
+        with contextlib.suppress(Exception):
+            await callback.message.answer(body)
+
+    with contextlib.suppress(Exception):
+        await callback.answer()
 
 
 async def _safe_typing(message: types.Message) -> None:
