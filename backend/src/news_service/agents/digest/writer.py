@@ -81,9 +81,12 @@ other than the required '{source_label}:' line.
 - Return only the digest. No introductions, closings, commentary.
 - Use web search whenever an item needs context that is not already \
 in its body.
-- Never emit Markdown bold syntax (**...**) anywhere in the digest. \
-The frontend does not render it and the asterisks appear literally. \
-Use plain text -- no bold markers at all.
+- The digest is delivered to the user as a Telegram message. Markdown is \
+not rendered: '##' headings appear as literal '##', and '**bold**' appears \
+with the asterisks visible. Never emit '#', '##', '###', or any other \
+Markdown heading marker, and never emit '**...**' for bold. Use plain \
+text only -- no Markdown syntax of any kind. Separate sections with blank \
+lines, not heading markers.
 
 IMPORTANT: In submit_digest, list the UUIDs of every news item you included
 as a comma-separated string in used_item_ids. Copy each UUID verbatim from
