@@ -1,0 +1,214 @@
+{
+  "uid": "business",
+  "title": "Business",
+  "tags": ["news", "business"],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "timezone": "browser",
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total users",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto", "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::float AS value FROM users"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Active sources",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto", "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::float AS value FROM sources WHERE is_active"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Source removals (30d)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "orange" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto", "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*)::float AS value FROM source_removal_log WHERE removed_at > now() - interval '30 days'"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "bargauge",
+      "title": "Active subscriptions by mode",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "options": { "displayMode": "gradient", "orientation": "horizontal", "showUnfilled": true, "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT delivery_mode AS metric, count(*)::float AS value FROM subscriptions WHERE is_active GROUP BY delivery_mode ORDER BY value DESC"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "New users / day",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 5, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '1d'), 'new_users' AS metric, count(*)::float AS value FROM users WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "Onboarded vs not",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 5, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "pieType": "donut", "tooltip": { "mode": "single" }, "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] }, "displayLabels": ["name", "percent"] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE WHEN has_onboarded THEN 'onboarded' ELSE 'not onboarded' END AS metric, count(*)::float AS value FROM users GROUP BY 1 ORDER BY value DESC"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Digests delivered / day",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 13, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(s.sent_at, '1d'), 'digests' AS metric, count(*)::float AS value FROM sent_items s JOIN subscriptions sub ON s.subscription_id = sub.id WHERE $__timeFilter(s.sent_at) AND sub.delivery_mode = 'digest' GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Events delivered / day",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 13, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(s.sent_at, '1d'), 'events' AS metric, count(*)::float AS value FROM sent_items s JOIN subscriptions sub ON s.subscription_id = sub.id WHERE $__timeFilter(s.sent_at) AND sub.delivery_mode = 'event' GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "News items ingested / day",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(fetched_at, '1d'), 'items' AS metric, count(*)::float AS value FROM news_items WHERE $__timeFilter(fetched_at) GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Cost per active subscription / day (USD)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 21, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4, "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '1d'), 'cost_per_active_sub' AS metric, (sum(cost_usd)::float / NULLIF((SELECT count(*) FROM subscriptions WHERE is_active), 0)) AS value FROM llm_usage WHERE $__timeFilter(created_at) AND cost_usd IS NOT NULL GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Top contributing sources",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 29, "w": 24, "h": 10 },
+      "fieldConfig": { "defaults": { "custom": { "align": "left" } }, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.title AS source, round(avg(ss.contribution_rate)::numeric, 3) AS avg_contribution_rate, sum(ss.contributed_last_30_digests) AS items_in_last_30_digests, count(*) AS subscriptions FROM subscription_sources ss JOIN sources s ON s.id = ss.source_id GROUP BY s.title ORDER BY avg_contribution_rate DESC NULLS LAST, items_in_last_30_digests DESC LIMIT 20"
+        }
+      ]
+    }
+  ]
+}

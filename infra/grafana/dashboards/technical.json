@@ -1,0 +1,289 @@
+{
+  "uid": "technical",
+  "title": "Technical",
+  "tags": ["news", "technical", "llm"],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Chat latency P50 / P95 / P99 (overall)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), 'P50' AS metric, percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND latency_ms IS NOT NULL GROUP BY 1 ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), 'P95' AS metric, percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND latency_ms IS NOT NULL GROUP BY 1 ORDER BY 1"
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), 'P99' AS metric, percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND latency_ms IS NOT NULL GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Chat latency P95 by agent",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "fillOpacity": 0, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["max", "mean"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), COALESCE(agent,'(none)') AS metric, percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND latency_ms IS NOT NULL GROUP BY 1, agent ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Chat latency P95 by model",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "fillOpacity": 0, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["max", "mean"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), model AS metric, percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND latency_ms IS NOT NULL GROUP BY 1, model ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Embedding latency P50 / P95",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "fillOpacity": 10, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), 'P50' AS metric, percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='embedding' AND latency_ms IS NOT NULL GROUP BY 1 ORDER BY 1"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), 'P95' AS metric, percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='embedding' AND latency_ms IS NOT NULL GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Call rate by agent (per minute)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "cpm", "custom": { "fillOpacity": 25, "lineWidth": 1, "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), COALESCE(agent,'(none)') AS metric, count(*)::float * 60000.0 / GREATEST($__interval_ms, 1) AS value FROM llm_usage WHERE $__timeFilter(created_at) GROUP BY 1, agent ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Error rate (%)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "custom": { "fillOpacity": 15, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), 'error %' AS metric, (100.0 * count(*) FILTER (WHERE error IS NOT NULL) / NULLIF(count(*), 0))::float AS value FROM llm_usage WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Cost over time by agent (USD)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4, "custom": { "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), COALESCE(agent,'(none)') AS metric, sum(cost_usd)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND cost_usd IS NOT NULL GROUP BY 1, agent ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Output tokens/sec by agent",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 23, "w": 12, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 1, "custom": { "fillOpacity": 0, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), COALESCE(agent,'(none)') AS metric, avg(completion_tokens * 1000.0 / NULLIF(latency_ms, 0))::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND completion_tokens IS NOT NULL AND latency_ms > 0 GROUP BY 1, agent ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Prompt cache hit rate (%) by model",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 30, "w": 12, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "fillOpacity": 0, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), model AS metric, (sum(cached_tokens) * 100.0 / NULLIF(sum(prompt_tokens), 0))::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND prompt_tokens IS NOT NULL GROUP BY 1, model ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Reasoning token ratio (%) by agent",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "custom": { "fillOpacity": 0, "lineWidth": 2 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean"] }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), COALESCE(agent,'(none)') AS metric, (sum(reasoning_tokens) * 100.0 / NULLIF(sum(completion_tokens), 0))::float AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='chat' AND completion_tokens IS NOT NULL GROUP BY 1, agent ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Web-search rate (per minute)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 37, "w": 12, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "cpm", "custom": { "fillOpacity": 30, "lineWidth": 1 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, $__interval), 'web_search' AS metric, count(*)::float * 60000.0 / GREATEST($__interval_ms, 1) AS value FROM llm_usage WHERE $__timeFilter(created_at) AND call_type='web_search' GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Total cost (range)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 12, "y": 37, "w": 6, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 4, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto", "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(sum(cost_usd), 0)::float AS value FROM llm_usage WHERE $__timeFilter(created_at)"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "piechart",
+      "title": "Calls by agent (range)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 18, "y": 37, "w": 6, "h": 7 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "pieType": "donut", "tooltip": { "mode": "single" }, "legend": { "displayMode": "list", "placement": "right" }, "displayLabels": ["name", "percent"] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(agent,'(none)') AS metric, count(*)::float AS value FROM llm_usage WHERE $__timeFilter(created_at) GROUP BY agent ORDER BY value DESC"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Failed Celery tasks (last 24h)",
+      "datasource": { "type": "postgres", "uid": "postgres" },
+      "gridPos": { "x": 0, "y": 44, "w": 24, "h": 8 },
+      "fieldConfig": { "defaults": { "custom": { "align": "left" } }, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "postgres", "uid": "postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT task_name, exception_type, count(*) AS failures, max(failed_at) AS last_failed_at FROM failed_tasks WHERE failed_at > now() - interval '24 hours' GROUP BY task_name, exception_type ORDER BY failures DESC, last_failed_at DESC"
+        }
+      ]
+    }
+  ]
+}

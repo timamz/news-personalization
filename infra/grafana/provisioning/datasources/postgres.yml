@@ -1,0 +1,17 @@
+apiVersion: 1
+datasources:
+  - name: Postgres
+    uid: postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    database: news
+    user: news
+    secureJsonData:
+      password: news
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    isDefault: true
+    editable: false
