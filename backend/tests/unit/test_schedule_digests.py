@@ -1,6 +1,7 @@
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -149,3 +150,40 @@ async def test_schedule_due_digests_returns_correct_counts_across_all_subscripti
 def test_truncate_to_minute_converts_to_utc() -> None:
     result = schedule_digests._truncate_to_minute(datetime(2026, 2, 26, 10, 30, 45))
     assert result == datetime(2026, 2, 26, 10, 30, tzinfo=UTC)
+
+
+@pytest.mark.asyncio
+async def test_schedule_due_digests_fires_lead_time_before_user_specified_cron(mocker) -> None:
+    lead_minutes = 10
+    cron_match = datetime(2026, 2, 26, 8, 0, tzinfo=UTC)
+    fire_at = cron_match - timedelta(minutes=lead_minutes)
+    one_minute_earlier = fire_at - timedelta(minutes=1)
+    sub = _make_subscription(
+        schedule_cron="0 8 * * *",
+        created_at=datetime(2026, 2, 20, 8, 0, tzinfo=UTC),
+        last_digest_scheduled_at=datetime(2026, 2, 25, 8, 0, tzinfo=UTC),
+    )
+    mocker.patch.object(
+        schedule_digests,
+        "get_settings",
+        return_value=SimpleNamespace(digest_lead_time_minutes=lead_minutes),
+    )
+    send_task = MagicMock()
+    mocker.patch.object(schedule_digests.celery_app, "send_task", send_task)
+
+    early_session = _FakeSession([(sub, "UTC")])
+    mocker.patch.object(
+        schedule_digests, "get_task_session", return_value=_FakeSessionFactory(early_session)
+    )
+    await schedule_digests._schedule_due_digests(now=one_minute_earlier)
+    assert send_task.call_count == 0, "digest queued before the lead-time window opened"
+
+    fire_session = _FakeSession([(sub, "UTC")])
+    mocker.patch.object(
+        schedule_digests, "get_task_session", return_value=_FakeSessionFactory(fire_session)
+    )
+    await schedule_digests._schedule_due_digests(now=fire_at)
+    assert send_task.call_count == 1, "digest was not queued at lead-time before the cron match"
+    assert sub.last_digest_scheduled_at == cron_match, (
+        "last_digest_scheduled_at must record the cron-matched wall time, not the launch instant"
+    )

@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     poll_per_source_timeout_seconds: float = 90.0
     topic_similarity_threshold: float = 0.85
 
+    digest_lead_time_minutes: int = 10
+    """Start digest generation this many minutes before the user-specified
+    cron time so the rendered digest reaches the user at (not after) the
+    requested moment. The scheduler matches the cron against an instant
+    shifted forward by this amount; the recorded ``last_digest_scheduled_at``
+    is the matched wall time, not the launch instant.
+    """
+
     source_soft_cap: int = 10
     source_hard_cap: int = 20
     content_sample_size: int = 10

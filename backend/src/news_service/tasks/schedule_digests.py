@@ -1,9 +1,10 @@
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
+from news_service.core.config import get_settings
 from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
 from news_service.models.user import User
@@ -22,6 +23,8 @@ def schedule_due_digests() -> dict:
 
 async def _schedule_due_digests(now: datetime | None = None) -> dict:
     current_time = _truncate_to_minute(now or datetime.now(UTC))
+    lead = timedelta(minutes=get_settings().digest_lead_time_minutes)
+    effective_now = current_time + lead
     queued = 0
     invalid_cron = 0
 
@@ -47,7 +50,7 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
                 due = is_schedule_due(
                     subscription.schedule_cron,
                     last_run_at=last_run_at,
-                    now=current_time,
+                    now=effective_now,
                     timezone_name=timezone_name or "UTC",
                 )
             except ValueError:
@@ -64,7 +67,7 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
                 continue
 
             celery_app.send_task(DELIVER_DIGEST_TASK, args=[str(subscription.id)])
-            subscription.last_digest_scheduled_at = current_time
+            subscription.last_digest_scheduled_at = effective_now
             queued += 1
 
         await session.commit()
