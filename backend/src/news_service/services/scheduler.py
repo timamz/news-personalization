@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from celery.schedules import crontab
+from croniter import croniter
 
 
 def parse_cron_to_celery(cron_expr: str) -> crontab:
@@ -34,6 +35,19 @@ def is_schedule_due(
     schedule.nowfun = lambda: current_time
     due, _next_check_seconds = schedule.is_due(_as_timezone(last_run_at, timezone))
     return due
+
+
+def next_cron_match(
+    cron_expr: str,
+    *,
+    after: datetime,
+    timezone_name: str = "UTC",
+) -> datetime:
+    """Return the next datetime (UTC) at which the cron expression fires strictly after `after`."""
+    timezone = ZoneInfo(timezone_name)
+    base = _as_timezone(after, timezone)
+    itr = croniter(cron_expr, base)
+    return itr.get_next(datetime).astimezone(UTC)
 
 
 def _as_timezone(value: datetime, timezone: ZoneInfo) -> datetime:

@@ -8,7 +8,7 @@ from news_service.core.config import get_settings
 from news_service.db.session import get_task_session
 from news_service.models.subscription import Subscription
 from news_service.models.user import User
-from news_service.services.scheduler import is_schedule_due
+from news_service.services.scheduler import is_schedule_due, next_cron_match
 from news_service.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,17 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
             if not due:
                 continue
 
-            celery_app.send_task(DELIVER_DIGEST_TASK, args=[str(subscription.id)])
-            subscription.last_digest_scheduled_at = effective_now
+            scheduled_for = next_cron_match(
+                subscription.schedule_cron,
+                after=last_run_at,
+                timezone_name=timezone_name or "UTC",
+            )
+            celery_app.send_task(
+                DELIVER_DIGEST_TASK,
+                args=[str(subscription.id)],
+                kwargs={"scheduled_for": scheduled_for.isoformat()},
+            )
+            subscription.last_digest_scheduled_at = scheduled_for
             queued += 1
 
         await session.commit()

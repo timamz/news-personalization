@@ -84,6 +84,7 @@ async def test_schedule_due_digests_queues_due_digest_and_commits(mocker) -> Non
     send_task.assert_called_once_with(
         "news_service.tasks.deliver_digest.deliver_digest",
         args=[str(due.id)],
+        kwargs={"scheduled_for": now.isoformat()},
     )
     assert session.committed is True, "scheduler did not commit after queuing"
 

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -19,16 +20,25 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, name="news_service.tasks.deliver_digest.deliver_digest")
-def deliver_digest(self, subscription_id: str, notify_if_empty: bool = False) -> dict:
+def deliver_digest(
+    self,
+    subscription_id: str,
+    notify_if_empty: bool = False,
+    scheduled_for: str | None = None,
+) -> dict:
     sub_uuid = uuid.UUID(subscription_id)
     with subscription_tag(sub_uuid):
         try:
-            return asyncio.run(_deliver_digest(sub_uuid, notify_if_empty))
+            return asyncio.run(_deliver_digest(sub_uuid, notify_if_empty, scheduled_for))
         except ProviderLimitError as exc:
             raise retry_on_provider_limit(self, exc) from exc
 
 
-async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = False) -> dict:
+async def _deliver_digest(
+    subscription_id: uuid.UUID,
+    notify_if_empty: bool = False,
+    scheduled_for: str | None = None,
+) -> dict:
     async with get_task_session() as session:
         result = await session.execute(
             select(Subscription)
@@ -66,6 +76,7 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
                 webhook_url = subscription.delivery_webhook_url
                 if webhook_url is None and subscription.user is not None:
                     webhook_url = subscription.user.delivery_webhook_url
+                await _wait_until(scheduled_for)
                 await deliver(
                     webhook_url,
                     "No new updates right now",
@@ -76,7 +87,21 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
         webhook_url = subscription.delivery_webhook_url
         if webhook_url is None and subscription.user is not None:
             webhook_url = subscription.user.delivery_webhook_url
+        await _wait_until(scheduled_for)
         await deliver(webhook_url, "", digest_text)
 
         await session.commit()
         return {"status": "delivered", "subscription_id": str(subscription_id)}
+
+
+async def _wait_until(scheduled_for: str | None) -> None:
+    if scheduled_for is None:
+        return
+    target = datetime.fromisoformat(scheduled_for)
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=UTC)
+    remaining = (target - datetime.now(UTC)).total_seconds()
+    if remaining <= 0:
+        return
+    logger.info("Holding digest delivery for %.1fs to hit scheduled time %s", remaining, target)
+    await asyncio.sleep(remaining)

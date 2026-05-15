@@ -1,7 +1,7 @@
 import logging
 import random
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -154,3 +154,37 @@ async def test_deliver_digest_falls_back_to_the_users_default_webhook_url(mocker
     await deliver_digest._deliver_digest(subscription.id, notify_if_empty=False)
 
     deliver_mock.assert_awaited_once_with(webhook_url, "", digest_text)
+
+
+@pytest.mark.asyncio
+async def test_deliver_digest_holds_delivery_until_scheduled_time(mocker) -> None:
+    subscription = _make_subscription("digest")
+    _patch_session(mocker, subscription)
+    mocker.patch.object(deliver_digest, "generate_digest", new=AsyncMock(return_value="digest"))
+    mocker.patch.object(deliver_digest, "deliver", new=AsyncMock())
+    sleep_mock = mocker.patch.object(deliver_digest.asyncio, "sleep", new=AsyncMock())
+    scheduled_for = datetime.now(UTC) + timedelta(seconds=42)
+
+    await deliver_digest._deliver_digest(
+        subscription.id, notify_if_empty=False, scheduled_for=scheduled_for.isoformat()
+    )
+
+    assert sleep_mock.await_count == 1, "delivery did not wait before invoking the webhook"
+    waited_seconds = sleep_mock.await_args.args[0]
+    assert 30 < waited_seconds <= 42, (
+        f"delivery wait was outside the expected window, slept {waited_seconds}s"
+    )
+
+
+@pytest.mark.asyncio
+async def test_deliver_digest_skips_wait_when_scheduled_time_has_passed(mocker) -> None:
+    subscription = _make_subscription("digest")
+    _patch_session(mocker, subscription)
+    mocker.patch.object(deliver_digest, "generate_digest", new=AsyncMock(return_value="digest"))
+    mocker.patch.object(deliver_digest, "deliver", new=AsyncMock())
+    sleep_mock = mocker.patch.object(deliver_digest.asyncio, "sleep", new=AsyncMock())
+    past = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
+
+    await deliver_digest._deliver_digest(subscription.id, notify_if_empty=False, scheduled_for=past)
+
+    assert sleep_mock.await_count == 0, "delivery slept even though the scheduled time was past"
