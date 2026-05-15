@@ -78,9 +78,12 @@ async def _load_subscription_summaries(
     session: AsyncSession,
     user_id: uuid.UUID,
 ) -> list[str]:
-    """Fetch compact one-line descriptions of the user's active subscriptions.
+    """Fetch compact one-line descriptions of the user's subscriptions.
 
-    An empty list signals a first-time interaction. The agent calls
+    Returns running AND stopped (paused) subscriptions; soft-deleted
+    rows are excluded. Stopped subscriptions are tagged ``[STOPPED]``
+    so the LLM knows their state and can offer to resume them. An
+    empty list signals a first-time interaction. The agent calls
     get_subscriptions when it needs the full spec of a specific one.
     """
     result = await session.execute(
@@ -96,7 +99,8 @@ async def _load_subscription_summaries(
         schedule = sub.schedule_cron or (
             "event mode" if sub.delivery_mode == "event" else "on demand"
         )
-        lines.append(f"[{sub.id}] {sub.delivery_mode} | {schedule} | {preview}")
+        state = "[STOPPED] " if sub.paused_at is not None else ""
+        lines.append(f"[{sub.id}] {state}{sub.delivery_mode} | {schedule} | {preview}")
     return lines
 
 

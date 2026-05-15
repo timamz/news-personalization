@@ -220,6 +220,8 @@ async def _notify_user_of_discovery_outcome(subscription_id: uuid.UUID, result: 
             subscription = row.scalar_one_or_none()
             if subscription is None or not subscription.is_active:
                 return
+            if subscription.paused_at is not None:
+                return
             webhook_url = subscription.delivery_webhook_url
             language = subscription.digest_language or ""
             if subscription.user is not None:
@@ -307,6 +309,9 @@ async def _run_and_persist_discovery_tagged(
     if subscription is None or not subscription.is_active:
         logger.warning("Discovery skipped: subscription %s not found or inactive", subscription_id)
         return {"status": "skipped", "reason": "not_found_or_inactive"}
+    if subscription.paused_at is not None:
+        logger.warning("Discovery skipped: subscription %s is paused", subscription_id)
+        return {"status": "skipped", "reason": "paused"}
     if subscription.topic_embedding is None:
         logger.warning(
             "Discovery skipped: subscription %s has no retrieval embedding",

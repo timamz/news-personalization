@@ -64,7 +64,11 @@ async def _poll_all_feeds() -> dict:
         event_source_result = await session.execute(
             select(SubscriptionSource.source_id)
             .join(Subscription, Subscription.id == SubscriptionSource.subscription_id)
-            .where(Subscription.is_active.is_(True), Subscription.delivery_mode == "event")
+            .where(
+                Subscription.is_active.is_(True),
+                Subscription.paused_at.is_(None),
+                Subscription.delivery_mode == "event",
+            )
             .distinct()
         )
         event_source_ids = set(event_source_result.scalars().all())

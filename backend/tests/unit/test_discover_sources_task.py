@@ -25,6 +25,7 @@ def _fake_subscription() -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid.uuid4(),
         is_active=True,
+        paused_at=None,
         user_spec="AI safety research. Skip hype.",
         topic_embedding=[0.1] * 8,
     )

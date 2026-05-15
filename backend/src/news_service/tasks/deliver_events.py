@@ -75,6 +75,7 @@ async def _deliver_event_notifications_batch(news_item_ids: list[uuid.UUID]) -> 
             .join(SubscriptionSource, SubscriptionSource.subscription_id == Subscription.id)
             .where(
                 Subscription.is_active.is_(True),
+                Subscription.paused_at.is_(None),
                 Subscription.delivery_mode == "event",
                 SubscriptionSource.source_id.in_(list(source_ids)),
             )

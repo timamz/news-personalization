@@ -34,6 +34,7 @@ async def _schedule_due_digests(now: datetime | None = None) -> dict:
             .join(User, User.id == Subscription.user_id)
             .where(
                 Subscription.is_active.is_(True),
+                Subscription.paused_at.is_(None),
                 Subscription.delivery_mode == "digest",
             )
         )

@@ -70,6 +70,14 @@ class Settings(BaseSettings):
 
     max_active_subscriptions_per_user: int = 5
 
+    subscription_share_ttl_seconds: int = 7 * 24 * 3600
+    """How long a subscription share token is valid before Redis evicts
+    it. Seven days is long enough to forward via chat without rushing
+    the recipient, and short enough that a leaked token does not stay
+    redeemable indefinitely. Each token is also one-shot (consumed on
+    import), so the TTL only bounds unredeemed tokens.
+    """
+
     max_user_message_chars: int = 10_000
     max_llm_external_text_chars: int = 50_000
 

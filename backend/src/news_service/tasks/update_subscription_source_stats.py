@@ -70,7 +70,14 @@ async def _update_all() -> dict:
     skipped = 0
     async with get_task_session() as session:
         subs = (
-            (await session.execute(select(Subscription).where(Subscription.is_active.is_(True))))
+            (
+                await session.execute(
+                    select(Subscription).where(
+                        Subscription.is_active.is_(True),
+                        Subscription.paused_at.is_(None),
+                    )
+                )
+            )
             .scalars()
             .all()
         )

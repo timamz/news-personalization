@@ -71,6 +71,7 @@ async def _reflect_event_subscriptions() -> dict:
         result = await session.execute(
             select(Subscription).where(
                 Subscription.is_active.is_(True),
+                Subscription.paused_at.is_(None),
                 Subscription.delivery_mode == "event",
                 or_(
                     Subscription.last_reflected_at.is_(None),

@@ -40,6 +40,9 @@ async def _deliver_digest(subscription_id: uuid.UUID, notify_if_empty: bool = Fa
         if subscription is None or not subscription.is_active:
             logger.warning("Subscription %s not found or inactive", subscription_id)
             return {"status": "skipped", "reason": "not_found_or_inactive"}
+        if subscription.paused_at is not None:
+            logger.warning("Subscription %s is paused; skipping digest", subscription_id)
+            return {"status": "skipped", "reason": "paused"}
         if subscription.delivery_mode != "digest":
             logger.warning(
                 "Subscription %s is not a digest subscription",

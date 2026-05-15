@@ -146,6 +146,10 @@ def test_create_agent_registers_the_expected_tools() -> None:
         "trigger_digest_now",
         "trigger_source_discovery",
         "delete_subscription",
+        "share_subscription",
+        "import_shared_subscription",
+        "stop_subscription",
+        "resume_subscription",
         "close_scenario",
     }
     agent, _ = create_conversational_agent(

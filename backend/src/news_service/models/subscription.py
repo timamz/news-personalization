@@ -26,6 +26,19 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     formatting/exclusions stay out of the vector), ``is_active``, and
     the two ``last_*_at`` bookkeeping timestamps.
 
+    Lifecycle flags:
+
+    - ``is_active`` is a soft-delete marker. ``False`` means the user
+      deleted the subscription; downstream code treats it as gone.
+    - ``paused_at`` is a reversible "stop" marker. A non-NULL value
+      means the user has temporarily stopped this subscription. All
+      polling, scheduling, and delivery code must skip stopped
+      subscriptions, and the active-subscription cap must NOT count
+      them. Distinct from soft-delete: metadata (sources, user_spec,
+      schedule) is preserved and the user can resume later. A
+      subscription is "running" iff ``is_active=True AND
+      paused_at IS NULL``.
+
     Example usage::
 
         sub = Subscription(
@@ -49,6 +62,11 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     digest_language: Mapped[str] = mapped_column(String(16), nullable=False, default="en")
     delivery_webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    paused_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+    )
     last_digest_scheduled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,

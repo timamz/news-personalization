@@ -29,6 +29,8 @@ from news_service.core.config import get_settings
 from news_service.core.confirmations import consume as consume_pending
 from news_service.core.confirmations import create as create_pending
 from news_service.core.rate_limit import RateLimitExceeded, check_rate_limit
+from news_service.core.subscription_shares import consume as consume_share
+from news_service.core.subscription_shares import create as create_share
 from news_service.db.vector_store import embed_text
 from news_service.models.source import Source
 from news_service.models.source_removal_log import SourceRemovalLog
@@ -236,19 +238,21 @@ def build_tools(
             .where(
                 Subscription.user_id == user.id,
                 Subscription.is_active.is_(True),
+                Subscription.paused_at.is_(None),
             )
         )
         active_count = int(active_count_result.scalar_one() or 0)
         if active_count >= active_limit:
             return (
                 f"subscription limit reached: this user already has {active_count} "
-                f"active subscriptions, and the maximum allowed is {active_limit}. "
-                "Do NOT create another one. Tell the user plainly in their language "
-                "that they have hit the limit of "
-                f"{active_limit} active subscriptions, that they need to delete one "
-                "of the existing ones (via delete_subscription) before a new one can "
-                "be created, and offer to list their current subscriptions so they "
-                "can pick which to remove."
+                f"running subscriptions, and the maximum allowed is {active_limit}. "
+                "Stopped subscriptions do NOT count toward this cap, only running "
+                "ones. Do NOT create another one. Tell the user plainly in their "
+                f"language that they have hit the limit of {active_limit} running "
+                "subscriptions, that they need to either stop one (via "
+                "stop_subscription) or delete one (via delete_subscription) before "
+                "a new one can be created, and offer to list their current "
+                "subscriptions so they can pick which to remove."
             )
 
         resolved_language = (digest_language or user.language or "en").strip().lower()
@@ -441,8 +445,9 @@ def build_tools(
             schedule = sub.schedule_cron or (
                 "event mode" if sub.delivery_mode == "event" else "on demand"
             )
+            state = "STOPPED" if sub.paused_at is not None else "RUNNING"
             block = (
-                f"[{sub.id}] {sub.delivery_mode} | schedule={schedule} | "
+                f"[{sub.id}] state={state} | {sub.delivery_mode} | schedule={schedule} | "
                 f"language={sub.digest_language}\n"
                 f"sources:\n{chr(10).join(source_lines) if source_lines else '  (none)'}\n"
                 f"user_spec:\n{sub.user_spec}"
@@ -929,6 +934,338 @@ def build_tools(
             await scoped.commit()
         return f"Subscription {subscription_id} deleted."
 
+    async def stop_subscription(subscription_id: str, confirmation_token: str = "") -> str:
+        """Stop (pause) a subscription without deleting it.
+
+        A stopped subscription keeps all its metadata (sources, user_spec,
+        schedule, cron) but is skipped by every polling, scheduling, and
+        delivery pipeline until it is resumed. Stopped subscriptions do
+        NOT count toward the active-subscription cap, so the user can
+        free a slot without losing the configuration. Use this when the
+        user wants a temporary break (vacation, signal fatigue, "mute
+        for a while"); use ``delete_subscription`` only when the user
+        wants the subscription gone for good.
+
+        Destructive enough to warrant a confirmation gate: first call
+        mints a nonce and emits a ``requires_confirmation`` event; the
+        frontend renders inline yes/no buttons; the actual stop fires
+        only when the confirm endpoint re-invokes this tool with the
+        nonce.
+
+        Args:
+            subscription_id: UUID of the subscription to stop.
+            confirmation_token: Set by the confirm endpoint; leave empty
+                in normal LLM calls.
+
+        Returns:
+            Confirmation or an error message (not found, already
+            stopped, soft-deleted).
+        """
+        try:
+            sub_uuid = uuid.UUID(subscription_id)
+        except ValueError:
+            return f"invalid subscription_id '{subscription_id}'."
+
+        proceed, message = await _gate_with_confirmation(
+            user=user,
+            shared_state=shared_state,
+            confirmation_token=confirmation_token,
+            tool_name="stop_subscription",
+            args={"subscription_id": subscription_id},
+            description=f"stop (pause) subscription {subscription_id}",
+            yes_label="Stop",
+            no_label="Keep running",
+        )
+        if not proceed:
+            return message
+
+        async with scoped_factory() as scoped:
+            result = await scoped.execute(
+                select(Subscription).where(
+                    Subscription.id == sub_uuid,
+                    Subscription.user_id == user.id,
+                )
+            )
+            sub = result.scalar_one_or_none()
+            if sub is None:
+                return f"subscription {subscription_id}: not found."
+            if not sub.is_active:
+                return (
+                    f"subscription {subscription_id}: already deleted, "
+                    "cannot stop it. Tell the user the subscription has "
+                    "been removed already."
+                )
+            if sub.paused_at is not None:
+                return (
+                    f"subscription {subscription_id}: already stopped. "
+                    "Tell the user it is already paused and offer to "
+                    "resume it instead."
+                )
+            sub.paused_at = datetime.now(UTC)
+            await scoped.commit()
+        return f"subscription {subscription_id}: stopped."
+
+    async def resume_subscription(subscription_id: str) -> str:
+        """Resume a previously stopped subscription.
+
+        Non-destructive: no confirmation gate. Refuses when the user is
+        already at the running-subscription cap; in that case the agent
+        must ask the user to stop or delete one of their running
+        subscriptions before retrying. Stopped subscriptions do not
+        count toward the cap, so resuming one with no running siblings
+        always succeeds.
+
+        Args:
+            subscription_id: UUID of the subscription to resume.
+
+        Returns:
+            Confirmation or a clear error explaining what to do next.
+        """
+        try:
+            sub_uuid = uuid.UUID(subscription_id)
+        except ValueError:
+            return f"invalid subscription_id '{subscription_id}'."
+
+        active_limit = get_settings().max_active_subscriptions_per_user
+        running_count_result = await db_session.execute(
+            select(func.count())
+            .select_from(Subscription)
+            .where(
+                Subscription.user_id == user.id,
+                Subscription.is_active.is_(True),
+                Subscription.paused_at.is_(None),
+            )
+        )
+        running_count = int(running_count_result.scalar_one() or 0)
+        if running_count >= active_limit:
+            return (
+                f"subscription limit reached: this user already has "
+                f"{running_count} running subscriptions, and the maximum "
+                f"allowed is {active_limit}. Do NOT resume the subscription. "
+                "Tell the user in their language that they have hit the "
+                f"limit of {active_limit} running subscriptions, that they "
+                "need to either stop one (via stop_subscription) or delete "
+                "one (via delete_subscription) before this one can be "
+                "resumed, and offer to list their current subscriptions "
+                "so they can pick which to stop."
+            )
+
+        async with scoped_factory() as scoped:
+            result = await scoped.execute(
+                select(Subscription).where(
+                    Subscription.id == sub_uuid,
+                    Subscription.user_id == user.id,
+                )
+            )
+            sub = result.scalar_one_or_none()
+            if sub is None:
+                return f"subscription {subscription_id}: not found."
+            if not sub.is_active:
+                return (
+                    f"subscription {subscription_id}: deleted, cannot "
+                    "resume. Tell the user the subscription has been "
+                    "removed and offer to create a new one on the same "
+                    "topic."
+                )
+            if sub.paused_at is None:
+                return (
+                    f"subscription {subscription_id}: already running, "
+                    "nothing to resume. Tell the user it is already active."
+                )
+            sub.paused_at = None
+            await scoped.commit()
+        return f"subscription {subscription_id}: resumed."
+
+    async def share_subscription(subscription_id: str) -> str:
+        """Mint a short, opaque share token for one of the user's subscriptions.
+
+        The token is the bearer credential: whoever pastes it into their
+        own chat can import a COPY of the subscription. The token is
+        valid for 7 days and is one-shot (importing consumes it). This
+        tool only validates ownership and creates the token -- it does
+        not modify the original subscription, so it does not need a
+        confirmation gate.
+
+        Args:
+            subscription_id: UUID of the subscription to share. Must
+                belong to the current user and must not be soft-deleted.
+
+        Returns:
+            A status string carrying the token verbatim. The agent MUST
+            surface the token literally; downstream frontends rely on
+            it being visible in the assistant reply.
+        """
+        try:
+            sub_uuid = uuid.UUID(subscription_id.strip())
+        except ValueError:
+            return f"invalid subscription_id '{subscription_id}'."
+
+        result = await db_session.execute(
+            select(Subscription).where(
+                Subscription.id == sub_uuid,
+                Subscription.user_id == user.id,
+            )
+        )
+        sub = result.scalar_one_or_none()
+        if sub is None:
+            return f"subscription {subscription_id}: not found."
+        if not sub.is_active:
+            return (
+                f"subscription {subscription_id}: cannot share a deleted "
+                "subscription. Tell the user the subscription is not "
+                "active and offer to share a different one."
+            )
+
+        ttl = get_settings().subscription_share_ttl_seconds
+        token = await create_share(
+            owner_user_id=str(user.id),
+            subscription_id=str(sub.id),
+            ttl_seconds=ttl,
+        )
+        return (
+            f"share_token_created: SHARE_TOKEN={token}. Show this token to "
+            "the user verbatim and tell them it is valid for 7 days; the "
+            "recipient must paste it into their own chat with this "
+            "assistant to import the subscription. Do not paraphrase, "
+            "translate, or shorten the token string itself."
+        )
+
+    async def import_shared_subscription(share_token: str) -> str:
+        """Redeem a share token to import a COPY of someone else's subscription.
+
+        Atomically consumes the token from Redis (single-shot). Refuses
+        when the token is unknown / expired, when the importer is the
+        same user that minted it, or when the importer is already at
+        the active-subscription cap. On success, creates a new
+        ``Subscription`` row owned by the importer, carrying over the
+        user_spec, retrieval anchor, delivery mode, schedule, language,
+        and the full source list -- but with the IMPORTER'S
+        ``delivery_webhook_url`` so deliveries go to the importer's
+        frontend, not the owner's.
+
+        Args:
+            share_token: The opaque token the owner gave the user.
+
+        Returns:
+            A short status string. On success this is treated as a
+            subscription creation, so the agent should close the
+            scenario via ``close_scenario`` after surfacing the result.
+        """
+        token = (share_token or "").strip()
+        if not token:
+            return "share_token is required to import a subscription."
+
+        pending = await consume_share(token)
+        if pending is None:
+            return (
+                "share_invalid: this share token is unknown, expired, or "
+                "has already been used. Tell the user (in their language) "
+                "that the link is no longer valid and ask the original "
+                "owner to send a fresh one."
+            )
+
+        if pending.owner_user_id == str(user.id):
+            return (
+                "share_self_import: this token belongs to your own "
+                "subscription, so there is nothing to import. Tell the "
+                "user they already have the subscription."
+            )
+
+        active_limit = get_settings().max_active_subscriptions_per_user
+        active_count_result = await db_session.execute(
+            select(func.count())
+            .select_from(Subscription)
+            .where(
+                Subscription.user_id == user.id,
+                Subscription.is_active.is_(True),
+            )
+        )
+        active_count = int(active_count_result.scalar_one() or 0)
+        if active_count >= active_limit:
+            return (
+                f"subscription limit reached: this user already has {active_count} "
+                f"active subscriptions, and the maximum allowed is {active_limit}. "
+                "Do NOT import the shared subscription. Tell the user in "
+                "their language that they have hit the limit of "
+                f"{active_limit} active subscriptions, that they need to "
+                "delete one of the existing ones (via delete_subscription) "
+                "before this share can be imported, and offer to list their "
+                "current subscriptions so they can pick which to remove. "
+                "Note: the share token has already been spent and the "
+                "owner will need to mint a new one."
+            )
+
+        try:
+            source_sub_uuid = uuid.UUID(pending.subscription_id)
+        except ValueError:
+            return "share_invalid: stored subscription id is malformed."
+
+        async with scoped_factory() as scoped:
+            source_result = await scoped.execute(
+                select(Subscription).where(Subscription.id == source_sub_uuid)
+            )
+            source_sub = source_result.scalar_one_or_none()
+            if source_sub is None or not source_sub.is_active:
+                return (
+                    "share_invalid: the original subscription is no longer "
+                    "available (the owner may have deleted it). Tell the "
+                    "user and offer to create a new subscription on the "
+                    "same topic."
+                )
+
+            new_sub = Subscription(
+                user_id=user.id,
+                topic_embedding=source_sub.topic_embedding,
+                user_spec=source_sub.user_spec,
+                delivery_mode=source_sub.delivery_mode,
+                schedule_cron=source_sub.schedule_cron,
+                digest_language=source_sub.digest_language,
+                delivery_webhook_url=user.delivery_webhook_url,
+                is_active=True,
+            )
+            scoped.add(new_sub)
+            await scoped.flush()
+
+            link_result = await scoped.execute(
+                select(SubscriptionSource).where(
+                    SubscriptionSource.subscription_id == source_sub_uuid
+                )
+            )
+            for original_link in link_result.scalars().all():
+                scoped.add(
+                    SubscriptionSource(
+                        subscription_id=new_sub.id,
+                        source_id=original_link.source_id,
+                        is_user_specified=original_link.is_user_specified,
+                    )
+                )
+
+            try:
+                await scoped.commit()
+            except Exception as exc:
+                logger.exception("import_shared_subscription: commit failed")
+                await scoped.rollback()
+                return f"could not import shared subscription: {exc}."
+
+            shared_state["created_subscription_id"] = str(new_sub.id)
+
+            if not user.has_onboarded:
+                persisted_user = await scoped.get(User, user.id)
+                if persisted_user is not None and not persisted_user.has_onboarded:
+                    persisted_user.has_onboarded = True
+                    await scoped.commit()
+                user.has_onboarded = True
+
+            new_sub_id = new_sub.id
+
+        return (
+            f"shared_subscription_imported: subscription {new_sub_id} created "
+            "from the share token. Confirm to the user (in their language) "
+            "that the shared subscription has been added to their account "
+            "with the same topic, schedule, and sources; deliveries will "
+            "arrive through their own frontend. Then close the scenario."
+        )
+
     async def close_scenario(summary: str) -> str:
         """Mark the current logical task as finished so prior messages compact.
 
@@ -964,6 +1301,10 @@ def build_tools(
         trigger_digest_now,
         trigger_source_discovery,
         delete_subscription,
+        stop_subscription,
+        resume_subscription,
+        share_subscription,
+        import_shared_subscription,
         close_scenario,
     ]
 
