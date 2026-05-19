@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
-from news_service.core.concurrency import search_semaphore
+from news_service.core.concurrency import get_search_semaphore
 from news_service.core.config import get_settings
 from news_service.core.guardrails import classify_injection, scan_for_injection
 from news_service.core.llm_usage import record_web_search
@@ -77,7 +77,7 @@ async def search_web(query: str) -> str:
     try:
         try:
             async with (
-                search_semaphore,
+                get_search_semaphore(),
                 httpx.AsyncClient(**client_kwargs) as client,  # type: ignore[arg-type]
             ):
                 response = await client.post(_YANDEX_SEARCH_ENDPOINT, json=payload, headers=headers)
