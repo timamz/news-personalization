@@ -263,7 +263,7 @@ def build_tools(
 
         async with scoped_factory() as scoped:
             try:
-                query_embedding = await embed_text(query)
+                query_embedding = await embed_text(query, timeout=30.0)
             except Exception as exc:
                 logger.exception("create_subscription: retrieval_query embedding failed")
                 return f"could not embed retrieval_query: {exc}."
@@ -401,7 +401,7 @@ def build_tools(
 
             if new_query:
                 try:
-                    existing.topic_embedding = await embed_text(new_query)
+                    existing.topic_embedding = await embed_text(new_query, timeout=30.0)
                 except Exception as exc:
                     logger.exception("update_subscription: retrieval_query embedding failed")
                     await scoped.rollback()

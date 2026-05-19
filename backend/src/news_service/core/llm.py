@@ -142,13 +142,13 @@ def _normalize_embedding_text(content: str) -> str:
 
 
 @with_llm_retry()
-async def embed_text(content: str) -> list[float]:
+async def embed_text(content: str, *, timeout: float | None = None) -> list[float]:
     """Embed a single text string via LiteLLM."""
     kwargs: dict[str, Any] = {
         "model": settings.litellm_embedding_model,
         "input": [_normalize_embedding_text(content)],
         "dimensions": settings.embedding_dimensions,
-        "timeout": settings.llm_timeout_seconds,
+        "timeout": timeout if timeout is not None else settings.llm_timeout_seconds,
     }
     try:
         response = await litellm.aembedding(**kwargs)
