@@ -17,13 +17,14 @@ _SUBSCRIPTION_PREVIEW_CHARS = 80
 def _spec_preview(spec: str) -> str:
     """Return a one-line preview of a user_spec for display summaries.
 
-    Picks the first non-empty, non-heading line and truncates. The full
-    spec is fetched on demand via get_subscriptions; this is only a hint
-    the agent uses to disambiguate which subscription the user means.
+    Picks the first non-empty line that is NOT a markdown heading (i.e.
+    does not start with #). The full spec is fetched on demand via
+    get_subscriptions; this is only a hint the agent uses to disambiguate
+    which subscription the user means.
     """
     for raw_line in (spec or "").splitlines():
-        line = raw_line.strip().lstrip("#").strip()
-        if line:
+        line = raw_line.strip()
+        if line and not line.startswith("#"):
             return line[:_SUBSCRIPTION_PREVIEW_CHARS]
     return ""
 
