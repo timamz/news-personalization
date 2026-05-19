@@ -5,6 +5,7 @@ from sqlalchemy.engine import make_url
 
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
+os.environ.setdefault("YANDEX_SEARCH_API_KEY", "test-key")
 
 
 def _read_database_url_from_env_file() -> str | None:
