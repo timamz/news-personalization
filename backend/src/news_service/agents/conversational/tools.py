@@ -67,13 +67,7 @@ def _dispatch_discovery(subscription_id: uuid.UUID, reason: str) -> str:
         args=[str(subscription_id), reason],
     )
     logger.info("Queued source discovery for subscription %s", subscription_id)
-    return (
-        "discovery queued: source discovery is running in the background. "
-        "Tell the user the subscription is saved and that sources will be "
-        "attached shortly -- they will receive a follow-up message when "
-        "discovery finishes (which may take a few minutes). Do not claim "
-        "sources are already attached."
-    )
+    return "discovery_queued"
 
 
 MAX_USER_SPEC_LENGTH = 10_000

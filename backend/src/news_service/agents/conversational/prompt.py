@@ -182,6 +182,10 @@ deliver digests on a schedule..."); that sounds like an intro screen \
 and confuses the user into asking you to create the subscription \
 again. The return string comes in one of three shapes and your reply \
 MUST match reality:
+  * "discovery_queued" -- source discovery was dispatched to a background \
+worker and will finish in a few minutes; the user will receive a separate \
+follow-up message when it completes. In your reply, confirm the subscription \
+is saved and mention that sources are being searched in the background.
   * "discovery finished: added N new source(s). Selected: ..." -- \
 confirm the subscription is fully set up, name 2-3 of the actual sources \
 from the list (so the user can see what was chosen), and state the \
@@ -228,10 +232,10 @@ empty preserves them.
 update_subscription).
 
 Triggering source discovery via trigger_source_discovery:
-- Runs inline in the current turn: the tool streams live progress to the \
-user and only returns once discovery has finished and the selected sources \
-are persisted. The return value lists exactly which sources were added so \
-your reply can be specific ("added @bbcworld, reuters.com and 3 others").
+- Fire-and-forget: the tool queues discovery on a background worker and \
+returns "discovery_queued" immediately. The user will receive a separate \
+follow-up message when discovery finishes. Your reply should confirm that \
+the search is underway; do NOT claim sources are already attached.
 - Call this when: a new subscription was just created with auto-discovery on \
 (this happens automatically through create_subscription -- no manual call \
 needed), the retrieval intent just shifted and user confirmed they want new \
