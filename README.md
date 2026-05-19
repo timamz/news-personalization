@@ -89,8 +89,97 @@ cp backend/.env.example backend/.env
 cp tgbot/.env.example tgbot/.env
 ```
 
-Fill in the required provider keys and bot token in the copied env files. Then
-create the external Compose volumes used by this repo:
+Fill in the required provider keys and bot token in the copied env files.
+
+## Environment Files
+
+### `.env`
+
+Root Compose variables. No provider tokens are required here.
+
+- `GRAFANA_ADMIN_PASSWORD` - Grafana admin password. Defaults to `admin` if
+  unset.
+
+### `backend/.env`
+
+Backend, Celery worker, and Celery Beat settings.
+
+Required:
+
+- `OPENAI_API_KEY` - OpenAI or OpenAI-compatible provider key used by LiteLLM.
+  With the default config, this key is used for chat, judge, and embeddings.
+- `YANDEX_SEARCH_API_KEY` - Yandex Cloud Search API key for a service account
+  with the `search-api.executor` role.
+- `LLM_MODEL_PRICING_USD_PER_1M` - JSON price table. It must contain every model
+  configured by `LITELLM_MODEL`, `LITELLM_JUDGE_MODEL`, and
+  `LITELLM_EMBEDDING_MODEL`; the backend refuses to start when an entry is
+  missing.
+
+Usually edited:
+
+- `LITELLM_MODEL` - main chat model in LiteLLM format, for example
+  `openai/gpt-5.4-nano`.
+- `LITELLM_JUDGE_MODEL` - model used by judge calls.
+- `LITELLM_EMBEDDING_MODEL` - embedding model. The default is
+  `openai/text-embedding-3-small`.
+- `YANDEX_SEARCH_TYPE` - Yandex search index suffix. Default is `COM`; supported
+  values in the example are `COM`, `RU`, `KK`, `TR`, `BY`, and `UZ`.
+- `OPENAI_API_BASE` - optional OpenAI-compatible proxy base URL.
+- `DEEPSEEK_API_KEY` and `DEEPSEEK_API_BASE` - required only when a configured
+  chat or judge model uses a `deepseek/...` LiteLLM model string. Keep an
+  embedding provider configured separately because DeepSeek does not provide
+  embeddings.
+- `PROXY_URL` - optional SOCKS5 proxy for outbound HTTP.
+- `ADMIN_ALERT_WEBHOOK_URL` - optional operator alert webhook, usually a tgbot
+  `/deliver/{token}/{chat_id}` URL for the admin chat.
+
+Normally left as-is under Docker Compose:
+
+- `DATABASE_URL` - Compose overrides this inside backend containers to point at
+  the `postgres` service.
+- `REDIS_URL` - Compose overrides this inside backend containers to point at the
+  `redis` service.
+
+### `tgbot/.env`
+
+Telegram frontend settings.
+
+Required:
+
+- `BOT_TOKEN` - Telegram Bot API token from BotFather.
+
+Usually edited:
+
+- `WEBHOOK_PUBLIC_HOST` - host the backend should use when posting deliveries to
+  the bot. The Docker Compose default is `tgbot`.
+- `BACKEND_URL` - backend API URL. The Docker Compose default is
+  `http://app:8000`.
+- `PROXY_URL` - optional SOCKS5 proxy for Telegram API calls.
+
+Normally left as-is under Docker Compose:
+
+- `WEBHOOK_HOST` - bind host for the bot webhook server.
+- `WEBHOOK_PORT` - bind port for the bot webhook server.
+- `BOT_STORAGE_PATH` - SQLite file used for Telegram ID to backend API key
+  mapping.
+
+### `benchmark/.env`
+
+Only needed when running `benchmark/` directly. The benchmark harness loads
+`benchmark/.env` first and then `backend/.env`, so it can inherit the backend's
+`OPENAI_API_KEY`, `YANDEX_SEARCH_API_KEY`, model settings, and pricing table.
+
+Fill this file when you need to override:
+
+- `BENCHMARK_PG_HOST`, `BENCHMARK_PG_PORT`, `BENCHMARK_PG_ADMIN_USER`,
+  `BENCHMARK_PG_ADMIN_PASSWORD`, `BENCHMARK_PG_ADMIN_DB` - devbox Postgres used
+  for per-run throwaway databases.
+- `BENCHMARK_REDIS_URL` - Redis used by benchmark runs.
+- `LITELLM_MODEL`, `LITELLM_JUDGE_MODEL`, `LITELLM_EMBEDDING_MODEL` - benchmark
+  model overrides.
+
+After env files are configured, create the external Compose volumes used by this
+repo:
 
 ```bash
 docker volume create news-personalization_pgdata
