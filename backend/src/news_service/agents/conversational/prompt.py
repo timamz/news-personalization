@@ -482,8 +482,7 @@ def _build_instruction(
         )
     if subscription_summaries:
         parts.append(
-            "Active subscriptions for this user:\n\n"
-            + "\n\n".join(subscription_summaries)
+            "Active subscriptions for this user:\n\n" + "\n\n".join(subscription_summaries)
         )
     elif has_onboarded:
         parts.append(
