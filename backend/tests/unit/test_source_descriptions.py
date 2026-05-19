@@ -15,10 +15,8 @@ async def test_describe_source_returns_normalized_description(mocker) -> None:
     raw_description = f"  Научные  новости   из arXiv и статьи по ML. tag={tag}  "
     expected = f"Научные новости из arXiv и статьи по ML. tag={tag}"
 
-    parsed = MagicMock()
-    parsed.description = raw_description
     msg = MagicMock()
-    msg.parsed = parsed
+    msg.content = raw_description
     choice = MagicMock()
     choice.message = msg
     completion = MagicMock()

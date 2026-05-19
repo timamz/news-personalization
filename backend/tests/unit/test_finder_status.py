@@ -34,7 +34,7 @@ async def _capture_tools_from_run_finder(queue: asyncio.Queue) -> dict:
 
         await run_finder(
             strategy=f"Find sources about {uuid.uuid4().hex[:6]}",
-            session=AsyncMock(),
+            existing_sources=[],
             prompt_embedding=[0.1] * 10,
             exclude_urls=[],
             status_queue=queue,

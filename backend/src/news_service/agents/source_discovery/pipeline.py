@@ -41,7 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.adk_runner import make_adk_model, run_agent_text
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import agent_tag
-from news_service.db.session import get_task_session
+from news_service.db.vector_store import find_similar_sources
 from news_service.services.relevance import SourceKind, fetch_source_posts, sample_recent_posts
 
 from .finder import run_finder
@@ -333,6 +333,13 @@ async def run_source_discovery(
     if effective_soft_max_new > effective_hard_max_new:
         effective_soft_max_new = effective_hard_max_new
 
+    existing_sources = await find_similar_sources(
+        session,
+        prompt_embedding,
+        threshold=settings.content_db_candidate_threshold,
+        limit=settings.source_soft_cap * 2,
+    )
+
     candidate_pool: dict[str, ScoredSource] = {}
     selected_urls: list[str] = []
     aborted: dict[str, str] = {"reason": ""}
@@ -387,14 +394,13 @@ async def run_source_discovery(
         )
 
         try:
-            async with get_task_session() as finder_session:
-                found = await run_finder(
-                    strategy=trimmed,
-                    session=finder_session,
-                    prompt_embedding=prompt_embedding,
-                    exclude_urls=list(exclude_urls),
-                    status_queue=status_queue,
-                )
+            found = await run_finder(
+                strategy=trimmed,
+                existing_sources=existing_sources,
+                prompt_embedding=prompt_embedding,
+                exclude_urls=list(exclude_urls),
+                status_queue=status_queue,
+            )
         except Exception as exc:
             logger.exception("Finder crashed for strategy '%s'", trimmed[:80])
             return f"finder crashed: {exc}"

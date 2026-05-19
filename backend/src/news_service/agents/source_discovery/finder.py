@@ -16,13 +16,12 @@ from typing import Any
 
 from google.adk.agents import Agent
 from google.genai import types
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from news_service.agents.adk_runner import make_adk_model, run_agent_text
 from news_service.agents.web_tools import fetch_page as _fetch_page
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import agent_tag
-from news_service.db.vector_store import embed_text, find_similar_sources
+from news_service.models.source import Source
 from news_service.services.relevance import score_candidate
 from news_service.services.search import search_web
 
@@ -136,7 +135,7 @@ briefly say which queries you tried and what kinds of URL you saw \
 async def run_finder(
     *,
     strategy: str,
-    session: AsyncSession,
+    existing_sources: list[Source],
     prompt_embedding: list[float],
     exclude_urls: list[str],
     status_queue: asyncio.Queue[dict[str, Any]] | None = None,
@@ -153,25 +152,21 @@ async def run_finder(
         Returns:
             Formatted list of existing sources found in the database.
         """
-        query_embedding = await embed_text(query)
-        sources = await find_similar_sources(
-            session,
-            query_embedding,
-            threshold=settings.content_db_candidate_threshold,
-            limit=settings.source_soft_cap * 2,
-        )
-        if not sources:
+        if not existing_sources:
             return "No existing sources found in database."
+        query_lower = query.lower()
         lines: list[str] = []
-        for src in sources:
+        for src in existing_sources:
             if src.url in exclude_urls:
                 continue
-            desc = (src.source_description or "")[:120]
-            lines.append(f"- {src.url} (title: {src.title}, description: {desc})")
+            text = f"{src.title or ''} {src.source_description or ''} {src.url}".lower()
+            if not query_lower or any(word in text for word in query_lower.split()):
+                desc = (src.source_description or "")[:120]
+                lines.append(f"- {src.url} (title: {src.title}, description: {desc})")
         return (
-            f"Existing sources in database:\n{'\n'.join(lines)}"
+            f"Existing sources in database:\n{chr(10).join(lines)}"
             if lines
-            else ("All matching sources are already in the exclude list.")
+            else "All matching sources are already in the exclude list."
         )
 
     async def tool_search_web(query: str) -> str:

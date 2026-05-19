@@ -12,6 +12,14 @@ from news_service.agents.source_discovery import ScoredSource
 logging.disable(logging.CRITICAL)
 
 
+@pytest.fixture(autouse=True)
+def _patch_find_similar_sources(mocker):
+    mocker.patch(
+        "news_service.agents.source_discovery.pipeline.find_similar_sources",
+        new=AsyncMock(return_value=[]),
+    )
+
+
 def _scored(url: str, score: float = 0.8, **kw) -> ScoredSource:
     return ScoredSource(
         url=url, source_kind=kw.pop("source_kind", "rss"), relevance_score=score, **kw
