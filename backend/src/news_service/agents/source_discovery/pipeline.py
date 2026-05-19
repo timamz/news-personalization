@@ -41,6 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from news_service.agents.adk_runner import make_adk_model, run_agent_text
 from news_service.core.config import get_settings
 from news_service.core.llm_usage import agent_tag
+from news_service.db.session import get_task_session
 from news_service.services.relevance import SourceKind, fetch_source_posts, sample_recent_posts
 
 from .finder import run_finder
@@ -386,13 +387,14 @@ async def run_source_discovery(
         )
 
         try:
-            found = await run_finder(
-                strategy=trimmed,
-                session=session,
-                prompt_embedding=prompt_embedding,
-                exclude_urls=list(exclude_urls),
-                status_queue=status_queue,
-            )
+            async with get_task_session() as finder_session:
+                found = await run_finder(
+                    strategy=trimmed,
+                    session=finder_session,
+                    prompt_embedding=prompt_embedding,
+                    exclude_urls=list(exclude_urls),
+                    status_queue=status_queue,
+                )
         except Exception as exc:
             logger.exception("Finder crashed for strategy '%s'", trimmed[:80])
             return f"finder crashed: {exc}"
