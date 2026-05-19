@@ -51,8 +51,8 @@ _REMOVAL_HISTORY_LIMIT = 50
 @celery_app.task(
     bind=True,
     name=DISCOVER_SOURCES_TASK,
-    soft_time_limit=480,
-    time_limit=540,
+    soft_time_limit=900,
+    time_limit=960,
 )
 def discover_sources_for_subscription(self, subscription_id: str, reason: str = "") -> dict:
     """Celery entry point. Bridges to the async impl.
