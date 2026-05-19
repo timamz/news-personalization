@@ -30,11 +30,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from news_benchmark.fakes.adapters import FakeAdapter, ScenarioItem, make_scenario_poll_adapter
+from news_benchmark.fakes.adapters import FakeAdapter, make_scenario_poll_adapter
 from news_benchmark.fakes.article_fetch import FakeArticleFetch
 from news_benchmark.fakes.celery_shim import CeleryShim
 from news_benchmark.fakes.delivery import FakeDelivery
-from news_benchmark.fakes.search import FakeSearch, SearchResult
+from news_benchmark.fakes.search import FakeSearch
 
 
 @dataclass
@@ -48,24 +48,6 @@ class World:
     celery: CeleryShim = field(default_factory=CeleryShim)
 
     _originals: dict[str, object] = field(default_factory=dict, init=False)
-
-    def load_scenario(
-        self,
-        items: list[ScenarioItem],
-        search_corpus: dict[str, list[SearchResult]],
-    ) -> None:
-        """Populate every fake from a loaded scenario."""
-        self.search.corpus.update(search_corpus)
-        for item in items:
-            synth_url = item.to_normalized()["url"]
-            self.article_fetch.bodies[str(synth_url)] = item.body
-        by_source: dict[str, list[ScenarioItem]] = {}
-        for item in items:
-            by_source.setdefault(item.source_url, []).append(item)
-        for source_url, src_items in by_source.items():
-            self.adapters[source_url] = FakeAdapter(
-                source_url=source_url, items=sorted(src_items, key=lambda x: x.fake_ts)
-            )
 
     async def fake_fetch_source_posts(
         self, url: str, *_args: object, **_kwargs: object

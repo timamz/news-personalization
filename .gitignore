@@ -36,5 +36,6 @@ slides/dist/
 
 backend/backups/*
 !backend/backups/.gitkeep
+benchmark/economics/results/
 
 .claude/

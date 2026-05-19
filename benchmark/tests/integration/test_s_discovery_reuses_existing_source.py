@@ -43,7 +43,6 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import func, select
 
-
 EXISTING_URL = "https://brussels-energy-policy.invalid/feed.xml"
 
 EXISTING_SOURCE_TITLE = "Brussels Energy Policy Tracker"

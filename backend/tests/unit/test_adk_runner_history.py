@@ -116,6 +116,10 @@ async def test_run_agent_appends_one_session_event_per_history_turn(
             pass
 
         async def run_async(self, *, user_id, session_id, new_message, **kwargs):  # noqa: ANN001, ARG002
+            assert new_message.parts[0].text == "call it 'anime feed'", (
+                "run_agent did not pass the current user message to ADK as new_message"
+            )
+
             class _FinalEvent:
                 content = type(
                     "C",

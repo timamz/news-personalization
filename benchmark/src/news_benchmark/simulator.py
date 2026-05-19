@@ -1,33 +1,13 @@
 """
 Scripted-turn driver for the Conversational Agent.
 
-Feeds a pre-authored list of user messages through
-``run_conversation_turn_streaming`` one at a time, carrying the
-``ConversationState`` forward so each turn sees the full transcript
-plus any ``close_scenario`` compacted log entries the agent emitted.
-
-The helper is intentionally thin. Tests schedule these turns at
-specific virtual-clock instants (see FakeClock) -- the scheduler
-advances time, this helper runs a single turn, then control returns
-so the scheduler can advance to the next scheduled event.
-
-Example:
-
-    from news_benchmark.simulator import run_scripted_turns
-
-    state = ConversationState(user_id=str(user_id), user_language="en")
-    async for turn_text in run_scripted_turns(
-        state=state,
-        user=user,
-        db_session=session,
-        messages=["Hi, onboard me...", "Trigger my digest now"],
-    ):
-        print(turn_text)
+Runs one user message through ``run_conversation_turn_streaming``,
+carrying the ``ConversationState`` forward so the next turn sees the
+updated transcript plus any compacted ``close_scenario`` entries.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterable
 from typing import Any
 
 
@@ -69,15 +49,3 @@ async def run_one_turn(
             if close_summary:
                 state.compacted_log.append(close_summary.strip())
     return agent_text
-
-
-async def run_scripted_turns(
-    *,
-    state: Any,
-    user: Any,
-    db_session: Any,
-    messages: Iterable[str],
-) -> AsyncIterator[str]:
-    """Run every scripted user message in order, yielding each agent reply."""
-    for msg in messages:
-        yield await run_one_turn(state=state, user=user, db_session=db_session, message=msg)

@@ -476,7 +476,7 @@ async def generate_theme(theme: dict[str, Any]) -> list[str]:
             data = json.loads(content)
             candidates = data.get("headlines") or data.get("items") or []
             consecutive_fails = 0
-        except asyncio.TimeoutError:
+        except TimeoutError:
             print(f"  [batch timeout attempt={attempts}]", flush=True)
             attempts += 1
             consecutive_fails += 1

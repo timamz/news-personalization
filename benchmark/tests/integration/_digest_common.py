@@ -11,7 +11,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 
-
 SOURCE_URL = "https://brussels-energy-policy.invalid/feed.xml"
 WEBHOOK_URL = "https://bench.invalid/webhook/s-digest"
 

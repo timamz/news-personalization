@@ -2,8 +2,8 @@
 FakeDelivery captures every webhook POST the backend attempts.
 
 Replaces news_service.services.delivery.deliver. Instead of sending HTTP,
-it appends a CapturedWebhook record to an in-memory log, tagged with the
-current virtual timestamp. Assertions and metrics read from this log.
+it appends a CapturedWebhook record to an in-memory log. Assertions and
+metrics read from this log.
 
 The log is intentionally keyed by delivery_webhook_url rather than by
 subscription, because the backend passes the URL verbatim — the
@@ -15,9 +15,6 @@ matching is deterministic.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
-
-from news_benchmark.clock import CLOCK
 
 
 @dataclass
@@ -25,7 +22,6 @@ class CapturedWebhook:
     url: str | None
     subject: str
     body: str
-    fake_clock: datetime
 
 
 @dataclass
@@ -40,7 +36,6 @@ class FakeDelivery:
                 url=webhook_url,
                 subject=subject,
                 body=body,
-                fake_clock=CLOCK.now(),
             )
         )
 

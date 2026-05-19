@@ -2,10 +2,9 @@
 CostLedger records every litellm call made during a benchmark run.
 
 Works by replacing litellm.acompletion and litellm.aembedding with async
-wrappers at harness startup. Each wrapper reads the current agent_tag
-(ContextVar, see tagging.py), asks litellm.completion_cost for USD
-pricing, and appends one row to the in-memory ledger. Originals are
-restored by uninstall_litellm_wrappers().
+wrappers at harness startup. Each wrapper reads the backend's current
+agent ContextVar, asks litellm.completion_cost for USD pricing, and
+appends one row to the in-memory ledger.
 
 Captures both:
   - direct news_service.core.llm calls (chat_completion, embed_texts)
@@ -32,14 +31,12 @@ import json
 import logging
 import os
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any
 
 import litellm
 
 from news_benchmark.clock import CLOCK
-from news_benchmark.tagging import current_tag
-
 
 _LLM_CALL_TIMEOUT_SECONDS = float(os.environ.get("BENCH_LLM_CALL_TIMEOUT", "120"))
 
@@ -61,7 +58,7 @@ async def _acompletion_with_hard_timeout(*args: Any, **kwargs: Any) -> Any:
             _original_acompletion(*args, **kwargs),
             timeout=_LLM_CALL_TIMEOUT_SECONDS,
         )
-    except (asyncio.TimeoutError, TimeoutError) as exc:
+    except TimeoutError as exc:
         raise litellm.Timeout(
             message=f"benchmark hard timeout {int(_LLM_CALL_TIMEOUT_SECONDS)}s",
             model=str(kwargs.get("model", "unknown")),
@@ -172,9 +169,6 @@ class LedgerRow:
     fake_clock_iso: str
     subscription_id: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
 
 @dataclass
 class CostLedger:
@@ -184,11 +178,6 @@ class CostLedger:
     scenario_id: str = ""
     model_column: str = ""
     _rows: list[LedgerRow] = field(default_factory=list)
-
-    def set_context(self, run_id: str, scenario_id: str, model_column: str) -> None:
-        self.run_id = run_id
-        self.scenario_id = scenario_id
-        self.model_column = model_column
 
     def append(self, row: LedgerRow) -> None:
         self._rows.append(row)
@@ -505,14 +494,7 @@ def _current_sub_id() -> str | None:
 
 
 def _resolve_agent_tag() -> str:
-    """Prefer the backend's current_agent; fall back to the benchmark stack.
-
-    news_service has its own ``current_agent`` ContextVar set by every
-    agent via ``agent_tag(name)``. That is the authoritative source of
-    attribution during a live run. The legacy benchmark stack
-    (``news_benchmark.tagging``) remains a fallback for tests that wrap
-    arbitrary code in ``agent_tag(...)`` of their own.
-    """
+    """Read the backend's current agent tag for cost attribution."""
     try:
         from news_service.core.llm_usage import current_agent as backend_agent
 
@@ -521,7 +503,7 @@ def _resolve_agent_tag() -> str:
             return str(name)
     except Exception:
         pass
-    return current_tag()
+    return "untagged"
 
 
 def _extract_usage(response: Any) -> dict[str, int]:
@@ -564,15 +546,3 @@ def install_litellm_wrappers() -> None:
     litellm.acompletion = _wrapped_acompletion  # type: ignore[assignment]
     litellm.aembedding = _wrapped_aembedding  # type: ignore[assignment]
     _installed = True
-
-
-def uninstall_litellm_wrappers() -> None:
-    """Restore original litellm functions. Used in teardown / tests."""
-    global _installed
-    if not _installed:
-        return
-    if _original_acompletion is not None:
-        litellm.acompletion = _original_acompletion  # type: ignore[assignment]
-    if _original_aembedding is not None:
-        litellm.aembedding = _original_aembedding  # type: ignore[assignment]
-    _installed = False

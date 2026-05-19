@@ -256,6 +256,15 @@ wheels = [
 ]
 
 [[package]]
+name = "better-profanity"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/4a/52966c1c883819f0b48540312a4a7f63b5c49f4e5b1a10838ae7f06ebb3c/better_profanity-0.7.0.tar.gz", hash = "sha256:8a6fdc8606d7471e7b5f6801917eca98ec211098262e82f62da4f5de3a73145b", size = 29977, upload-time = "2020-11-02T10:49:57.54Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f3/dd/0b074d89e903cc771721cde2c4bf3d8c9d114b5bd791af5c62bcf5fb9459/better_profanity-0.7.0-py3-none-any.whl", hash = "sha256:bd4c529ea6aa2db1aaa50524be1ed14d0fe5c664f1fd88c8bc388c7e9f9f00e8", size = 46104, upload-time = "2020-11-02T10:49:56.066Z" },
+]
+
+[[package]]
 name = "billiard"
 version = "4.2.4"
 source = { registry = "https://pypi.org/simple" }
@@ -426,6 +435,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/1d/29d32e0fb40864b1f878c7f5a0b343ae676c6e2b271a2d55cc3a152391da/charset_normalizer-3.4.7-cp314-cp314t-win_amd64.whl", hash = "sha256:03853ed82eeebbce3c2abfdbc98c96dc205f32a79627688ac9a27370ea61a49c", size = 174168, upload-time = "2026-04-02T09:27:49.795Z" },
     { url = "https://files.pythonhosted.org/packages/de/32/d92444ad05c7a6e41fb2036749777c163baf7a0301a040cb672d6b2b1ae9/charset_normalizer-3.4.7-cp314-cp314t-win_arm64.whl", hash = "sha256:c35abb8bfff0185efac5878da64c45dafd2b37fb0383add1be155a763c1f083d", size = 153018, upload-time = "2026-04-02T09:27:51.116Z" },
     { url = "https://files.pythonhosted.org/packages/db/8f/61959034484a4a7c527811f4721e75d02d653a35afb0b6054474d8185d4c/charset_normalizer-3.4.7-py3-none-any.whl", hash = "sha256:3dce51d0f5e7951f8bb4900c257dad282f49190fdbebecd4ba99bcc41fef404d", size = 61958, upload-time = "2026-04-02T09:28:37.794Z" },
+]
+
+[[package]]
+name = "clawguard-core"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/86/7c/f2734d82cf598109fa381ce5f81d5e34934b6409d9db8aea5ce8a6f2d200/clawguard_core-0.4.0.tar.gz", hash = "sha256:845c5ebe94d86df4270d44af78cc913b55a35e477615bf94864a1bfbe80c668c", size = 19867, upload-time = "2026-03-05T15:18:00.972Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/e4/23fd3dec07f46ab3aca5420f15007ea0381dc2428fbe3bcd59f0be7cb4cd/clawguard_core-0.4.0-py3-none-any.whl", hash = "sha256:0554411daf8c59e784150f480f04fb8985a8510d648163d74530d5a1cd975045", size = 12201, upload-time = "2026-03-05T15:17:59.274Z" },
 ]
 
 [[package]]
@@ -2097,15 +2115,12 @@ name = "news-benchmark"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "alembic" },
     { name = "asyncpg" },
     { name = "httpx" },
     { name = "litellm" },
     { name = "news-service" },
-    { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
-    { name = "redis" },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
 
@@ -2118,17 +2133,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "alembic", specifier = ">=1.14.0" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "litellm", specifier = ">=1.40.0" },
     { name = "news-service", editable = "../backend" },
-    { name = "pydantic", specifier = ">=2.9.0" },
     { name = "pydantic-settings", specifier = ">=2.7.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.25.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "redis", specifier = ">=5.2.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
 ]
@@ -2142,7 +2154,9 @@ dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "beautifulsoup4" },
+    { name = "better-profanity" },
     { name = "celery", extra = ["redis"] },
+    { name = "clawguard-core" },
     { name = "croniter" },
     { name = "fastapi" },
     { name = "feedparser" },
@@ -2165,7 +2179,9 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.14.0" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "beautifulsoup4", specifier = ">=4.12.0" },
+    { name = "better-profanity", specifier = ">=0.7.0" },
     { name = "celery", extras = ["redis"], specifier = ">=5.4.0" },
+    { name = "clawguard-core", specifier = ">=0.4.0" },
     { name = "croniter", specifier = ">=1.3.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "feedparser", specifier = ">=6.0.11" },
@@ -2182,9 +2198,11 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.0" },
     { name = "selenium", specifier = ">=4.34.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.36" },
+    { name = "torch", marker = "extra == 'classifier'", specifier = ">=2.0.0" },
+    { name = "transformers", marker = "extra == 'classifier'", specifier = ">=4.40.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "classifier"]
 
 [[package]]
 name = "numpy"

@@ -35,7 +35,6 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import select
 
-
 STRONG_URL_1 = "https://brussels-energy-policy.invalid/feed.xml"
 STRONG_URL_2 = "https://acer-decisions.invalid/rss"
 BORDERLINE_URL = "https://energydaily-markets.invalid/feed"
@@ -110,7 +109,7 @@ CANDIDATE_POSTS: dict[str, list[tuple[str, str]]] = {
             (
                 "ACER issued a binding decision on capacity allocation across the Spain-France "
                 "interconnector. The decision clarifies how transmission system operators must "
-                "implement the EU electricity market regulation and aligns with ENTSO-E methodology."
+                "implement the EU electricity market regulation and align with ENTSO-E methods."
             ),
         ),
         (

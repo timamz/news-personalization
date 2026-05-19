@@ -8,7 +8,7 @@ event, and error propagation.
 import logging
 import uuid
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -32,8 +32,23 @@ def _fake_user() -> SimpleNamespace:
     )
 
 
+def _empty_subscription_session() -> AsyncMock:
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = []
+    session.execute = AsyncMock(return_value=result)
+    return session
+
+
 def _fake_streaming_agent(events_to_yield):
-    async def fake(*, agent, message, user_id="system"):
+    async def fake(
+        *,
+        agent,
+        message,
+        user_id="system",
+        max_llm_calls=None,
+        conversation_history=None,
+    ):
         for ev in events_to_yield:
             yield ev
 
@@ -41,7 +56,14 @@ def _fake_streaming_agent(events_to_yield):
 
 
 def _fake_streaming_agent_error(error):
-    async def fake(*, agent, message, user_id="system"):
+    async def fake(
+        *,
+        agent,
+        message,
+        user_id="system",
+        max_llm_calls=None,
+        conversation_history=None,
+    ):
         for _ in ():
             yield _
         raise error
@@ -59,7 +81,7 @@ async def test_streaming_yields_done_event_with_agent_message() -> None:
             ev
             async for ev in run_conversation_turn_streaming(
                 [{"role": "user", "content": f"AI news {uuid.uuid4().hex[:6]}"}],
-                db_session=AsyncMock(),
+                db_session=_empty_subscription_session(),
                 user=_fake_user(),
                 conversation_summary="",
                 user_language="en",
@@ -94,7 +116,7 @@ async def test_streaming_tool_call_emits_status_then_done() -> None:
             ev
             async for ev in run_conversation_turn_streaming(
                 [{"role": "user", "content": f"Add @durov {uuid.uuid4().hex[:6]}"}],
-                db_session=AsyncMock(),
+                db_session=_empty_subscription_session(),
                 user=_fake_user(),
                 conversation_summary="",
                 user_language="en",
@@ -115,7 +137,7 @@ async def test_streaming_yields_error_event_on_agent_failure() -> None:
             ev
             async for ev in run_conversation_turn_streaming(
                 [{"role": "user", "content": f"Test {uuid.uuid4().hex[:6]}"}],
-                db_session=AsyncMock(),
+                db_session=_empty_subscription_session(),
                 user=_fake_user(),
                 conversation_summary="",
             )

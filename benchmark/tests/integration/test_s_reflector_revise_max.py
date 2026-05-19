@@ -74,7 +74,6 @@ from tests.integration._reflector_common import (
     seed_reflector_world,
 )
 
-
 GARBAGE_ITEMS = [
     {
         "headline": "EU updates today",

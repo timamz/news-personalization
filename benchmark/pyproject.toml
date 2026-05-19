@@ -6,13 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "news-service",
-    "pydantic>=2.9.0",
     "pydantic-settings>=2.7.0",
     "litellm>=1.40.0",
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
-    "redis>=5.2.0",
-    "alembic>=1.14.0",
     "httpx>=0.28.0",
     "python-dotenv>=1.0.0",
 ]

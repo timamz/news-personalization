@@ -48,7 +48,6 @@ from tests.integration._reflector_common import (
     seed_reflector_world,
 )
 
-
 _TOPIC_TEXT = "EU energy and climate policy"
 
 

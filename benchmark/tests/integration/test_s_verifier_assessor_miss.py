@@ -41,7 +41,6 @@ from sqlalchemy import select
 
 from news_benchmark.clock import CLOCK
 from news_benchmark.fakes.search import SearchResult
-
 from tests.integration._reflector_common import install_discovery_stub
 
 WEBHOOK_URL = "https://bench.invalid/webhook/s-verifier-assessor-miss"

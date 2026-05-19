@@ -34,7 +34,6 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-
 BENCH_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = BENCH_ROOT / "data" / "scenarios"
 RESULTS_DIR = BENCH_ROOT / "results"
@@ -219,7 +218,7 @@ def health(rec: dict) -> dict:
     }
 
 
-def rescore_record(rec_path: Path, scenario_overrides: dict[str, str] | None = None) -> dict:
+def rescore_record(rec_path: Path) -> dict:
     rec = json.loads(rec_path.read_text())
     sid = rec.get("scenario_id") or rec_path.stem.split("__")[0]
     skel = json.loads((DATA_DIR / sid / "skeleton.json").read_text())
@@ -249,10 +248,7 @@ def rescore_record(rec_path: Path, scenario_overrides: dict[str, str] | None = N
 
 def main() -> int:
     args = sys.argv[1:]
-    if args:
-        roots = [Path(a) for a in args]
-    else:
-        roots = list(RESULTS_DIR.glob("v3_*"))
+    roots = [Path(a) for a in args] if args else list(RESULTS_DIR.glob("v3_*"))
     rec_paths: list[Path] = []
     for root in roots:
         rec_paths.extend(sorted(root.glob("**/scenarios/*.json")))
@@ -271,9 +267,11 @@ def main() -> int:
             continue
         # Heuristic: any path that has more webhooks OR has 'rerun' wins.
         old = json.loads(existing.read_text())
-        if len(rec.get("captured_webhooks") or []) > len(old.get("captured_webhooks") or []):
-            best[sid] = p
-        elif "rerun" in str(p) and "rerun" not in str(existing):
+        has_more_webhooks = len(rec.get("captured_webhooks") or []) > len(
+            old.get("captured_webhooks") or []
+        )
+        is_rerun_replacement = "rerun" in str(p) and "rerun" not in str(existing)
+        if has_more_webhooks or is_rerun_replacement:
             best[sid] = p
 
     summaries = [rescore_record(p) for p in best.values()]

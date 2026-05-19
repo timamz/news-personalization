@@ -17,11 +17,8 @@ pytest-based integration tests compose per-test.
   time.
 - `cost_ledger.py` -- wraps `litellm.acompletion` / `litellm.aembedding`
   to record per-call cost + token counts, tagged by current agent.
-- `tagging.py` -- `agent_tag(name)` async context manager that attaches
-  the surrounding agent's label to every LLM call underneath.
 - `config.py` -- devbox Postgres/Redis + model strings.
 - `db.py` -- `create_bench_db()` / `drop_bench_db()` / schema install.
-- `redis_ns.py` -- per-run prefixed Redis wrapper.
 - `scheduler.py` -- `VirtualScheduler`: heap-based async scheduler that
   advances the FakeClock between events, for cron/poll-driven tests.
 - `fakes/adapters.py` -- `FakeAdapter` and `make_scenario_poll_adapter()`

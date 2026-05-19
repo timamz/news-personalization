@@ -39,7 +39,6 @@ import uuid
 
 import pytest
 
-
 USER_SPEC = (
     "# Lithium supply-chain alerts\n"
     "\n"

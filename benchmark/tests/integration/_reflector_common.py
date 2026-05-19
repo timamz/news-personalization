@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
 
-
 WEBHOOK_URL = "https://bench.invalid/webhook/s-reflector"
 
 
@@ -251,10 +250,9 @@ def install_discovery_stub(world) -> DiscoveryStub:
 
 async def read_source_removal_log_for(sub_id):
     """Read every SourceRemovalLog row for this subscription."""
-    from sqlalchemy import select
-
     from news_service.db.session import async_session_factory
     from news_service.models.source_removal_log import SourceRemovalLog
+    from sqlalchemy import select
 
     async with async_session_factory() as s:
         rows = await s.execute(
@@ -265,10 +263,9 @@ async def read_source_removal_log_for(sub_id):
 
 async def read_subscription_sources(sub_id):
     """Return every SubscriptionSource row currently linked to the sub."""
-    from sqlalchemy import select
-
     from news_service.db.session import async_session_factory
     from news_service.models.subscription_source import SubscriptionSource
+    from sqlalchemy import select
 
     async with async_session_factory() as s:
         rows = await s.execute(

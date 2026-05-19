@@ -436,7 +436,9 @@ async def _scripted_turn_with_confirm(
             state.messages.append(
                 {
                     "role": "assistant",
-                    "content": f"[inline-button] User confirmed; {tool_name} -> {str(result)[:200]}",
+                    "content": (
+                        f"[inline-button] User confirmed; {tool_name} -> {str(result)[:200]}"
+                    ),
                 }
             )
     return agent_text, executed

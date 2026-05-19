@@ -41,7 +41,6 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import select
 
-
 ATTACHED_URL_1 = "https://acer-decisions.invalid/rss"
 ATTACHED_URL_2 = "https://entso-e-news.invalid/feed"
 FRESH_URL_1 = "https://brussels-energy-policy.invalid/feed.xml"
@@ -53,8 +52,6 @@ async def test_s_discovery_does_not_reattach_already_attached_source_even_when_r
     world,
 ):
     """Already-attached source is filtered out upstream; no duplicate link created."""
-    from news_benchmark.fakes.adapters import FakeAdapter, ScenarioItem
-    from news_benchmark.fakes.search import SearchResult
     from news_service.db.session import async_session_factory
     from news_service.db.vector_store import embed_text
     from news_service.models.failed_task import FailedTask
@@ -63,6 +60,9 @@ async def test_s_discovery_does_not_reattach_already_attached_source_even_when_r
     from news_service.models.subscription_source import SubscriptionSource
     from news_service.models.user import User
     from news_service.tasks.discover_sources import run_and_persist_discovery
+
+    from news_benchmark.fakes.adapters import FakeAdapter, ScenarioItem
+    from news_benchmark.fakes.search import SearchResult
 
     now = datetime(2026, 4, 20, tzinfo=UTC)
 

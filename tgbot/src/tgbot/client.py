@@ -113,14 +113,6 @@ class BackendClient:
                 if line.strip():
                     yield json.loads(line)
 
-    async def reset_conversation(self, api_key: str) -> None:
-        async with httpx.AsyncClient(timeout=self._request_timeout()) as client:
-            response = await client.delete(
-                f"{self.base_url}/subscriptions/conversations",
-                headers={"X-API-Key": api_key},
-            )
-            response.raise_for_status()
-
     async def confirm_pending_action(
         self,
         api_key: str,

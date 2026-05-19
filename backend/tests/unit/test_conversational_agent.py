@@ -201,7 +201,7 @@ def test_append_conversation_summary_dedups_same_fact_and_caps_bytes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_subscription_embeds_retrieval_query_and_runs_inline_discovery(
+async def test_create_subscription_embeds_retrieval_query_and_queues_discovery(
     mocker,
 ) -> None:
     user = _fake_user()
@@ -218,19 +218,8 @@ async def test_create_subscription_embeds_retrieval_query_and_runs_inline_discov
         new=AsyncMock(return_value=[]),
     )
     discovery_mock = mocker.patch(
-        "news_service.agents.conversational.tools.run_and_persist_discovery",
-        new=AsyncMock(
-            return_value={
-                "status": "ok",
-                "subscription_id": "sub-id",
-                "discovered": 2,
-                "persisted": 2,
-                "selected_sources": [
-                    {"url": "https://example.com/a", "title": "A", "source_kind": "rss"},
-                    {"url": "https://example.com/b", "title": "B", "source_kind": "rss"},
-                ],
-            }
-        ),
+        "news_service.agents.conversational.tools._dispatch_discovery",
+        return_value="discovery_queued",
     )
 
     agent, shared_state = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -244,16 +233,14 @@ async def test_create_subscription_embeds_retrieval_query_and_runs_inline_discov
     )
     assert (
         ": created" in result
-        and "discovery finished" in result
-        and "https://example.com/a" in result
+        and "discovery_queued" in result
         and shared_state["created_subscription_id"]
         and embed_mock.await_args.args[0] == query
-        and discovery_mock.await_count == 1
-        and query in discovery_mock.await_args.args[2]
+        and discovery_mock.call_count == 1
+        and query in discovery_mock.call_args.args[1]
     ), (
-        "creation must embed retrieval_query, record the id, run discovery "
-        "inline with a query-referencing reason, and include its findings in "
-        "the tool return"
+        "creation must embed retrieval_query, record the id, queue discovery "
+        "with a query-referencing reason, and report that discovery was queued"
     )
 
 
@@ -309,8 +296,8 @@ async def test_create_subscription_skips_discovery_when_not_requested(mocker) ->
         new=AsyncMock(return_value=[]),
     )
     discovery_mock = mocker.patch(
-        "news_service.agents.conversational.tools.run_and_persist_discovery",
-        new=AsyncMock(return_value={"status": "ok", "selected_sources": []}),
+        "news_service.agents.conversational.tools._dispatch_discovery",
+        return_value="discovery_queued",
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -320,7 +307,7 @@ async def test_create_subscription_skips_discovery_when_not_requested(mocker) ->
         delivery_mode="digest",
         include_discovered_sources=False,
     )
-    assert discovery_mock.await_count == 0, (
+    assert discovery_mock.call_count == 0, (
         "discovery must not fire when include_discovered_sources is False"
     )
 
@@ -477,16 +464,8 @@ async def test_trigger_source_discovery_enqueues_with_reason(mocker) -> None:
     scoped.execute = AsyncMock(return_value=lookup)
 
     discovery_mock = mocker.patch(
-        "news_service.agents.conversational.tools.run_and_persist_discovery",
-        new=AsyncMock(
-            return_value={
-                "status": "ok",
-                "persisted": 1,
-                "selected_sources": [
-                    {"url": "https://found.example/feed", "title": "Found", "source_kind": "rss"},
-                ],
-            }
-        ),
+        "news_service.agents.conversational.tools._dispatch_discovery",
+        return_value="discovery_queued",
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -503,12 +482,10 @@ async def test_trigger_source_discovery_enqueues_with_reason(mocker) -> None:
         reason=reason,
     )
     assert (
-        "discovery finished" in result
-        and "https://found.example/feed" in result
-        and discovery_mock.await_count == 1
-        and discovery_mock.await_args.args[1] == sub.id
-        and discovery_mock.await_args.args[2] == reason
-    ), "trigger_source_discovery did not run the inline pipeline with the given reason"
+        result == "discovery_queued"
+        and discovery_mock.call_count == 1
+        and discovery_mock.call_args.args == (sub.id, reason)
+    ), "trigger_source_discovery did not queue discovery with the given reason"
 
 
 @pytest.mark.asyncio
@@ -523,8 +500,8 @@ async def test_trigger_source_discovery_rejects_empty_reason(mocker) -> None:
     scoped = AsyncMock()
     scoped.execute = AsyncMock(return_value=lookup)
     discovery_mock = mocker.patch(
-        "news_service.agents.conversational.tools.run_and_persist_discovery",
-        new=AsyncMock(return_value={"status": "ok", "selected_sources": []}),
+        "news_service.agents.conversational.tools._dispatch_discovery",
+        return_value="discovery_queued",
     )
 
     agent, _ = _build_agent_with_factory(user=user, factory_session=scoped)
@@ -532,8 +509,8 @@ async def test_trigger_source_discovery_rejects_empty_reason(mocker) -> None:
         subscription_id=str(sub.id),
         reason="   ",
     )
-    assert "reason is required" in result and discovery_mock.await_count == 0, (
-        "empty reason must be rejected before the inline pipeline runs"
+    assert "reason is required" in result and discovery_mock.call_count == 0, (
+        "empty reason must be rejected before discovery is queued"
     )
 
 

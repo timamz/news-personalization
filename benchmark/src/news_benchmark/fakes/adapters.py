@@ -15,7 +15,7 @@ every type.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 
@@ -28,9 +28,6 @@ class ScenarioItem:
     headline: str
     body: str
     text_to_embed: str = ""
-    difficulty: str = "easy_positive"
-    should_notify_per_sub: dict[str, bool] = field(default_factory=dict)
-    should_contribute_to_digest_per_sub: dict[str, bool] = field(default_factory=dict)
 
     def to_normalized(self) -> dict[str, object]:
         """Shape the real polling pipeline consumes (NormalizedPost fields)."""
@@ -55,25 +52,6 @@ class FakeAdapter:
     source_url: str
     items: list[ScenarioItem]
     last_served: datetime | None = None
-
-    async def fetch_posts(self, now: datetime) -> list[dict[str, object]]:
-        out: list[dict[str, object]] = []
-        for item in self.items:
-            if self.last_served is not None and item.fake_ts <= self.last_served:
-                continue
-            if item.fake_ts > now:
-                continue
-            out.append(item.to_normalized())
-        if out:
-            self.last_served = max(i.fake_ts for i in self.items if i.fake_ts <= now)
-        return out
-
-    def source_name(self) -> str:
-        return self.source_url
-
-    def log_label(self) -> str:
-        return f"fake({self.source_url})"
-
 
 def make_scenario_poll_adapter(adapters_by_url: dict[str, FakeAdapter]):
     """Return a class that impersonates ``news_service.tasks.poll_adapters``

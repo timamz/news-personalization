@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import pytest
 
-
 CLEAN_ON_TOPIC_USER_SPEC = """\
 Topic: EU energy policy, focused on gas supply security, renewables
 build-out, and electricity market reform. Include only stories that
@@ -293,7 +292,7 @@ async def test_s_judge_digest_off_topic_fails_relevance(world):
 
 @pytest.mark.asyncio
 async def test_s_judge_digest_wrong_format_fails_format_score(world):
-    """On-topic content but bullets + markdown headers violate the strict numbered-paragraph spec."""
+    """On-topic content violates the strict numbered-paragraph format."""
     from news_service.agents.digest.judge import judge_digest
 
     scores = await judge_digest(

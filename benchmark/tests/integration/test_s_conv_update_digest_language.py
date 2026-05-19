@@ -31,7 +31,6 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-
 WEBHOOK_URL = "https://bench.invalid/webhook/s-conv-update-digest-language"
 
 

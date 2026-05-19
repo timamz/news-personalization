@@ -31,7 +31,6 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-
 ORIGINAL_USER_SPEC = (
     "Topic: EU energy policy and regulation.\n"
     "Focus on the European Commission's energy directives, gas and electricity "

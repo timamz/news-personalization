@@ -17,7 +17,7 @@ Usage:
 from __future__ import annotations
 
 import datetime as _dt_module
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 
 class FakeClock:
@@ -37,10 +37,6 @@ class FakeClock:
         if target < self._now:
             raise ValueError(f"FakeClock cannot move backwards: {self._now} -> {target}")
         self._now = target
-
-    def advance_by(self, delta: timedelta) -> None:
-        """Move the clock forward by `delta`."""
-        self.advance_to(self._now + delta)
 
     def reset_to(self, target: datetime) -> None:
         """Unconditional clock set. Used between scenarios so the matrix
@@ -89,12 +85,3 @@ def install_clock_patch(start: datetime | None = None) -> None:
         return
     _dt_module.datetime = _FakeDatetime  # type: ignore[misc]
     _patched = True
-
-
-def assert_patched() -> None:
-    """Fail loudly if any scenario has drifted back to the real clock."""
-    if _dt_module.datetime is not _FakeDatetime:
-        raise RuntimeError(
-            "FakeClock patch is not installed; a module likely imported "
-            "datetime before install_clock_patch() ran"
-        )

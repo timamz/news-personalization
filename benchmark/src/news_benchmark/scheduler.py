@@ -47,7 +47,6 @@ class VirtualScheduler:
     def __init__(self) -> None:
         self._heap: list[_Event] = []
         self._seq = itertools.count()
-        self._cancelled: set[int] = set()
 
     def schedule(self, fire_at: datetime, cb: Callback, label: str = "") -> int:
         """Schedule `cb` to fire at `fire_at` (virtual time). Returns a handle id."""
@@ -55,16 +54,10 @@ class VirtualScheduler:
         heapq.heappush(self._heap, _Event(fire_at, seq, cb, label))
         return seq
 
-    def cancel(self, handle: int) -> None:
-        """Mark a previously scheduled event as cancelled."""
-        self._cancelled.add(handle)
-
     async def run(self, until: datetime) -> None:
         """Drain the heap, firing each event in order, stopping at `until`."""
         while self._heap:
             ev = heapq.heappop(self._heap)
-            if ev.seq in self._cancelled:
-                continue
             if ev.fire_at > until:
                 heapq.heappush(self._heap, ev)
                 break

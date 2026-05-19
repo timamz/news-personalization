@@ -10,19 +10,9 @@ messages so far into ``compacted_log`` and keeps only the latest exchange
 live. A byte-size guardrail drops the oldest entries if the agent forgets.
 """
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
-
-
-class StreamEvent(BaseModel):
-    """A single event in the NDJSON conversation stream."""
-
-    event: Literal["status", "done", "error"] = Field(...)
-    status_key: str | None = Field(default=None, description="Translation key for status text")
-    data: dict[str, Any] | None = Field(
-        default=None, description="Final result payload (for done events)"
-    )
 
 
 class ConversationTurnRequest(BaseModel):

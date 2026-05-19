@@ -28,7 +28,6 @@ from sqlalchemy import select
 from news_benchmark.clock import CLOCK
 from news_benchmark.fakes.adapters import FakeAdapter, ScenarioItem
 
-
 SOURCE_URL = "https://example-nova-metals.invalid/feed.xml"
 WEBHOOK_URL = "https://bench.invalid/webhook/s-event-assess"
 

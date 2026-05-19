@@ -42,7 +42,6 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import select
 
-
 CANDIDATE_URLS = [
     "https://brussels-energy-policy.invalid/feed.xml",
     "https://acer-decisions.invalid/rss",
@@ -123,7 +122,7 @@ CANDIDATE_POSTS: dict[str, list[tuple[str, str]]] = {
             (
                 "ACER issued a binding decision on capacity allocation across the Spain-France "
                 "interconnector. The decision clarifies how transmission system operators must "
-                "implement the EU electricity market regulation and aligns with ENTSO-E methodology."
+                "implement the EU electricity market regulation and align with ENTSO-E methods."
             ),
         ),
         (

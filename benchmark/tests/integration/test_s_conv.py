@@ -43,7 +43,6 @@ from sqlalchemy import select
 
 from news_benchmark.fakes.adapters import FakeAdapter
 
-
 EXPECTED_TELEGRAM_URL = "https://t.me/s/euenergynews"
 
 

@@ -11,7 +11,6 @@ turn. A CAPS-LOCK trailer spells that out explicitly.
 
 from __future__ import annotations
 
-
 _NO_QUESTIONS_TRAIL = (
     "\n\nASSUME: my timezone is Europe/Berlin, my language is English, "
     "my city is Berlin. You have every piece of information you need. "

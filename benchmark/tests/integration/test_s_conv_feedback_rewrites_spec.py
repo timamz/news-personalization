@@ -31,7 +31,6 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-
 ORIGINAL_USER_SPEC = (
     "Daily EU energy policy digest. 5-6 items max. Plain text, no markdown. "
     "Delivered at 9am UTC. Focus on ENTSO-E, ACER, EUR-Lex. English."
