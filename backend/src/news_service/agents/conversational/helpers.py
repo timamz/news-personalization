@@ -96,12 +96,13 @@ async def _load_subscription_summaries(
     subs = list(result.scalars().all())
     lines: list[str] = []
     for sub in subs:
-        label = sub.title or _spec_preview(sub.user_spec or "") or "(no spec)"
         schedule = sub.schedule_cron or (
             "event mode" if sub.delivery_mode == "event" else "on demand"
         )
         state = "[STOPPED] " if sub.paused_at is not None else ""
-        lines.append(f"[{sub.id}] {state}{sub.delivery_mode} | {schedule} | {label}")
+        header = f"[{sub.id}] {state}{sub.delivery_mode} | {schedule} | {sub.digest_language}"
+        spec = (sub.user_spec or "").strip()
+        lines.append(f"{header}\n{spec}" if spec else header)
     return lines
 
 
