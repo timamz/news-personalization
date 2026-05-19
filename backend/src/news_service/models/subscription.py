@@ -57,6 +57,7 @@ class Subscription(UUIDPrimaryKey, TimestampMixin, Base):
     )
     topic_embedding = mapped_column(Vector(1536), nullable=True)
     user_spec: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     delivery_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="digest")
     schedule_cron: Mapped[str | None] = mapped_column(String(100), nullable=True)
     digest_language: Mapped[str] = mapped_column(String(16), nullable=False, default="en")

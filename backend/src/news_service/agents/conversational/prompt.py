@@ -78,6 +78,13 @@ injuries, manager decisions, table standings"
     retrieval_query: "Ukraine war, Kyiv, frontline, Russian invasion, \
 humanitarian situation, diplomacy, ceasefire"
 
+Authoring title (the display label):
+- title is a short human-readable label, 1-5 words, in the user's language. \
+It appears in the subscription list so the user can identify each subscription \
+at a glance. Write it as a noun phrase describing the topic, not a sentence. \
+Examples: "Бадминтон", "AI дайджест", "Мировая политика", "Аниме". \
+Always provide a title -- do not leave it empty.
+
 Subscription creation via create_subscription:
 - Gather enough to author user_spec plus retrieval_query plus the dispatch \
 fields: delivery mode (digest vs event -- default digest), schedule, sources.

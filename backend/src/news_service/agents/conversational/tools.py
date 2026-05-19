@@ -161,6 +161,7 @@ def build_tools(
     async def create_subscription(
         user_spec: str,
         retrieval_query: str,
+        title: str = "",
         delivery_mode: str = "digest",
         schedule_cron: str = "",
         digest_language: str = "",
@@ -195,6 +196,10 @@ def build_tools(
             retrieval_query: Short dense query for embedding-based news
                 retrieval. Required and non-empty. Topic and entities
                 only -- no format or tone guidance.
+            title: Short human-readable label for this subscription,
+                1-5 words, in the user's language. Used in the
+                subscription list so the user can identify it at a
+                glance. Example: "Бадминтон", "AI дайджест", "Аниме".
             delivery_mode: 'digest' (periodic summary) or 'event' (instant alerts).
             schedule_cron: 5-field cron. Empty = manual / event-only delivery.
             digest_language: ISO code (en, ru, ...). Empty = use the user's language.
@@ -266,6 +271,7 @@ def build_tools(
                 user_id=user.id,
                 topic_embedding=query_embedding,
                 user_spec=spec,
+                title=title.strip()[:120] or None,
                 delivery_mode=delivery_mode,
                 schedule_cron=normalized_cron,
                 digest_language=resolved_language,
@@ -329,6 +335,7 @@ def build_tools(
         subscription_id: str,
         user_spec: str = "",
         retrieval_query: str = "",
+        title: str = "",
         delivery_mode: str = "",
         schedule_cron: str = "",
         digest_language: str = "",
@@ -390,6 +397,8 @@ def build_tools(
             if digest_language.strip():
                 existing.digest_language = digest_language.strip().lower()
 
+            if title.strip():
+                existing.title = title.strip()[:120]
             if new_spec and new_spec != (existing.user_spec or ""):
                 existing.user_spec = new_spec
 
