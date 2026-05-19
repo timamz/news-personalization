@@ -225,6 +225,18 @@ async def _record_button_decision(user_id: str, summary: str, max_tokens: int) -
     await _save_state(state)
 
 
+_DISCOVERY_QUEUED_MSG: dict[str, str] = {
+    "ru": "Поиск источников запущен — вы получите отдельное сообщение, когда он завершится.",
+    "en": "Source discovery is running — you'll get a follow-up message when it's done.",
+}
+
+
+def _user_facing_result(tool_name: str, raw_result: str, language: str) -> str:
+    if tool_name == "trigger_source_discovery" and raw_result == "discovery_queued":
+        return _DISCOVERY_QUEUED_MSG.get(language, _DISCOVERY_QUEUED_MSG["en"])
+    return raw_result
+
+
 @router.post("/confirm", response_model=ConfirmationDecisionResponse)
 async def confirm_action(
     payload: ConfirmationDecisionRequest,
@@ -296,5 +308,7 @@ async def confirm_action(
         settings.conversation_hot_max_tokens,
     )
     return ConfirmationDecisionResponse(
-        status="executed", action=pending.tool_name, result=str(result)
+        status="executed",
+        action=pending.tool_name,
+        result=_user_facing_result(pending.tool_name, str(result), user.language or "en"),
     )
