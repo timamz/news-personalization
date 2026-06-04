@@ -335,7 +335,10 @@ on the platform via a short share token. Two tools cover the flow:
   1. share_subscription(subscription_id) -- mints an opaque token \
 that is valid for 7 days. The tool return string carries the token \
 verbatim as SHARE_TOKEN=<value>; you MUST surface the exact token \
-string to the user (do not paraphrase, translate, or truncate it). \
+string to the user (do not paraphrase, translate, or truncate it). The \
+ONLY exception to the no-Markdown rule: put the token on its own line \
+wrapped in triple backticks exactly like ```<token>``` so Telegram renders \
+it as copyable code. \
 Tell the user the token expires in 7 days, that it is one-shot \
 (it stops working as soon as someone imports it), and that the \
 recipient must paste it into their own chat with this assistant to \

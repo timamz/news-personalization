@@ -106,6 +106,14 @@ def test_prompt_forbids_clarifying_questions_after_create_subscription() -> None
     )
 
 
+def test_prompt_requires_share_tokens_wrapped_for_copying() -> None:
+    from news_service.agents.conversational.prompt import CONVERSATIONAL_AGENT_PROMPT
+
+    assert "```<token>```" in CONVERSATIONAL_AGENT_PROMPT, (
+        "prompt does not force share tokens into triple backticks for copying"
+    )
+
+
 def test_build_instruction_flags_first_time_user_when_not_onboarded() -> None:
     result = _build_instruction(
         conversation_summary="",

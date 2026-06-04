@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -119,6 +120,33 @@ async def run_conversational_turn(
 
 
 _ADK_SENTINEL = object()
+_SHARE_TOKEN_RE = re.compile(r"SHARE_TOKEN=([A-Za-z0-9_-]+)")
+
+
+def _extract_share_token(tool_result: str) -> str | None:
+    match = _SHARE_TOKEN_RE.search(tool_result)
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def _message_with_share_token(agent_text: str, token: str, language: str) -> str:
+    wrapped = f"```{token}```"
+    if wrapped in agent_text:
+        return agent_text
+    if token in agent_text:
+        return agent_text.replace(token, wrapped, 1)
+    if language.startswith("ru"):
+        return (
+            f"Токен для импорта подписки:\n{wrapped}\n\n"
+            "Он действует 7 дней и одноразовый: после первого импорта перестанет работать. "
+            "Получателю нужно вставить этот токен в свой чат с ассистентом."
+        )
+    return (
+        f"Subscription import token:\n{wrapped}\n\n"
+        "It is valid for 7 days and one-shot: after the first import it stops working. "
+        "The recipient should paste this token into their own chat with this assistant."
+    )
 
 
 async def run_conversation_turn_streaming(
@@ -167,6 +195,7 @@ async def run_conversation_turn_streaming(
         )
 
         agent_text = ""
+        share_token: str | None = None
         agent_error: BaseException | None = None
 
         async def pump_adk() -> None:
@@ -198,6 +227,11 @@ async def run_conversation_turn_streaming(
                         emitted = _status_for_tool_call(event)
                         if emitted is not None:
                             yield emitted
+                    elif event["type"] == "tool_result":
+                        if event.get("name") == "share_subscription":
+                            extracted = _extract_share_token(str(event.get("result") or ""))
+                            if extracted is not None:
+                                share_token = extracted
                     elif event["type"] == "final_response":
                         agent_text = event["text"]
                 elif isinstance(item, dict):
@@ -209,6 +243,13 @@ async def run_conversation_turn_streaming(
             logger.exception("Conversational agent streaming failed", exc_info=agent_error)
             yield {"event": "error", "detail": f"Agent error: {agent_error}"}
             return
+
+        if share_token is not None:
+            agent_text = _message_with_share_token(
+                agent_text,
+                share_token,
+                str(shared_state.get("display_language") or user.language or "en"),
+            )
 
         output = AgentTurnOutput(
             message=agent_text,

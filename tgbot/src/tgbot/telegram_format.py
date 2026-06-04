@@ -11,6 +11,7 @@ _LABELLED_URL_FRAGMENT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _CYRILLIC_PATTERN = re.compile(r"[А-Яа-яЁё]")
+_INLINE_CODE_FENCE_PATTERN = re.compile(r"^```(.+)```$")
 
 
 def render_html_message(text: str) -> str:
@@ -26,6 +27,10 @@ def render_html_message(text: str) -> str:
 
 
 def render_html_line(line: str, default_label: str) -> str:
+    code_match = _INLINE_CODE_FENCE_PATTERN.match(line.strip())
+    if code_match is not None:
+        return f"<code>{html.escape(code_match.group(1))}</code>"
+
     source_match = _SOURCE_WITH_URL_PATTERN.match(line)
     if source_match is not None:
         return _italic_link(source_match.group(1), _link_label_for_text(line, default_label))

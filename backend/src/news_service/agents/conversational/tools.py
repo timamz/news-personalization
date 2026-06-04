@@ -1118,8 +1118,9 @@ def build_tools(
         )
         return (
             f"share_token_created: SHARE_TOKEN={token}. Show this token to "
-            "the user verbatim and tell them it is valid for 7 days; the "
-            "recipient must paste it into their own chat with this "
+            "the user verbatim on its own line wrapped in triple backticks "
+            "like ```<token>```. Tell them it is valid for 7 days; "
+            "the recipient must paste it into their own chat with this "
             "assistant to import the subscription. Do not paraphrase, "
             "translate, or shorten the token string itself."
         )

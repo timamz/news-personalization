@@ -129,6 +129,40 @@ async def test_streaming_tool_call_emits_status_then_done() -> None:
 
 
 @pytest.mark.asyncio
+async def test_streaming_forces_share_token_into_final_message() -> None:
+    token = f"{uuid.uuid4().hex[:8]}_{uuid.uuid4().hex[:8]}"
+    fake = _fake_streaming_agent(
+        [
+            {
+                "type": "tool_result",
+                "name": "share_subscription",
+                "result": f"share_token_created: SHARE_TOKEN={token}. Show this token.",
+            },
+            {"type": "final_response", "text": "Готово."},
+        ]
+    )
+    user = _fake_user()
+    user.language = "ru"
+
+    with patch(_RUN_AGENT_PATH, side_effect=fake):
+        events = [
+            ev
+            async for ev in run_conversation_turn_streaming(
+                [{"role": "user", "content": f"Поделись подпиской {uuid.uuid4().hex[:6]}"}],
+                db_session=_empty_subscription_session(),
+                user=user,
+                conversation_summary="",
+                user_language="ru",
+            )
+        ]
+
+    final = events[-1]["output"]["message"]
+    assert f"```{token}```" in final and "действует 7 дней" in final, (
+        "streaming runner must not let the model hide a minted share token"
+    )
+
+
+@pytest.mark.asyncio
 async def test_streaming_yields_error_event_on_agent_failure() -> None:
     fake = _fake_streaming_agent_error(RuntimeError(f"Agent crashed {uuid.uuid4().hex[:6]}"))
 

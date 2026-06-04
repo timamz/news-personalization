@@ -51,3 +51,11 @@ def test_render_html_message_labels_both_urls_as_source_links() -> None:
     )
     expected_end = '<a href="https://example.com/post-2"><i>Source</i></a>'
     assert rendered.endswith(expected_end), "render_html_message did not label second URL"
+
+
+def test_render_html_message_turns_backtick_token_into_code() -> None:
+    rendered = render_html_message("```abc_DEF-123```")
+
+    assert rendered == "<code>abc_DEF-123</code>", (
+        "render_html_message did not render a fenced token as Telegram HTML code"
+    )
