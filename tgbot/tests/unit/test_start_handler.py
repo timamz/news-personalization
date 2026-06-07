@@ -185,6 +185,44 @@ async def test_handle_user_message_streams_turn_to_backend(mocker) -> None:
 
 
 @pytest.mark.asyncio
+async def test_handle_user_message_renders_server_confirmation_with_buttons(mocker) -> None:
+    telegram_id = random.randint(100000, 999999)
+    message = _make_message(telegram_id, text="stop the digest")
+    api_key = f"key-{uuid.uuid4().hex}"
+    server_text = f"Сейчас поставлю подписку на паузу {uuid.uuid4().hex[:6]}"
+    model_text = f"model text that should not be shown {uuid.uuid4().hex[:6]}"
+
+    mocker.patch.object(start, "ensure_api_key", new=AsyncMock(return_value=api_key))
+    mocker.patch.object(start.backend, "update_profile", new=AsyncMock())
+    mocker.patch.object(
+        start.backend,
+        "send_conversation_message_stream",
+        return_value=_stream_events(
+            [
+                {
+                    "event": "requires_confirmation",
+                    "nonce": "nonce-token",
+                    "action": "stop_subscription",
+                    "message": server_text,
+                    "yes_label": "Да",
+                    "no_label": "Нет",
+                },
+                {"event": "done", "agent_message": model_text},
+            ]
+        ),
+    )
+
+    await start.handle_user_message(message)
+
+    spoken = "".join(call.args[0] for call in message.answer.await_args_list)
+    keyboard = message.answer.await_args.kwargs["reply_markup"]
+    labels = [button.text for row in keyboard.inline_keyboard for button in row]
+    assert server_text in spoken and model_text not in spoken and labels == ["Да", "Нет"], (
+        "Telegram handler did not render the server-authored confirmation with yes/no buttons"
+    )
+
+
+@pytest.mark.asyncio
 async def test_handle_user_message_reports_error_when_stream_raises(mocker) -> None:
     telegram_id = random.randint(100000, 999999)
     message = _make_message(telegram_id, text="hi")

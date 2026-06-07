@@ -197,6 +197,7 @@ async def run_conversation_turn_streaming(
         agent_text = ""
         share_token: str | None = None
         agent_error: BaseException | None = None
+        confirmation_events: list[dict[str, Any]] = []
 
         async def pump_adk() -> None:
             nonlocal agent_text, agent_error
@@ -235,6 +236,8 @@ async def run_conversation_turn_streaming(
                     elif event["type"] == "final_response":
                         agent_text = event["text"]
                 elif isinstance(item, dict):
+                    if item.get("event") == "requires_confirmation":
+                        confirmation_events.append(item)
                     yield item
         finally:
             await task
@@ -250,6 +253,14 @@ async def run_conversation_turn_streaming(
                 share_token,
                 str(shared_state.get("display_language") or user.language or "en"),
             )
+        if confirmation_events:
+            confirmation_texts = [
+                str(event.get("message") or "").strip()
+                for event in confirmation_events
+                if str(event.get("message") or "").strip()
+            ]
+            if confirmation_texts:
+                agent_text = "\n\n".join(confirmation_texts)
 
         output = AgentTurnOutput(
             message=agent_text,

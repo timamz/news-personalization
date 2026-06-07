@@ -178,7 +178,7 @@ async def _stream_turn(
     progress_msg: types.Message | None = None
     last_edit_text = ""
     last_edit_ts = 0.0
-    pending_confirmation: dict | None = None
+    pending_confirmations: list[dict] = []
 
     async for event in backend.send_conversation_message_stream(api_key, text):
         kind = event.get("event")
@@ -186,11 +186,14 @@ async def _stream_turn(
             await _safe_typing(message)
             continue
         if kind == "requires_confirmation":
-            pending_confirmation = {
-                "nonce": event.get("nonce") or "",
-                "yes_label": event.get("yes_label") or "Confirm",
-                "no_label": event.get("no_label") or "Cancel",
-            }
+            pending_confirmations.append(
+                {
+                    "nonce": event.get("nonce") or "",
+                    "message": event.get("message") or "",
+                    "yes_label": event.get("yes_label") or "Yes",
+                    "no_label": event.get("no_label") or "No",
+                }
+            )
             continue
         if kind == "discovery_progress":
             display_text = (event.get("display_text") or "").strip()
@@ -227,9 +230,9 @@ async def _stream_turn(
         elif kind == "error":
             agent_message = event.get("detail") or _ERROR_TEXT
 
-    if not agent_message:
+    if not agent_message and not pending_confirmations:
         return
-    await _finalize_turn(message, progress_msg, agent_message, pending_confirmation)
+    await _finalize_turn(message, progress_msg, agent_message, pending_confirmations)
 
 
 def _build_confirmation_keyboard(
@@ -254,25 +257,53 @@ def _build_confirmation_keyboard(
     return types.InlineKeyboardMarkup(inline_keyboard=[[yes, no]])
 
 
+def _confirmation_message(pending: dict, fallback: str) -> str:
+    text = str(pending.get("message") or "").strip()
+    if text:
+        return text
+    if fallback.strip():
+        return fallback.strip()
+    return "This action needs confirmation. Tap Yes to confirm or No to cancel."
+
+
 async def _finalize_turn(
     message: types.Message,
     progress_msg: types.Message | None,
     agent_message: str,
-    pending_confirmation: dict | None = None,
+    pending_confirmations: list[dict] | None = None,
 ) -> None:
     """Render the agent's final message, replacing the progress bubble if any.
 
-    When ``pending_confirmation`` is set, attach the inline yes/no
-    keyboard to the LAST chunk of the agent's reply. Buttons on the
-    final chunk keep them visually anchored to the call-to-action
-    text; earlier chunks render plain.
+    When pending confirmations exist, render the server-authored
+    confirmation text and keyboard for each one. The model's final
+    text is ignored for those turns because the confirmation prompt
+    is part of the backend contract, not an LLM-authored reply.
     """
+    confirmations = pending_confirmations or []
+    if confirmations:
+        if progress_msg is not None:
+            with contextlib.suppress(Exception):
+                await progress_msg.delete()
+        for pending in confirmations:
+            rendered = render_html_message(_confirmation_message(pending, agent_message))
+            chunks = list(split_for_telegram(rendered, _TELEGRAM_MESSAGE_LIMIT))
+            if not chunks:
+                continue
+            keyboard = _build_confirmation_keyboard(pending)
+            last_idx = len(chunks) - 1
+            for idx, chunk in enumerate(chunks):
+                await message.answer(
+                    chunk,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True,
+                    reply_markup=keyboard if idx == last_idx else None,
+                )
+        return
+
     rendered = render_html_message(agent_message)
     chunks = list(split_for_telegram(rendered, _TELEGRAM_MESSAGE_LIMIT))
     if not chunks:
         return
-
-    keyboard = _build_confirmation_keyboard(pending_confirmation) if pending_confirmation else None
 
     if progress_msg is not None and len(chunks) == 1:
         try:
@@ -281,9 +312,6 @@ async def _finalize_turn(
                 parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True,
             )
-            if keyboard is not None:
-                with contextlib.suppress(TelegramBadRequest, Exception):
-                    await progress_msg.edit_reply_markup(reply_markup=keyboard)
             return
         except TelegramBadRequest:
             pass
@@ -294,13 +322,11 @@ async def _finalize_turn(
         with contextlib.suppress(Exception):
             await progress_msg.delete()
 
-    last_idx = len(chunks) - 1
-    for idx, chunk in enumerate(chunks):
+    for chunk in chunks:
         await message.answer(
             chunk,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
-            reply_markup=keyboard if idx == last_idx else None,
         )
 
 
@@ -354,7 +380,7 @@ async def handle_confirmation_callback(callback: types.CallbackQuery) -> None:
     status_value = response.get("status")
     result_text = response.get("result") or ""
     if status_value == "cancelled":
-        body = "Cancelled."
+        body = result_text.strip() or "Cancelled."
     elif status_value == "executed":
         body = result_text.strip() or "Done."
     else:

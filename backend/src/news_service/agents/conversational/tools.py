@@ -78,6 +78,65 @@ _URL_BUILDERS: dict[str, Callable[[str], str]] = {
 }
 
 
+_CONFIRMATION_MESSAGES: dict[str, dict[str, str]] = {
+    "delete_subscription": {
+        "en": "I will delete this subscription. Tap Yes to confirm or No to cancel.",
+        "ru": "Сейчас удалю подписку. Нажмите «Да», чтобы подтвердить, или «Нет», чтобы отменить.",
+    },
+    "stop_subscription": {
+        "en": "I will pause this subscription. Tap Yes to confirm or No to cancel.",
+        "ru": (
+            "Сейчас поставлю подписку на паузу. Нажмите «Да», чтобы подтвердить, "
+            "или «Нет», чтобы отменить."
+        ),
+    },
+    "remove_source": {
+        "en": (
+            "I will remove this source from the subscription. Tap Yes to confirm or No to cancel."
+        ),
+        "ru": (
+            "Сейчас удалю источник из подписки. Нажмите «Да», чтобы подтвердить, "
+            "или «Нет», чтобы отменить."
+        ),
+    },
+    "trigger_digest_now": {
+        "en": "I will queue an immediate digest. Tap Yes to confirm or No to cancel.",
+        "ru": (
+            "Сейчас запущу отправку дайджеста. Нажмите «Да», чтобы подтвердить, "
+            "или «Нет», чтобы отменить."
+        ),
+    },
+    "trigger_source_discovery": {
+        "en": (
+            "I will run source discovery for this subscription. Tap Yes to confirm or No to cancel."
+        ),
+        "ru": (
+            "Сейчас запущу поиск источников для подписки. Нажмите «Да», чтобы "
+            "подтвердить, или «Нет», чтобы отменить."
+        ),
+    },
+}
+
+
+def _confirmation_language(user: User, shared_state: dict[str, Any]) -> str:
+    raw = str(shared_state.get("display_language") or user.language or "en").lower()
+    return "ru" if raw.startswith("ru") else "en"
+
+
+def _confirmation_labels(language: str) -> tuple[str, str]:
+    if language == "ru":
+        return "Да", "Нет"
+    return "Yes", "No"
+
+
+def _confirmation_message(tool_name: str, language: str) -> str:
+    fallback = {
+        "en": "This action needs confirmation. Tap Yes to confirm or No to cancel.",
+        "ru": "Нужно подтверждение. Нажмите «Да», чтобы подтвердить, или «Нет», чтобы отменить.",
+    }
+    return _CONFIRMATION_MESSAGES.get(tool_name, fallback).get(language, fallback["en"])
+
+
 async def _gate_with_confirmation(
     *,
     user: User,
@@ -86,8 +145,6 @@ async def _gate_with_confirmation(
     tool_name: str,
     args: dict[str, Any],
     description: str,
-    yes_label: str,
-    no_label: str,
 ) -> tuple[bool, str]:
     """Server-side confirmation gate for destructive / expensive tools.
 
@@ -108,6 +165,9 @@ async def _gate_with_confirmation(
     the tool must return ``message_for_caller`` verbatim.
     """
     if not confirmation_token:
+        language = _confirmation_language(user, shared_state)
+        yes_label, no_label = _confirmation_labels(language)
+        confirmation_message = _confirmation_message(tool_name, language)
         nonce = await create_pending(
             user_id=str(user.id),
             tool_name=tool_name,
@@ -122,17 +182,16 @@ async def _gate_with_confirmation(
                     "nonce": nonce,
                     "action": tool_name,
                     "description": description,
+                    "message": confirmation_message,
                     "yes_label": yes_label,
                     "no_label": no_label,
                 }
             )
         return False, (
-            f"REQUIRES_CONFIRMATION: about to {description}. The system has "
-            "rendered yes/no buttons to the user. In your reply, restate "
-            "what is about to happen in one short sentence in the user's "
-            "language and tell them to use the buttons below. Do NOT call "
-            "this tool again from text input -- the system will invoke it "
-            "via the button callback once the user taps Yes."
+            f"REQUIRES_CONFIRMATION: pending server-side confirmation for {description}. "
+            "The frontend has already received deterministic user-facing text and "
+            "yes/no buttons. Do not write confirmation copy or call this tool again; "
+            "the system will invoke it via the button callback if the user taps Yes."
         )
 
     pending = await consume_pending(confirmation_token, str(user.id))
@@ -619,8 +678,6 @@ def build_tools(
             description=(
                 f"detach the {source_kind} source '{cleaned}' from subscription {subscription_id}"
             ),
-            yes_label="Remove",
-            no_label="Keep",
         )
         if not proceed:
             return message
@@ -763,8 +820,6 @@ def build_tools(
             tool_name="trigger_digest_now",
             args={"subscription_id": subscription_id},
             description=f"trigger an immediate digest send for subscription {subscription_id}",
-            yes_label="Send digest",
-            no_label="Cancel",
         )
         if not proceed:
             return message
@@ -845,8 +900,6 @@ def build_tools(
                 f"run source discovery for subscription {subscription_id} "
                 f"(spends LLM + search credits); reason: {cleaned_reason[:120]}"
             ),
-            yes_label="Run discovery",
-            no_label="Cancel",
         )
         if not proceed:
             return message
@@ -908,8 +961,6 @@ def build_tools(
             tool_name="delete_subscription",
             args={"subscription_id": subscription_id},
             description=f"deactivate (soft-delete) subscription {subscription_id}",
-            yes_label="Delete",
-            no_label="Keep",
         )
         if not proceed:
             return message
@@ -967,8 +1018,6 @@ def build_tools(
             tool_name="stop_subscription",
             args={"subscription_id": subscription_id},
             description=f"stop (pause) subscription {subscription_id}",
-            yes_label="Stop",
-            no_label="Keep running",
         )
         if not proceed:
             return message

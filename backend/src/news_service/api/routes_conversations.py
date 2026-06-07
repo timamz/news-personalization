@@ -212,15 +212,17 @@ async def reset_conversation(user: User = Depends(get_current_user)) -> None:
 
 
 async def _record_button_decision(user_id: str, summary: str, max_tokens: int) -> None:
-    """Append a synthetic assistant note so the LLM sees the button outcome.
+    """Append a compacted system note so the LLM sees the button outcome.
 
     Without this, the next user turn would not know that a destructive
     or expensive action just ran via an inline button, and might offer
-    to do it again. The note is short and clearly marks the source as
-    a button decision, not a chat message.
+    to do it again. Keep it out of ``messages`` so technical button
+    records cannot be replayed as if they were assistant-authored chat.
     """
     state = await _load_state(user_id)
-    state.messages.append({"role": "assistant", "content": f"[inline-button] {summary}"})
+    cleaned = summary.strip()
+    if cleaned:
+        state.compacted_log.append(cleaned)
     _enforce_size_guardrail(state, max_tokens)
     await _save_state(state)
 
@@ -230,10 +232,53 @@ _DISCOVERY_QUEUED_MSG: dict[str, str] = {
     "en": "Source discovery is running — you'll get a follow-up message when it's done.",
 }
 
+_CANCELLED_MSG: dict[str, str] = {
+    "ru": "Отменено.",
+    "en": "Cancelled.",
+}
+
+_SUCCESS_MESSAGES: dict[str, dict[str, str]] = {
+    "delete_subscription": {
+        "ru": "Готово: подписка удалена.",
+        "en": "Done: subscription deleted.",
+    },
+    "stop_subscription": {
+        "ru": "Готово: подписка поставлена на паузу.",
+        "en": "Done: subscription paused.",
+    },
+    "remove_source": {
+        "ru": "Готово: источник удалён из подписки.",
+        "en": "Done: source removed from the subscription.",
+    },
+    "trigger_digest_now": {
+        "ru": "Дайджест поставлен в очередь на отправку.",
+        "en": "Digest queued for delivery.",
+    },
+}
+
+
+def _language_key(language: str) -> str:
+    return "ru" if language.lower().startswith("ru") else "en"
+
+
+def _tool_succeeded(tool_name: str, raw_result: str) -> bool:
+    if tool_name == "delete_subscription":
+        return raw_result.startswith("Subscription ") and raw_result.endswith(" deleted.")
+    if tool_name == "stop_subscription":
+        return raw_result.startswith("subscription ") and raw_result.endswith(": stopped.")
+    if tool_name == "remove_source":
+        return raw_result.endswith(": removed.")
+    if tool_name == "trigger_digest_now":
+        return raw_result.startswith("Digest queued for delivery")
+    return False
+
 
 def _user_facing_result(tool_name: str, raw_result: str, language: str) -> str:
+    lang = _language_key(language)
     if tool_name == "trigger_source_discovery" and raw_result == "discovery_queued":
-        return _DISCOVERY_QUEUED_MSG.get(language, _DISCOVERY_QUEUED_MSG["en"])
+        return _DISCOVERY_QUEUED_MSG[lang]
+    if _tool_succeeded(tool_name, raw_result):
+        return _SUCCESS_MESSAGES[tool_name][lang]
     return raw_result
 
 
@@ -265,10 +310,14 @@ async def confirm_action(
         await confirmations.cancel(payload.nonce, str(user.id))
         await _record_button_decision(
             str(user.id),
-            f"User cancelled pending action: {pending.description}",
+            f"Inline button cancelled {pending.tool_name}.",
             settings.conversation_hot_max_tokens,
         )
-        return ConfirmationDecisionResponse(status="cancelled", action=pending.tool_name)
+        return ConfirmationDecisionResponse(
+            status="cancelled",
+            action=pending.tool_name,
+            result=_CANCELLED_MSG[_language_key(user.language or "en")],
+        )
 
     shared_state: dict = {
         "status": "in_progress",
@@ -304,7 +353,7 @@ async def confirm_action(
 
     await _record_button_decision(
         str(user.id),
-        f"User confirmed via button; {pending.tool_name} -> {str(result)[:300]}",
+        f"Inline button confirmed {pending.tool_name}; backend result: {str(result)[:300]}",
         settings.conversation_hot_max_tokens,
     )
     return ConfirmationDecisionResponse(

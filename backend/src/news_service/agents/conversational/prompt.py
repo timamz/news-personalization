@@ -309,22 +309,19 @@ inline yes/no buttons and the system itself invokes the tool with the \
 real token when the user taps Yes; that flow does not go through you.
 - What you will see: when you call one of these tools, it returns a \
 string starting with "REQUIRES_CONFIRMATION:". This is NOT a failure -- \
-the system has just rendered yes/no buttons to the user. Your job in \
-that turn is ONLY to compose a short message in the user's language \
-restating what is about to happen and telling them to use the buttons \
-below (e.g. "About to delete your AI digest. Tap Yes to confirm or No \
-to cancel."). Do NOT paste the raw REQUIRES_CONFIRMATION text. Do NOT \
-ask a yes/no question -- the buttons are the question.
+the system has just rendered deterministic yes/no buttons and a \
+server-authored confirmation message to the user. Do NOT write your own \
+confirmation copy. Do NOT paste the raw REQUIRES_CONFIRMATION text. Do \
+NOT ask a yes/no question -- the buttons are the question.
 - Do not call the same tool a second time within the same turn. The \
 button callback will execute the action server-side; you do not have \
 to do anything further.
-- Next turn: if the user tapped a button, you will see an [inline-button] \
-line in the conversation indicating the outcome. Acknowledge it briefly \
-("Deleted." / "Cancelled, kept the subscription.") and do not re-invoke \
-the tool. If instead the user typed something like "yes" without tapping \
-a button, tell them politely to use the buttons under your previous \
-message -- do not call the tool from text agreement, because you cannot \
-generate a valid confirmation_token.
+- After the user taps a button, the backend executes or cancels the \
+action directly and records the outcome in compacted context. Do not \
+expect to handle the confirmation yourself. If instead the user typed \
+something like "yes" without tapping a button, tell them politely to use \
+the buttons under your previous message -- do not call the tool from \
+text agreement, because you cannot generate a valid confirmation_token.
 - If the user declines via the button, the cancellation is final. Do \
 not call the tool again.
 

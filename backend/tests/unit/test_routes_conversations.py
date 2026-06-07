@@ -252,7 +252,7 @@ async def test_confirm_endpoint_returns_404_when_no_pending_record(mocker) -> No
 
 
 @pytest.mark.asyncio
-async def test_confirm_endpoint_cancel_records_decision_in_transcript(mocker) -> None:
+async def test_confirm_endpoint_cancel_records_decision_in_compacted_context(mocker) -> None:
     from news_service.api.routes_conversations import confirm_action
     from news_service.core.confirmations import PendingConfirmation
     from news_service.schemas.conversation import ConfirmationDecisionRequest
@@ -278,9 +278,55 @@ async def test_confirm_endpoint_cancel_records_decision_in_transcript(mocker) ->
 
     request = ConfirmationDecisionRequest(nonce="n1", decision="cancel")
     response = await confirm_action(request, user=user, session=AsyncMock())
+    saved = ConversationState.model_validate_json(redis_fake._storage[f"conv:user:{user.id}"])
 
     assert (
         response.status == "cancelled"
         and response.action == "delete_subscription"
+        and response.result == "Cancelled."
         and cancel_mock.await_count == 1
-    ), "cancel decision did not flow through to confirmations.cancel"
+        and saved.messages == []
+        and any(
+            line == "Inline button cancelled delete_subscription." for line in saved.compacted_log
+        )
+    ), "cancel decision was not recorded as compacted context only"
+
+
+@pytest.mark.asyncio
+async def test_confirm_endpoint_returns_localized_success_text(mocker) -> None:
+    from news_service.api.routes_conversations import confirm_action
+    from news_service.core.confirmations import PendingConfirmation
+    from news_service.schemas.conversation import ConfirmationDecisionRequest
+
+    user = _mock_user()
+    user.language = "ru"
+    subscription_id = str(uuid.uuid4())
+    pending = PendingConfirmation(
+        nonce="n2",
+        user_id=str(user.id),
+        tool_name="stop_subscription",
+        args={"subscription_id": subscription_id},
+        description="stop subscription",
+    )
+    mocker.patch(
+        "news_service.api.routes_conversations.confirmations.peek",
+        new=AsyncMock(return_value=pending),
+    )
+    redis_fake = _mock_redis()
+    mocker.patch(f"{MODULE}.get_redis_client", return_value=redis_fake)
+
+    async def fake_stop_tool(subscription_id: str, confirmation_token: str = "") -> str:
+        assert confirmation_token == "n2", "confirm endpoint did not pass the nonce to the tool"
+        return f"subscription {subscription_id}: stopped."
+
+    mocker.patch(
+        "news_service.api.routes_conversations.build_tools_by_name",
+        return_value={"stop_subscription": fake_stop_tool},
+    )
+
+    request = ConfirmationDecisionRequest(nonce="n2", decision="confirm")
+    response = await confirm_action(request, user=user, session=AsyncMock())
+
+    assert response.result == "Готово: подписка поставлена на паузу.", (
+        "confirm endpoint leaked the raw tool result instead of localized success text"
+    )

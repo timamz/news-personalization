@@ -796,3 +796,59 @@ async def test_streaming_runner_yields_tool_status_while_adk_is_waiting_on_tool(
     assert "searching" in phases and len(final) == 1 and final[0]["output"]["message"] == "done", (
         "runner must interleave tool-emitted progress with the final ADK response"
     )
+
+
+@pytest.mark.asyncio
+async def test_streaming_runner_uses_server_confirmation_text_instead_of_llm_text(
+    mocker,
+) -> None:
+    user = _fake_user()
+    server_text = f"Подтвердите действие {uuid.uuid4().hex[:6]}"
+    model_text = f"model-generated confirmation {uuid.uuid4().hex[:6]}"
+
+    async def fake_run_agent(**_: Any):
+        queue = getattr(fake_run_agent, "_queue", None)
+        assert queue is not None, "streaming runner did not expose the status queue"
+        queue.put_nowait(
+            {
+                "event": "requires_confirmation",
+                "nonce": f"nonce-{uuid.uuid4().hex[:6]}",
+                "action": "stop_subscription",
+                "message": server_text,
+                "yes_label": "Да",
+                "no_label": "Нет",
+            }
+        )
+        yield {"type": "final_response", "text": model_text}
+
+    def capture_agent(*, status_queue, **_: Any):
+        fake_run_agent._queue = status_queue
+        agent = MagicMock()
+        agent.tools = []
+        return agent, {"status": "in_progress", "scenario_close_summary": None}
+
+    mocker.patch("news_service.agents.conversational.agent.run_agent", new=fake_run_agent)
+    mocker.patch(
+        "news_service.agents.conversational.agent.create_conversational_agent",
+        new=capture_agent,
+    )
+    mocker.patch(
+        "news_service.agents.conversational.agent._load_subscription_summaries",
+        new=AsyncMock(return_value=[]),
+    )
+
+    events: list[dict] = []
+    async for event in run_conversation_turn_streaming(
+        messages=[{"role": "user", "content": "stop it"}],
+        db_session=AsyncMock(),
+        user=user,
+        conversation_summary="",
+    ):
+        events.append(event)
+
+    final = [event for event in events if event.get("event") == "done"]
+    assert (
+        len(final) == 1
+        and final[0]["output"]["message"] == server_text
+        and final[0]["new_messages"] == [{"role": "assistant", "content": server_text}]
+    ), "confirmation turns must expose deterministic server text instead of LLM text"
